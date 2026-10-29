@@ -30,7 +30,8 @@ from pathlib import Path
 PROJECT_NAME = "CreditPFN"
 OUTPUT_DIR_NAME = "output CreditPFN"
 EXPERIMENTS = ("general", "experiment0", "experiment1", "experiment2", "experiment3",
-               "experiment4", "experiment5", "experiment6", "experiment7", "experiment8")
+               "experiment4", "experiment5", "experiment6", "experiment7", "experiment8",
+               "experiment9", "experiment10")
 
 
 def experiment_group(value: str | None = None) -> str:
@@ -176,23 +177,25 @@ def results_dir(*parts: str, experiment: str | None = None) -> Path:
     """
     # PROJECT LAYER: `resolve_staging_path` adds the same staging precedence plus the two
     # project env vars, and falls back to the output root when staging is unavailable.
-    return resolve_staging_path(Path(OUTPUT_DIR_NAME, _experiment_scope(experiment), "results", *parts))
+    return resolve_staging_path(OUTPUT_DIR_NAME) / _experiment_scope(experiment) / "results" / Path(*parts)
 
 
 def _experiment_scope(experiment: str | None = None) -> Path:
     """Keep each LoRA debugging workflow separate from all earlier experiment-0 output."""
     group = experiment_group(experiment)
+    from src.utils.study_layout import payload
+    destination = payload(group, outputs_dir())
     extension = os.environ.get("CREDITPFN_LEGACY_ID", "")
     if extension and group in {"experiment0", "experiment4", "experiment5", "experiment6", "experiment7", "experiment8"}:
         if not extension.isascii() or not extension.isalnum():
             raise ValueError("Invalid legacy extension ID")
-        return Path(group, "extensions", extension)
+        return Path(destination, "extensions", extension)
     workflow = os.environ.get("CREDITPFN_LORA_WORKFLOW", "")
     if group == "experiment0" and workflow:
         if not workflow.isascii() or not workflow.isalnum():
             raise ValueError("Invalid LoRA workflow ID")
         return Path(group, "lora", workflow)
-    return Path(group)
+    return Path(destination)
 
 
 def logs_dir(experiment: str | None = None) -> Path:
@@ -207,12 +210,12 @@ def manifests_dir(experiment: str | None = None) -> Path:
 
 def consolidated_dir(experiment: str | None = None) -> Path:
     """Immutable analysis snapshots: a few compressed files on project storage."""
-    return resolve_staging_path(Path(OUTPUT_DIR_NAME, _experiment_scope(experiment), "consolidated"))
+    return resolve_staging_path(OUTPUT_DIR_NAME) / _experiment_scope(experiment) / "consolidated"
 
 
 def training_dir(*parts: str, experiment: str | None = None) -> Path:
     """Per-trial numeric histories and resource measurements on project storage."""
-    return resolve_staging_path(Path(OUTPUT_DIR_NAME, _experiment_scope(experiment), "training", *parts))
+    return resolve_staging_path(OUTPUT_DIR_NAME) / _experiment_scope(experiment) / "training" / Path(*parts)
 
 
 def training_work_dir() -> Path | None:
@@ -336,7 +339,7 @@ STAGING_ROOT_ENV_GENERIC = "TABPFN_STAGING_ROOT"
 #: The staging overrides in precedence order — the template's contract name for
 #: them. `_staging_base()` iterates THIS tuple, so the two names above cannot
 #: drift from what is actually honoured.
-STAGING_ENV_VARS = (STAGING_ROOT_ENV, STAGING_ROOT_ENV_GENERIC)
+STAGING_ENV_VARS = ("CREDITPFN_PROJECT_ROOT", "VSC_PROJECT_ROOT", STAGING_ROOT_ENV, STAGING_ROOT_ENV_GENERIC)
 # Built-in default — CreditPFN's KU Leuven project staging allocation.
 # This is the BASE dir; the project's files live under <base>/CreditPFN.
 DEFAULT_STAGING_ROOT = "/lustre1/project/stg_00211"
@@ -571,8 +574,12 @@ def _output_alias(p: str | os.PathLike) -> Path:
     path = Path(p)
     if not path.is_absolute() and path.parts and path.parts[0] in ("output", "output CreditPFN"):
         tail = path.parts[1:]
-        if tail and tail[0] not in EXPERIMENTS:
+        if tail and tail[0] not in (*EXPERIMENTS, "shared", "figures"):
             tail = (experiment_group(), *tail)
+        if tail and tail[0] in EXPERIMENTS:
+            from src.utils.study_layout import payload
+            root = _resolve(OUTPUT_DIR_NAME, env_var=OUTPUT_ROOT_ENV, vsc_default=_vsc_default_output_root())
+            tail = (*Path(payload(tail[0], root)).parts, *tail[1:])
         return Path(OUTPUT_DIR_NAME, *tail)
     return path
 

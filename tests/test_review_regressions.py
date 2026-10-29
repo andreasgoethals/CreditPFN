@@ -219,22 +219,16 @@ def test_results_notebooks_save_paired_figures_and_use_real_brier_column(monkeyp
         tree = ast.parse("\n".join(line for line in source.splitlines() if not line.startswith("%")))
         shown = [ast.unparse(node.args[1]) for node in ast.walk(tree)
                  if isinstance(node, ast.Call) and ast.unparse(node.func) == "cp.show" and len(node.args) >= 2]
-        assert "ce.plot_choices(grid, TRACK)" in shown
-        assert "ce.plot_combinations(grid, TRACK, metric)" in shown
-        assert "ce.plot_transfer_retention(grid, TRACK)" in shown
-        assert "ce.plot_monitor_changes(run)" in shown
+        assert "rv.plot_learning_rates(grid, TRACK)" in shown
+        assert "sy.plot_reference_tables(effects, TRACK)" in shown
         assert "finish.plot_uncertainty(run)" in shown
-        assert source.index("ce.plot_choices(grid, TRACK)") < source.index("ce.plot_monitor_changes(run)")
-        assert source.index("ce.plot_combinations(grid, TRACK, metric)") < source.index("ce.plot_monitor_changes(run)")
-        metric_loops = [ast.literal_eval(node.iter) for node in ast.walk(tree)
-                        if isinstance(node, ast.For) and isinstance(node.target, ast.Name)
-                        and node.target.id == "metric" and isinstance(node.iter, ast.Tuple)]
+        assert source.index("rv.plot_learning_rates(grid, TRACK)") < source.index("finish.plot_uncertainty(run)")
         if path.stem.endswith("_pd"):
-            assert ("roc_auc", "brier_score", "log_loss") in metric_loops
             assert "dg.plot_calibration_overview(run)" in shown
-        else:
-            assert ("r2", "rmse") in metric_loops
         assert "ce.reference_profiles(run)" in source
+    for number in (3, 4):
+        notebook=json.loads(Path(f"notebooks/experiment{number}/02_results.ipynb").read_text(encoding="utf-8"))
+        assert "rv.plot_factorial" in "\n".join("".join(c["source"]) for c in notebook["cells"])
     # Metric selection lives in src, keeping the notebooks free of analysis logic.
     from src.visualize import choice_effects
     requested = []

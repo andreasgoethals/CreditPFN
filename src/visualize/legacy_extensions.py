@@ -97,7 +97,7 @@ def render(report, sink, experiment, phase):
                 study = cc.load_context_study(cfg_override=configuration[f"e4_{tag}"])
                 report.table(f"{version}: context protocol", cc.protocol_table(study))
                 report.table(f"{version}: verified context exports", study.inventory)
-                pages = cc.plot_context_curves(study)
+                pages = cc.plot_context_curves(study) + cc.plot_table_curves(study)
                 for metric, table in cc.secondary_tables(study).items():
                     if not table.empty:
                         report.table(f"{version}: {metric} context pairs", table)
@@ -131,8 +131,8 @@ def render(report, sink, experiment, phase):
             if pages:
                 cp.show(sink, pages)
     report.add(title, f"Extension {identifier}. This model-coverage extension was added after inspecting the original study; "
-        "it is exploratory. The original tables and partitions are preserved. Experiment 4 caps inference context at "
-        "10,000 rows for v2 and 50,000 for v2.6. Experiment 7 uses 2,048, the shared 8,192-row control, and "
+        "it is exploratory. The original tables and partitions are preserved. Experiment 10 caps inference context at "
+        "10,000 rows for v2 and 50,000 for v2.6. Experiment 9 uses 2,048, the shared 8,192-row control, and "
         "the model-specific training ceiling (10,000 or 11,000 total context-plus-query rows). Missing evidence is not a zero effect.")
 
 

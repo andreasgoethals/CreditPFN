@@ -11,10 +11,21 @@ start_job_log() {
     export CREDITPFN_EXPERIMENT="$group"
     case "$group" in general|experiment[0-8]) ;; *) echo "Invalid output group: $group" >&2; return 2 ;; esac
     local scope="$group"
+    if [[ -f "$CREDITPFN_OUTPUT_ROOT/output CreditPFN/STUDY_LAYOUT.json" ]]; then
+        # Bootstrap logging precedes Python activation; mapping matches study_layout.CAMPAIGNS.
+        case "$group" in
+            experiment1) scope=shared/main_grid ;;
+            experiment3) scope=experiment7 ;;
+            experiment4) scope=experiment10 ;;
+            experiment6) scope=experiment8 ;;
+            experiment7) scope=experiment9 ;;
+            experiment8) scope=experiment6 ;;
+        esac
+    fi
     if [[ -n "${CREDITPFN_LEGACY_ID:-}" ]]; then
         [[ "$CREDITPFN_LEGACY_ID" =~ ^[a-zA-Z0-9]{1,40}$ ]] || { echo 'Invalid extension ID' >&2; return 2; }
         case "$group" in experiment0|experiment[4-8]) ;; *) echo 'Invalid extension experiment' >&2; return 2 ;; esac
-        scope="$group/extensions/$CREDITPFN_LEGACY_ID"
+        scope="$scope/extensions/$CREDITPFN_LEGACY_ID"
     elif [[ "$group" == experiment0 && -n "${CREDITPFN_LORA_WORKFLOW:-}" ]]; then
         [[ "$CREDITPFN_LORA_WORKFLOW" =~ ^[a-zA-Z0-9]+$ ]] || { echo 'Invalid LoRA workflow ID' >&2; return 2; }
         scope="experiment0/lora/$CREDITPFN_LORA_WORKFLOW"

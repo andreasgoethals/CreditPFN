@@ -25,13 +25,23 @@ def policy(path="config/experiment4/context.yaml"):
     cfg = OmegaConf.to_container(OmegaConf.load(path), resolve=True)
     sizes = cfg["context_rows"]
     legacy = bool(cfg.get("extension_id"))
+    refresh = bool(cfg.get("refresh_id"))
+    if refresh:
+        from src.utils.runtime_validation import identifier
+        from src.utils.paths import REPO_ROOT
+        identifier(cfg["refresh_id"])
+        expected = OmegaConf.to_container(OmegaConf.load(REPO_ROOT / "config/experiment4/context.yaml"), resolve=True)
+        expected.update(run_name=f"context_fp32_{cfg['refresh_id']}", refresh_id=cfg["refresh_id"],
+                        families=["tabicl"], tabicl_inference_options={"use_amp": False, "use_fa3": False})
+        if legacy or cfg != expected:
+            raise ValueError("FP32 context refresh changed the historical context protocol")
     if legacy:
         from src.utils.legacy_design import validate_id, limits
         validate_id(cfg["extension_id"])
         if cfg.get("base_version") not in ("v2", "v2.6") or cfg["max_context_rows"] != limits().context_rows[cfg["base_version"]]:
             raise ValueError("Legacy context cap/version differs from the declared native limit")
     if (cfg["experiment"] != "experiment4" or cfg["outer_folds"] != 5
-            or cfg["families"] != (["tabpfn"] if legacy else ["tabpfn", "tabicl"]) or cfg["tracks"] != ["pd", "lgd"]
+            or cfg["families"] != (["tabpfn"] if legacy else (["tabicl"] if refresh else ["tabpfn", "tabicl"])) or cfg["tracks"] != ["pd", "lgd"]
             or not sizes or any(type(n) is not int for n in sizes)
             or sizes != sorted(set(sizes)) or min(sizes) < 2
             or max(sizes) > cfg["max_context_rows"] or cfg["query_batch_rows"] < 1
@@ -196,13 +206,17 @@ def score_cell(data, context, validation, test, path, family, cfg, *, device="cu
     else:
         cls, reg = import_tabicl_sklearn()
         estimator = (cls if data.task_type == "classification" else reg)(
-            model_path=str(path), allow_auto_download=False, **kwargs)
+            model_path=str(path), allow_auto_download=False,
+            **cfg.get("tabicl_inference_options", {}), **kwargs)
         a, mask = _sanitize(a)
         b, _ = _sanitize(b, dead_cols=mask)
         c, _ = _sanitize(c, dead_cols=mask)
     started = time.monotonic()
     with _trust_local_checkpoints():
         estimator.fit(a, data.y[context])
+        if family == "tabicl" and cfg.get("tabicl_inference_options") == {"use_amp": False, "use_fa3": False}:
+            if tuple(bool(v) for v in estimator._resolve_amp_fa3()) != (False, False):
+                raise RuntimeError("Requested TabICL FP32 policy was not applied")
         fit_seconds = time.monotonic() - started
         prediction = predict_all(estimator, c, data.task_type, cfg["query_batch_rows"])
         val_prediction = predict_all(estimator, b, data.task_type, cfg["query_batch_rows"])
@@ -222,7 +236,10 @@ def run_task(plan_path, index):
     from src.eval.dataset_loader import load_processed_dataset
     from src.train.corpus import build_dataset_pool
     plan = read_plan(plan_path)
-    if plan["config"].get("extension_id"):
+    if plan["config"].get("refresh_id"):
+        from src.utils.evaluation_refresh import validate_context
+        validate_context(plan["config"])
+    elif plan["config"].get("extension_id"):
         import os
         from src.utils.legacy_checks import require_gate as legacy_gate
         os.environ["CREDITPFN_LEGACY_ID"] = plan["config"]["extension_id"]

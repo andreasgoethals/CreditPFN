@@ -24,7 +24,7 @@ def test_batch_headers_follow_leuven_submission_requirements():
             if line.startswith("#SBATCH "):
                 directives.extend(shlex.split(line[len("#SBATCH "):]))
         opts = dict(item.split("=", 1) for item in directives if "=" in item)
-        for key in ("--clusters", "--partition", "--account", "--time", "--mem"):
+        for key in ("--clusters", "--partition", "--account", "--time"):
             assert opts.get(key), (path, key)
         if opts["--partition"].startswith("gpu"):
             assert opts.get("--gpus-per-node") == "1", path
@@ -34,7 +34,8 @@ def test_batch_headers_follow_leuven_submission_requirements():
                 ("wice", "gpu_h100"): (16, 187200),
             }[opts["--clusters"], opts["--partition"]]
             assert int(opts["--cpus-per-task"]) <= cores, path
-            assert int(opts["--mem"].removesuffix("G")) * 1024 <= memory, path
+            if "--mem" in opts:  # Omission uses the verified partition memory per allocated CPU.
+                assert int(opts["--mem"].removesuffix("G")) * 1024 <= memory, path
 
 
 @pytest.mark.parametrize("requested,expected", [(None, 2), (-1, 2), (0, 2), (9, 2), (1, 1)])

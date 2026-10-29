@@ -47,6 +47,8 @@ def protocol_table(study):
         ("Validation labels", f"Fixed {cfg['inner_validation_fraction']:.0%} of each outer training fold, separate from context"),
         ("Test rows", "All outer-test rows; unchanged across context budgets and original/CPT"),
         ("Inference views", str(cfg["inference_views"])),
+        ("TabICL inference", "not applicable" if "tabicl" not in cfg["families"] else
+         ("FP32; FA3 disabled" if cfg.get("tabicl_inference_options") == {"use_amp":False,"use_fa3":False} else "automatic; precision sensitivity caveat applies")),
         ("Aggregation", "Five paired folds per table; equal-weight table means; fixed cohort within each curve"),
     ], columns=["setting", "value"])
 
@@ -113,7 +115,31 @@ def load_context_study(*, cfg_override=None):
     expected_names = {f"task_{i:04d}.csv.gz" for i in range(len(plan["tasks"]))}
     if set(exports) - expected_names:
         raise ValueError("Unexpected task exports in the selected context run")
-    return ContextStudy(cfg, pd.concat(records, ignore_index=True) if records else pd.DataFrame(), pd.DataFrame(rows))
+    study = ContextStudy(cfg, pd.concat(records, ignore_index=True) if records else pd.DataFrame(), pd.DataFrame(rows))
+    pointer = mroot / "active_context.json"
+    if cfg_override is None and pointer.is_file():
+        active = json.loads(pointer.read_text(encoding="utf-8"))
+        if active.get("family") != "tabicl" or active["config"].get("tabicl_inference_options") != {"use_amp": False, "use_fa3": False}:
+            raise ValueError("Invalid active context precision policy")
+        replacement_plan = json.loads((mroot/"plans"/(active["config"]["run_name"]+".json")).read_text(encoding="utf-8"))
+        if replacement_plan["sha256"] != active["plan_sha256"]:
+            raise ValueError("Published context plan changed")
+        from src.utils.experiment import file_digest
+        debug = analysis_location("experiment0", "manifests", manifests_dir("experiment0"))
+        inspection = debug/"evaluation_refresh"/active["config"]["refresh_id"]/"inspection.json"
+        if file_digest(inspection) != active["inspection_sha256"]:
+            raise ValueError("Published context inspection is missing or changed")
+        replacement = load_context_study(cfg_override=OmegaConf.create(active["config"]))
+        if not replacement.inventory.status.eq("Verified export").all():
+            raise ValueError("Published FP32 context evidence is incomplete")
+        keys = ["track", "family", "partition", "dataset", "fold", "context_rows", "state"]
+        before = study.cells[study.cells.family.eq("tabicl")]
+        if set(map(tuple, before[keys].to_numpy())) != set(map(tuple, replacement.cells[keys].to_numpy())):
+            raise ValueError("Published FP32 context refresh changed comparison coverage")
+        study.cells = pd.concat([study.cells[~study.cells.family.eq("tabicl")], replacement.cells], ignore_index=True)
+        study.inventory = pd.concat([study.inventory[~study.inventory.family.eq("tabicl")], replacement.inventory], ignore_index=True)
+        study.config = dict(cfg, tabicl_inference_options=active["config"]["tabicl_inference_options"], precision_refresh=active["config"]["refresh_id"])
+    return study
 
 
 def paired_tables(study, metric):
@@ -151,54 +177,71 @@ def fixed_cohort(study, table, track, horizon):
     return part[part.dataset.isin(valid)].copy()
 
 
-def plot_context_curves(study):
+def plot_context_curves(study, *, selected_track=None, horizons=None):
+    """Two metrics, absolute scores and paired effects in four readable panels."""
+    from matplotlib.lines import Line2D
     pages = []
-    for track, metric, label in (("pd", "roc_auc", "AUC"), ("lgd", "r2", "R²")):
-        paired = paired_tables(study, metric)
-        for horizon in sorted({min(n, study.config["max_context_rows"]) for n in COHORT_HORIZONS}):
-            data = fixed_cohort(study, paired, track, horizon)
-            if data.empty:
+    for track, metrics in (("pd", (("roc_auc", "AUC"), ("brier_score", "Brier score"))),
+                           ("lgd", (("r2", "R²"), ("rmse", "RMSE")))):
+        if selected_track is not None and track != selected_track:
+            continue
+        for horizon in sorted({min(n, study.config["max_context_rows"]) for n in (COHORT_HORIZONS if horizons is None else horizons)}):
+            pairs = {m: fixed_cohort(study, paired_tables(study, m), track, horizon) for m, _ in metrics}
+            available = [set(d.dataset) if not d.empty else set() for d in pairs.values()]
+            cohort = set.intersection(*available) if available else set()
+            if not cohort:
                 continue
-            n = data.dataset.nunique()
-            fig, axes = plt.subplots(2, len(study.config["families"]), squeeze=False, figsize=style.figsize(style.WIDTH_FULL, style.DASHBOARD_RATIO), layout="constrained")
+            n = len(cohort)
+            fig, axes = plt.subplots(2, 2, squeeze=False, figsize=style.figsize(style.WIDTH_FULL, style.DASHBOARD_RATIO), layout="constrained")
             fig.suptitle(f"{track.upper()}: context up to {horizon:,} rows · {n} fixed table{'s' if n != 1 else ''}")
-            curves = []
-            for col, family in enumerate(study.config["families"]):
-                part = data[data.family.eq(family)]
-                curve = part.groupby("context_rows")[["original", "adapted", "gain"]].mean()
-                color = style.color(study.config.get("base_version", "v3") if family == "tabpfn" else "tabicl")
-                for state, name, line in (("original", "Original", "--"), ("adapted", "CPT", "-")):
-                    axes[0, col].plot(curve.index, curve[state], color=color, linestyle=line, linewidth=style.THIN_LINE, label=name)
-                for _, table in part.groupby("dataset"):
-                    table = table.sort_values("context_rows")
-                    axes[1, col].plot(table.context_rows, table.gain, color=style.color("annotation"),
-                        alpha=style.TABLE_CURVE_ALPHA, linewidth=style.TABLE_CURVE_LINE)
-                axes[1, col].plot(curve.index, curve.gain, color=color, linewidth=style.MEAN_CURVE_LINE)
-                axes[1, col].axhline(0, color=style.color("reference"), linestyle=":")
-                axes[0, col].set_title("TabPFN " + study.config.get("base_version", "v3") if family == "tabpfn" else FAMILIES[family]); axes[0, col].set_ylabel(label)
-                axes[1, col].set_ylabel("CPT − original " + label)
-                for ax in axes[:, col]:
-                    ax.set_xscale("log"); ax.set_xlabel("Labeled context rows")
-                curves.append(curve.reset_index().assign(family=family, datasets=n))
-            from matplotlib.lines import Line2D
-            handles, labels = axes[0, 0].get_legend_handles_labels()
-            handles += [Line2D([], [], color=style.color("annotation"), linewidth=style.TABLE_CURVE_LINE),
-                        Line2D([], [], color=style.color("mean"), linewidth=style.MEAN_CURVE_LINE)]
-            labels += ["Individual table effect", "Equal-table mean effect"]
-            fig.legend(handles, labels, loc="outside lower center", ncol=2)
+            curves, values = [], []
+            for row, (metric, label) in enumerate(metrics):
+                data = pairs[metric]
+                if data.empty:
+                    axes[row, 0].text(.5, .5, f"{label} unavailable", transform=axes[row, 0].transAxes, ha="center")
+                    axes[row, 1].set_visible(False)
+                    continue
+                data = data[data.dataset.isin(cohort)]
+                values.append(data)
+                for family in study.config["families"]:
+                    part = data[data.family.eq(family)]
+                    curve = part.groupby("context_rows")[["original", "adapted", "gain"]].mean()
+                    color = style.color(study.config.get("base_version", "v3") if family == "tabpfn" else "tabicl")
+                    for state, line in (("original", "--"), ("adapted", "-")):
+                        axes[row, 0].plot(curve.index, curve[state], color=color, linestyle=line, linewidth=style.THIN_LINE)
+                    for _, table in part.groupby("dataset"):
+                        table = table.sort_values("context_rows")
+                        axes[row, 1].plot(table.context_rows, table.gain, color=color,
+                            alpha=style.TABLE_CURVE_ALPHA, linewidth=style.TABLE_CURVE_LINE)
+                    axes[row, 1].plot(curve.index, curve.gain, color=color, linewidth=style.MEAN_CURVE_LINE)
+                    curves.append(curve.reset_index().assign(family=family, datasets=n, metric=metric))
+                axes[row, 0].set_ylabel(label)
+                axes[row, 1].set_ylabel(("Original − CPT " if metric in ("brier_score", "rmse") else "CPT − original ") + label)
+                axes[row, 1].axhline(0, color=style.color("reference"), linestyle=":")
+            axes[0, 0].set_title("Original and CPT performance")
+            axes[0, 1].set_title("Paired effect · positive favors CPT")
+            for ax in axes.flat:
+                ax.set_xscale("log"); ax.set_xlabel("Labeled context rows")
+            handles = [Line2D([], [], color=style.color(study.config.get("base_version", "v3") if f == "tabpfn" else "tabicl"),
+                label="TabPFN " + study.config.get("base_version", "v3") if f == "tabpfn" else FAMILIES[f]) for f in study.config["families"]]
+            handles += [Line2D([], [], color=style.color("reference"), linestyle="--", label="Original"),
+                        Line2D([], [], color=style.color("reference"), label="CPT"),
+                        Line2D([], [], color=style.color("annotation"), linewidth=style.TABLE_CURVE_LINE, label="Individual table effect"),
+                        Line2D([], [], color=style.color("mean"), linewidth=style.MEAN_CURVE_LINE, label="Equal-table mean effect")]
+            fig.legend(handles=handles, loc="outside lower center", ncol=3)
             pages.append(cp.Page(f"context_{track}_through_{horizon}", fig,
-                f"{track.upper()}. Original and fixed-recipe CPT {label}, with their paired difference below. "
+                f"{track.upper()}. Original and fixed-recipe CPT {metrics[0][1]} and {metrics[1][1]} (left), with their paired effects (right). "
                 f"The same {n} tables contribute at every displayed context size and to every displayed model. "
                 "Scores are averaged over five paired outer folds within table, then equally across tables. "
-                "In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. "
+                "Thin colored curves retain individual table effects; thick curves show their equal-table mean. "
                 "These curves are not uncertainty bands or repeated-context variance estimates. "
                 "Validation labels have a fixed additional budget; all outer-test rows are unchanged. "
                 "The horizon identifies the table cohort, so levels across different horizon panels need not agree. "
                 "The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training "
                 "partition excluded the table; positive differences favour CPT.",
-                {"Plotted means": pd.concat(curves, ignore_index=True), "Complete paired table values": data},
-                {"measurement": "five_fold_context_benchmark", "metric": metric, "aggregation_unit": "table",
-                 "context_horizon": int(horizon), "fixed_tables": sorted(data.dataset.unique()),
+                {"Plotted means": pd.concat(curves, ignore_index=True), "Complete paired table values": pd.concat(values, ignore_index=True)},
+                {"measurement": "five_fold_context_benchmark", "metrics": [m for m, _ in metrics], "aggregation_unit": "table",
+                 "context_horizon": int(horizon), "fixed_tables": sorted(cohort),
                  "additional_validation_fraction": float(study.config["inner_validation_fraction"])}))
     return pages
 
@@ -230,6 +273,48 @@ def plot_context_support(study):
         "Number of tables with finite original/CPT measurements in all five folds at each nominal context size. "
         "Counts reflect both available table sizes and completed exports; they are not live scheduler status. "
         "Performance panels separately fix the cohort over their full displayed range.", {"Paired support": support})]
+
+
+def plot_table_curves(study):
+    """Named tables expose heterogeneous responses hidden by an equal-table mean."""
+    from matplotlib.lines import Line2D
+    pages = []
+    for track, metrics in (("pd", (("roc_auc", "AUC"), ("brier_score", "Brier score"))),
+                           ("lgd", (("r2", "R²"), ("rmse", "RMSE")))):
+        frames = [paired_tables(study, metric) for metric, _ in metrics]
+        frames = [f[f.track.eq(track)] for f in frames if not f.empty]
+        if not frames:
+            continue
+        data = pd.concat(frames, ignore_index=True)
+        datasets = sorted(data.dataset.unique())
+        for start in range(0, len(datasets), style.CONTEXT_TABLES_PER_PAGE):
+            selected = datasets[start:start + style.CONTEXT_TABLES_PER_PAGE]
+            fig, axes = plt.subplots(len(selected), 2, squeeze=False, layout="constrained",
+                figsize=style.figsize(style.WIDTH_FULL, style.CONTEXT_TABLE_PAGE_RATIO))
+            fig.suptitle(f"{track.upper()}: paired context effects by table")
+            for row, dataset in enumerate(selected):
+                for col, (metric, label) in enumerate(metrics):
+                    ax = axes[row, col]
+                    for family in study.config["families"]:
+                        part = data[data.dataset.eq(dataset) & data.metric.eq(metric) & data.family.eq(family)].sort_values("context_rows")
+                        color = style.color(study.config.get("base_version", "v3") if family == "tabpfn" else "tabicl")
+                        ax.plot(part.context_rows, part.gain, color=color, linewidth=style.THIN_LINE)
+                    ax.set_title(dataset)
+                    ax.set_ylabel("Δ" + label if metric in ("roc_auc", "r2") else ("Brier reduction" if metric == "brier_score" else "RMSE reduction"))
+                    ax.set_xscale("log"); ax.set_xlabel("Labeled context rows")
+                    ax.axhline(0, color=style.color("reference"), linestyle=":")
+            handles = [Line2D([], [], color=style.color(study.config.get("base_version", "v3") if f == "tabpfn" else "tabicl"),
+                label="TabPFN " + study.config.get("base_version", "v3") if f == "tabpfn" else FAMILIES[f]) for f in study.config["families"]]
+            fig.legend(handles=handles, loc="outside lower center", ncol=len(handles))
+            pages.append(cp.Page(f"context_{track}_tables_{start // style.CONTEXT_TABLES_PER_PAGE + 1:02d}", fig,
+                f"{track.upper()}. Context-size effects for individually named held-out credit tables. "
+                "Each line averages five paired outer-fold differences; positive values favor CPT. "
+                "AUC and R² use CPT minus original; Brier and RMSE use original minus CPT. "
+                "Every curve retains the same table, fold membership and complete test rows at all context sizes. "
+                "Each fold uses nested context subsets and an unchanged validation set. Model-specific native context caps apply. "
+                "The original and CPT absolute scores and every plotted difference are retained in the printed tables.",
+                {"Named-table absolute scores and effects": data[data.dataset.isin(selected)]}))
+    return pages
 
 
 def secondary_tables(study):

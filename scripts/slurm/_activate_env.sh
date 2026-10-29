@@ -57,7 +57,15 @@ fi
 # $VSC_HOME is only ~3 GB and is not meant for bulk data; $VSC_DATA is.
 # Exported before conda so every job and every child process inherits them.
 # --------------------------------------------------------------------------
-if [[ "${CREDITPFN_USE_SCRATCH:-0}" == 1 ]]; then
+if [[ -n "${CREDITPFN_RUNTIME_VERSION:-}" ]]; then
+    case "${SLURM_CLUSTER_NAME:-}" in
+        mindwell) _native_cache="${VSC_SCRATCH_GPFS1:?}" ;;
+        wice) _native_cache="${VSC_SCRATCH_LUSTRE1:?}" ;;
+        *) echo 'Unknown native cache filesystem' >&2; return 1 ;;
+    esac
+    _CACHE_ROOT="${CREDITPFN_CACHE_ROOT:-${_native_cache}/CreditPFN/cache/${SLURM_JOB_ID:?}}"
+    unset _native_cache
+elif [[ "${CREDITPFN_USE_SCRATCH:-0}" == 1 ]]; then
     _CACHE_ROOT="${CREDITPFN_CACHE_ROOT:-${VSC_SCRATCH_NODE:?}/creditpfn-cache-${SLURM_JOB_ID:-local}}"
 else
     _CACHE_ROOT="${CREDITPFN_CACHE_ROOT:-${VSC_DATA:-$HOME}/.cache/creditpfn}"
@@ -95,6 +103,9 @@ if [[ -n "${VIRTUAL_ENV:-}" ]]; then
     unset VIRTUAL_ENV_PROMPT 2>/dev/null || true
 fi
 
+if [[ -n "${CREDITPFN_RUNTIME_VERSION:-}" ]]; then
+    source scripts/slurm/_activate_runtime.sh || return
+else
 _try_source_conda() {
     # Args: a candidate `conda.sh` path. Returns 0 on success.
     if [[ -f "$1" ]]; then
@@ -182,6 +193,7 @@ if ! conda activate "${CONDA_ENV}" || ! _prepend_conda_bin || ! _env_is_healthy;
 fi
 
 echo "Active conda env: ${CONDA_DEFAULT_ENV:-?} ($(command -v python))"
+fi
 
 
 # =============================================================================

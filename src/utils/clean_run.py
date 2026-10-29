@@ -135,14 +135,17 @@ def experiment_roots(experiment: str, scope: str = "all") -> list[Path]:
         raise ValueError("Unknown cleanup scope")
     selected = []
     for root in (outputs_dir(), resolve_staging_path(OUTPUT_DIR_NAME)):
+        from src.utils.study_layout import payload, NUMBERS
+        folder = root / payload(group, root)
         if scope == "all":
-            selected.append(root / group)
+            selected.append(folder)
         elif scope == "training":
-            selected.append(root / group / "training")
+            selected.append(folder / "training")
         elif scope == "benchmark":
-            selected += [root / group / "results", root / group / "evaluation_cache"]
+            selected += [folder / "results", folder / "evaluation_cache"]
         if scope in {"all", "figures"}:
-            selected.append(root / "figures" / group)
+            number=int(group.removeprefix("experiment"))
+            selected.append(root / "figures" / f"experiment{NUMBERS.get(number,number)}")
     if scope in {"all", "training"}:
         selected += [checkpoints_dir("trained", group), resolve_output_path(f"checkpoints/trained/{group}")]
     return list(dict.fromkeys(selected))
@@ -198,7 +201,8 @@ def check_saved_consumers(experiment, scope):
     if experiment != "experiment6" or scope == "figures":
         return
     import json
-    plans = outputs_dir() / "experiment7" / "manifests" / "plans"
+    from src.utils.paths import manifests_dir
+    plans = manifests_dir("experiment7") / "plans"
     for path in plans.glob("*.json"):
         if json.loads(path.read_text(encoding="utf-8")).get("shared_reference"):
             raise RuntimeError("Experiment 7 still references experiment 6. Preserve the shared control, "

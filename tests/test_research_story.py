@@ -100,9 +100,10 @@ def test_context_spaghetti_retains_each_table_in_the_fixed_cohort():
     page = next(p for p in cc.plot_context_curves(study) if p.name == "context_pd_through_2048")
     data = page.tables["Complete paired table values"]
     assert data.dataset.nunique() == 2
-    for ax in page.figure.axes[2:]:
-        # One line per table, one mean and one zero line.
-        assert len(ax.lines) == 4
+    for ax in page.figure.axes:
+        if "CPT − original" in ax.get_ylabel() or "Original − CPT" in ax.get_ylabel():
+            # Both models retain each individual table, their means, and one zero line.
+            assert len(ax.lines) == len(study.config['families']) * (data.dataset.nunique()+1) + 1
     assert "not uncertainty bands" in page.caption
     assert page.provenance["fixed_tables"] == ["Table 1", "Table 2"]
 

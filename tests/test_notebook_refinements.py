@@ -142,7 +142,7 @@ def test_track_scopes_export_name_title_and_caption(monkeypatch):
     import IPython.display
     monkeypatch.setattr(IPython.display,"display",lambda *args: None)
     saved=[]
-    sink=SimpleNamespace(save=lambda figure,name,caption: saved.append((name,caption)))
+    sink=SimpleNamespace(save=lambda figure,name,caption,**metadata: saved.append((name,caption)))
     for track in ("pd","lgd"):
         fig,ax=plt.subplots()
         fig.suptitle("Optimizer check")

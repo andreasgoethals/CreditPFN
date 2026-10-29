@@ -1,0 +1,74 @@
+schema: 2
+campaigns:
+  experiment1: shared/main_grid
+  experiment2: experiment2
+  experiment3: experiment7
+  experiment4: experiment10
+  experiment5: experiment5
+  experiment6: experiment8
+  experiment7: experiment9
+  experiment8: experiment6
+studies:
+  experiment1:
+    rq: 1
+    title: Learning rate and training progress
+    sources:
+    - shared/main_grid
+    analysis: Full updates; L2-SP 0.003; all prescribed rates
+  experiment2:
+    rq: 1
+    title: Training seed sensitivity
+    sources:
+    - shared/main_grid
+    - experiment2
+    analysis: Matched reference recipes at seeds 42 and 43
+  experiment3:
+    rq: 2
+    title: L2-SP anchoring
+    sources:
+    - shared/main_grid
+    analysis: Both L2-SP levels, matched within rate/base/scope; retain interaction
+  experiment4:
+    rq: 2
+    title: Backbone freezing
+    sources:
+    - shared/main_grid
+    analysis: Full/frozen at both L2-SP levels; retain interaction
+  experiment5:
+    rq: 2
+    title: DiagScale recipe
+    sources:
+    - experiment5
+    analysis: All prescribed rates; recipe-level evaluation
+  experiment6:
+    rq: 2
+    title: LoRA recipe
+    sources:
+    - experiment6
+    analysis: All prescribed rates; recipe-level evaluation
+  experiment7:
+    rq: 3
+    title: Row exposure and update weighting
+    sources:
+    - experiment7
+    analysis: One sample, full pass and accumulation at equal updates
+  experiment8:
+    rq: 3
+    title: Training corpus composition
+    sources:
+    - experiment8
+    analysis: All versus large PD tables at fixed episode size
+  experiment9:
+    rq: 3
+    title: Episode size
+    sources:
+    - experiment8
+    - experiment9
+    analysis: Fixed large-table corpus; shared 8192-row control
+  experiment10:
+    rq: 4
+    title: Labeled target context
+    sources:
+    - experiment10
+    analysis: Original/CPT and paired difference; fixed complete tests; five folds
+factorial_unique_runs: 512

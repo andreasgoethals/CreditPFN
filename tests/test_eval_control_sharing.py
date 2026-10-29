@@ -84,6 +84,23 @@ def test_nonresearch_cache_is_untouched(tmp_path):
     assert not target.exists()
 
 
+def test_migrated_shared_grid_controls_are_reused_only_by_compatible_campaigns(tmp_path):
+    from src.utils.study_layout import manifest
+    root = tmp_path / "output CreditPFN"
+    root.mkdir()
+    (root / "STUDY_LAYOUT.json").write_text(json.dumps(manifest()))
+    key = "a" * 64
+    donor = root / "shared/main_grid/evaluation_cache" / (key + ".json.gz")
+    artifact(donor, key)
+    for group in ("experiment2", "experiment7"):
+        target = root / group / "evaluation_cache"
+        result = share(target)
+        assert result.returncode == 0, result.stderr
+        assert os.path.samefile(donor, target / donor.name)
+    target = root / "experiment3/evaluation_cache"
+    assert share(target).returncode == 0 and not target.exists()
+
+
 @pytest.mark.parametrize("track", ["pd", "lgd"])
 @pytest.mark.parametrize("source", ["tabpfn-untuned", "tabicl-untuned", "baseline"])
 def test_research_phase_configs_share_only_identical_evaluation_controls(monkeypatch, track, source):

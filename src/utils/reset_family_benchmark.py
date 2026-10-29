@@ -40,8 +40,9 @@ def family_dirs(experiment: str, family: str) -> list[Path]:
         raise ValueError(f"Family must be one of {FAMILIES}")
     found = []
     for root in dict.fromkeys((outputs_dir(), resolve_staging_path(OUTPUT_DIR_NAME))):
+        from src.utils.study_layout import payload
         for track in TRACK_DIRS:
-            folder = root / group / "results" / track
+            folder = root / payload(group, root) / "results" / track
             if folder.is_dir():
                 found += sorted(p for p in folder.iterdir()
                                 if p.is_dir() and p.name.startswith((f"{family}-untuned__", f"{family}-trained__")))
@@ -144,7 +145,8 @@ def reset(experiment: str, family: str, *, apply: bool = False) -> dict:
     import time
     group = experiment_group(experiment)
     for root in dict.fromkeys((outputs_dir(), resolve_staging_path(OUTPUT_DIR_NAME))):
-        results_root = root / group / "results"
+        from src.utils.study_layout import payload
+        results_root = root / payload(group, root) / "results"
         if results_root.is_dir():
             # Written last: re-scored files are newer than this and never count as stale.
             _marker(results_root, family).write_text(json.dumps({"reset_ns": time.time_ns(), "utc": stamp}),

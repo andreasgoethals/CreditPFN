@@ -99,11 +99,11 @@ def code_identity(root: Path | None = None, *, stage: str = "train") -> str:
                  "src/utils/logging_setup.py", "src/utils/stage_inputs.py", "src/utils/cpu.py",
                  "src/utils/training_files.py",
                  "scripts/slurm/_train_job.sh", "scripts/slurm/_run_train.sh",
-                 "scripts/slurm/_activate_env.sh", "scripts/slurm/_job_log.sh",
+                 "scripts/slurm/_activate_env.sh", "scripts/slurm/_activate_runtime.sh", "scripts/slurm/_job_log.sh",
                  "scripts/slurm/train_pd.slurm", "scripts/slurm/train_lgd.slurm")
     elif stage == "eval":
         folders = ("src/train", "src/data", "src/model", "src/eval", "src/utils")
-        files = ("scripts/eval_pipeline.py",)
+        files = ("scripts/eval_pipeline.py", "scripts/slurm/_activate_env.sh", "scripts/slurm/_activate_runtime.sh")
     else:
         raise ValueError(f"Unknown identity stage: {stage}")
     paths = {p for folder in folders for p in (root / folder).rglob("*.py")

@@ -115,11 +115,12 @@ Newest first, dates `DD-MM-YYYY`.
 
 - A notebook contains **no `def` and no `class`** — logic goes in `src/` — and its **last code
   cell prints a text summary**, section by section, in the notebook's own section order.
-- Notebooks and phase configs are grouped by `experiment0` (debugging/pilots), `experiment1`
-  (main grid), `experiment2` (seed check) and `experiment3` (sampling/accumulation); follow-ups are `experiment4` (context curves), `experiment5`
-  (DiagScale), `experiment6` (PD training-corpus policy), `experiment7` (episode size on a fixed large-table corpus),
-  and `experiment8` (native query/value LoRA). Corpus notebooks
-  live in `notebooks/general/`. Preserve existing run identities when moving config files.
+- Public notebooks use four RQs and ten analyses: E1 learning rate/progress, E2 seeds,
+  E3 L2-SP, E4 freezing, E5 DiagScale, E6 LoRA, E7 sampling, E8 corpus composition,
+  E9 episode size, E10 target context. E0 owns validation; corpus/overview notebooks use
+  `general/`. `config/study.yaml` maps immutable historical campaign/config/checkpoint IDs
+  to the public layout. E1/E3/E4 reuse the same 512-run factorial stored once in
+  `shared/main_grid`; never count those analyses as independent runs or drop the interaction.
 - **Never pick a colour or a size.** `src/visualize/style.py` owns both, so every notebook here
   looks the same. Add a new one there, once, not in the notebook.
 - Save through `src/visualize/figures.FigureSaver`: **PDF only**, all in
@@ -169,8 +170,8 @@ anything is finished.
   runtime-fingerprinted file during active training would invalidate prepared plans.
 - Training notebooks cover trajectories, optimizer and resource diagnostics; result notebooks
   cover endpoint comparisons and final benchmarks, explicitly distinguishing monitor outcomes
-  from five-fold evaluation. Experiments 1–3 and 5–8 follow this separation; experiment 4 is evaluation only.
-- Experiment 8 uses `train.adaptation_mode: lora`, not the legacy frozen/PEFT switch.
+  from five-fold evaluation. Public experiments 1–9 follow this separation; experiment 10 is evaluation only.
+- Public experiment 6 (historical config/campaign 8) uses `train.adaptation_mode: lora`, not the legacy frozen/PEFT switch.
   Its gate is `CREDITPFN_LORA_GATE`; debugging output belongs to `experiment0/lora/<ID>/`
   on both tiers. Preserve old experiment-0 receipts and never substitute follow-up gates.
 - **Where the knowledge lives.** `docs/RESEARCH_BRIEF.md` is the self-contained research brief and

@@ -189,8 +189,7 @@ def test_single_gate_contains_all_cases_and_only_true_dependencies():
     assert not any("%" in arg for p in plan for arg in p["args"])
 
 
-@pytest.mark.parametrize("refusal", ["QOSMaxSubmitJobPerUserLimit",
-    "Job violates accounting/QOS policy (job submit limit, user's size and/or time limits)"])
+@pytest.mark.parametrize("refusal", ["QOSMaxSubmitJobPerUserLimit", "maximum number of submitted jobs"])
 def test_submission_quota_split_resume_and_dependencies(tmp_path, refusal):
     calls = []
     def runner(command, **kwargs):
@@ -201,14 +200,14 @@ def test_submission_quota_split_resume_and_dependencies(tmp_path, refusal):
     plan = [dict(key="a", needs=[], tasks=[3, 4, 5, 6], args=["job.slurm"]),
             dict(key="b", needs=["a"], tasks=None, args=["inspect.slurm"])]
     path = tmp_path / "receipt.json"
-    state = launch.submit_plan(plan, path, runner=runner, sleep=lambda _: None)
+    state = launch.submit_plan(plan, path, runner=runner, sleep=lambda _: None, max_array_size=1001)
     assert [r["tasks"] for r in state["accepted"]] == [[3, 4], [5, 6], None]
     assert "--dependency=afterok:102:103" in calls[-1]
     assert not any("%" in a for c in calls for a in c)
     launch.submit_plan(plan, path, runner=lambda *a, **k: pytest.fail("duplicate submission"))
 
 
-def test_generic_quota_waits_only_for_previously_accepted_resources(tmp_path):
+def test_generic_qos_error_never_retries_even_previously_accepted_resources(tmp_path):
     calls, sleeps = [], []
     message = "Job violates accounting/QOS policy (job submit limit, user's size and/or time limits)"
     plan = [dict(key="a", needs=[], tasks=[0], args=["--mem=64G", "--export=ALL,A=1", "job.slurm"]),
@@ -218,13 +217,15 @@ def test_generic_quota_waits_only_for_previously_accepted_resources(tmp_path):
         if len(calls) in (2, 3):
             return SimpleNamespace(returncode=1, stdout="", stderr=message)
         return SimpleNamespace(returncode=0, stdout=f"{200 + len(calls)};mindwell", stderr="")
-    state = launch.submit_plan(plan, tmp_path / "known.json", runner=runner, sleep=sleeps.append)
-    assert sleeps == [60] and [r["tasks"] for r in state["accepted"]] == [[0], [0, 1]]
+    with pytest.raises(RuntimeError, match="inspect Slurm"):
+        launch.submit_plan(plan, tmp_path / "known.json", runner=runner, sleep=sleeps.append, max_array_size=1001)
+    assert sleeps == [] and len(calls) == 2
+    assert [r["tasks"] for r in json.loads((tmp_path/"known.json").read_text())["accepted"]] == [[0]]
     path = tmp_path / "unknown.json"
-    with pytest.raises(RuntimeError, match="ambiguous accounting"):
+    with pytest.raises(RuntimeError, match="inspect Slurm"):
         launch.submit_plan(plan[:1], path,
             runner=lambda *a, **kw: SimpleNamespace(returncode=1, stdout="", stderr=message),
-            sleep=lambda _: pytest.fail("unbounded retry of invalid allocation"))
+            sleep=lambda _: pytest.fail("unbounded retry of invalid allocation"), max_array_size=1001)
     assert json.loads(path.read_text())["in_flight"] is None
 
 
@@ -234,7 +235,7 @@ def test_uncertain_submission_is_never_retried(tmp_path):
     def timeout(*a, **k):
         raise subprocess.TimeoutExpired("sbatch", 60)
     with pytest.raises(subprocess.TimeoutExpired):
-        launch.submit_plan(plan, path, runner=timeout)
+        launch.submit_plan(plan, path, runner=timeout, max_array_size=1001)
     with pytest.raises(RuntimeError, match="uncertain"):
         launch.submit_plan(plan, path, runner=lambda *a, **k: pytest.fail("unsafe retry"))
 

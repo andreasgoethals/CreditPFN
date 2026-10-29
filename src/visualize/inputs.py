@@ -133,11 +133,13 @@ def analysis_location(group, area, default):
     root = (project or primary) if area in ("training", "results", "consolidated") else (primary or project)
     if root is None:
         return default
+    from src.utils.study_layout import payload
+    destination = payload(group, root)
     extension = os.environ.get("CREDITPFN_LEGACY_ID")
     if extension and group in ("experiment0", "experiment4", "experiment5", "experiment6", "experiment7", "experiment8"):
         from src.utils.legacy_design import validate_id
-        return root / group / "extensions" / validate_id(extension) / area
-    return root / group / area
+        return root / destination / "extensions" / validate_id(extension) / area
+    return root / destination / area
 
 
 def read_csv(path, **kwargs):

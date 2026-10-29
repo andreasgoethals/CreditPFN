@@ -158,9 +158,10 @@ def config_labels(data):
     scope = data.approach.map({"Full CPT": "all", "Frozen backbone": "frozen", "DiagScale": "", "LoRA": ""})
     labels = []
     for row, sc in zip(data.itertuples(), scope):
-        prefix = f"E{row.experiment}"
+        from src.utils.study_layout import NUMBERS
+        prefix = f"E{NUMBERS[row.experiment]}"
         if row.experiment == 1:
-            labels.append(f"{prefix} {sc} · {row.setting}")
+            labels.append(f"Grid {sc} · {row.setting}")
         else:
             labels.append(f"{prefix} {row.setting}")
     return labels
@@ -173,7 +174,9 @@ def config_order(data):
     keys = data.drop_duplicates("config").assign(
         a=lambda f: f.approach.map(APPROACHES.index),
         s=lambda f: [arm_order.get(r.arm, arm_order.get(r.sampling, 0)) for r in f.itertuples()])
-    keys = keys.sort_values(["experiment", "a", "learning_rate", "l2sp_lambda", "s"])
+    from src.utils.study_layout import NUMBERS
+    keys = keys.assign(public_study=keys.experiment.map(NUMBERS)).sort_values(
+        ["public_study", "a", "learning_rate", "l2sp_lambda", "s"])
     return list(keys.config)
 
 
@@ -237,7 +240,10 @@ def selection_check(data):
     so its mean is optimistically biased. The leave-one-table-out column selects the
     recipe with the highest mean on the other tables and records its effect on the
     held-out table; averaging those effects estimates what selecting a recipe by this
-    rule would deliver on a new table of this corpus (conditional on the fitted grid).
+    rule changes these observed effects conditional on the fitted grid. This is an
+    exploratory selection-sensitivity analysis, not a nested estimate of new-table
+    generalization: fitted training partitions and the analyzed dataset collection
+    are shared across the retrospective choices.
     """
     rows = []
     for base, part in data.groupby("base"):
@@ -305,7 +311,7 @@ def findings(credit, track):
     if not grid.empty:
         rates = grid.groupby(["base", "learning_rate"]).effect.mean().unstack()
         for base, row in rates.iterrows():
-            lines.append(f"{style.model_label(base)}, experiment 1 averaged over anchoring and scope: "
+            lines.append(f"{style.model_label(base)}, shared factorial averaged over anchoring and scope: "
                          + ", ".join(f"LR {lr:.0e} {value * scale:+.{d}f}" for lr, value in row.items()) + f" {unit}.")
     return "\n".join(lines)
 
@@ -313,8 +319,9 @@ def findings(credit, track):
 STUDY_NOTE = (
     "Experiment 0 (controls and pilots) is excluded. Each study pairs its adapted checkpoints with its own evaluation "
     "of the original model, under that study's inference settings, so every effect in this notebook is a within-study "
-    "paired difference. Experiments 1–3 use TabPFN v2, v2.6, v3 and TabICLv2; experiments 5–8 use TabPFN v3 and "
-    "TabICLv2. Experiment 4 reuses the experiment-1 reference checkpoints at varying context sizes. Experiments 6 and 7 "
+    "paired difference. Grid labels refer to the shared 512-run factorial analyzed by experiments 1, 3 and 4; "
+    "each unique checkpoint enters the catalog once. The v2/v2.6 additions extend model coverage and remain explicitly exploratory. "
+    "Experiment 10 reuses the predefined main-grid reference checkpoints at varying context sizes. Experiments 8 and 9 "
     "are PD-only. Cross-study contrasts can involve several recipe differences at once (see the comparability table: "
     "PD sampling, training precision, TabICLv2 inference precision, episode cap and learning-rate parameterization).")
 
@@ -323,22 +330,50 @@ def comparability_table(studies):
     """What differs between studies beyond the named factor."""
     rows, seen = [], set()
     for experiment, arm, run in studies:
-        if experiment in seen and experiment not in (6, 7):
-            continue
-        seen.add(experiment)
         cfg = run.cfg
+        bases = tuple(sorted(run.trials.base.unique()))
+        key = (experiment, str(cfg.run_name), arm, bases)
+        if key in seen:
+            continue
+        seen.add(key)
         options = cfg.get("evaluation", {}).get("tabicl_inference_options") if hasattr(cfg, "get") else None
+        precision = active_precision(run, experiment)
+        from src.utils.study_layout import NUMBERS
         rows.append(dict(
-            experiment=experiment, study=STUDIES[experiment], arm=arm or "",
-            bases=", ".join(style.model_label(b) for b in sorted(run.trials.base.unique())),
+            experiments="1, 3, 4 (shared)" if experiment == 1 else str(NUMBERS[experiment]),
+            study=STUDIES[experiment], campaign=str(cfg.run_name), arm=arm or "",
+            bases=", ".join(style.model_label(b) for b in bases),
             learning_rates=", ".join(f"{v:g}" for v in sorted(run.trials.learning_rate.unique())),
             l2sp=", ".join(f"{v:g}" for v in sorted(run.trials.l2sp_lambda.unique())),
             pd_sampling=str(cfg.train.context_sampling) if run.track == "pd" else "uniform rows",
             training_amp=bool(cfg.train.amp),
-            tabicl_inference="FP32, no FA3" if options and not options.get("use_amp", True) else "automatic",
+            tabicl_inference=precision or ("FP32, no FA3" if options and not options.get("use_amp", True) else "automatic"),
             episode_rows=str(cfg.train.get("max_rows_per_step") or "measured cap"),
             seed=int(cfg.seed), trials=len(run.trials)))
     return pd.DataFrame(rows)
+
+
+def active_precision(run, experiment):
+    """Read the promoted evidence policy, never infer it from a future config change."""
+    import json
+    from src.utils.paths import manifests_dir
+    from src.visualize.inputs import analysis_location
+    if not any("tabicl" in str(base) for base in run.trials.base.unique()):
+        return "not applicable"
+    group = f"experiment{experiment}"
+    folder = analysis_location(group, "manifests", manifests_dir(group))
+    pointer = folder / "active_evaluation.json"
+    if not pointer.is_file():
+        return None
+    record = json.loads(pointer.read_text(encoding="utf-8"))
+    if record.get("family") != "tabicl" or record.get("options") != {"use_amp":False,"use_fa3":False}:
+        raise ValueError("Invalid published TabICL precision policy")
+    debug = analysis_location("experiment0", "manifests", manifests_dir("experiment0"))
+    receipt = debug/"evaluation_refresh"/record["refresh_id"]/"inspection.json"
+    from src.utils.experiment import file_digest
+    if file_digest(receipt) != record["inspection_sha256"]:
+        raise ValueError("Published precision inspection is missing or changed")
+    return "FP32, no FA3 (audited refresh)"
 
 
 def costs(studies):
@@ -577,39 +612,56 @@ def plot_table_map(data, track, base):
     matrix = arms.pivot(index="dataset", columns="config", values="effect").reindex(
         index=originals.index, columns=order) * SCALE[metric]
     limit = _symmetric_limit(matrix.to_numpy())
-    fig, ax = plt.subplots(figsize=style.figsize(style.WIDTH_FULL, style.DASHBOARD_RATIO), layout="constrained")
-    image = ax.imshow(np.clip(matrix.to_numpy(float), -limit, limit), aspect="auto", cmap=style.CMAP_DIVERGING,
-                      norm=TwoSlopeNorm(0., -limit, limit))
-    ax.grid(False)
-    font = style.GRID_FONT - (2 if len(order) > 10 else 1)
-    for (r, c), value in np.ndenumerate(matrix.to_numpy(float)):
-        ax.text(c, r, _fmt(value, metric) if np.isfinite(value) else "—", ha="center", va="center", fontsize=font,
-                color=style.GRID_TEXT_LIGHT if np.isfinite(value) and abs(value) > .7 * limit else style.GRID_TEXT_DARK)
-    ax.set_yticks(range(len(matrix)), [f"{d} ({originals[d]:.3f})" for d in matrix.index])
-    ax.set_xticks(range(len(order)), order, rotation=55, ha="right")
     configs = data.drop_duplicates("config").set_index("config")
-    for tick, name in zip(ax.get_xticklabels(), order):
-        tick.set_color(style.APPROACH_COLORS[configs.loc[name, "approach"]])
-    for tick in (*ax.get_xticklabels(), *ax.get_yticklabels()):
-        tick.set_fontsize(style.GRID_FONT)
-    bar = fig.colorbar(image, ax=ax, extend="both", shrink=.8)
-    bar.set_label(SHORT_UNITS[metric])
-    fig.suptitle(f"{track.upper()} / {style.model_label(base)}: table-level effects of every study arm")
-    return [cp.Page(f"overview_tables_{base}", fig,
-        f"{style.model_label(base)}, held-out credit tables: paired change in {'AUC (percentage points)' if track == 'pd' else 'R²'} "
-        "of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score "
-        "(in parentheses, averaged over the available original evaluations; inference recipes can differ across studies); columns are the outcome-independent arms "
-        "of the distribution figure, coloured by approach. " + NOTE_PAIRING +
-        f"Colours are symmetric about zero and saturate at the 95th percentile of |value| ({limit:.2f}); printed values are exact. "
-        "'—' marks a missing complete comparison.",
-        {"Table × arm effects": matrix.reset_index()},
-        {"measurement": "five_fold_final_benchmark", "aggregation_unit": "table", "metric": metric, "base": base})]
+    chunks = [order[i:i + style.TABLE_MAP_COLUMNS] for i in range(0, len(order), style.TABLE_MAP_COLUMNS)]
+    pages = []
+    for index, columns in enumerate(chunks, 1):
+        part = matrix[columns]
+        fig, ax = plt.subplots(figsize=style.figsize(style.WIDTH_FULL, style.DASHBOARD_RATIO), layout="constrained")
+        image = ax.imshow(np.clip(part.to_numpy(float), -limit, limit), aspect="auto", cmap=style.CMAP_DIVERGING,
+                          norm=TwoSlopeNorm(0., -limit, limit))
+        ax.grid(False)
+        for (r, c), value in np.ndenumerate(part.to_numpy(float)):
+            ax.text(c, r, _fmt(value, metric) if np.isfinite(value) else "—", ha="center", va="center",
+                    fontsize=style.GRID_FONT,
+                    color=style.GRID_TEXT_LIGHT if np.isfinite(value) and abs(value) > .7 * limit else style.GRID_TEXT_DARK)
+        ax.set_yticks(range(len(part)), [f"{d} ({originals[d]:.3f})" for d in part.index])
+        ax.set_xticks(range(len(columns)), columns, rotation=55, ha="right")
+        for tick, name in zip(ax.get_xticklabels(), columns):
+            tick.set_color(style.APPROACH_COLORS[configs.loc[name, "approach"]])
+        for tick in (*ax.get_xticklabels(), *ax.get_yticklabels()):
+            tick.set_fontsize(style.GRID_FONT)
+        bar = fig.colorbar(image, ax=ax, extend="both", shrink=.8)
+        bar.set_label(SHORT_UNITS[metric])
+        suffix = f" · {index}/{len(chunks)}" if len(chunks) > 1 else ""
+        fig.suptitle(f"{track.upper()} / {style.model_label(base)}: table-level CPT effects{suffix}")
+        pages.append(cp.Page(f"overview_tables_{base}_{index:02}", fig,
+            f"{style.model_label(base)}, held-out credit tables: paired change in {'AUC (percentage points)' if track == 'pd' else 'R²'} "
+            f"of each study arm relative to the original model (panel {index} of {len(chunks)}). Rows are tables, ordered by the original model's mean score "
+            "(in parentheses, averaged over the available original evaluations; inference recipes can differ across studies); columns are the outcome-independent arms "
+            "of the distribution figure, coloured by approach. " + NOTE_PAIRING +
+            f"All panels for this base share a colour scale, symmetric about zero and saturated at the 95th percentile of |value| ({limit:.2f}); labels give rounded values. "
+            "'—' marks a missing complete comparison.",
+            {"Table × arm effects": part.reset_index()},
+            {"measurement": "five_fold_final_benchmark", "aggregation_unit": "table", "metric": metric, "base": base}))
+    return pages
 
 
 def plot_rate_response(data, track):
     """Mean effect against learning rate, one line per approach and anchoring setting."""
     metric = PRIMARY[track]
     rated = data[data.experiment.isin([1, 5, 8])]
+    if rated.empty:
+        return []
+    # A missing rate must not silently replace the table population along a curve.
+    keys = ["base", "approach", "l2sp_lambda"]
+    if rated.duplicated(keys + ["dataset", "learning_rate"]).any():
+        raise ValueError("Duplicate table/rate in approach comparison")
+    expected = rated.groupby(keys).learning_rate.nunique().rename("expected_rates")
+    support = rated.groupby(keys + ["dataset"]).learning_rate.nunique().rename("observed_rates").reset_index()
+    support = support.merge(expected.reset_index(), on=keys, validate="many_to_one")
+    cohort = support[support.observed_rates.eq(support.expected_rates)][keys + ["dataset"]]
+    rated = rated.merge(cohort, on=keys + ["dataset"], validate="many_to_one")
     if rated.empty:
         return []
     summary = rated.groupby(["base", "approach", "l2sp_lambda", "learning_rate"]).effect.agg(
@@ -653,11 +705,11 @@ def plot_rate_response(data, track):
         f"Equal-table mean paired change in {'AUC (percentage points)' if track == 'pd' else 'R²'} relative to the original "
         "model, against peak learning rate, for full-parameter and frozen-backbone CPT (experiment 1; solid λ = 0.003, "
         "dashed λ = 0), DiagScale query-scaling adapters (experiment 5) and query/value LoRA (experiment 8). Shaded bands "
-        "span the table interquartile range, not confidence intervals. " + NOTE_PAIRING +
+        "span the table interquartile range, not confidence intervals. Each curve retains the same complete table cohort across its rates. " + NOTE_PAIRING +
         "The rate scales are not interchangeable across approaches: DiagScale updates multiplicative query scales and LoRA "
         "updates low-rank factors, so their rates are shown on a common axis only to display each approach's own "
         "sensitivity. The studies also differ in PD sampling, training precision and TabICLv2 inference settings.",
-        {"Rate response": summary},
+        {"Rate response": summary, "Fixed-cohort table effects": rated},
         {"measurement": "five_fold_final_benchmark", "aggregation_unit": "table", "metric": metric})]
 
 
@@ -752,7 +804,12 @@ def plot_cost_effect(data, cost, track):
         ax.set_xscale("log")
         low, high = ax.get_xlim()
         ticks = [t for t in (1, 2, 5, 10, 20, 50, 100, 200) if low <= t <= high]
+        if len(ticks) < 2:
+            from matplotlib.ticker import MaxNLocator
+            ticks = [t for t in MaxNLocator(nbins=style.CONTINUOUS_TICKS).tick_values(low, high) if low <= t <= high]
         ax.set_xticks(ticks, [f"{t:g}" for t in ticks])
+        from matplotlib.ticker import NullFormatter
+        ax.xaxis.set_minor_formatter(NullFormatter())
         ax.set_title(style.model_label(base))
         ax.set_xlabel("Recorded training hours (sum of four partitions)")
         ax.set_ylabel(SHORT_UNITS[metric])

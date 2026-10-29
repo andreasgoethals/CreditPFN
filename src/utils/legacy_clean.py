@@ -18,7 +18,8 @@ def publication_files(identifier, experiment):
     groups = [0, 4, 5, 6, 7, 8] if experiment == "all" else [int(experiment)]
     edits, files = {}, []
     for number in groups:
-        folder = figures_dir() / f"experiment{number}"
+        from src.utils.study_layout import NUMBERS
+        folder = figures_dir() / f"experiment{NUMBERS.get(number, number)}"
         for manifest in (folder / "_metadata").glob("*.json"):
             entries = json.loads(manifest.read_text(encoding="utf-8"))
             owned = [e for e in entries if e.get("provenance", {}).get("extension_id") == identifier]
@@ -45,7 +46,8 @@ def targets(identifier, experiment):
     for number in groups:
         group = f"experiment{number}"
         with scope(identifier, group):
-            selected += [outputs_dir() / group / "extensions" / identifier,
+            from src.utils.paths import manifests_dir
+            selected += [manifests_dir(group).parent,
                          results_dir(experiment=group).parent,
                          checkpoints_dir("trained", group, "extensions", identifier),
                          resolve_output_path(f"checkpoints/trained/{group}/extensions/{identifier}")]

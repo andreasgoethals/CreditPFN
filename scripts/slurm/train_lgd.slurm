@@ -11,11 +11,10 @@
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=24
-#SBATCH --mem=120G
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 #SBATCH --export=ALL
-#SBATCH --array=0-0%1
+#SBATCH --array=0
 
 set -euo pipefail
 cd "${VSC_DATA:?}/CreditPFN"

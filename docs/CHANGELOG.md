@@ -2,6 +2,8 @@
 
 ## 29-10-2026
 
+- Organize ten studies under four RQs without duplicating the main factorial; add gated runtime/migration/FP32-refresh orchestration and expand paired-context and cross-study reporting.
+- Validate all 29 notebooks and 261 figures; retain complete summaries/captions, paginate dense table maps and use fixed table cohorts across learning-rate curves.
 - Add exact-version container recreation on owned scratch; retain immutable Git package sources and require subsequent CPU/GPU acceptance.
 - Adopt manual shared-agent VSC access and PROJECT-container policy; document verified deployment/storage gaps and an approval-dependent migration without changing campaigns.
 - Add isolated TabPFN v2/v2.6 coverage for experiments 4–8, native adapters, model-specific caps, one-command VSC validation/research submission, scoped cleanup and notebook reporting.

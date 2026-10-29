@@ -8,15 +8,15 @@ submission/resume steps and run evidence in this file or the project's own run l
 Check [upstream review flags](../vsc-library/UPSTREAM_CHANGES.md) and the
 [live Leuven status](https://status.vscentrum.be/tier2_leuven.html) before applying a changed policy.
 
-Scientific choices live in [RESEARCH_BRIEF.md](RESEARCH_BRIEF.md); completed cluster evidence lives in [AGENTS_MEMORY.md](AGENTS_MEMORY.md). Commands here are Bash on VSC unless labeled PowerShell. The actual checkout is `$VSC_DATA/CreditPFN`. Existing campaign commands below describe the preserved `CreditPFN` Conda runtime; they are not yet the new container workflow. Local tests cannot certify the installed B200 runtime.
+Scientific choices live in [RESEARCH_BRIEF.md](RESEARCH_BRIEF.md); completed cluster evidence lives in [AGENTS_MEMORY.md](AGENTS_MEMORY.md). Commands here are Bash on VSC unless labeled PowerShell. The preserved original checkout is `$VSC_DATA/CreditPFN`; the isolated migration checkout is `$VSC_DATA/CreditPFN-study-v2`. Both are actual DATA Git checkouts. The current workflow is described first; older campaign commands remain recovery references. Local tests cannot certify the installed B200 runtime.
 
 Operational reference: the independent VSC Library linked above; apply current Leuven rules, and inspect account/QoS limits and storage quota live.
 
 ## Access, storage policy and migration status
 
 The local template matches the canonical template byte-for-byte on 29-10-2026
-(SHA-256 `285c7c321b2cd52d8d415e30f41fe775ceb47113f39007c2490fdb0ec23fc8d8`).
-No further template copy was needed. Infrastructure guidance is pinned at VSC Library
+(SHA-256 `0ed244c16cab8ea86afab5ed90eea36eef3a9e218314c38538e227e4f009fd3c`).
+The established synchronization commit `5186e75` incorporated the latest development/testing/cleanup guidance. Infrastructure guidance is pinned at VSC Library
 `0ed4ffa89d312b9bb6411681b6a14f81672439f3`. The project's figure layout, ICML widths
 and `output CreditPFN/<experiment>/` names remain the documented template deviations.
 
@@ -48,63 +48,61 @@ relevant. Use login nodes for lightweight metadata and scheduler queries only. L
 hashing, tests and computational debugging require an authorized Slurm allocation. Report which
 checks were local and which actually ran on VSC; a passing local test cannot replace a GPU gate.
 
-### Verified current state and required changes
+### Approved migration and Git deployment
 
-Read-only inspection at 15:39 CET on 29-10-2026 found both controller queues empty.
-This is a snapshot: recheck before any deployment or migration.
+The user authorized runtime recreation, output migration, the remaining TabICL FP32 re-evaluations and the isolated v2/v2.6 extension on 29-10-2026. Preserve original campaigns and recovery state. Edit/test locally → commit/push → verify no checkout consumers → `git pull --ff-only` on DATA → verify the exact commit → submit Slurm work. Do not copy uncommitted source or patch remote source directly.
 
-| Component | Verified current implementation | Required policy / outstanding work |
-|---|---|---|
-| Checkout and `.git` | Both resolve to DATA, not a PROJECT symlink | Keep all Git operations there |
-| Deployed source | VSC `7988e7a`; local checkout has newer extensions and policy docs | Review local changes, then deploy only after checking jobs/recovery; no remote pull was performed |
-| Libraries | VSC's TFM checkout differs from its recorded pin; VSC Library is uninitialized there | Preserve/review any library-local work before aligning to the selected commit; never reset it blindly |
-| Runtime | Existing `miniconda3/envs/CreditPFN` on DATA | Recreate the recorded environment in an immutable, versioned SIF on PROJECT; CPU/GPU acceptance before cutover |
-| Persistent cache | DATA `.cache/creditpfn` fallback | Durable model assets on PROJECT; disposable per-job caches on native scratch |
-| Large assets | Existing `/lustre1/project/stg_00211/CreditPFN` contains data, checkpoints and output | Preserve it; verify destination allocation, bytes/inodes and protection before proposing a copy |
-| Root selection | `CREDITPFN_STAGING_ROOT` / `TABPFN_STAGING_ROOT`, plus the existing Lustre default | Add `CREDITPFN_PROJECT_ROOT` / `VSC_PROJECT_ROOT` aliases with explicit precedence and legacy compatibility during migration |
-| Native I/O | Mindwell uses prepared GPFS scratch inputs for Lustre-resident canonical assets | Use native PROJECT directly when appropriate; stage only required cross-filesystem inputs |
-| Submission | New extension arrays are unthrottled; older launchers use `%4` and a 16-slot pool | Remove artificial limits from future launchers; preserve real gates and live site admission checks |
-| Resources | Existing scripts often combine `--cpus-per-task` and `--mem` | Review against current Leuven guidance; verify partition defaults and actual allocated memory before changing requests |
+The original DATA checkout and installed Conda environment remain unchanged. A separate clean DATA checkout, `CreditPFN-study-v2`, pulled build revision `d6e183e1b61456c298fb4791ff343955bacd5aab`. Earlier untracked build helpers are preserved in that checkout's Git stash as historical evidence. Build `62470828` completed version `env20261029f` in 8m48s on owned Lustre scratch from recorded Conda URLs, strict pip distribution versions and immutable Git-source pins. All 238 recorded distribution versions and installed Git-source bytes matched. Only the sealed site-wrapper SIF/SquashFS images and their launch wrappers are published to `/lustre1/project/stg_00211/CreditPFN/runtimes/<version>`. Successful construction is not CPU/GPU acceptance; consult AGENTS_MEMORY.md and the actual receipts for that outcome.
 
-The absence of `/gpfs1/project/stg_00211/CreditPFN` in this inspection does not establish
-whether another GPFS allocation is available. Do not invent an allocation path or assume the
-generic `VSC_PROJECT_GPFS1` variable grants one. PROJECT is not automatically backed up.
-The same inspection reported DATA usage of 56,233/76,800 MiB and 531k/10,000k files;
-the shared Lustre allocation used 538.2 GiB/1 TiB and 45,343/150,000 files. These are
-account/allocation totals, not this project's isolated footprint; refresh both quotas
-before sizing a migration. Both scratch tiers still contain CreditPFN working directories.
-The PROJECT SIF requirement is the user's chosen template policy; the VSC library also describes
-site-supported Conda-on-DATA setups, which does not override that project policy.
+Before using the runtime, the study controller requires:
 
-### Migration sequence — not executed
+1. CPU package/version, metric, tensor/autograd and serialization checks in the actual container.
+2. Eight original-versus-container comparisons, on the same B200 allocation and fixed rows, covering four bases × PD/LGD and original/CPT weights. Predictions must match the declared tolerances; container/source/inputs are bound to receipts.
+3. Two explicit-FP32 TabICL production-context shape checks, plus verified native-scratch runtime/input staging.
+4. Independent acceptance against the sealed image digest and current source/environment identities.
 
-The smallest proposed change keeps the current large assets on the existing Lustre PROJECT
-allocation, adds the immutable runtime image there, and stages the required image/inputs to
-native GPFS scratch for Mindwell. This does not require assuming a new GPFS PROJECT allocation
-or moving the completed campaign. Any shared read-only staging needs content verification and
-ownership for all consumers; writable caches remain isolated. Confirm capacity before building.
+The legacy environment remains a rollback and the comparator. It must not be moved or removed merely because the new build finishes. No new GPU stage may silently fall back to it. The current approved allocation is Lustre `stg_00211`; GPFS PROJECT availability is not assumed. Mindwell uses native GPFS scratch, wICE native Lustre scratch. Recheck byte and inode quotas before adding checkpoints. At the initial read-only audit DATA was 56,233/76,800 MiB and shared PROJECT 538.2 GiB/1 TiB; these are historical allocation totals, not current free space.
 
-1. Recheck jobs, pending submitters and recoverable trials. Record source/library pins, environment
-   specification, approved storage roots, ownership and both byte/file quotas. Keep old receipts.
-2. Agree on the PROJECT destination and immutable container build. Recreate from recorded versions;
-   do not move the installed Conda tree or upgrade numerical packages incidentally. Keep a rollback.
-3. Add explicit root aliases, SIF execution/binds, native per-job scratch/cache paths and resource
-   selection. Invalid/unwritable large-asset roots must fail, never redirect writes to DATA.
-   Validate finite predictions, save/reload, adapters and interrupted recovery on the
-   actual CPU/GPU runtime through isolated experiment-0 outputs. Bind new receipts to the SIF digest.
-4. Verify any authorized asset copy against manifests before cutover. Retain original checkpoints,
-   predictions and their provenance. A new runtime must not overwrite or retroactively certify
-   the completed campaigns; use fresh identities for new computation.
-5. Submit independent ready tasks together without a running cap, retaining genuine `afterok`
-   dependencies. Inspect live admission/array/resource limits; refill only known capacity refusals.
-   Stop on ambiguous submission or generic resource/QoS errors instead of risking duplicate jobs.
-6. After verified durable publication and confirmation that no queued, active or resumable job
-   needs them, propose cleanup of exact owned scratch workspaces. Never blanket-clean scratch,
-   delete recovery state merely because the queue is empty, or silently retire the old environment.
+### One gated study workflow
 
-No environment/data migration, scratch cleanup, runtime/configuration change or cluster workload
-was executed for this policy adoption. The activation and submission recipes below are retained
-as historical/recovery documentation until the approved migration is implemented and accepted.
+After the build, local validation and Git deployment, use the recorded interpreter for the lightweight submission command. Substitute the actual accepted build ID/specification and a fresh study ID; never reuse another scientific scope after changing its identity:
+
+```bash
+/data/leuven/383/vsc38338/miniconda3/envs/CreditPFN/bin/python -m src.utils.study_workflow submit study20261029 --runtime-version env20261029f --specification "$PWD/output CreditPFN/experiment0/runtime/env20261029f/environment.json"
+```
+
+This queues CPU preparation, the ten runtime GPU cases, independent acceptance and the next controller. Only successful acceptance allows the controller to hash and migrate both output roots. `STUDY_LAYOUT.json` is published after verification of both tiers. Completed scientific bytes are moved intact; historical configs, trial identities and checkpoint locations do not change. The shared main factorial has one payload at `shared/main_grid`; public E1/E3/E4 are analysis views. Public study numbering and immutable campaign IDs are mapped in `config/study.yaml` and README.md.
+
+After migration, independent branches run:
+
+- **Inference refresh:** historical sampling/corpus/episode benchmarks and TabICL context curves, explicit FP32/no-FA3. Five configurations × four partitions × sixteen benchmark shards plus 125 context tasks = 445 submitted tasks, including legitimate empty shards. Original results remain active until independent metric/test-cohort checks pass. Original/CPT pairs use the same precision.
+- **Model extension gate:** twelve correctness cases, sixty-eight capacity cases and an independent inspector. Successful inspection releases 128 training trials, 250 context tasks and 896 foundation benchmark shards. Each benchmark depends on its own training completion; unrelated branches are submitted together.
+- **Final audit/publication:** exact expected comparison coverage, five successful folds, finite saved predictions, independently recomputed AUC/Brier or R²/RMSE, complete unchanged test rows and context separation. FP32 replacements are promoted atomically with a recovery journal; superseded predictions and their original consolidation pointers are retained. New extension results are consolidated in their own scope.
+
+Arrays have no artificial running throttle. The dispatcher checks the controller's actual array limit, retries only explicit site submission-admission refusals and preserves every accepted job ID. Genuine gates use `afterok`; failed prerequisites cannot release research. Eight-hour FP32 refresh allocations allow for the previously observed large-table inference times; this is a ceiling, not an elapsed-time forecast. CPU count selects partition-default memory unless an actual measured need requires another request.
+
+Workflow state is under canonical DATA `output CreditPFN/experiment0/manifests/study_v2/<ID>/`. Runtime acceptance and extension records have separate owned scopes; large evidence and weights remain on PROJECT. `complete.json` is written only after the final audits and publication succeed. Missing/failed receipts are not an invitation to delete or resubmit everything: inspect the exact task and preserve compatible recovery state.
+
+### Collection, rollback and cleanup
+
+Preserve the original runtime, build specifications, source commit, library pins and migration hash journal. Build specifications currently reside inside the separate DATA checkout's `output CreditPFN/experiment0/runtime/<version>/`; retain them alongside the canonical acceptance records when collecting the final release. The two canonical output roots are complementary, not alternative versions. Download them only after publication is complete, then perform the local layout migration/verified refresh before regenerating all 29 notebooks. Never overlay a new-layout download onto an unmarked old-layout tree.
+
+Own-work cleanup is part of completion: inspect active/queued/resumable consumers, retain compact failure evidence and published checksums, then remove only verified obsolete build workspaces and staging paths created by this task. No blanket scratch deletion. Original datasets, base weights, research checkpoints and recoverable results are outside that cleanup. The original DATA checkout and environment stay available until rollback retirement is explicitly justified.
+
+Temporary-work ledger (29-10-2026; removal remains pending):
+
+| Owned location | Purpose and retirement condition |
+|---|---|
+| DATA `CreditPFN-study-v2` | Isolated migration checkout. After all consumers finish, preserve specifications/submission records, update and verify the normal DATA `CreditPFN` checkout through Git, then retire this temporary checkout. |
+| Lustre scratch `creditpfn-runtime-env20261029-*`, `env20261029b-*`, `env20261029c-*`, `env20261029d-*`, `env20261029e-*`, `env20261029f-*` | This task's build workspaces. The listed patterns identify candidates, not deletion commands. Resolve each exact owned path, preserve compact build records, verify the sealed runtime and confirm no cache/build/recovery consumer before removal. |
+| Native scratch `CreditPFN/runtimes/env20261029f` and per-job `CreditPFN/cache/<job>` | Execution copies only. Keep while accepted/queued jobs use them; retire after verified persistent publication and consumer checks. |
+| Local `tmp/figure_review/` and task-specific helper scripts | Disposable rendering/QA work. Remove after required figure checks and publication; no dataset or model files are included. |
+
+The existing input cache predates this task and must be inspected separately. Neither an empty queue nor this ledger authorizes deleting an unrelated project's files or the original environment.
+
+## Historical campaign commands and recovery references
+
+The remaining commands use immutable **historical campaign/config numbers**, not the new public notebook numbers. For example, `run_experiment8.sh` still means the LoRA campaign now presented as public E6. New work should use the gated workflow above. These references preserve the exact earlier launches and cleanup boundaries; do not rerun an older campaign just because its public presentation number changed.
 
 ## TabPFN v2/v2.6 extension
 

@@ -111,17 +111,22 @@ def _build_roster(eval_cfg, train_cfg, track: str):
     untuned/classical models (and by trained models whose provenance
     is missing). Trained models prefer their own provenance test set.
     """
+    import os
     from src.train.corpus import split_from_cfg
     from src.model import build_baselines
     from src.eval.benchmark import load_trained_handles
 
-    if OmegaConf.select(train_cfg, "experiment.legacy_gate", default=False):
+    refresh = bool(os.environ.get("CREDITPFN_EVAL_REFRESH", ""))
+    if refresh:
+        from src.utils.evaluation_refresh import validate
+        validate(train_cfg, eval_cfg)
+    if not refresh and OmegaConf.select(train_cfg, "experiment.legacy_gate", default=False):
         from src.utils.legacy_checks import require_gate
         require_gate(str(train_cfg.experiment.extension_id))
-    if OmegaConf.select(train_cfg, "experiment.lora_gate", default=False):
+    if not refresh and OmegaConf.select(train_cfg, "experiment.lora_gate", default=False):
         from src.utils.lora_checks import validate_evaluation
         validate_evaluation(train_cfg, eval_cfg)
-    if OmegaConf.select(train_cfg, "experiment.followup_gate", default=False):
+    if not refresh and OmegaConf.select(train_cfg, "experiment.followup_gate", default=False):
         from src.utils.followup_checks import require_gate
         require_gate()
     from src.train.size_studies import study
@@ -129,7 +134,8 @@ def _build_roster(eval_cfg, train_cfg, track: str):
         from src.utils.prepare_experiment import plan_path, read_plan, check_shared_reference, check_size_evaluation
         prepared = read_plan(plan_path(str(train_cfg.run_name), track))
         check_shared_reference(prepared)
-        check_size_evaluation(train_cfg, prepared, eval_cfg)
+        if not refresh:
+            check_size_evaluation(train_cfg, prepared, eval_cfg)
 
     split = split_from_cfg(train_cfg, track=track)
     _PACK_ROW_COUNTS[track] = {c.dataset_id: c.n_rows for c in (*split.train, *split.test)}
@@ -210,7 +216,6 @@ def _build_roster(eval_cfg, train_cfg, track: str):
             track, len(baselines), manifest_csv,
         )
 
-    import os
     kind = os.environ.get("CREDITPFN_EVAL_KIND", "all")
     roster = baselines + trained
     if kind == "classical":

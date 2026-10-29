@@ -2,20 +2,47 @@
 
 This document is intended to stand alone when shared with a collaborator or uploaded into another chat. Operational commands live in [VSC.md](VSC.md), primary evidence in [LITERATURE.md](LITERATURE.md), and historical runs in [AGENTS_MEMORY.md](AGENTS_MEMORY.md).
 
+## Four research questions and ten analyses — 29-10-2026
+
+This is a descriptive, theory-informed organization refined after the original results were available, not a preregistration. The conclusion is conditional: the conservative TabPFN v2 PD recipe has consistently positive observed transfer, while effects depend on the starting model, task and adaptation procedure. Neither uniform failure nor a universal winning recipe is supported.
+
+| RQ | Public experiments | What is isolated / retained |
+|---|---|---|
+| 1. When does domain CPT transfer, and how stable is it? | 1 learning rate/progress; 2 training seed | E1 is the full-update, L2-SP 0.003 slice at all prescribed rates; E2 adds seed 43 to the fixed seed-42 reference. |
+| 2. How do restrictions on parameter updates affect transfer and retention? | 3 L2-SP; 4 freezing; 5 DiagScale; 6 LoRA | E3/E4 retain the complete full/frozen × unanchored/anchored factorial and its interaction. E5/E6 are evaluations of specified recipes. |
+| 3. How do training data and exposure shape transfer? | 7 sampling; 8 corpus composition; 9 episode size | Corpus eligibility changes only the training complement, never held-out assignments. Episode size uses the same large-table corpus and reuses the exact 8,192-row control. E8/E9 are PD-only. |
+| 4. Does CPT change the value of labeled target context? | 10 context curves | Original and CPT absolute performance AND paired differences; AUC/Brier for PD and R²/RMSE for LGD. Fixed complete outer-test rows and five folds. |
+
+**The 512 original main-grid runs are counted once.** E1/E3/E4 are complementary analyses of them, not three new campaigns. The original scientific campaigns contain 768 unique completed training runs. The approved v2/v2.6 extension adds 128, giving 896 only after all gates, training and benchmark audits actually succeed. It is an exploratory model-coverage extension; existing controls are reused. Both frozen-plus-L2-SP arms and every remaining factorial cell stay available.
+
+Historical config directories, run names and checkpoint paths remain immutable. Public E1/E3/E4 read the historical `experiment1` payload now mapped to `shared/main_grid`; E2←old2, E5←old5, E6←old8, E7←old3, E8←old6, E9←old7, E10←old4. `config/study.yaml` is the machine-readable authority. Numbered prose below uses the public analyses; literal config/run paths deliberately retain historical IDs.
+
+### Comparability and inference harmonization
+
+The original TabICL final evaluations for historical campaigns 1/2/5/8 already use explicit FP32/no-FA3. The remaining historical sampling, corpus, episode and context evaluations require the approved isolated FP32 refresh before a unified cross-experiment TabICL conclusion. The refresh changes only inference precision and placement; checkpoints, ensembles, CV, seeds, validation/context selection and all test rows stay fixed. Publication requires independently recomputed saved-prediction metrics, identical comparison/test cohorts and explicit acceptance markers. Pending or failed refresh jobs do not certify harmonized evidence.
+
+DiagScale and LoRA differ in sampling, episode size, training precision, regularization and learning-rate parameterization. Harmonizing inference removes one confound; it does not turn them into an isolated test of adapter mechanisms. Report original/CPT effects under each complete recipe and document the remaining differences.
+
+### Context curves: scope and units
+
+For each displayed horizon, keep one fixed intersection of tables with all five folds for both states, every shown context size, every displayed model and both metrics. Average paired folds within table, then tables equally. Show individual-table curves and named-table pages alongside means. Do not connect averages from different horizon cohorts. Larger tables remain in longer-horizon panels; missing evidence is explicit.
+
+Context subsets are nested within each fold. The same complete outer-test rows and fixed additional validation set are retained as context shrinks. Native inference limits are 10,000 for TabPFN v2 and 50,000 for v2.6; the previously used v3/TabICL limits are unchanged. The original and CPT states share the same rows and inference policy. AUC/R² differences are CPT minus original; Brier/RMSE differences reverse the sign. Context RMSE differences use absolute units; benchmark panels use relative RMSE reduction where explicitly labeled. These nested subsets are not repeated context draws and do not identify a population bias–variance decomposition.
+
 ## Additional model coverage: TabPFN v2 and v2.6
 
 Authorized on 29-10-2026 after inspecting the completed main results. This is an
 exploratory coverage extension, not a retrospectively preregistered confirmation.
-Experiments 1–3 already include both models and are not retrained. New experiment-0
-checks and experiments 4–8 use an isolated extension ID on both storage tiers.
+Experiments 1, 2, 7 already include both models and are not retrained. New experiment-0
+checks and experiments 10, 5, 8, 9, 6 use an isolated extension ID on both storage tiers.
 
 | Experiment | Additional design for each version | New training trials, both versions |
 |---|---|---:|
-| 4 | Original versus the fixed E1 full-update reference (LR 3e-7, L2-SP 0.003, seed 42); five row folds, nested context budgets, all test rows | 0 |
+| 10 | Original versus the fixed E1 full-update reference (LR 3e-7, L2-SP 0.003, seed 42); five row folds, nested context budgets, all test rows | 0 |
 | 5 | DiagScale, PD/LGD, three original adapter rates, four unchanged dataset partitions | 48 |
-| 6 | PD all-table versus >10,000-row training-table pool; same held-out tables and 8,192-row episode cap | 16 |
-| 7 | Fixed large-table pool: 2,048 rows, shared E6 8,192-row control, model-specific training ceiling | 16 |
-| 8 | Native Q/V LoRA, PD/LGD, rank 16, alpha 32, original three rates; no weight decay or L2-SP | 48 |
+| 8 | PD all-table versus >10,000-row training-table pool; same held-out tables and 8,192-row episode cap | 16 |
+| 9 | Fixed large-table pool: 2,048 rows, shared E8 8,192-row control, model-specific training ceiling | 16 |
+| 6 | Native Q/V LoRA, PD/LGD, rank 16, alpha 32, original three rates; no weight decay or L2-SP | 48 |
 
 Inference context caps are **10,000 for v2 and 50,000 for v2.6**. Larger nominal
 context settings are removed; the native cap is included, and every dataset/fold also
@@ -24,12 +51,12 @@ outer-test rows remain unchanged. The benchmark does not silently replace v2/v2.
 with the newest package default.
 
 The separately measured training episode ceilings are **10,000 for v2 and 11,000
-for v2.6** total context-plus-query rows. E5/E6 retain 8,192; E7 reaches the applicable
-ceiling; E8 uses the applicable ceiling, as its existing design uses each model's
+for v2.6** total context-plus-query rows. E5/E8 retain 8,192; E9 reaches the applicable
+ceiling; E6 uses the applicable ceiling, as its existing design uses each model's
 measured training cap. The four dataset partitions, update budget, sampling, seeds
-and rates remain those of the corresponding experiment. E7's upper endpoints are
+and rates remain those of the corresponding experiment. E9's upper endpoints are
 model-specific operating points, not equal-row cross-model comparisons. Compare
-changes within a model, with E6's exact shared 8,192-row control.
+changes within a model, with E8's exact shared 8,192-row control.
 
 The extension comprises 128 training trials, 250 context-evaluation tasks and 896
 foundation-benchmark shards (some may legitimately be empty). Original-model controls
@@ -60,13 +87,13 @@ not a guarantee of positive transfer. Primary sources and their assumptions are 
 
 | Question | Relevant evidence | Interpretation boundary |
 |---|---|---|
-| Does stronger credit adaptation improve excluded credit tables while preserving non-credit behavior? | Experiment 1: learning rates, L2-SP, update scope, credit/retention trajectories and paired final scores | Parameter displacement is not predictive bias; finite-panel retention is not universal absence of forgetting. |
+| Does stronger credit adaptation improve excluded credit tables while preserving non-credit behavior? | Shared factorial (E1/E3/E4): learning rates, L2-SP, update scope, credit/retention trajectories and paired final scores | Parameter displacement is not predictive bias; finite-panel retention is not universal absence of forgetting. |
 | Is the reference result sensitive to CPT training randomness? | Experiment 2: seed 42 versus 43, with fixed inference folds and context policy | Two seeds describe sensitivity at one recipe, not grid-wide variance. |
-| Does revisiting more rows or changing update weighting make CPT more useful per unit cost? | Experiment 3: paired sampling arms, row exposure and compute | Equal updates do not equal compute or joint all-row context. |
-| Does CPT change how much an unseen credit table needs labeled context? | Experiment 4: original/CPT curves on identical nested prefixes and test rows | Context size dependence is not repeated-context variance; validation labels remain an additional fixed budget. |
+| Does revisiting more rows or changing update weighting make CPT more useful per unit cost? | Experiment 7: paired sampling arms, row exposure and compute | Equal updates do not equal compute or joint all-row context. |
+| Does CPT change how much an unseen credit table needs labeled context? | Experiment 10: original/CPT curves on identical nested prefixes and test rows | Context size dependence is not repeated-context variance; validation labels remain an additional fixed budget. |
 | Does restricting adaptation to attention query scaling preserve useful behavior? | Experiment 5: all three adapter rates against their matched original | Cross-table CPT differs from target-table fine-tuning; comparisons with experiment 1 also change recipe details. |
-| Is a large-table-only training policy helpful, and does episode size help within that fixed pool? | Experiment 6: corpus eligibility; experiment 7: context-plus-query rows | The first changes corpus composition; the second changes context, query count and compute. Neither isolates all notions of “more data.” |
-| Can low-rank changes inside attention transfer useful credit-domain structure? | Experiment 8: fixed query/value LoRA design at three adapter rates, paired with original weights | Added after earlier results; exploratory. No claim that its one rank/target policy represents all LoRA designs. |
+| Is a large-table-only training policy helpful, and does episode size help within that fixed pool? | Experiment 8: corpus eligibility; experiment 9: context-plus-query rows | The first changes corpus composition; the second changes context, query count and compute. Neither isolates all notions of “more data.” |
+| Can low-rank changes inside attention transfer useful credit-domain structure? | Experiment 6: fixed query/value LoRA design at three adapter rates, paired with original weights | Added after earlier results; exploratory. No claim that its one rank/target policy represents all LoRA designs. |
 
 The framing was sharpened after results were visible. Present these as theory-informed exploratory
 questions; do not retroactively claim preregistered directional hypotheses. The contribution is a
@@ -91,7 +118,7 @@ Each prediction has `test_dataset_id`, `model_name`, `fold_idx`, processed-table
 and `y_pred`. PD stores raw positive-class probabilities; LGD stores point predictions and the
 configured nine quantiles when supported. Per-row recalibrated PD probabilities are not stored;
 validation-calibrated fold metrics and reliability bins are stored separately. A sparse quantile
-grid does not support exact CRPS or arbitrary quantiles. Experiment 4 instead stores compressed
+grid does not support exact CRPS or arbitrary quantiles. Experiment 10 instead stores compressed
 arrays in each task's SQLite `cells.predictions`, including exact context/validation/test indices,
 test targets/predictions and validation targets/predictions. Metric CSV exports alone omit those arrays.
 
@@ -102,7 +129,7 @@ These artifacts support the following analysis **without additional GPU work**:
   exports. Report mean prediction minus mean observed target, Brier/MSE, and RMS/mean absolute
   prediction change. Positive signed error denotes overprediction. A lower absolute mean error
   is not necessarily lower Brier/MSE, so show them together.
-- Use the predefined experiment-1 reference, all prescribed arms in experiments 3/5/6/7, and
+- Use the predefined experiment-1 reference, all prescribed arms in experiments 7/5/8/9, and
   matched seed-42/43 reference predictions in experiment 2. Do not select favorable recipes or
   subgroups from test performance. Seed disagreement is descriptive training-seed sensitivity.
 - Pool out-of-fold rows **within a table** for these residual diagnostics; give tables equal
@@ -116,7 +143,7 @@ zero bias or failure. Mismatched identities, invalid probabilities or corrupted 
 analysis. Completed scheduler tasks alone cannot establish prediction-level validity.
 
 **What is not identifiable from the existing design:** each test row has one out-of-fold prediction
-per checkpoint and context size. The five folds contain different test rows, and experiment 4 has
+per checkpoint and context size. The five folds contain different test rows, and experiment 10 has
 one nested context sequence per fold. These do not provide repeated contexts at fixed size for the
 same query. Moreover, the true conditional default probability or conditional mean LGD is unknown.
 Thus neither variance across borrowers nor average signed residual is the theoretical model
@@ -149,13 +176,13 @@ Only schema-compatible, legally usable data belong in the corpus. Raw private da
 
 ## Experiment organization
 
-Experiment **0** owns debugging and readiness: null controls, positive-LR/recovery checks, short timing pilots and long budget pilots. Experiment **1** is the full descriptive sweep. Experiment **2** repeats one predefined reference at an additional training seed. Experiment **3** compares one-sample, full-pass and accumulated-gradient training. The general notebooks describe the corpus independently of these outcomes.
+Experiment **0** owns debugging and readiness: null controls, positive-LR/recovery checks, short timing pilots and long budget pilots. The shared 512-run factorial supports experiments **1**, **3** and **4**. Experiment **2** repeats the predefined reference at a second training seed. Experiment **7** compares one-sample, full-pass and accumulated-gradient training. The general notebooks describe the corpus independently of these outcomes.
 
 Recovery equivalence uses strict deterministic execution and a 2,048-row training cap to separate serialization correctness from GPU arithmetic variation. Null/short/budget pilots and the research grid retain production row caps and fast kernels. A fixed seed controls stochastic inputs; it does not guarantee bitwise equality on nondeterministic GPU kernels. Numerical execution settings are recorded. Small recovery controls establish state restoration under their tested conditions, not capacity or cross-platform reproducibility.
 
-Configs are grouped under `config/experiment0/` through `config/experiment7/`; notebooks use experiment groups plus `general/`. Experiments 1–3 retain their `cpt_*_v5` identities; experiments 4–7 have separate run names and the additional validation gate described below. Isolated auxiliary pilots use unique `cpt_pilot_aux_*` names. Earlier v4 controls remain historical evidence, not passing controls for v5.
+Immutable historical configs remain under `config/experiment0/` through `config/experiment8/`; public notebooks use experiments 0–10 plus `general/`. The mapping in `config/study.yaml` separates publication questions from historical campaign IDs. Experiments 1, 2, 7 retain their `cpt_*_v5` identities; experiments 10, 5, 8, 9 have separate run names and the additional validation gate described below. Isolated auxiliary pilots use unique `cpt_pilot_aux_*` names. Earlier v4 controls remain historical evidence, not passing controls for v5.
 
-## Experiment 1: implemented main grid
+## Shared factorial: experiments 1, 3 and 4
 
 | Factor | Levels / rule | Meaning |
 |---|---|---|
@@ -225,9 +252,9 @@ A finite but disappointing/flat curve does not stop training. Only numerical fai
 
 This is a small paired sensitivity check: did changing the training randomness materially alter the reference behavior? Two seeds do not reliably estimate a seed distribution, and this check says nothing about robustness at every other recipe. Show paired differences and curves; do not count the repetitions as extra independent datasets. A future expansion to 64 additional trials would add seed 44 for the same recipe, only if the initial comparison warrants it.
 
-**Experiment 3**, `config/experiment3/{pd,lgd}.yaml`, defines a separate **96-trial** study at LR `3e-7`, lambda `0.003`, full updates, seed 42: three sampling modes × four bases × four folds × two tasks. **All three modes use proportional PD sampling** (`train.context_sampling: stratified`), with uniform LGD sampling. Covering each row exactly once cannot force balanced class prevalence without dropping or repeating rows. This proportional `one_sample` control is therefore deliberately separate from the main grid's balanced-PD reference; their PD difference is a prevalence-policy change, not a pass-mode effect.
+**Experiment 7**, `config/experiment3/{pd,lgd}.yaml`, defines a separate **96-trial** study at LR `3e-7`, lambda `0.003`, full updates, seed 42: three sampling modes × four bases × four folds × two tasks. **All three modes use proportional PD sampling** (`train.context_sampling: stratified`), with uniform LGD sampling. Covering each row exactly once cannot force balanced class prevalence without dropping or repeating rows. This proportional `one_sample` control is therefore deliberately separate from the main grid's balanced-PD reference; their PD difference is a prevalence-policy change, not a pass-mode effect.
 
-The research campaign contains **512 main + 96 sampling + 32 additional seed trials = 640 trials**. All three experiments initialize from the original base weights; neither experiment 2 nor experiment 3 requires an experiment-1 checkpoint or a selected winner. Their training can overlap after fixing the shared budget, inputs and code. The seed comparison needs the matching seed-42 main references before analysis, not before seed-43 training. Experiment 3 has its own one-sample controls. Use the same pilot-selected budget and trajectory points throughout; measure full-pass/accumulation GPU behavior and cost before launching that grid, because experiment 0's production pilots use one_sample.
+The research campaign contains **512 main + 96 sampling + 32 additional seed trials = 640 trials**. All three experiments initialize from the original base weights; neither experiment 2 nor experiment 7 requires an experiment-1 checkpoint or a selected winner. Their training can overlap after fixing the shared budget, inputs and code. The seed comparison needs the matching seed-42 main references before analysis, not before seed-43 training. Experiment 7 has its own one-sample controls. Use the same pilot-selected budget and trajectory points throughout; measure full-pass/accumulation GPU behavior and cost before launching that grid, because experiment 0's production pilots use one_sample.
 
 | Mode | Rows and update rule | Interpretation |
 |---|---|---|
@@ -251,15 +278,15 @@ Only successful completions release a CPU audit, and only a passing audit releas
 
 **Experiment 0 part 2 is separate**, via `run_experiment0.sh part2`: eight full-update reference pilots, one per base/task, through 20k successful updates with 0/250/1k/2.5k/5k/10k/20k measurements. A current part-1 receipt and unchanged input/environment identities are required. These longer jobs use resumable two-hour work segments plus a save/monitor margin. They follow a 20k schedule; their early points are not substitutes for a 5k schedule.
 
-The reviewed pilots inform the common **10k budget and six milestones** in experiments 1–3, recorded in their immutable plans. The epoch safety rail is 4,000 rounds, preserving headroom above the required successful updates. The research design remains **512 main + 32 seed + 96 sampling = 640 trials**, plus **124 control/pilot training arms** if every experiment-0 stage including the auxiliary checks runs once (72 original arms + 52 auxiliary arms). Interrupted execution adds a segment, not a new scientific trial.
+The reviewed pilots inform the common **10k budget and six milestones** in experiments 1, 2, 7, recorded in their immutable plans. The epoch safety rail is 4,000 rounds, preserving headroom above the required successful updates. The research design remains **512 main + 32 seed + 96 sampling = 640 trials**, plus **124 control/pilot training arms** if every experiment-0 stage including the auxiliary checks runs once (72 original arms + 52 auxiliary arms). Interrupted execution adds a segment, not a new scientific trial.
 
-### Auxiliary gate for experiments 2 and 3
+### Auxiliary gate for experiments 2 and 7
 
-Run `run_experiment0.sh auxiliary` after local validation, before submitting the seed and sampling studies. Eight GPU tasks (four bases × two tasks) run 52 six-update arms: 36 continuous cases and 16 interrupted/resumed counterparts. Seed 42/43 checks hold the monitor and corpus split seeds fixed. Sampling checks use the experiment-3 stratified policy in every arm; LGD reuses its identical seed-42 one-sample case, while PD needs a separate stratified control.
+Run `run_experiment0.sh auxiliary` after local validation, before submitting the seed and sampling studies. Eight GPU tasks (four bases × two tasks) run 52 six-update arms: 36 continuous cases and 16 interrupted/resumed counterparts. Seed 42/43 checks hold the monitor and corpus split seeds fixed. Sampling checks use the historical sampling-campaign stratified policy in every arm; LGD reuses its identical seed-42 one-sample case, while PD needs a separate stratified control.
 
 Only the two smallest eligible training tables and smallest held-out table in partition zero are used, preserving their original roles. Selection uses row count, not outcomes. The 256-row cap forces multiple disjoint chunks; total training rows are capped at 8,192 before GPU submission. Recovery checks stop after update 3, resume to 6 and compare weights, fixed monitor scores and exposure against continuous arms. Every completed arm must pass identity, finite-monitor, exact-budget, zero-skip and positive-parameter-movement checks. The seed-43 endpoint also passes five-fold package-data scoring. A final CPU audit requires all eight task reports.
 
-This is an engineering gate, not a performance or capacity estimate. It neither reruns the historical budget pilots nor changes the main grid. Deterministic small-shape recovery does not certify production-shape speed or bitwise reproducibility. Experiments 2 and 3 start from original weights, so training can overlap experiment 1 after this gate; seed comparison still needs the matching seed-42 reference outputs. Keep row exposure, time and failed updates in the sampling analysis. Slightly unequal chunk query counts are equally weighted as chunk means, not exactly row weighted.
+This is an engineering gate, not a performance or capacity estimate. It neither reruns the historical budget pilots nor changes the main grid. Deterministic small-shape recovery does not certify production-shape speed or bitwise reproducibility. Experiments 2 and 7 start from original weights, so training can overlap experiment 1 after this gate; seed comparison still needs the matching seed-42 reference outputs. Keep row exposure, time and failed updates in the sampling analysis. Slightly unequal chunk query counts are equally weighted as chunk means, not exactly row weighted.
 
 ## Retention and measurement protocol
 
@@ -271,7 +298,7 @@ At milestones record trainable parameter names/counts, relative movement of the 
 
 Final evaluation uses **five outer row folds** on each held-out credit table and each non-credit panel table. Inside each outer training fold, a disjoint 20% validation split supplies classical HPO, maximum-F1 threshold selection and Platt/isotonic calibration. No outer test labels enter those choices. F1 at threshold 0.5 is retained for context. Foundation models use their capped context; classical controls use the full inner training fold. This compares practical native-context settings, not equal row exposure.
 
-Inference precision (decided 27-10-2026): TabICLv2's original and adapted checkpoints are scored in FP32 without FlashAttention 3 in experiments 1, 2, 5 and 8, because the automatic FP16/FA3 policy mis-scored the original checkpoint on some PD tables (experiment-0 numerical review). Experiments 1 and 2 adopt this by re-scoring their existing checkpoints; training is unchanged. Experiments 3, 4, 6 and 7 retain the automatic TabICLv2 policy. TabPFN bases use the package's automatic policy (mixed-precision autocast on GPU) for both weight states throughout.
+Inference precision (decided 27-10-2026): TabICLv2's original and adapted checkpoints are scored in FP32 without FlashAttention 3 in experiments 1, 2, 5 and 6, because the automatic FP16/FA3 policy mis-scored the original checkpoint on some PD tables (experiment-0 numerical review). Experiments 1 and 2 adopt this by re-scoring their existing checkpoints; training is unchanged. The original exports for experiments 7, 10, 8 and 9 retain the automatic TabICLv2 policy until their independently audited FP32 replacements are published. TabPFN bases use the package's automatic policy (mixed-precision autocast on GPU) for both weight states throughout.
 
 Logistic and ridge regression use context-fitted one-hot categorical encoding, numerical median imputation and scaling. CatBoost uses native categorical features; the declared XGBoost recipe uses ordinal numeric codes. These are specific tuned controls, not an exhaustive comparison of every preprocessing recipe. Requested tuning requires Optuna. Each result records the requested/completed trial counts and selected parameters, since a time limit can end a search before all requested trials finish. The outer test folds remain untouched by both the search and validation-fitted calibration/threshold selection; reusing validation for those choices can overfit validation, but does not turn it into the reported test score.
 
@@ -281,7 +308,7 @@ Detailed measurements live on project storage under each experiment. Resource an
 
 ## Reporting and remaining evidence
 
-Experiments 2 and 3 have the same final credit/non-credit benchmark as experiment 1. Experiment 2 compares each seed-43 checkpoint with its predefined seed-42 main reference; experiment 3 compares its three protocols with each other and their original base. Each experiment retains its own results and predictions. Compatible untuned/classical controls can be reused across experiments without changing their evaluation identities; trained checkpoints always require their own evaluation.
+Experiments 2 and 7 have the same final credit/non-credit benchmark as experiment 1. Experiment 2 compares each seed-43 checkpoint with its predefined seed-42 main reference; experiment 7 compares its three protocols with each other and their original base. Each experiment retains its own results and predictions. Compatible untuned/classical controls can be reused across experiments without changing their evaluation identities; trained checkpoints always require their own evaluation.
 
 The follow-up notebooks pair observations on dataset, training partition, base and recipe before aggregation. Credit datasets contribute their single held-out partition; each non-credit dataset requires all four matched training partitions. Protocol contrasts require all three modes on that same support. Missing counterparts exclude a comparison rather than comparing different surviving cohorts. The seed notebook reports paired differences, not a two-seed variance estimate. Sampling notebooks report row exposure and recorded training time alongside performance; equal updates do not imply equal compute. Training notebooks show dynamics; results notebooks distinguish final five-fold benchmarks from supporting small-context monitor endpoints.
 
@@ -342,15 +369,16 @@ actual ICML dimensions rather than the generic A4 template; the adjacent manuscr
 by the notebook runner. Literature motivation and limits of these presentation choices are recorded
 in LITERATURE.md.
 
-## State of the evidence
+## Original evidence before the approved extension and refresh
 
 As of **29-10-2026**, both complementary storage trees have been downloaded locally, including
-the completed TabICLv2 FP32 re-score of experiments 1 and 2. All planned research training is
-complete: experiments 1/2/3/5/6/7/8 contain 512/32/96/48/16/16/48 completed trials.
+the completed TabICLv2 FP32 re-score of experiments 1 and 2. Original research training is
+complete: the shared factorial and E2/E7/E5/E8/E9/E6 contain 512/32/96/48/16/16/48 completed trials.
+The approved additional model coverage and remaining FP32 re-evaluations are separate pending work.
 Their final benchmarks contain 4,047/627/1,083/627/297/462/627 model–table–partition comparisons,
-respectively: **7,770 comparisons and 38,850 successful outer-fold records**. Experiment 4 has
-250 completed inference tasks and 11,100 original/CPT context cells. Experiment 7 also reuses
-eight experiment-6 controls; these are not additional training runs.
+respectively: **7,770 comparisons and 38,850 successful outer-fold records**. Experiment 10 has
+250 completed inference tasks and 11,100 original/CPT context cells. Experiment 9 also reuses
+eight experiment-8 controls; these are not additional training runs.
 
 The 29-10 local audit checks all standard metric exports for complete folds, finite primary
 metrics, receipt/prediction byte counts and duplicate identities. Every raw result CSV in the
@@ -358,13 +386,14 @@ new experiment-1/2 consolidated inventories is present with no additional CSVs; 
 source/snapshot files match their checksums. All 1,083 refreshed TabICL prediction exports
 decode (57,925,718 rows), with matching outer test-row/target identities and 29,925 independently
 recalculated metric values agreeing within rounding tolerance. Earlier audits covered the
-other standard prediction exports, including experiment 8 on 27-10, and all experiment-4
+other standard prediction exports, including experiment 6 on 27-10, and all experiment-10
 context SQLite tasks for nested contexts, context/validation/test disjointness, matched query
 cohorts and reproduced primary scores. Those older audits are distinct from the new re-score.
-All 25 executed notebooks have complete ordered summaries and 227 matching inline figures/PDFs
-and captions, with no saved execution errors or orphan figures. The current indexes are tracked.
-Detailed evidence and historical recoveries remain in `AGENTS_MEMORY.md`; no further benchmark
-or training submission is indicated by this audit.
+Before reorganization, all 25 executed notebooks had complete ordered summaries and 227 matching inline figures/PDFs
+and captions, with no saved execution errors or orphan figures. The reorganized collection has 29 notebooks;
+its current execution and figure audit is recorded separately in AGENTS_MEMORY.md.
+Detailed evidence and historical recoveries remain in `AGENTS_MEMORY.md`. This audit establishes the original
+campaign baseline; it does not certify the approved new extension or inference refresh.
 
 ### Current descriptive findings
 
@@ -404,7 +433,7 @@ estimate the prevalence across other tables, recipes or models.
 The current main and seed-check benchmarks now use matched FP32/no-FA3 TabICL inference
 on every credit and retention table, rather than the former automatic-policy results.
 The diagnostic remains an appendix qualification, not a prevalence estimate across all
-models. Experiments 3, 4, 6 and 7 retain their recorded automatic TabICL inference policy;
+models. The pre-refresh exports for experiments 7, 10, 8 and 9 use their recorded automatic TabICL inference policy;
 their within-study comparisons must not be interpreted as isolated contrasts against
 the FP32 studies. Keep each study's own original-model control.
 
@@ -417,20 +446,20 @@ interpretation: for example, the current reference TabICL mean raw Brier reducti
 - **Experiment 2:** mean seed-43 minus seed-42 PD AUC changes range from −0.000260 to −0.000017
   across bases. LGD is less uniformly stable: TabPFN v3's mean ΔR² is +0.019034, driven mainly
   by one table (maximum +0.147777, median +0.000018). Two seeds cannot estimate general variance.
-- **Experiment 3:** revisiting/accumulating more rows has no consistent predictive advantage.
+- **Experiment 7:** revisiting/accumulating more rows has no consistent predictive advantage.
   For PD, median recorded accumulation cost is approximately 7–17 times one-sample training
   across bases at the same successful-update budget. More updates, more rows and more compute
   must not be conflated.
-- **Experiment 4:** labeled context strongly affects performance; CPT is a much smaller,
+- **Experiment 10:** labeled context strongly affects performance; CPT is a much smaller,
   family- and context-dependent change. On the fixed nine-table PD cohort, 50,000-row mean
   ΔAUC is +0.006051 for TabICLv2 and +0.000004 for TabPFN v3. The latter has +0.002478 at eight
   rows on that same cohort. Do not compare absolute levels across different horizon cohorts.
 - **Experiment 5:** the conservative adapter rate stays closest to the original; `0.03` hurts
   mean credit AUC/R² for both families. Restricting trainable parameters alone does not prevent
   deterioration. Its TabICL FP32/no-FA3 inference requires its own matched original controls.
-- **Experiment 6:** excluding small training tables has no consistent advantage: PD mean ΔAUC
+- **Experiment 8:** excluding small training tables has no consistent advantage: PD mean ΔAUC
   changes from +0.003572 to +0.002057 for TabICLv2 and from −0.001003 to −0.000776 for TabPFN v3.
-- **Experiment 7:** larger episodes are not uniformly better. TabPFN v3 mean PD ΔAUC is
+- **Experiment 9:** larger episodes are not uniformly better. TabPFN v3 mean PD ΔAUC is
   −0.004316/−0.000776/−0.000114 for 2,048/8,192/26,000 rows; TabICL changes less and nonmonotonically.
   Episode size also changes query count and cost, and the 8,192-row reference is shared.
 
@@ -454,22 +483,22 @@ The current implementation uses training protocol **5**. Debugging outcomes are 
 A passing experiment 0 establishes the tested controls, not the capacity of every final evaluation task. Before scheduling all final benchmarks, measure a representative large-table evaluation with the intended inference ensemble/context cap and a classical HPO task. Training-cap pilots and the small packaged recovery benchmark do not validate million-row inference or its walltime.
 
 
-## Follow-up experiments 4–7
+## Context, adapter, corpus and episode studies
 
 These implementations require new experiment-0 validation receipts before research submission.
 Accepted validation receipts and subsequent VSC outcomes are recorded in `AGENTS_MEMORY.md`.
-Experiments 1–3 retain their configurations and identities.
+Experiments 1, 2, 7 retain their configurations and identities.
 The earlier generic-data control and prevalence proposal are excluded. The remaining designs
-are renumbered consecutively as follows; historical dated records retain their original numbers.
+use the current public numbering below; historical dated records and literal config paths retain their original IDs.
 
 | Experiment | Fixed question | Design |
 |---|---|---|
-| 4: labeled context | Does credit CPT change the learning curve as labeled context becomes scarce? | Original versus fixed CPT, TabPFN v3 and TabICLv2, 25 tables, five outer folds, 29 nested context sizes; no new CPT. |
+| 10: labeled context | Does credit CPT change the learning curve as labeled context becomes scarce? | Original versus fixed CPT, TabPFN v3 and TabICLv2, 25 tables, five outer folds, 29 nested context sizes; no new CPT. |
 | 5: DiagScale CPT | Can small query-scaling adapters produce useful cross-table adaptation? | Two modern bases × three rates × four dataset partitions × PD/LGD = 48 training trials. |
-| 6: training-corpus policy | Does excluding small training tables change transfer at a fixed episode cap? | Two modern bases × four partitions × all/large-only training tables = 16 PD trials, capped at 8,192 rows. |
-| 7: episode size | Does a larger training episode change transfer on an identical large-table corpus? | Two modern bases × four partitions × three episode sizes = 24 PD comparisons: 16 new trials and eight shared controls from experiment 6. |
+| 8: training-corpus policy | Does excluding small training tables change transfer at a fixed episode cap? | Two modern bases × four partitions × all/large-only training tables = 16 PD trials, capped at 8,192 rows. |
+| 9: episode size | Does a larger training episode change transfer on an identical large-table corpus? | Two modern bases × four partitions × three episode sizes = 24 PD comparisons: 16 new trials and eight shared controls from experiment 8. |
 
-### Experiment 4: context learning curves
+### Experiment 10: context learning curves
 
 The fixed CPT reference is experiment 1 (`cpt_main_v5`), full-parameter adaptation,
 peak LR `3e-7`, L2-SP `0.003`, seed 42 and the 10,000-update endpoint. Each table uses
@@ -531,7 +560,7 @@ size; they are descriptive recipe comparisons, not a pure causal effect of param
 The FP32 episode cap and deployment precision need the new capacity gate; old BF16 tests do not
 validate them. Do not describe PEFT as computationally free based on optimizer parameter count.
 
-### Experiment 6: training-corpus policy at a fixed episode cap
+### Experiment 8: training-corpus policy at a fixed episode cap
 
 First partition the **complete 17-table PD registry**, with the existing seed 1729 and four
 balanced whole-dataset folds. For each fold, exclude its test tables, then compare the full
@@ -560,30 +589,30 @@ and actual rows per update. Record each table's available rows, episode/query ro
 share in the prepared plan, plus actual exposure and cost during training. This limitation
 cannot be removed simply by naming the study a large-data ablation.
 
-### Experiment 7: episode size on one fixed large-table corpus
+### Experiment 9: episode size on one fixed large-table corpus
 
-Keep experiment 6's large-only training membership, test assignments, bases, recipe, seed,
+Keep experiment 8's large-only training membership, test assignments, bases, recipe, seed,
 update budget and schedule. Vary **total context-plus-query rows**: 2,048, 8,192 or 26,000.
 With the same 60/40 split, both labeled context and loss-evaluated query counts increase.
 This tests the training-episode budget, not context length alone or exposure at equal GPU time.
-Experiment 4 separately varies inference context while keeping the complete test sets fixed.
+Experiment 10 separately varies inference context while keeping the complete test sets fixed.
 
-Reuse the eight 8,192-row large-arm trials of experiment 6 as the shared control. Train only
+Reuse the eight 8,192-row large-arm trials of experiment 8 as the shared control. Train only
 the 2,048- and 26,000-row levels: 2 bases × 2 new sizes × 4 folds = **16 additional trials**.
 The configurations are `config/experiment7/pd_rows{2048,26000}.yaml`, with run names
 `cpt_episode_rows2048_v1` and `cpt_episode_rows26000_v1`. There are 24 analyzed cells in this
-experiment but only **32 distinct new training trials across experiments 6 and 7**. The
+experiment but only **32 distinct new training trials across experiments 8 and 9**. The
 previous, unrun 48-cell factorial design is retired. The smaller design does not estimate
 corpus-policy × episode-size interactions.
 
-Prepare experiment 6 first. Experiment 7 binds its reference plan hash and exact trial mapping;
+Prepare experiment 8 first. Experiment 9 binds its reference plan hash and exact trial mapping;
 data bytes/membership, base-weight hashes, code, environment, seed, update budget, schedule,
 sampling and evaluation settings must match. Resolved benchmark defaults, implementation and
 package versions are frozen too, checked again inside each evaluation task; CLI overrides
 cannot change inference views, context caps or folds. Only the declared episode cap changes in the
-matched large-arm trials. Reference files stay in experiment 6; no copying, hidden rerunning
+matched large-arm trials. Reference files stay in experiment 8; no copying, hidden rerunning
 or reuse of differently configured experiment-1/3 checkpoints occurs. Cleanup refuses to
-delete experiment 6 while a saved experiment-7 plan still depends on it.
+delete experiment 8 while a saved experiment-7 plan still depends on it.
 
 Every eligible training table must supply every requested episode size. If a future dataset
 version cannot fill 26,000 rows, preparation fails rather than dropping another table,
@@ -595,7 +624,7 @@ new recipe still requires the experiment-0 capacity gate.
 Both studies monitor updates 0/250/1k/2.5k/5k/10k and use the same final five-fold credit and
 non-credit benchmark with original/classical controls. Train and benchmark phases remain
 separate. After all plans are prepared, their new training trials may run concurrently;
-experiment-7 benchmarking additionally requires experiment-6 training completion. Analysis
+experiment-9 benchmarking additionally requires experiment-8 training completion. Analysis
 needs both studies' results and all three matched arms, with complete paired folds. Report
 AUC/proper-score effects alongside rows, queries, GPU allocation time, memory and throughput;
 equal successful updates do not equalize compute or unique-row exposure.
@@ -609,7 +638,7 @@ five-fold context test loads the actual original/CPT reference pair and verifies
 coverage. A separate capacity array tests FP32 adapter episodes, both corpus policies at 8,192
 rows, the other two sizes on the identical large-table pool, and long-context inference. Its
 episode checks verify recorded row exposure as well as completion. Eight successful, current
-code/config/environment receipts with unchanged detailed evidence are required before experiments 4–7 can launch. A failed workflow
+code/config/environment receipts with unchanged detailed evidence are required before experiments 10, 5, 8, 9 can launch. A failed workflow
 can be cleaned by its identifier without deleting earlier experiment-0 controls or research runs.
 
 The main manuscript should emphasize the factorial behavior, credit/non-credit trade-off and
@@ -625,7 +654,7 @@ sanitization limitation. None of the proposed extra experiments removes these li
 
 #### Final scope and interpretation checks — 21-10-2026
 
-Keep experiments 1–7; no new main experiment is added. The final inference check uses
+Keep experiments 1, 2, 7, 10, 5, 8, 9; no new main experiment is added. The final inference check uses
 Vehicle Loan, Myhom and Taiwan Credit Card, each with five outer folds and the fixed
 experiment-1 reference checkpoint. Original, unchanged-save and CPT weights are compared
 under automatic settings and FP32 tensors/no FA3 on identical native benchmark contexts
@@ -690,12 +719,12 @@ not adding experiments until an average becomes positive:
 
 | Question for the main text | Required evidence | Interpretation boundary |
 |---|---|---|
-| How do the adaptation knobs change transfer, retention and cost? | Complete experiment-1 paired benchmarks; prespecified factor contrasts; trajectories and failure coverage; experiments 2/3 as sensitivity checks | Describe this grid, corpus and horizon; do not promote the best tested recipe into an independently selected winner. |
+| How do the adaptation knobs change transfer, retention and cost? | Complete experiment-1 paired benchmarks; prespecified factor contrasts; trajectories and failure coverage; experiments 2/7 as sensitivity checks | Describe this grid, corpus and horizon; do not promote the best tested recipe into an independently selected winner. |
 | Does CPT help when labeled context is scarce? | Experiment-4 paired curves with unchanged test rows and explicit dataset support at each context size | The fixed validation-label budget and inference views remain part of the evaluated protocol. |
 | What explains the observed response? | Adapter recipe (5), corpus policy (6) and episode budget (7), each compared with its matched control | Different recipes do not isolate only parameter count; corpus filtering changes composition; episode growth changes query exposure and compute too. |
 
 Before inspecting these new outcomes, keep the endpoint, reference arms and signs fixed: large
-minus all for experiment 6, and 2,048/26,000 minus 8,192 for experiment 7. Present paired AUC
+minus all for experiment 8, and 2,048/26,000 minus 8,192 for experiment 9. Present paired AUC
 changes and Brier improvements, the table distribution, non-credit retention and resource costs.
 Show table/source-aware uncertainty rather than treating 5 CV folds or 4 overlapping training
 partitions as independent replications. A statistically inconclusive difference is not evidence
@@ -729,7 +758,7 @@ fairness, privacy and inappropriate deployment), rather than claiming these benc
 automated lending decisions. Authors remain responsible for validating all analysis and text.
 
 
-## Experiment 8: low-rank query/value continued pretraining
+## Experiment 6: low-rank query/value continued pretraining
 
 The completed five-fold benchmark compares original and LoRA weights on the same test rows.
 Equal-table credit mean ΔAUC (LoRA minus original, 17 PD tables) for TabPFN v3 / TabICLv2 is
@@ -776,7 +805,7 @@ weights enter the optimizer. L2-SP and AdamW weight decay are zero: penalizing A
 an effective-weight-displacement penalty. Such a penalty is possible but is outside this
 experiment. Rank, scaling, dropout and target modules are fixed, not extra swept axes.
 Zero factor decay is a design choice, not a claim that weight decay is invalid for LoRA:
-Ning et al.'s target-table LoRA recipe uses AdamW decay 0.01. Experiment 8 is not a
+Ning et al.'s target-table LoRA recipe uses AdamW decay 0.01. Experiment 6 is not a
 controlled LoRA-versus-DiagScale comparison. BF16 forward operations can round small
 updates, but how long this affects a particular run is unmeasured; it cannot be inferred
 from the learning rate alone or dismissed because experiment 1 also uses AMP.

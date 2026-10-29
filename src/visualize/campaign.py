@@ -71,6 +71,12 @@ def show(sink, pages, *, track=None):
         if getattr(sink, "report", None) is not None:
             sink.report._pending.append("No measurements available for this figure group.")
     for page in pages:
+        if page.provenance.get("study_numbering") != "v2":
+            from src.visualize.research_views import study_text
+            page.caption = study_text(page.caption)
+            if page.figure._suptitle is not None:
+                page.figure._suptitle.set_text(study_text(page.figure._suptitle.get_text()))
+            page.provenance["study_numbering"] = "v2"
         if track is not None:
             if track not in ("pd", "lgd"):
                 raise ValueError("Figure track must be pd or lgd")

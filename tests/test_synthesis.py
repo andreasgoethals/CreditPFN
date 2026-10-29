@@ -30,7 +30,7 @@ def test_table_effects_pair_each_fold_with_its_own_original_split():
     assert row.base == "v3" and row.approach == "Full CPT" and bool(row.reference)
     assert row.effect == pytest.approx(.0080)
     assert (row.folds, row.folds_improved) == (5, 4)
-    assert row.config == "E1 all · LR 3e-07 · λ 0.003"
+    assert row.config == "Grid all · LR 3e-07 · λ 0.003"
 
 
 def test_incomplete_folds_drop_the_table_rather_than_averaging_fewer_folds():

@@ -20,7 +20,7 @@ from src.utils.paths import REPO_ROOT, manifests_dir
 
 
 def test_plan(identifier):
-    common = ["--partition=batch_graniterapids", "--cpus-per-task=8", "--mem=16G"]
+    common = ["--partition=batch_graniterapids", "--cpus-per-task=8"]
     return [
         dict(key="prepare", needs=[], tasks=None, args=[*common, "scripts/slurm/legacy_cpu.slurm", "prepare", identifier]),
         dict(key="smoke", needs=["prepare"], tasks=list(range(12)), args=["--time=01:00:00", "scripts/slurm/legacy_gpu.slurm", "smoke", identifier]),
@@ -68,23 +68,24 @@ def _research_plan(identifier):
     return training + context + benchmarks
 
 
-def _resource_signature(args):
-    """Compare allocation requests, excluding exported experiment paths and script arguments."""
-    result = []
-    for arg in args:
-        if not arg.startswith("--export="):
-            result.append(arg)
-        if arg.endswith(".slurm"):
-            break
-    return tuple(result)
-
-
-def submit_plan(plan, destination, *, runner=subprocess.run, sleep=time.sleep):
+def submit_plan(plan, destination, *, runner=subprocess.run, sleep=time.sleep, max_array_size=None):
     """Resume confirmed submissions only; genuine prerequisites use afterok."""
     state = json.loads(destination.read_text(encoding="utf-8")) if destination.exists() else {
         "plan": plan, "accepted": [], "in_flight": None, "index": 0, "offset": 0}
     if state["plan"] != plan or state["in_flight"] is not None:
         raise RuntimeError("Changed plan or uncertain submission: inspect its receipt and Slurm before retrying")
+    if state["index"] == len(plan):
+        return state
+    if max_array_size is None:
+        limits = runner(["scontrol", "-M", "mindwell", "show", "config"], text=True,
+                        capture_output=True, check=True, timeout=30)
+        match = re.search(r"^\s*MaxArraySize\s*=\s*(\d+)", limits.stdout, re.M)
+        if not match:
+            raise RuntimeError("Cannot verify the controller's array limit")
+        max_array_size = int(match[1])
+    for item in plan:
+        if item["tasks"] and (min(item["tasks"]) < 0 or max(item["tasks"]) >= max_array_size):
+            raise ValueError("Stable task IDs exceed the verified MaxArraySize")
     inherited_overrides = {"CREDITPFN_STOP_AFTER_UPDATES", "CREDITPFN_STOP_REQUESTED",
                            "CREDITPFN_EVAL_TASK_INDEX", "CREDITPFN_EVAL_FAMILY"}
     environment = {k: v for k, v in os.environ.items()
@@ -93,7 +94,7 @@ def submit_plan(plan, destination, *, runner=subprocess.run, sleep=time.sleep):
         item = plan[index]
         tasks = item["tasks"]
         pending = len(tasks) - state["offset"] if tasks is not None else 1
-        batch = min(128, pending)  # Queue admission chunk, never a running-task cap.
+        batch = pending  # Submit every ready task; only definite site admission limits split it.
         while pending:
             dependencies = [r["id"] for r in state["accepted"] if r["key"] in item["needs"]]
             if set(item["needs"]) - {r["key"] for r in state["accepted"]}:
@@ -120,27 +121,22 @@ def submit_plan(plan, destination, *, runner=subprocess.run, sleep=time.sleep):
                     state["index"], state["offset"] = index + 1, 0
                 write_json(destination, state)
                 print(f"Queued {job['key']}: {job['id']} ({batch} task(s), no running throttle)", flush=True)
-                batch = min(128, pending)
+                batch = pending
             elif result.returncode and not response and re.search(
-                r"(?:QOS|Assoc).*SubmitJob.*Limit|maximum number of submitted jobs|job submit limit", result.stderr, re.I):
-                explicit_quota = bool(re.search(
-                    r"(?:QOS|Assoc).*SubmitJob.*Limit|maximum number of submitted jobs", result.stderr, re.I))
-                known_resources = {_resource_signature(p["args"]) for p in plan
-                                   if p["key"] in {r["key"] for r in state["accepted"]}}
+                r"(?:QOS|Assoc).*SubmitJob.*Limit|maximum number of submitted jobs", result.stderr, re.I):
                 state["in_flight"] = None
                 write_json(destination, state)
                 if batch > 1:
                     batch = max(1, batch // 2)
-                elif not explicit_quota and _resource_signature(item["args"]) not in known_resources:
-                    # The generic Slurm message also covers invalid time/memory requests.
-                    # Smaller arrays are safe to try; never retry an unproven singleton forever.
-                    raise RuntimeError("Slurm rejected a single task with an ambiguous accounting/QOS policy error; "
-                                       f"no job was accepted for this request. Inspect the allocation limits, then resume {destination}")
                 else:
                     print("Site submission ceiling reached; retrying admission in 60 seconds.", flush=True)
                     sleep(60)
-                    batch = min(128, pending)
+                    batch = pending
             else:
+                if result.returncode and not response:
+                    state["in_flight"] = None
+                    state["last_rejection"] = result.stderr.strip()
+                    write_json(destination, state)
                 raise RuntimeError(f"Submission unconfirmed; preserve {destination} and inspect Slurm: {result.stderr.strip()}")
     return state
 

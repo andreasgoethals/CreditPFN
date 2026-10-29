@@ -59,6 +59,7 @@ __pypackages__/
 .ruff_cache/
 .uv-cache/
 .cache/
+/tmp/
 .tox/
 .nox/
 .coverage*
