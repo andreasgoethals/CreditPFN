@@ -44,17 +44,18 @@ def plan(run):
     return payload
 
 
-def load_arms(experiment):
+def load_arms(experiment, *, configs=None):
     if experiment not in (6, 7):
         raise ValueError('Expected experiment 6 or 7')
-    cfg = load_train_config(config_path=str(REPO_ROOT/'config/experiment6/pd.yaml'))
+    cfg = configs[6] if configs else load_train_config(config_path=str(REPO_ROOT/'config/experiment6/pd.yaml'))
     corpus = cp.load_campaign(6, 'pd', cfg_override=cfg)
     if experiment == 6:
         return {'All tables':_select(corpus, 0), 'Large tables':_select(corpus, 10001)}
     arms = {'8,192 rows':_select(corpus, 10001)}
     reference = plan(corpus)
-    for cap in (2048, 26000):
-        cfg = load_train_config(config_path=str(REPO_ROOT/f'config/experiment7/pd_rows{cap}.yaml'))
+    caps = sorted(k for k in configs if k != 6) if configs else (2048, 26000)
+    for cap in caps:
+        cfg = configs[cap] if configs else load_train_config(config_path=str(REPO_ROOT/f'config/experiment7/pd_rows{cap}.yaml'))
         current = cp.load_campaign(7, 'pd', cfg_override=cfg)
         payload = plan(current)
         if payload is not None:
@@ -65,7 +66,7 @@ def load_arms(experiment):
         elif current.trials.status.ne('PENDING').any() or not current.evaluation.empty or not current.trajectories.empty:
             raise ValueError('Experiment-7 evidence is missing its immutable plan')
         arms[f'{cap:,} rows'] = current
-    return {name:arms[name] for name in ('2,048 rows','8,192 rows','26,000 rows')}
+    return {f'{cap:,} rows':arms[f'{cap:,} rows'] for cap in sorted([8192, *caps])}
 
 
 def coverage(arms):
@@ -235,11 +236,11 @@ def plot_benchmark(arms, metric='roc_auc'):
         ax.set_ylabel(style.EFFECT_LABELS.get(metric,effect_label(metric)) if not diff else 'Difference in effect (+ favours arm)');ax.axhline(0,linestyle=':',color=style.color('reference'))
     db._legend(fig,next(ax for ax in axes if ax in fig.axes))
     return [cp.Page(f'size_benchmark_{metric}',fig,
-        (f'Experiment {study}, PD final five-fold benchmark (TabPFN v3 and TabICLv2; full updates, LR 3e-7, L2-SP 0.003, '
+        (f'Experiment {study}, PD final five-fold benchmark ({", ".join(sorted(data.base.unique()))}; full updates, LR 3e-7, L2-SP 0.003, '
          'proportional class sampling). '
          + ('Arms: CPT on all training tables versus only tables with more than 10,000 rows, both with 8,192-row episodes. '
             if study == 6 else
-            'Arms: 2,048-, 8,192- and 26,000-row training episodes on the same large-table corpus; the 8,192-row arm is the '
+            'Arms: ' + ', '.join(arms) + ' on the same large-table corpus; the 8,192-row arm is the '
             'experiment-6 large-table checkpoint, reused rather than retrained. ')
          + f'Left panels: paired change in {style.METRIC_LABELS.get(metric, metric)} ({style.EFFECT_LABELS.get(metric, effect_label(metric))}) '
          'relative to the original checkpoint of the same base; right panels: difference between each arm and the '

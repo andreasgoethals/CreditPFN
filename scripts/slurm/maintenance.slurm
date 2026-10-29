@@ -18,6 +18,10 @@ cd "${VSC_DATA:?}/CreditPFN"
 for arg in "$@"; do
  case "$arg" in *config/experiment[0-8]/*) export CREDITPFN_EXPERIMENT="$(basename "$(dirname "$arg")")" ;; esac
 done
+if [[ "${1:-}" == clean-extensions ]]; then
+    unset CREDITPFN_LEGACY_ID CREDITPFN_LORA_WORKFLOW
+    export CREDITPFN_EXPERIMENT=general
+fi
 source scripts/slurm/_job_log.sh
 start_job_log maintenance
 export CREDITPFN_USE_SCRATCH=0
@@ -33,6 +37,7 @@ case "$action" in
     preflight) python -m src.utils.preflight "$@" ;;
     consolidate) python -m src.utils.consolidate_output "$@" ;;
     clean) python -m src.utils.clean_run "$@" ;;
+    clean-extensions) python -m src.utils.legacy_clean "$@" ;;
     reset-family) python -m src.utils.reset_family_benchmark "$@" ;;
     audit) python -m src.utils.audit_experiment "$@" ;;
     *) echo "Unknown maintenance action: $action" >&2; exit 2 ;;

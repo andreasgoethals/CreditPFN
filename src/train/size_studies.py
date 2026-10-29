@@ -43,16 +43,21 @@ def validate_config(cfg):
     if {t[6] for t in grid} != ({0, LARGE_MINIMUM} if kind == "corpus_policy" else {LARGE_MINIMUM}):
         raise ValueError("Unexpected training-corpus eligibility levels")
     cap = cfg.train.max_rows_per_step
-    allowed = {REFERENCE_ROWS} if kind == "corpus_policy" else {2048, 26000}
+    extension = OmegaConf.select(cfg, "experiment.extension_id")
+    allowed = {REFERENCE_ROWS} if kind == "corpus_policy" else ({2048, 10000, 11000} if extension else {2048, 26000})
     if cap not in allowed:
         raise ValueError("Unexpected episode cap; the 8192-row reference belongs to experiment 6")
     data = OmegaConf.load("config/data.yaml").finetuning
     for base, *_ in grid:
-        family = "tabicl" if "tabicl-" in base else "v3" if "tabpfn-v3-" in base else None
+        family = ("tabicl" if "tabicl-" in base else "v3" if "tabpfn-v3-" in base else
+                  "v2.6" if extension and "tabpfn-v2.6-" in base else
+                  "v2" if extension and "tabpfn-v2-" in base else None)
         if family is None:
             raise ValueError("Size studies require explicit TabPFN v3 or TabICLv2 weights")
         if cap > int(data.max_rows_per_epoch[family]):
             raise ValueError("Requested episode size exceeds a measured row cap")
+        if extension and kind == "episode_size" and cap not in {2048, int(data.max_rows_per_epoch[family])}:
+            raise ValueError("Legacy episode study uses 2048 or this model's measured ceiling")
         if data.max_cells_per_epoch.get(family, data.max_cells_per_epoch.get("default")):
             raise ValueError("A cell budget would silently shorten episodes in the size study")
 

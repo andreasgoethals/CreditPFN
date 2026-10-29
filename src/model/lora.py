@@ -1,4 +1,4 @@
-"""Native Q/V LoRA for explicit TabPFN v3 and TabICLv2 checkpoints.
+"""Native Q/V LoRA for explicit TabPFN v2/v2.6/v3 and TabICLv2 checkpoints.
 
 The intervention adapts the query and value projections in every transformer
 attention stage. Keys, attention output projections, feed-forward layers,
@@ -37,7 +37,7 @@ class LowRankWeight(nn.Module):
         self.scaling = alpha / rank
         self.shape = tuple(weight.shape)
         for name, (start, stop) in zip(self.projections, self.slices):
-            a = nn.Parameter(torch.empty(rank, weight.shape[1], device=weight.device,
+            a = nn.Parameter(torch.empty(rank, weight.shape[-1], device=weight.device,
                                          dtype=torch.float32))
             b = nn.Parameter(torch.zeros(stop - start, rank, device=weight.device,
                                          dtype=torch.float32))
@@ -53,13 +53,15 @@ class LowRankWeight(nn.Module):
         with torch.autocast(device_type=first.device.type, enabled=False):
             for name, (start, stop) in zip(self.projections, self.slices):
                 if start > cursor:
-                    parts.append(first.new_zeros(start - cursor, self.shape[1]))
+                    parts.append(first.new_zeros(start - cursor, self.shape[-1]))
                 parts.append((getattr(self, "B_" + name) @ getattr(self, "A_" + name))
                              * self.scaling)
                 cursor = stop
-            if cursor < self.shape[0]:
-                parts.append(first.new_zeros(self.shape[0] - cursor, self.shape[1]))
-        return torch.cat(parts, dim=0) if len(parts) > 1 else parts[0]
+            rows = math.prod(self.shape[:-1])
+            if cursor < rows:
+                parts.append(first.new_zeros(rows - cursor, self.shape[-1]))
+        matrix = torch.cat(parts, dim=0) if len(parts) > 1 else parts[0]
+        return matrix.reshape(self.shape)
 
     def forward(self, original):
         return original + self.delta().to(dtype=original.dtype)
@@ -105,6 +107,9 @@ def adapter_state(model):
 
 def _targets(model, family):
     if family == "tabpfn":
+        from src.model.tabpfn_legacy import supported, targets
+        if supported(model):
+            return targets(model)
         if type(model).__name__ != "TabPFNV3":
             raise ValueError("LoRA requires the explicit TabPFN v3 architecture")
         stages = ("feature_distribution_embedder", "column_aggregator", "icl_blocks")
@@ -177,10 +182,10 @@ def inject(model, *, family, base_path=None, base_sha256=None, rank=16, alpha=32
     if target_modules not in (TARGET_MODULES, [TARGET_MODULES], (TARGET_MODULES,)):
         raise ValueError("LoRA target_modules must be attention_qv")
     if base_path is not None:
-        pattern = (r"tabpfn-v3-(?:classifier|regressor)-.+\.ckpt" if family == "tabpfn"
+        pattern = (r"tabpfn-v(?:2|2\.6|3)-(?:classifier|regressor)-.+\.ckpt" if family == "tabpfn"
                    else r"tabicl-(?:classifier|regressor)-v2-.+\.ckpt")
         if re.fullmatch(pattern, Path(base_path).name) is None:
-            raise ValueError("LoRA requires explicitly versioned TabPFN v3 or TabICLv2 base weights")
+            raise ValueError("LoRA requires explicitly versioned TabPFN v2/v2.6/v3 or TabICLv2 base weights")
     if base_sha256 is not None and re.fullmatch(r"[0-9a-f]{64}", base_sha256) is None:
         raise ValueError("Invalid immutable base SHA256")
     targets = _targets(model, family)
@@ -254,8 +259,8 @@ def weight_movement(model):
     numerator = denominator = 0.0
     with torch.no_grad():
         for target, _, sequence in _installed(model):
-            delta = sequence[0].delta()
-            original = sequence.original
+            delta = sequence[0].delta().reshape(-1, sequence.original.shape[-1])
+            original = sequence.original.reshape_as(delta)
             for start, stop in target["slices"]:
                 numerator += float(delta[start:stop].double().square().sum())
                 denominator += float(original[start:stop].double().square().sum())

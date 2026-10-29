@@ -24,8 +24,14 @@ from src.utils.paths import manifests_dir, results_dir, checkpoints_dir, resolve
 def policy(path="config/experiment4/context.yaml"):
     cfg = OmegaConf.to_container(OmegaConf.load(path), resolve=True)
     sizes = cfg["context_rows"]
+    legacy = bool(cfg.get("extension_id"))
+    if legacy:
+        from src.utils.legacy_design import validate_id, limits
+        validate_id(cfg["extension_id"])
+        if cfg.get("base_version") not in ("v2", "v2.6") or cfg["max_context_rows"] != limits().context_rows[cfg["base_version"]]:
+            raise ValueError("Legacy context cap/version differs from the declared native limit")
     if (cfg["experiment"] != "experiment4" or cfg["outer_folds"] != 5
-            or cfg["families"] != ["tabpfn", "tabicl"] or cfg["tracks"] != ["pd", "lgd"]
+            or cfg["families"] != (["tabpfn"] if legacy else ["tabpfn", "tabicl"]) or cfg["tracks"] != ["pd", "lgd"]
             or not sizes or any(type(n) is not int for n in sizes)
             or sizes != sorted(set(sizes)) or min(sizes) < 2
             or max(sizes) > cfg["max_context_rows"] or cfg["query_batch_rows"] < 1
@@ -91,7 +97,7 @@ def reference_checkpoint(track, family, partition, cfg):
     source = apply_split_index(source, partition)
     recipe = cfg["source_recipe"]
     candidates = [t for t in resolve_grid(source, single=False)
-                  if ("tabpfn-v3-" if family == "tabpfn" else "tabicl-") in Path(t[0]).name
+                  if (f"tabpfn-{cfg.get('base_version', 'v3')}-" if family == "tabpfn" else "tabicl-") in Path(t[0]).name
                   and t[1] == recipe["learning_rate"] and t[2] == recipe["frozen_backbone"]
                   and t[7] == recipe["l2sp_lambda"] and t[5] == "one_sample" and t[6] == 0]
     if len(candidates) != 1 or int(source.seed) != recipe["seed"]:
@@ -127,6 +133,9 @@ def reference_checkpoint(track, family, partition, cfg):
 
 def prepare(path="config/experiment4/context.yaml"):
     cfg = policy(path)
+    if cfg.get("extension_id"):
+        import os
+        os.environ["CREDITPFN_LEGACY_ID"] = cfg["extension_id"]
     tasks = []
     for track in cfg["tracks"]:
         for partition in range(4):
@@ -212,8 +221,14 @@ def run_task(plan_path, index):
     from src.utils.followup_checks import require_gate
     from src.eval.dataset_loader import load_processed_dataset
     from src.train.corpus import build_dataset_pool
-    require_gate()
     plan = read_plan(plan_path)
+    if plan["config"].get("extension_id"):
+        import os
+        from src.utils.legacy_checks import require_gate as legacy_gate
+        os.environ["CREDITPFN_LEGACY_ID"] = plan["config"]["extension_id"]
+        legacy_gate(plan["config"]["extension_id"])
+    else:
+        require_gate()
     if index not in range(len(plan["tasks"])):
         raise ValueError("Invalid context task index")
     task, cfg = plan["tasks"][index], plan["config"]

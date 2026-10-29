@@ -43,6 +43,14 @@ Each checkpoint carries the effective recipe, corpus membership, base/data/code 
 
 ## Repository
 
+The optional TabPFN v2/v2.6 extension fills the missing coverage in experiments 4–8;
+experiments 1–3 already include these bases. It preserves completed runs and writes
+only under `extensions/<ID>/`. One command queues all experiment-0 checks, and a second,
+gated command queues all 128 training trials, context curves and dependent benchmarks.
+The new launcher has no running-task throttle. See the
+[extension runbook](docs/VSC.md#tabpfn-v2v26-extension) for model-specific row limits,
+validation, scoped cleanup and collection. New VSC acceptance remains required.
+
 | Path | Responsibility |
 |---|---|
 | `archive/` | Gitignored historical measurements, compact source records and log summaries |

@@ -38,12 +38,12 @@ def protocol_table(study):
     cfg = study.config
     recipe = cfg["source_recipe"]
     return pd.DataFrame([
-        ("Models", "Explicit TabPFN v3 and TabICLv2 original/CPT pairs"),
+        ("Models", f"Explicit TabPFN {cfg['base_version']} original/CPT pairs" if cfg.get("base_version") else "Explicit TabPFN v3 and TabICLv2 original/CPT pairs"),
         ("CPT source", f"{cfg['source_run']}; full updates; LR {recipe['learning_rate']:g}; L2-SP {recipe['l2sp_lambda']:g}; seed {recipe['seed']}; {recipe['successful_updates']} updates"),
         ("Dataset exclusion", "Each table uses its original experiment-1 held-out partition's checkpoint"),
         ("Outer test folds", cfg["outer_folds"]),
         ("Context rows", ", ".join(map(str, cfg["context_rows"]))),
-        ("Additional endpoint", "Available context pool, capped at 50,000, without duplicate sizes"),
+        ("Additional endpoint", f"Available context pool, capped at {cfg['max_context_rows']:,}, without duplicate sizes"),
         ("Validation labels", f"Fixed {cfg['inner_validation_fraction']:.0%} of each outer training fold, separate from context"),
         ("Test rows", "All outer-test rows; unchanged across context budgets and original/CPT"),
         ("Inference views", str(cfg["inference_views"])),
@@ -76,8 +76,8 @@ def _check_cells(frame, task, receipt, cfg):
         raise ValueError("Original and CPT context rows differ")
 
 
-def load_context_study():
-    cfg = OmegaConf.to_container(OmegaConf.load(REPO_ROOT / "config/experiment4/context.yaml"), resolve=True)
+def load_context_study(*, cfg_override=None):
+    cfg = OmegaConf.to_container(cfg_override if cfg_override is not None else OmegaConf.load(REPO_ROOT / "config/experiment4/context.yaml"), resolve=True)
     mroot = analysis_location("experiment4", "manifests", manifests_dir("experiment4"))
     rroot = analysis_location("experiment4", "results", results_dir(experiment="experiment4")) / cfg["run_name"]
     plan_path = mroot / "plans" / (cfg["run_name"] + ".json")
@@ -155,18 +155,18 @@ def plot_context_curves(study):
     pages = []
     for track, metric, label in (("pd", "roc_auc", "AUC"), ("lgd", "r2", "R²")):
         paired = paired_tables(study, metric)
-        for horizon in COHORT_HORIZONS:
+        for horizon in sorted({min(n, study.config["max_context_rows"]) for n in COHORT_HORIZONS}):
             data = fixed_cohort(study, paired, track, horizon)
             if data.empty:
                 continue
             n = data.dataset.nunique()
-            fig, axes = plt.subplots(2, 2, figsize=style.figsize(style.WIDTH_FULL, style.DASHBOARD_RATIO), layout="constrained")
+            fig, axes = plt.subplots(2, len(study.config["families"]), squeeze=False, figsize=style.figsize(style.WIDTH_FULL, style.DASHBOARD_RATIO), layout="constrained")
             fig.suptitle(f"{track.upper()}: context up to {horizon:,} rows · {n} fixed table{'s' if n != 1 else ''}")
             curves = []
             for col, family in enumerate(study.config["families"]):
                 part = data[data.family.eq(family)]
                 curve = part.groupby("context_rows")[["original", "adapted", "gain"]].mean()
-                color = style.color("v3" if family == "tabpfn" else "tabicl")
+                color = style.color(study.config.get("base_version", "v3") if family == "tabpfn" else "tabicl")
                 for state, name, line in (("original", "Original", "--"), ("adapted", "CPT", "-")):
                     axes[0, col].plot(curve.index, curve[state], color=color, linestyle=line, linewidth=style.THIN_LINE, label=name)
                 for _, table in part.groupby("dataset"):
@@ -175,7 +175,7 @@ def plot_context_curves(study):
                         alpha=style.TABLE_CURVE_ALPHA, linewidth=style.TABLE_CURVE_LINE)
                 axes[1, col].plot(curve.index, curve.gain, color=color, linewidth=style.MEAN_CURVE_LINE)
                 axes[1, col].axhline(0, color=style.color("reference"), linestyle=":")
-                axes[0, col].set_title(FAMILIES[family]); axes[0, col].set_ylabel(label)
+                axes[0, col].set_title("TabPFN " + study.config.get("base_version", "v3") if family == "tabpfn" else FAMILIES[family]); axes[0, col].set_ylabel(label)
                 axes[1, col].set_ylabel("CPT − original " + label)
                 for ax in axes[:, col]:
                     ax.set_xscale("log"); ax.set_xlabel("Labeled context rows")
@@ -188,7 +188,7 @@ def plot_context_curves(study):
             fig.legend(handles, labels, loc="outside lower center", ncol=2)
             pages.append(cp.Page(f"context_{track}_through_{horizon}", fig,
                 f"{track.upper()}. Original and fixed-recipe CPT {label}, with their paired difference below. "
-                f"The same {n} tables contribute at every displayed context size and to both model families. "
+                f"The same {n} tables contribute at every displayed context size and to every displayed model. "
                 "Scores are averaged over five paired outer folds within table, then equally across tables. "
                 "In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. "
                 "These curves are not uncertainty bands or repeated-context variance estimates. "
@@ -219,8 +219,8 @@ def plot_context_support(study):
         if group.empty:
             ax.remove(); continue
         for index, (family, arm) in enumerate(group.groupby("family")):
-            ax.plot(arm.context_rows, arm.tables, label=FAMILIES[family],
-                    color=style.color("v3" if family == "tabpfn" else "tabicl"),
+            ax.plot(arm.context_rows, arm.tables, label="TabPFN " + study.config.get("base_version", "v3") if family == "tabpfn" else FAMILIES[family],
+                    color=style.color(study.config.get("base_version", "v3") if family == "tabpfn" else "tabicl"),
                     marker=style.PANEL_MARKERS[index], markersize=style.CURVE_MARKER_SIZE,
                     linestyle=style.FACTOR_ARM_STYLES[index])
         ax.set_title(track.upper()); ax.set_xscale("log"); ax.set_xlabel("Labeled context rows")

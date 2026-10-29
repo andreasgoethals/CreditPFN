@@ -4374,6 +4374,9 @@ row,dataset,policy,effect
 4,Vehicle Loan,auto,0.071504064
 5,Vehicle Loan,fp32_no_fa3,-0.0017483744
 
+TabPFN v2/v2.6 safety checks
+No extension safety evidence in the selected download.
+
 experiment0/04_auxiliary_experiments: 1 figures -> output CreditPFN/figures/experiment0
   01  pd_tabicl_numerical_policy
 ```
@@ -121829,7 +121832,7 @@ row,track,family,context_rows,tables
 Primary scores are PD AUC and LGD R². Scores first average the five paired folds within each table, then weight tables equally. Positive differences favor CPT. Individual table curves reveal opposing responses or influential tables that a mean can hide; the same table identities persist across each horizon. No figure is generated for a horizon without a complete common cohort.
 
 Figure: context_pd_through_128
-PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 17 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
+PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 17 tables contribute at every displayed context size and to every displayed model. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
 Plotted means
 CSV (first column: row index)
 row,context_rows,original,adapted,gain,family,datasets
@@ -122162,7 +122165,7 @@ row,track,family,partition,dataset,context_rows,original,adapted,gain,metric,fol
 813,pd,tabpfn,3,SBA Loans Case,128,0.96989828,0.97029351,0.00039522952,roc_auc,5
 
 Figure: context_pd_through_2048
-PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 14 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
+PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 14 tables contribute at every displayed context size and to every displayed model. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
 Plotted means
 CSV (first column: row index)
 row,context_rows,original,adapted,gain,family,datasets
@@ -122681,7 +122684,7 @@ row,track,family,partition,dataset,context_rows,original,adapted,gain,metric,fol
 802,pd,tabpfn,3,LendingClub,2048,0.67014606,0.67301436,0.0028683025,roc_auc,5
 
 Figure: context_pd_through_50000
-PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 9 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
+PD. Original and fixed-recipe CPT AUC, with their paired difference below. The same 9 tables contribute at every displayed context size and to every displayed model. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
 Plotted means
 CSV (first column: row index)
 row,context_rows,original,adapted,gain,family,datasets
@@ -123270,7 +123273,7 @@ row,track,family,partition,dataset,context_rows,original,adapted,gain,metric,fol
 785,pd,tabpfn,3,Home Credit,50000,0.74702582,0.74638862,-0.00063720448,roc_auc,5
 
 Figure: context_lgd_through_128
-LGD. Original and fixed-recipe CPT R², with their paired difference below. The same 8 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
+LGD. Original and fixed-recipe CPT R², with their paired difference below. The same 8 tables contribute at every displayed context size and to every displayed model. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
 Plotted means
 CSV (first column: row index)
 row,context_rows,original,adapted,gain,family,datasets
@@ -123441,7 +123444,7 @@ row,track,family,partition,dataset,context_rows,original,adapted,gain,metric,fol
 268,lgd,tabpfn,3,SBA Loans Case (LGD),128,0.65234742,0.64857864,-0.0037687778,r2,5
 
 Figure: context_lgd_through_2048
-LGD. Original and fixed-recipe CPT R², with their paired difference below. The same 4 tables contribute at every displayed context size and to both model families. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
+LGD. Original and fixed-recipe CPT R², with their paired difference below. The same 4 tables contribute at every displayed context size and to every displayed model. Scores are averaged over five paired outer folds within table, then equally across tables. In the lower panels, thin gray curves retain each table's paired effect; the thicker colored curve is their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
 Plotted means
 CSV (first column: row index)
 row,context_rows,original,adapted,gain,family,datasets
@@ -130762,6 +130765,9 @@ row,track,family,partition,dataset,context_rows,original,adapted,gain,metric,fol
 1090,pd,tabpfn,3,SBA Loans Case,768,0.31792721,0.3285004,-0.010573187,fit_seconds,5
 1091,pd,tabpfn,3,SBA Loans Case,1024,0.33457979,0.33358611,0.00099367718,fit_seconds,5
 
+Additional TabPFN v2 and v2.6 coverage
+No TabPFN v2/TabPFN v2.6 extension evidence is present in the selected input. Original results are unchanged.
+
 experiment4/01_context_curves: 6 figures -> output CreditPFN/figures/experiment4
   01  context_support
   02  context_pd_through_128
@@ -136802,6 +136808,9 @@ row,trial_name,base,seed,gpu_hours,peak_gpu_gb,track,parameter_update_scope
 46,cpt_diagscale_v1_s03_lgd_tabicl-regressor-v2-20260212_lr1e-03_seed42_qf40_acc1_l2sp0_diagscale,TabICLv2,42,0.7651422,6.838,lgd,DiagScale query-scale deltas only
 47,cpt_diagscale_v1_s03_lgd_tabicl-regressor-v2-20260212_lr3e-02_seed42_qf40_acc1_l2sp0_diagscale,TabICLv2,42,0.76277522,6.838,lgd,DiagScale query-scale deltas only
 
+Additional TabPFN v2 and v2.6 coverage
+No TabPFN v2/TabPFN v2.6 extension evidence is present in the selected input. Original results are unchanged.
+
 experiment5/01_training: 10 figures -> output CreditPFN/figures/experiment5
   01  pd_coverage_pd
   02  lgd_coverage_lgd
@@ -136869,7 +136878,7 @@ row,domain,base,planned_checkpoints,completed_checkpoints,paired_five_fold_compa
 Positive effects favor DiagScale. Table spread is not a confidence interval. The highest observed rate is not a validated selected recipe. Classical models provide benchmark context rather than a checkpoint-paired causal contrast.
 
 Figure: adapter_benchmark_pd_roc_auc
-Experiment 5, final five-fold benchmark: paired change in AUC (ΔAUC (pp, + better)) of DiagScale CPT, which learns only multiplicative attention query scales, relative to the original checkpoint of the same base, at each of the three adapter learning rates. Upper panels: held-out credit tables; lower panels: the four same-task non-credit retention tables (each first averaged over all four CPT partitions). Points are tables, diamonds equal-table means and vertical bars the table interquartile range (heterogeneity, not confidence intervals). Only tables measured at all three rates enter a panel, and every adapted/original pair has five finite outer folds. Original and adapted TabICLv2 both use FP32 inference without FA3. Positive values favour DiagScale. The summary table reports plotted values in display units (column display_scale); paired table values are in native units.
+Experiment 5, final five-fold benchmark: paired change in AUC (ΔAUC (pp, + better)) of DiagScale CPT, which learns only multiplicative attention query scales, relative to the original checkpoint of the same base, at each of the three adapter learning rates. Upper panels: held-out credit tables; lower panels: the four same-task non-credit retention tables (each first averaged over all four CPT partitions). Points are tables, diamonds equal-table means and vertical bars the table interquartile range (heterogeneity, not confidence intervals). Only tables measured at all three rates enter a panel, and every adapted/original pair has five finite outer folds. Positive values favour DiagScale. The summary table reports plotted values in display units (column display_scale); paired table values are in native units.
 Paired table values
 CSV (first column: row index)
 row,base,dataset,learning_rate,l2sp_lambda,frozen,sampling,domain,metric,effect,untuned,trained,partitions
@@ -137517,7 +137526,7 @@ row,domain,method_name,test_dataset_id,split,mean,folds,metric
 362,noncredit,xgboost,openml_46956,3,0.75935787,5,roc_auc
 
 Figure: adapter_benchmark_lgd_r2
-Experiment 5, final five-fold benchmark: paired change in R² (ΔR² (+ better)) of DiagScale CPT, which learns only multiplicative attention query scales, relative to the original checkpoint of the same base, at each of the three adapter learning rates. Upper panels: held-out credit tables; lower panels: the four same-task non-credit retention tables (each first averaged over all four CPT partitions). Points are tables, diamonds equal-table means and vertical bars the table interquartile range (heterogeneity, not confidence intervals). Only tables measured at all three rates enter a panel, and every adapted/original pair has five finite outer folds. Original and adapted TabICLv2 both use FP32 inference without FA3. Positive values favour DiagScale. The summary table reports plotted values in display units (column display_scale); paired table values are in native units.
+Experiment 5, final five-fold benchmark: paired change in R² (ΔR² (+ better)) of DiagScale CPT, which learns only multiplicative attention query scales, relative to the original checkpoint of the same base, at each of the three adapter learning rates. Upper panels: held-out credit tables; lower panels: the four same-task non-credit retention tables (each first averaged over all four CPT partitions). Points are tables, diamonds equal-table means and vertical bars the table interquartile range (heterogeneity, not confidence intervals). Only tables measured at all three rates enter a panel, and every adapted/original pair has five finite outer folds. Positive values favour DiagScale. The summary table reports plotted values in display units (column display_scale); paired table values are in native units.
 Paired table values
 CSV (first column: row index)
 row,base,dataset,learning_rate,l2sp_lambda,frozen,sampling,domain,metric,effect,untuned,trained,partitions
@@ -137962,7 +137971,7 @@ Probabilities are evaluated at test prevalence. F1/calibration rules use inner v
 Raw predictions are paired by dataset, training partition, outer fold and row. All five folds and exactly matching test rows/targets are required. Mean error is prediction minus observed target: positive means overprediction. Its absolute value can conceal offsetting subgroup errors. Brier/MSE and prediction movement pool rows within each table; tables receive equal weight in summaries. These are observed out-of-fold diagnostics, not squared theoretical bias or context variance.
 
 Figure: adapter_benchmark_pd_brier_score
-Experiment 5, final five-fold benchmark: paired change in Brier score (Brier reduction ×100 (+ better)) of DiagScale CPT, which learns only multiplicative attention query scales, relative to the original checkpoint of the same base, at each of the three adapter learning rates. Upper panels: held-out credit tables; lower panels: the four same-task non-credit retention tables (each first averaged over all four CPT partitions). Points are tables, diamonds equal-table means and vertical bars the table interquartile range (heterogeneity, not confidence intervals). Only tables measured at all three rates enter a panel, and every adapted/original pair has five finite outer folds. Original and adapted TabICLv2 both use FP32 inference without FA3. Positive values favour DiagScale. The summary table reports plotted values in display units (column display_scale); paired table values are in native units.
+Experiment 5, final five-fold benchmark: paired change in Brier score (Brier reduction ×100 (+ better)) of DiagScale CPT, which learns only multiplicative attention query scales, relative to the original checkpoint of the same base, at each of the three adapter learning rates. Upper panels: held-out credit tables; lower panels: the four same-task non-credit retention tables (each first averaged over all four CPT partitions). Points are tables, diamonds equal-table means and vertical bars the table interquartile range (heterogeneity, not confidence intervals). Only tables measured at all three rates enter a panel, and every adapted/original pair has five finite outer folds. Positive values favour DiagScale. The summary table reports plotted values in display units (column display_scale); paired table values are in native units.
 Paired table values
 CSV (first column: row index)
 row,base,dataset,learning_rate,l2sp_lambda,frozen,sampling,domain,metric,effect,untuned,trained,partitions
@@ -139371,6 +139380,9 @@ row,trial_name,base,learning_rate,partition,status,optimizer_selected_params,tot
 22,cpt_diagscale_v1_s03_lgd_tabicl-regressor-v2-20260212_lr1e-03_seed42_qf40_acc1_l2sp0_diagscale,TabICLv2,0.001,3,OK,7296,28552287,49651790,2754.5119,0.7651422,6.838,0.33476712
 23,cpt_diagscale_v1_s03_lgd_tabicl-regressor-v2-20260212_lr3e-02_seed42_qf40_acc1_l2sp0_diagscale,TabICLv2,0.03,3,OK,7296,28552287,49651790,2745.9908,0.76277522,6.838,1.7818273
 
+Additional TabPFN v2 and v2.6 coverage
+No TabPFN v2/TabPFN v2.6 extension evidence is present in the selected input. Original results are unchanged.
+
 experiment5/02_results: 5 figures -> output CreditPFN/figures/experiment5
   01  adapter_benchmark_pd_roc_auc
   02  adapter_benchmark_lgd_r2
@@ -140711,6 +140723,9 @@ row,trial_name,base,partition,status,total_optimizer_steps,rows_seen,gpu_hours,s
 14,cpt_corpus_v1_s03_pd_tabpfn-v3-classifier-v3_default_lr3e-07_seed42_qf40_acc1_min10001_l2sp0.003,TabPFN v3,3,OK,10000,81920000,0.67230454,0.24202963,39.288,2346.6843,2223.646,Large tables
 15,cpt_corpus_v1_s03_pd_tabicl-classifier-v2-20260212_lr3e-07_seed42_qf40_acc1_min10001_l2sp0.003,TabICLv2,3,OK,10000,81920000,0.66433603,0.23916097,8.969,2341.1377,2238.7532,Large tables
 
+Additional TabPFN v2 and v2.6 coverage
+No TabPFN v2/TabPFN v2.6 extension evidence is present in the selected input. Original results are unchanged.
+
 experiment6/01_training: 3 figures -> output CreditPFN/figures/experiment6
   01  size_optimization_tabicl-v2
   02  size_optimization_v3
@@ -140831,7 +140846,7 @@ row,arm,partition,id,available_rows,episode_rows,query_rows,visit_share,held_out
 Report all prescribed arms. Each table is paired across arms and its original-weight control, requiring complete five-fold evaluation. Partitions and CV folds are not independent replications.
 
 Figure: size_benchmark_roc_auc
-Experiment 6, PD final five-fold benchmark (TabPFN v3 and TabICLv2; full updates, LR 3e-7, L2-SP 0.003, proportional class sampling). Arms: CPT on all training tables versus only tables with more than 10,000 rows, both with 8,192-row episodes. Left panels: paired change in AUC (ΔAUC (pp, + better)) relative to the original checkpoint of the same base; right panels: difference between each arm and the All tables arm within table (same scale), positive favouring the named arm. Upper panels use held-out credit tables; lower panels the four non-credit retention tables, each first averaged over the four matched CPT partitions. Points are tables and diamonds equal-table means. Every arm and its original-model control has five finite outer folds on the same table. Tables from related sources are not independent.
+Experiment 6, PD final five-fold benchmark (tabicl-v2, v3; full updates, LR 3e-7, L2-SP 0.003, proportional class sampling). Arms: CPT on all training tables versus only tables with more than 10,000 rows, both with 8,192-row episodes. Left panels: paired change in AUC (ΔAUC (pp, + better)) relative to the original checkpoint of the same base; right panels: difference between each arm and the All tables arm within table (same scale), positive favouring the named arm. Upper panels use held-out credit tables; lower panels the four non-credit retention tables, each first averaged over the four matched CPT partitions. Points are tables and diamonds equal-table means. Every arm and its original-model control has five finite outer folds on the same table. Tables from related sources are not independent.
 Paired effects
 CSV (first column: row index)
 row,base,dataset,domain,metric,learning_rate,l2sp_lambda,frozen,sampling,effect,partitions,arm
@@ -140985,7 +141000,7 @@ Positive Brier effects mean a reduction in error. These are secondary outcomes a
 Raw predictions are paired by dataset, training partition, outer fold and row. All five folds and exactly matching test rows/targets are required. Mean error is prediction minus observed target: positive means overprediction. Its absolute value can conceal offsetting subgroup errors. Brier/MSE and prediction movement pool rows within each table; tables receive equal weight in summaries. These are observed out-of-fold diagnostics, not squared theoretical bias or context variance.
 
 Figure: size_benchmark_brier_score
-Experiment 6, PD final five-fold benchmark (TabPFN v3 and TabICLv2; full updates, LR 3e-7, L2-SP 0.003, proportional class sampling). Arms: CPT on all training tables versus only tables with more than 10,000 rows, both with 8,192-row episodes. Left panels: paired change in Brier score (Brier reduction ×100 (+ better)) relative to the original checkpoint of the same base; right panels: difference between each arm and the All tables arm within table (same scale), positive favouring the named arm. Upper panels use held-out credit tables; lower panels the four non-credit retention tables, each first averaged over the four matched CPT partitions. Points are tables and diamonds equal-table means. Every arm and its original-model control has five finite outer folds on the same table. Tables from related sources are not independent.
+Experiment 6, PD final five-fold benchmark (tabicl-v2, v3; full updates, LR 3e-7, L2-SP 0.003, proportional class sampling). Arms: CPT on all training tables versus only tables with more than 10,000 rows, both with 8,192-row episodes. Left panels: paired change in Brier score (Brier reduction ×100 (+ better)) relative to the original checkpoint of the same base; right panels: difference between each arm and the All tables arm within table (same scale), positive favouring the named arm. Upper panels use held-out credit tables; lower panels the four non-credit retention tables, each first averaged over the four matched CPT partitions. Points are tables and diamonds equal-table means. Every arm and its original-model control has five finite outer folds on the same table. Tables from related sources are not independent.
 Paired effects
 CSV (first column: row index)
 row,base,dataset,domain,metric,learning_rate,l2sp_lambda,frozen,sampling,effect,partitions,arm
@@ -141379,6 +141394,9 @@ CSV (first column: row index)
 row,arm,source_experiment,source_run,planned,completed,other_outcomes,pending,trajectory_records,benchmark_fold_records
 0,All tables,experiment6,cpt_corpus_v1,8,8,0,0,48,1155
 1,Large tables,experiment6,cpt_corpus_v1,8,8,0,0,48,1155
+
+Additional TabPFN v2 and v2.6 coverage
+No TabPFN v2/TabPFN v2.6 extension evidence is present in the selected input. Original results are unchanged.
 
 experiment6/02_results: 3 figures -> output CreditPFN/figures/experiment6
   01  size_benchmark_roc_auc
@@ -143328,6 +143346,9 @@ row,trial_name,base,partition,status,total_optimizer_steps,rows_seen,gpu_hours,s
 22,cpt_episode_rows26000_v1_s03_pd_tabpfn-v3-classifier-v3_default_lr3e-07_seed42_qf40_acc1_min10001_l2sp0.003,TabPFN v3,3,OK,10000,260000000,2.3349702,0.84058926,121.097,8321.7027,6747.7532,"26,000 rows"
 23,cpt_episode_rows26000_v1_s03_pd_tabicl-classifier-v2-20260212_lr3e-07_seed42_qf40_acc1_min10001_l2sp0.003,TabICLv2,3,OK,10000,260000000,2.5738135,0.92657286,27.121,9213.0251,8025.3686,"26,000 rows"
 
+Additional TabPFN v2 and v2.6 coverage
+No TabPFN v2/TabPFN v2.6 extension evidence is present in the selected input. Original results are unchanged.
+
 experiment7/01_training: 3 figures -> output CreditPFN/figures/experiment7
   01  size_optimization_tabicl-v2
   02  size_optimization_v3
@@ -143464,7 +143485,7 @@ row,arm,partition,id,available_rows,episode_rows,query_rows,visit_share,held_out
 Report all prescribed arms. Each table is paired across arms and its original-weight control, requiring complete five-fold evaluation. Partitions and CV folds are not independent replications.
 
 Figure: size_benchmark_roc_auc
-Experiment 7, PD final five-fold benchmark (TabPFN v3 and TabICLv2; full updates, LR 3e-7, L2-SP 0.003, proportional class sampling). Arms: 2,048-, 8,192- and 26,000-row training episodes on the same large-table corpus; the 8,192-row arm is the experiment-6 large-table checkpoint, reused rather than retrained. Left panels: paired change in AUC (ΔAUC (pp, + better)) relative to the original checkpoint of the same base; right panels: difference between each arm and the 8,192 rows arm within table (same scale), positive favouring the named arm. Upper panels use held-out credit tables; lower panels the four non-credit retention tables, each first averaged over the four matched CPT partitions. Points are tables and diamonds equal-table means. Every arm and its original-model control has five finite outer folds on the same table. Tables from related sources are not independent.
+Experiment 7, PD final five-fold benchmark (tabicl-v2, v3; full updates, LR 3e-7, L2-SP 0.003, proportional class sampling). Arms: 2,048 rows, 8,192 rows, 26,000 rows on the same large-table corpus; the 8,192-row arm is the experiment-6 large-table checkpoint, reused rather than retrained. Left panels: paired change in AUC (ΔAUC (pp, + better)) relative to the original checkpoint of the same base; right panels: difference between each arm and the 8,192 rows arm within table (same scale), positive favouring the named arm. Upper panels use held-out credit tables; lower panels the four non-credit retention tables, each first averaged over the four matched CPT partitions. Points are tables and diamonds equal-table means. Every arm and its original-model control has five finite outer folds on the same table. Tables from related sources are not independent.
 Paired effects
 CSV (first column: row index)
 row,base,dataset,domain,metric,learning_rate,l2sp_lambda,frozen,sampling,effect,partitions,arm
@@ -143710,7 +143731,7 @@ Positive Brier effects mean a reduction in error. These are secondary outcomes a
 Raw predictions are paired by dataset, training partition, outer fold and row. All five folds and exactly matching test rows/targets are required. Mean error is prediction minus observed target: positive means overprediction. Its absolute value can conceal offsetting subgroup errors. Brier/MSE and prediction movement pool rows within each table; tables receive equal weight in summaries. These are observed out-of-fold diagnostics, not squared theoretical bias or context variance.
 
 Figure: size_benchmark_brier_score
-Experiment 7, PD final five-fold benchmark (TabPFN v3 and TabICLv2; full updates, LR 3e-7, L2-SP 0.003, proportional class sampling). Arms: 2,048-, 8,192- and 26,000-row training episodes on the same large-table corpus; the 8,192-row arm is the experiment-6 large-table checkpoint, reused rather than retrained. Left panels: paired change in Brier score (Brier reduction ×100 (+ better)) relative to the original checkpoint of the same base; right panels: difference between each arm and the 8,192 rows arm within table (same scale), positive favouring the named arm. Upper panels use held-out credit tables; lower panels the four non-credit retention tables, each first averaged over the four matched CPT partitions. Points are tables and diamonds equal-table means. Every arm and its original-model control has five finite outer folds on the same table. Tables from related sources are not independent.
+Experiment 7, PD final five-fold benchmark (tabicl-v2, v3; full updates, LR 3e-7, L2-SP 0.003, proportional class sampling). Arms: 2,048 rows, 8,192 rows, 26,000 rows on the same large-table corpus; the 8,192-row arm is the experiment-6 large-table checkpoint, reused rather than retrained. Left panels: paired change in Brier score (Brier reduction ×100 (+ better)) relative to the original checkpoint of the same base; right panels: difference between each arm and the 8,192 rows arm within table (same scale), positive favouring the named arm. Upper panels use held-out credit tables; lower panels the four non-credit retention tables, each first averaged over the four matched CPT partitions. Points are tables and diamonds equal-table means. Every arm and its original-model control has five finite outer folds on the same table. Tables from related sources are not independent.
 Paired effects
 CSV (first column: row index)
 row,base,dataset,domain,metric,learning_rate,l2sp_lambda,frozen,sampling,effect,partitions,arm
@@ -144311,6 +144332,9 @@ row,arm,source_experiment,source_run,planned,completed,other_outcomes,pending,tr
 0,"2,048 rows",experiment7,cpt_episode_rows2048_v1,8,8,0,0,48,1155
 1,"8,192 rows",experiment6,cpt_corpus_v1,8,8,0,0,48,1155
 2,"26,000 rows",experiment7,cpt_episode_rows26000_v1,8,8,0,0,48,1155
+
+Additional TabPFN v2 and v2.6 coverage
+No TabPFN v2/TabPFN v2.6 extension evidence is present in the selected input. Original results are unchanged.
 
 experiment7/02_results: 3 figures -> output CreditPFN/figures/experiment7
   01  size_benchmark_roc_auc
@@ -150389,6 +150413,9 @@ row,trial_name,base,learning_rate,partition,seed,status,optimizer_selected_lora_
 46,cpt_lora_v1_s03_lgd_tabicl-regressor-v2-20260212_lr1e-04_seed42_qf40_acc1_l2sp0_lora,TabICLv2,0.0001,3,42,OK,466944,29011935,92356996,2144.4618,0.59568384,10.545,0.12161875,lgd
 47,cpt_lora_v1_s03_lgd_tabicl-regressor-v2-20260212_lr1e-03_seed42_qf40_acc1_l2sp0_lora,TabICLv2,0.001,3,42,OK,466944,29011935,92356996,2153.7451,0.59826252,10.545,12.306168,lgd
 
+Additional TabPFN v2 and v2.6 coverage
+No TabPFN v2/TabPFN v2.6 extension evidence is present in the selected input. Original results are unchanged.
+
 experiment8/01_training: 8 figures -> output CreditPFN/figures/experiment8
   01  lora_optimization_pd_tabicl-v2
   02  lora_optimization_pd_v3
@@ -150522,7 +150549,7 @@ row,domain,base,planned_checkpoints,completed_checkpoints,paired_five_fold_compa
 The original checkpoint supplies a matched reference at every LoRA learning rate. The source tables retain both absolute scores and paired effects. The plots connect rate settings, not training time. Table means are descriptive; the best observed rate is not a validated selected recipe.
 
 Figure: lora_primary_pd
-Experiment 8, final five-fold benchmark: paired change in AUC (ΔAUC (pp, + better)) of rank-16 query/value LoRA CPT relative to the original checkpoint of the same base, at the three LoRA learning rates (logarithmic axis). Upper panels: held-out credit tables; lower panels: the four same-task non-credit retention tables, each first averaged over all four CPT partitions. Points are tables, the line connects equal-table means across rates (not a training curve) and the band spans the table interquartile range (heterogeneity, not a confidence interval). All rates share one complete table cohort per panel, each adapted/original pair has five matched outer folds, and original and LoRA inference settings match (FP32 without FA3 for TabICLv2). Positive values favour LoRA. Absolute original and LoRA scores are retained in the accompanying tables; no rate is selected.
+Experiment 8, final five-fold benchmark: paired change in AUC (ΔAUC (pp, + better)) of rank-16 query/value LoRA CPT relative to the original checkpoint of the same base, at the three LoRA learning rates (logarithmic axis). Upper panels: held-out credit tables; lower panels: the four same-task non-credit retention tables, each first averaged over all four CPT partitions. Points are tables, the line connects equal-table means across rates (not a training curve) and the band spans the table interquartile range (heterogeneity, not a confidence interval). All rates share one complete table cohort per panel, each adapted/original pair has five matched outer folds, and original and LoRA inference settings match. Positive values favour LoRA. Absolute original and LoRA scores are retained in the accompanying tables; no rate is selected.
 Complete matched table scores and effects
 CSV (first column: row index)
 row,base,dataset,learning_rate,l2sp_lambda,frozen,sampling,domain,metric,effect,untuned,trained,partitions
@@ -150803,7 +150830,7 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,dataset,domain,metric,effect,
 23,TabPFN v3,0.001,0,True,one_sample,openml_46956,ood,roc_auc,-0.024377732,0.77605378,0.75167605,4
 
 Figure: lora_primary_lgd
-Experiment 8, final five-fold benchmark: paired change in R² (ΔR² (+ better)) of rank-16 query/value LoRA CPT relative to the original checkpoint of the same base, at the three LoRA learning rates (logarithmic axis). Upper panels: held-out credit tables; lower panels: the four same-task non-credit retention tables, each first averaged over all four CPT partitions. Points are tables, the line connects equal-table means across rates (not a training curve) and the band spans the table interquartile range (heterogeneity, not a confidence interval). All rates share one complete table cohort per panel, each adapted/original pair has five matched outer folds, and original and LoRA inference settings match (FP32 without FA3 for TabICLv2). Positive values favour LoRA. Absolute original and LoRA scores are retained in the accompanying tables; no rate is selected.
+Experiment 8, final five-fold benchmark: paired change in R² (ΔR² (+ better)) of rank-16 query/value LoRA CPT relative to the original checkpoint of the same base, at the three LoRA learning rates (logarithmic axis). Upper panels: held-out credit tables; lower panels: the four same-task non-credit retention tables, each first averaged over all four CPT partitions. Points are tables, the line connects equal-table means across rates (not a training curve) and the band spans the table interquartile range (heterogeneity, not a confidence interval). All rates share one complete table cohort per panel, each adapted/original pair has five matched outer folds, and original and LoRA inference settings match. Positive values favour LoRA. Absolute original and LoRA scores are retained in the accompanying tables; no rate is selected.
 Complete matched table scores and effects
 CSV (first column: row index)
 row,base,dataset,learning_rate,l2sp_lambda,frozen,sampling,domain,metric,effect,untuned,trained,partitions
@@ -152106,6 +152133,9 @@ row,check,experiment1,experiment8,matches
 9,evaluation.tabicl_inference_options,"{'use_amp': False, 'use_fa3': False}","{'use_amp': False, 'use_fa3': False}",True
 10,Candidate shared rates with L2-SP zero,1e-05,"1e-05, 0.0001, 0.001",False
 11,Direct cross-experiment comparison,Full/frozen grid remains separate,"Unavailable: requires matching artifact provenance, base/data hashes, folds and inference protocol",False
+
+Additional TabPFN v2 and v2.6 coverage
+No TabPFN v2/TabPFN v2.6 extension evidence is present in the selected input. Original results are unchanged.
 
 experiment8/02_results: 4 figures -> output CreditPFN/figures/experiment8
   01  lora_primary_pd
@@ -154323,7 +154353,7 @@ row,context_rows,mean,q25,q75,tables,family,horizon,datasets
 Table identities persist across arms within a base. The original score also enters the change, so trends against it are descriptive.
 
 Figure: pd_overview_tables_v2
-PD. TabPFN v2, held-out credit tables: paired change in AUC (percentage points) of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the arms' identical original evaluations); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (0.75); printed values are exact. '—' marks a missing complete comparison.
+PD. TabPFN v2, held-out credit tables: paired change in AUC (percentage points) of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the available original evaluations; inference recipes can differ across studies); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (0.75); printed values are exact. '—' marks a missing complete comparison.
 Table × arm effects
 CSV (first column: row index)
 row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 Reference · seed 43,E3 One sample,E3 Full pass,E3 Accumulate
@@ -154346,7 +154376,7 @@ row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 
 16,SBA Loans Case,0.0036711761,0.0056557593,-0.0020031681,-0.010469986,0.00066007989,-0.012286673
 
 Figure: pd_overview_tables_v2.6
-PD. TabPFN v2.6, held-out credit tables: paired change in AUC (percentage points) of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the arms' identical original evaluations); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (0.28); printed values are exact. '—' marks a missing complete comparison.
+PD. TabPFN v2.6, held-out credit tables: paired change in AUC (percentage points) of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the available original evaluations; inference recipes can differ across studies); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (0.28); printed values are exact. '—' marks a missing complete comparison.
 Table × arm effects
 CSV (first column: row index)
 row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 Reference · seed 43,E3 One sample,E3 Full pass,E3 Accumulate
@@ -154369,7 +154399,7 @@ row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 
 16,HMEQ,-0.094489423,-0.00044196248,-0.093347799,-0.081736226,-0.054751912,-0.091214771
 
 Figure: pd_overview_tables_v3
-PD. TabPFN v3, held-out credit tables: paired change in AUC (percentage points) of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the arms' identical original evaluations); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (1.26); printed values are exact. '—' marks a missing complete comparison.
+PD. TabPFN v3, held-out credit tables: paired change in AUC (percentage points) of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the available original evaluations; inference recipes can differ across studies); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (1.26); printed values are exact. '—' marks a missing complete comparison.
 Table × arm effects
 CSV (first column: row index)
 row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 Reference · seed 43,E3 One sample,E3 Full pass,E3 Accumulate,E5 LR 0.0001,E5 LR 0.001,E5 LR 0.03,E6 All tables,E6 Large tables,"E7 2,048 rows","E7 26,000 rows",E8 LR 1e-05,E8 LR 0.0001,E8 LR 0.001
@@ -154392,7 +154422,7 @@ row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 
 16,HMEQ,-0.027702393,-0.01392812,-0.030608937,-0.030262455,-0.020719358,-0.034142126,-0.011335596,-0.038519336,-0.069585443,-0.060575324,-0.04583825,-0.031034855,-0.023267142,-0.038976506,-0.50401732,-2.9128545
 
 Figure: pd_overview_tables_tabicl-v2
-PD. TabICLv2, held-out credit tables: paired change in AUC (percentage points) of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the arms' identical original evaluations); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (4.96); printed values are exact. '—' marks a missing complete comparison.
+PD. TabICLv2, held-out credit tables: paired change in AUC (percentage points) of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the available original evaluations; inference recipes can differ across studies); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (4.96); printed values are exact. '—' marks a missing complete comparison.
 Table × arm effects
 CSV (first column: row index)
 row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 Reference · seed 43,E3 One sample,E3 Full pass,E3 Accumulate,E5 LR 0.0001,E5 LR 0.001,E5 LR 0.03,E6 All tables,E6 Large tables,"E7 2,048 rows","E7 26,000 rows",E8 LR 1e-05,E8 LR 0.0001,E8 LR 0.001
@@ -155662,7 +155692,7 @@ row,context_rows,mean,q25,q75,tables,family,horizon,datasets
 Table identities persist across arms within a base. The original score also enters the change, so trends against it are descriptive.
 
 Figure: lgd_overview_tables_v2
-LGD. TabPFN v2, held-out credit tables: paired change in R² of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the arms' identical original evaluations); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (0.02); printed values are exact. '—' marks a missing complete comparison.
+LGD. TabPFN v2, held-out credit tables: paired change in R² of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the available original evaluations; inference recipes can differ across studies); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (0.02); printed values are exact. '—' marks a missing complete comparison.
 Table × arm effects
 CSV (first column: row index)
 row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 Reference · seed 43,E3 One sample,E3 Full pass,E3 Accumulate
@@ -155676,7 +155706,7 @@ row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 
 7,LendingClub (LGD),-0.0021434546,-0.00018558502,-0.0021351457,-0.0021336675,-0.0017209411,-0.0022094846
 
 Figure: lgd_overview_tables_v2.6
-LGD. TabPFN v2.6, held-out credit tables: paired change in R² of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the arms' identical original evaluations); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (0.30); printed values are exact. '—' marks a missing complete comparison.
+LGD. TabPFN v2.6, held-out credit tables: paired change in R² of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the available original evaluations; inference recipes can differ across studies); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (0.30); printed values are exact. '—' marks a missing complete comparison.
 Table × arm effects
 CSV (first column: row index)
 row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 Reference · seed 43,E3 One sample,E3 Full pass,E3 Accumulate
@@ -155690,7 +155720,7 @@ row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 
 7,LendingClub (LGD),-0.080925655,0.00065973997,-0.080373716,-0.080970967,-0.074107039,-0.086670673
 
 Figure: lgd_overview_tables_v3
-LGD. TabPFN v3, held-out credit tables: paired change in R² of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the arms' identical original evaluations); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (0.27); printed values are exact. '—' marks a missing complete comparison.
+LGD. TabPFN v3, held-out credit tables: paired change in R² of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the available original evaluations; inference recipes can differ across studies); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (0.27); printed values are exact. '—' marks a missing complete comparison.
 Table × arm effects
 CSV (first column: row index)
 row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 Reference · seed 43,E3 One sample,E3 Full pass,E3 Accumulate,E5 LR 0.0001,E5 LR 0.001,E5 LR 0.03,E8 LR 1e-05,E8 LR 0.0001,E8 LR 0.001
@@ -155704,7 +155734,7 @@ row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 
 7,LendingClub (LGD),-0.0019857883,0.000796628,-0.0021561623,-0.0019444227,-0.0019728065,-0.0021616936,0.00064086914,-0.00018310547,-0.004233253,-0.0023851752,-0.019110322,-0.039393771
 
 Figure: lgd_overview_tables_tabicl-v2
-LGD. TabICLv2, held-out credit tables: paired change in R² of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the arms' identical original evaluations); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (0.16); printed values are exact. '—' marks a missing complete comparison.
+LGD. TabICLv2, held-out credit tables: paired change in R² of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score (in parentheses, averaged over the available original evaluations; inference recipes can differ across studies); columns are the outcome-independent arms of the distribution figure, coloured by approach. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Colours are symmetric about zero and saturate at the 95th percentile of |value| (0.16); printed values are exact. '—' marks a missing complete comparison.
 Table × arm effects
 CSV (first column: row index)
 row,dataset,E1 all · LR 3e-07 · λ 0.003,E1 frozen · LR 3e-07 · λ 0.003,E2 Reference · seed 43,E3 One sample,E3 Full pass,E3 Accumulate,E5 LR 0.0001,E5 LR 0.001,E5 LR 0.03,E8 LR 1e-05,E8 LR 0.0001,E8 LR 0.001

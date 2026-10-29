@@ -1,0 +1,22 @@
+#!/bin/bash -l
+#SBATCH --job-name=creditpfn-legacy-cpu
+#SBATCH --clusters=mindwell
+#SBATCH --account=lp_verbekelab
+#SBATCH --partition=batch_graniterapids
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=16G
+#SBATCH --time=01:00:00
+#SBATCH --output=/dev/null
+#SBATCH --error=/dev/null
+#SBATCH --export=ALL
+set -euo pipefail
+cd "${SLURM_SUBMIT_DIR:?}"
+unset CREDITPFN_CONFIG CREDITPFN_LORA_WORKFLOW CREDITPFN_LORA_GATE CREDITPFN_FLOW_ID CREDITPFN_FLOW_PHASE
+export CREDITPFN_LEGACY_ID="${2:?ID required}" CREDITPFN_EXPERIMENT=experiment0
+export CREDITPFN_USE_SCRATCH=1 CREDITPFN_REQUIRE_STAGING=1 PYTHONUNBUFFERED=1
+source scripts/slurm/_job_log.sh
+start_job_log "legacy_${1:?action required}"
+source scripts/slurm/_activate_env.sh
+python -u -m src.utils.legacy_checks "$1" --id "$CREDITPFN_LEGACY_ID"

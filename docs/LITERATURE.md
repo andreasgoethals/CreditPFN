@@ -1,5 +1,37 @@
 # Literature — continued pretraining and adaptation behavior
 
+## TabPFN v2/v2.6 extension review — 29-10-2026
+
+Verified against the read-only library pin `26156f36eb7676e8d9050547817346db548b0e85`.
+Ning et al., *Test-Time Compute for Tabular Foundation Models: Mechanisms, Gains,
+and Limits*, explicitly introduce the name **DiagScale** in the abstract and
+Section 3. The primary text is
+[`papers/text/2026/10_Ning_et_al._Test_Time_Compute_for_Tabular_Foundation_Models_Mechanisms_Gains_and_Limits.txt`](../tfm-library/papers/text/2026/10_Ning_et_al._Test_Time_Compute_for_Tabular_Foundation_Models_Mechanisms_Gains_and_Limits.txt).
+Its attention logit correction is a learned diagonal query–key multiplier, initialized
+at the identity. The text relates this to IA³'s key-scaling component; that equivalence
+does not make DiagScale identical to the entire IA³ method. The inspected evidence
+does not establish widespread adoption of the named method. Describe it as a recent,
+lightweight adaptation method, rather than a standard as established as LoRA.
+
+The official [`Test-Time Compute for Tabular Foundation Models.txt`](<../tfm-library/repositories/Test-Time Compute for Tabular Foundation Models.txt>)
+snapshot implements `DiagScale`, `inject_diagscale` and `select_trainable` for the
+architectures evaluated in that paper. CreditPFN's multi-table continued pretraining
+and its extension to older TabPFN architectures are project adaptations, not claims
+that Ning et al. evaluated this domain-transfer design.
+
+The [`TabPFN .txt`](<../tfm-library/repositories/TabPFN .txt>) snapshot's `TabPFNV2`,
+`TabPFNV2p6`, `AlongRowAttention` and `AlongColumnAttention` have bias-free separate
+query/key/value projections. Older installed releases instead expose
+`PerFeatureTransformer` and `MultiHeadAttention` with packed QKV, separate Q plus
+packed KV, or separate Q/K/V tensors. The extension explicitly maps both layouts.
+For DiagScale, scaling query-weight rows implements the same diagonal query multiplier
+when no nonlinear query transform intervenes; unknown layouts fail closed. For LoRA,
+only query/value slices receive rank-16 updates; keys and original parameters stay
+fixed. Parametrization covers functional packed-weight fast paths as well as ordinary
+linear calls. Local component tests and source inspection support the mapping, but
+only the new experiment-0 gate certifies the installed VSC checkpoints and kernels.
+
+
 Initial review against primary text at library pin **`e5ce01614eebe520af303f2b5bfd212298eab2be`**; closest-work and appendix review refreshed on 12-10-2026 at **`1ac6e6783f24b2d5cd058af7ad8cad7c1bfaf7ae`**. This is a focused reading list for CreditPFN, not a systematic proof of novelty. A library folder year/date can describe a later revision rather than the first publication date. The library is read-only in this repository.
 
 The training-objective check below additionally uses the updated pin **`81c749bdf17e88b5152f4dc7f2e49bd48e9cc8ba`** (28-09-2026).

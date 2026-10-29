@@ -131,7 +131,13 @@ def analysis_location(group, area, default):
     primary, project = analysis_root(), analysis_root(project=True)
     # One selected external source never falls back to unrelated local evidence.
     root = (project or primary) if area in ("training", "results", "consolidated") else (primary or project)
-    return root / group / area if root is not None else default
+    if root is None:
+        return default
+    extension = os.environ.get("CREDITPFN_LEGACY_ID")
+    if extension and group in ("experiment0", "experiment4", "experiment5", "experiment6", "experiment7", "experiment8"):
+        from src.utils.legacy_design import validate_id
+        return root / group / "extensions" / validate_id(extension) / area
+    return root / group / area
 
 
 def read_csv(path, **kwargs):

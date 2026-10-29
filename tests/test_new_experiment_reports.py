@@ -122,9 +122,9 @@ def test_adapter_filenames_and_planned_roster_are_recognized(tmp_path, monkeypat
     assert not meta['use_lora']
 
 
-def adapter_fixture(track='pd'):
+def adapter_fixture(track='pd', cfg=None):
     from src.train.config import load_train_config
-    cfg = load_train_config(config_path=f'config/experiment5/{track}.yaml')
+    cfg = cfg if cfg is not None else load_train_config(config_path=f'config/experiment5/{track}.yaml')
     trials = cp.planned_trials(cfg).assign(status='OK', n_train_datasets=2, n_test_datasets=1)
     histories, trajectories, evaluation = [], [], []
     for t in trials.itertuples():
@@ -138,8 +138,8 @@ def adapter_fixture(track='pd'):
                     grad_norm_mean=drift+1, clipped_frac=.001*u/10000, elapsed_sec=u*.4,
                     observed_tables=2, full_observed_tables=2,
                     complete_pass=True, partial_epoch=False))
-        short = 'v3-default' if 'tabpfn' in t.trial_name else 'tabicl-v2'
-        family = 'tabpfn' if short == 'v3-default' else 'tabicl'
+        short = f'{t.base}-default' if 'tabpfn' in t.trial_name else 'tabicl-v2'
+        family = 'tabpfn' if 'tabpfn' in t.trial_name else 'tabicl'
         for domain, dataset in (('credit',f'Table {t.partition}'),('ood','Panel')):
             for fold in range(5):
                 evaluation.append(dict(method_dirname=f'{family}-trained__{short}__lr{t.learning_rate:g}__l2sp0__diagscale',

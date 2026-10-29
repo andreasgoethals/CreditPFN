@@ -218,10 +218,10 @@ def test_cleanup_preserves_a_shared_control_even_without_live_jobs(tmp_path, mon
             clean_run.check_saved_consumers('experiment6',scope)
 
 
-def size_report_fixture(experiment=7):
+def size_report_fixture(experiment=7, configurations=None):
     from src.visualize import campaign as cp, size_studies as ss
     arms={}
-    for cfg in ([configs()[0]] if experiment==6 else configs()):
+    for cfg in (configurations if configurations is not None else ([configs()[0]] if experiment==6 else configs())):
         if experiment==7 and cfg.experiment.size_study=='corpus_policy':
             minimums=[10001]
         else:
@@ -241,7 +241,7 @@ def size_report_fixture(experiment=7):
                         histories.append(dict(trial_name=t.trial_name,successful_updates=u,train_loss=.4-u/1e5,
                             grad_norm_mean=1+u/1e5,l2sp_penalty=u/1e8,observed_tables=2,full_observed_tables=2,
                             complete_pass=True,partial_epoch=False))
-                short='v3-default' if 'tabpfn' in t.trial_name else 'tabicl-v2'
+                short=f'{t.base}-default' if 'tabpfn' in t.trial_name else 'tabicl-v2'
                 family='tabpfn' if 'tabpfn' in t.trial_name else 'tabicl'
                 method=f'{family}-trained__{short}__lr3e-07__l2sp0.003'+(f'__min{minimum}' if minimum else '')
                 for domain,dataset in (('credit',f'Table {t.partition}'),('ood','Panel')):

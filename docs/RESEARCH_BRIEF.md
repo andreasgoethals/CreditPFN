@@ -2,6 +2,45 @@
 
 This document is intended to stand alone when shared with a collaborator or uploaded into another chat. Operational commands live in [VSC.md](VSC.md), primary evidence in [LITERATURE.md](LITERATURE.md), and historical runs in [AGENTS_MEMORY.md](AGENTS_MEMORY.md).
 
+## Additional model coverage: TabPFN v2 and v2.6
+
+Authorized on 29-10-2026 after inspecting the completed main results. This is an
+exploratory coverage extension, not a retrospectively preregistered confirmation.
+Experiments 1–3 already include both models and are not retrained. New experiment-0
+checks and experiments 4–8 use an isolated extension ID on both storage tiers.
+
+| Experiment | Additional design for each version | New training trials, both versions |
+|---|---|---:|
+| 4 | Original versus the fixed E1 full-update reference (LR 3e-7, L2-SP 0.003, seed 42); five row folds, nested context budgets, all test rows | 0 |
+| 5 | DiagScale, PD/LGD, three original adapter rates, four unchanged dataset partitions | 48 |
+| 6 | PD all-table versus >10,000-row training-table pool; same held-out tables and 8,192-row episode cap | 16 |
+| 7 | Fixed large-table pool: 2,048 rows, shared E6 8,192-row control, model-specific training ceiling | 16 |
+| 8 | Native Q/V LoRA, PD/LGD, rank 16, alpha 32, original three rates; no weight decay or L2-SP | 48 |
+
+Inference context caps are **10,000 for v2 and 50,000 for v2.6**. Larger nominal
+context settings are removed; the native cap is included, and every dataset/fold also
+retains its full available context when smaller. The fixed validation budget and all
+outer-test rows remain unchanged. The benchmark does not silently replace v2/v2.6
+with the newest package default.
+
+The separately measured training episode ceilings are **10,000 for v2 and 11,000
+for v2.6** total context-plus-query rows. E5/E6 retain 8,192; E7 reaches the applicable
+ceiling; E8 uses the applicable ceiling, as its existing design uses each model's
+measured training cap. The four dataset partitions, update budget, sampling, seeds
+and rates remain those of the corresponding experiment. E7's upper endpoints are
+model-specific operating points, not equal-row cross-model comparisons. Compare
+changes within a model, with E6's exact shared 8,192-row control.
+
+The extension comprises 128 training trials, 250 context-evaluation tasks and 896
+foundation-benchmark shards (some may legitimately be empty). Original-model controls
+are evaluated with each study's same protocol; completed classical baselines are not
+repeated. Benchmarks retain predictions and five-fold evaluation. The source-bound
+experiment-0 gate tests 12 correctness cases and 68 capacity cases, including every
+training partition/arm, both tasks, both model versions, every adapter rate in short
+recovery tests, native export/reload, cached inference and context/test separation.
+These are bounded validation probes, not proof that every possible failure is absent.
+No extension VSC results are available at implementation time.
+
 ## Question and intended contribution
 
 **How does continued pretraining on a small credit-domain corpus change the behavior of tabular foundation models?** The aim is a descriptive account of learning rate, anchoring, adaptation scope and training progress across architectures and tasks. Improvements, degradation, negligible movement and numerical instability are all possible findings.

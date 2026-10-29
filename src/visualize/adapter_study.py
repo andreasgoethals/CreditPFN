@@ -29,8 +29,8 @@ def protocol_table(run):
     ], columns=["setting", "value"])
 
 
-def _grid(title):
-    fig, axes = plt.subplots(2, 2, figsize=style.figsize(style.WIDTH_FULL, style.DASHBOARD_RATIO), layout="constrained")
+def _grid(title, columns=2):
+    fig, axes = plt.subplots(2, columns, squeeze=False, figsize=style.figsize(style.WIDTH_FULL, style.DASHBOARD_RATIO), layout="constrained")
     fig.suptitle(title)
     return fig, list(axes.flat)
 
@@ -102,8 +102,8 @@ def plot_monitors(run):
     data = pd.concat(curves, ignore_index=True)
     if not data["mean"].notna().any():
         return []
-    fig, axes = _grid(f"{run.track.upper()}: DiagScale transfer and retention")
     bases = sorted(run.trials.base.unique())
+    fig, axes = _grid(f"{run.track.upper()}: DiagScale transfer and retention", len(bases))
     for ax, (base, domain) in zip(axes, [(b, d) for d in ("Held-out credit", "Non-credit retention") for b in bases]):
         part = data[data.base.eq(base) & data.domain.eq(domain)]
         if not part["mean"].notna().any():
@@ -157,7 +157,7 @@ def plot_benchmark(run, metric=None):
     if not parts:
         return []
     data = pd.concat(parts, ignore_index=True)
-    fig, axes = _grid(f"{run.track.upper()}: DiagScale − original, final benchmark")
+    fig, axes = _grid(f"{run.track.upper()}: DiagScale − original, final benchmark", run.trials.base.nunique())
     tables = []
     bases = sorted(run.trials.base.unique())
     scale = style.EFFECT_SCALE.get(metric, 1.)
@@ -187,7 +187,9 @@ def plot_benchmark(run, metric=None):
         "Upper panels: held-out credit tables; lower panels: the four same-task non-credit retention tables (each first averaged over "
         "all four CPT partitions). Points are tables, diamonds equal-table means and vertical bars the table interquartile range "
         "(heterogeneity, not confidence intervals). Only tables measured at all three rates enter a panel, and every adapted/original "
-        "pair has five finite outer folds. Original and adapted TabICLv2 both use FP32 inference without FA3. Positive values favour "
+        "pair has five finite outer folds. "
+        + ("Original and adapted TabICLv2 both use FP32 inference without FA3. " if "tabicl" in bases else "")
+        + "Positive values favour "
         "DiagScale. The summary table reports plotted values in display units (column display_scale); paired table values are in native units.",
         {"Paired table values": data, "Plotted summaries": pd.concat(tables, ignore_index=True)})]
 

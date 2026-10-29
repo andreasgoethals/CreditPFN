@@ -11,7 +11,11 @@ start_job_log() {
     export CREDITPFN_EXPERIMENT="$group"
     case "$group" in general|experiment[0-8]) ;; *) echo "Invalid output group: $group" >&2; return 2 ;; esac
     local scope="$group"
-    if [[ "$group" == experiment0 && -n "${CREDITPFN_LORA_WORKFLOW:-}" ]]; then
+    if [[ -n "${CREDITPFN_LEGACY_ID:-}" ]]; then
+        [[ "$CREDITPFN_LEGACY_ID" =~ ^[a-zA-Z0-9]{1,40}$ ]] || { echo 'Invalid extension ID' >&2; return 2; }
+        case "$group" in experiment0|experiment[4-8]) ;; *) echo 'Invalid extension experiment' >&2; return 2 ;; esac
+        scope="$group/extensions/$CREDITPFN_LEGACY_ID"
+    elif [[ "$group" == experiment0 && -n "${CREDITPFN_LORA_WORKFLOW:-}" ]]; then
         [[ "$CREDITPFN_LORA_WORKFLOW" =~ ^[a-zA-Z0-9]+$ ]] || { echo 'Invalid LoRA workflow ID' >&2; return 2; }
         scope="experiment0/lora/$CREDITPFN_LORA_WORKFLOW"
     fi

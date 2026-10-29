@@ -60,6 +60,13 @@ def activate_experiment(cfg) -> str:
     group = getattr(getattr(cfg, "experiment", None), "output_group", None)
     group = experiment_group(group or group_for_run(str(getattr(cfg, "run_name", ""))))
     os.environ["CREDITPFN_EXPERIMENT"] = group
+    extension = getattr(getattr(cfg, "experiment", None), "extension_id", None)
+    if extension:
+        if not str(extension).isascii() or not str(extension).isalnum():
+            raise ValueError("Invalid legacy extension ID")
+        os.environ["CREDITPFN_LEGACY_ID"] = str(extension)
+    else:
+        os.environ.pop("CREDITPFN_LEGACY_ID", None)
     return group
 
 
@@ -175,6 +182,11 @@ def results_dir(*parts: str, experiment: str | None = None) -> Path:
 def _experiment_scope(experiment: str | None = None) -> Path:
     """Keep each LoRA debugging workflow separate from all earlier experiment-0 output."""
     group = experiment_group(experiment)
+    extension = os.environ.get("CREDITPFN_LEGACY_ID", "")
+    if extension and group in {"experiment0", "experiment4", "experiment5", "experiment6", "experiment7", "experiment8"}:
+        if not extension.isascii() or not extension.isalnum():
+            raise ValueError("Invalid legacy extension ID")
+        return Path(group, "extensions", extension)
     workflow = os.environ.get("CREDITPFN_LORA_WORKFLOW", "")
     if group == "experiment0" and workflow:
         if not workflow.isascii() or not workflow.isalnum():

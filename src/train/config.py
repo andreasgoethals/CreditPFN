@@ -133,7 +133,9 @@ def validate_lora_config(cfg) -> None:
         raise ValueError("LoRA study supports the explicit attention_qv target policy only")
     kind = "classifier" if cfg.track == "pd" else "regressor"
     expected = {f"tabpfn-v3-{kind}-v3_default.ckpt", f"tabicl-{kind}-v2-20260212.ckpt"}
+    # Explicit releases only; never allow package-default model selection.
+    expected.update({f"tabpfn-v2-{kind}-v2_default.ckpt", f"tabpfn-v2.6-{kind}-v2.6_default.ckpt"})
     from pathlib import Path
     bases = getattr(cfg.tunable, "classifier_base_paths" if cfg.track == "pd" else "regressor_base_paths")
     if any(Path(str(base)).name not in expected for base in bases):
-        raise ValueError("LoRA study requires explicit TabPFN v3 or TabICLv2 weights for its track")
+        raise ValueError("LoRA study requires explicit TabPFN v2/v2.6/v3 or TabICLv2 weights for its track")

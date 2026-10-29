@@ -115,6 +115,9 @@ def _build_roster(eval_cfg, train_cfg, track: str):
     from src.model import build_baselines
     from src.eval.benchmark import load_trained_handles
 
+    if OmegaConf.select(train_cfg, "experiment.legacy_gate", default=False):
+        from src.utils.legacy_checks import require_gate
+        require_gate(str(train_cfg.experiment.extension_id))
     if OmegaConf.select(train_cfg, "experiment.lora_gate", default=False):
         from src.utils.lora_checks import validate_evaluation
         validate_evaluation(train_cfg, eval_cfg)
@@ -187,6 +190,10 @@ def _build_roster(eval_cfg, train_cfg, track: str):
             identity = (handle.extra or {}).get("trial_identity_sha256")
             if identity not in expected:
                 raise RuntimeError(f"Checkpoint does not belong to the prepared training plan: {handle.name}")
+        if OmegaConf.select(train_cfg, "experiment.legacy_gate", default=False):
+            observed = {(handle.extra or {}).get("trial_identity_sha256") for handle, _ in trained}
+            if observed != expected:
+                raise RuntimeError("Extension benchmark requires every planned, non-diverged checkpoint in this partition")
 
     # LOUD guard (post-mortem, 2026-07-04): in the Jul-3 run all 64 training
     # trials failed and eval silently benchmarked a baselines-only roster —

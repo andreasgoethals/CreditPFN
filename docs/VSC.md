@@ -12,6 +12,99 @@ Scientific choices live in [RESEARCH_BRIEF.md](RESEARCH_BRIEF.md); completed clu
 
 Operational reference: the independent VSC Library linked above; apply current Leuven rules, and inspect account/QoS limits and storage quota live.
 
+## TabPFN v2/v2.6 extension
+
+The 29-10-2026 extension preserves experiments 1–3 and all existing follow-up
+outputs. It adds v2/v2.6 only in experiments 4–8. Scientific choices and counts
+are in [RESEARCH_BRIEF.md](RESEARCH_BRIEF.md#additional-model-coverage-tabpfn-v2-and-v26).
+The infrastructure review used VSC-library pin
+`1c29213086a0ae76b8f95cdd8eccbb9db8d6ca87`; live scheduler/account limits remain authoritative.
+
+After existing CreditPFN jobs finish, pull the validated source. Keep the conda
+environment and source unchanged through validation and production. No installation
+or model download is part of this workflow: the four original v2/v2.6 PD/LGD weights,
+processed tables and fixed experiment-1 reference checkpoints must already exist.
+
+```bash
+git pull --ff-only
+```
+
+Choose a new alphanumeric ID; `legacy1` is an example. One command queues CPU
+preparation, 12 GPU correctness tasks, 68 GPU capacity tasks, and independent CPU
+inspection, connected with `afterok`. Failed prerequisites cancel descendants;
+they never silently authorize production.
+
+```bash
+bash scripts/slurm/run_legacy_extensions.sh tests legacy1
+```
+
+The launcher prints its persistent submission log and backgrounds only the light
+submission process; heavy hashing/preparation/checks run in allocations. GPU arrays
+have **no `%N` running cap**. The submitter splits rejected admission batches without
+limiting concurrent execution. It waits on explicit submission-quota refusals; for
+Slurm's generic accounting/QOS message it waits only after an identical resource
+request has already been accepted. An unproven singleton request stops for diagnosis,
+so an invalid time/memory request cannot loop forever. Accepted
+job IDs are saved before advancing; ambiguous responses stop for reconciliation.
+Reissuing the same phase resumes confirmed submission state, not completed computation.
+Ordinary queue priority/resource waits still apply, and an environment-retrieval hold
+requires scheduler diagnosis. Do not repeatedly launch new IDs to bypass a hold.
+
+Inspect the experiment-0 `legacy_inspect` log: it must end with `PASS` for all
+80 cases and exit 0. Then one command queues the entire research extension:
+
+```bash
+bash scripts/slurm/run_legacy_extensions.sh research legacy1
+```
+
+This submits 128 training trials, 250 context-curve tasks and 896 foundation-benchmark
+shards. Training and context curves have no artificial cross-experiment dependencies;
+each benchmark waits only for its own model/track/partition training array to succeed.
+Benchmarks are already queued by this command; do not submit them separately.
+Training retains checkpoint recovery/requeue, and context tasks retain cell-level resume.
+A job exit or accepted submission is not evidence of scientific completeness. Check
+final audit/benchmark outcomes before analysis; diverged or missing checkpoints block
+the corresponding benchmark. Empty benchmark shards may be legitimate.
+
+Correctness checks include native packed/separate projections, unchanged original
+weights, nonzero adapter gradients, zero-initialization parity, live/export/reload and
+cached predictions, automatic/FP32 inference, and interrupted versus uninterrupted
+six-update training at every adapter rate. Capacity checks use all four partitions
+and real training tables/features at each requested episode size for 32 updates.
+Context capacity uses the model's full inference cap and at least the widest real
+table's feature count, a conservative synthetic envelope, at the production ensemble
+size. These checks do not certify arbitrary future datasets or changed packages.
+
+Small files/logs/generated configs: DATA `output CreditPFN/<experiment>/extensions/<ID>/`.
+Trajectories/results/predictions: the same relative tree on PROJECT.
+Weights: PROJECT `checkpoints/trained/<experiment>/extensions/<ID>/`.
+The final two tiers can be downloaded with the existing output download commands;
+no historical file needs replacing. Existing notebooks automatically include one
+prepared extension. If multiple are present, explicitly select the intended one
+with `CREDITPFN_ANALYSIS_EXTENSION_ID`; readers never choose by performance.
+
+Cleanup is preview-first and covers only the chosen ID, both storage tiers and
+explicitly tagged extension figures. Stop the submitter and wait for/cancel its
+jobs before applying cleanup. It refuses active CreditPFN writers, linked paths,
+unknown ownership and deleting E6 while E7 still depends on it.
+
+```bash
+sbatch scripts/slurm/maintenance.slurm clean-extensions --id legacy1
+```
+
+After reviewing the preview, this deletes **only that extension**, including its
+new experiment-0 probes; it preserves every original experiment and base weight:
+
+```bash
+sbatch scripts/slurm/maintenance.slurm clean-extensions --id legacy1 --apply
+```
+
+Use `--experiment 5` (or 0/4/6/7/8) to narrow cleanup. Reuse of an already submitted
+phase does not resubmit deleted completed jobs: reconcile that phase explicitly or
+start a fresh ID after diagnosis. Rerun notebooks after cleanup to refresh shared
+overview figures and `All_Results.md`. Do not use the older whole-experiment cleaner
+for deleting just these additions.
+
 ## Final inference check before writing
 
 This is a finishing diagnostic inside experiment 0, **not a repeat of experiments 1–7**.

@@ -53,6 +53,9 @@ def check_prepared(config: Path, *, stage: str = "train") -> dict:
     from src.train.config import load_train_config
     cfg = load_train_config(config_path=str(config))
     activate_experiment(cfg)
+    if OmegaConf.select(cfg, 'experiment.legacy_gate', default=False):
+        from src.utils.legacy_checks import require_gate
+        require_gate(str(cfg.experiment.extension_id))
     if OmegaConf.select(cfg, 'experiment.lora_gate', default=False):
         from src.utils.lora_checks import require_gate
         require_gate()
@@ -88,6 +91,9 @@ def check_prepared(config: Path, *, stage: str = "train") -> dict:
 
 
 def assert_prepared(cfg, trial_index: int, identity: dict) -> None:
+    if OmegaConf.select(cfg, 'experiment.legacy_gate', default=False):
+        from src.utils.legacy_checks import require_gate
+        require_gate(str(cfg.experiment.extension_id))
     if OmegaConf.select(cfg, 'experiment.lora_gate', default=False):
         from src.utils.lora_checks import require_gate
         require_gate()
@@ -163,7 +169,8 @@ def prepare(config: Path, *, write: bool = False, check: bool = False) -> dict:
             if len(tests) != len(set(tests)) or set(tests) != universe:
                 raise ValueError("Dataset folds must cover every dataset exactly once per training seed")
     if study(cfg) == "episode_size" and cfg.experiment.output_group == "experiment7" and (write or check):
-        reference_cfg = load_train_config(config_path=REFERENCE_CONFIG)
+        reference_cfg = load_train_config(config_path=str(OmegaConf.select(
+            cfg, "experiment.reference_config", default=REFERENCE_CONFIG)))
         reference = read_plan(plan_path(str(reference_cfg.run_name), str(reference_cfg.track)))
         payload["shared_reference"] = {"run": str(reference_cfg.run_name), "track": "pd",
             "sha256": reference["sha256"], "trials": match_reference(payload, reference)}

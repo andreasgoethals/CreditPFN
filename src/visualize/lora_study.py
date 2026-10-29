@@ -61,8 +61,8 @@ def coverage_table(run):
     return pd.DataFrame(rows)
 
 
-def _grid(title):
-    fig, axes = plt.subplots(2, 2, figsize=style.figsize(style.WIDTH_FULL, style.DASHBOARD_RATIO),
+def _grid(title, columns=2):
+    fig, axes = plt.subplots(2, columns, squeeze=False, figsize=style.figsize(style.WIDTH_FULL, style.DASHBOARD_RATIO),
                              layout="constrained")
     fig.suptitle(title)
     return fig, list(axes.flat)
@@ -133,7 +133,7 @@ def plot_monitors(run):
     data = pd.concat(curves, ignore_index=True)
     if not (data["mean"].notna() & data.updates.gt(0)).any():
         return []
-    fig, axes = _grid(f"{run.track.upper()}: LoRA transfer during training")
+    fig, axes = _grid(f"{run.track.upper()}: LoRA transfer during training", run.trials.base.nunique())
     for ax, (base, domain) in zip(axes, [(base, domain) for domain in ("credit", "ood")
                                         for base in sorted(run.trials.base.unique())]):
         part = data[data.base.eq(base) & data.domain.eq(domain)]
@@ -315,7 +315,7 @@ def plot_primary(run):
     scale = style.EFFECT_SCALE.get(metric, 1.)
     label = style.EFFECT_LABELS.get(metric, effect_label(metric))
     rates = sorted(run.trials.learning_rate.unique())
-    fig, axes = _grid(f"{run.track.upper()}: LoRA − original, final benchmark")
+    fig, axes = _grid(f"{run.track.upper()}: LoRA − original, final benchmark", run.trials.base.nunique())
     for ax, (base, domain) in zip(axes, [(base, domain) for domain in ("credit", "ood")
                                         for base in sorted(run.trials.base.unique())]):
         group = data[data.base.eq(base) & data.domain.eq(domain)]
@@ -347,7 +347,9 @@ def plot_primary(run):
         "tables, each first averaged over all four CPT partitions. Points are tables, the line connects equal-table means "
         "across rates (not a training curve) and the band spans the table interquartile range (heterogeneity, not a "
         "confidence interval). All rates share one complete table cohort per panel, each adapted/original pair has five "
-        "matched outer folds, and original and LoRA inference settings match (FP32 without FA3 for TabICLv2). Positive values "
+        "matched outer folds, and original and LoRA inference settings match"
+        + (" (FP32 without FA3 for TabICLv2)" if "tabicl" in set(run.trials.base) else "")
+        + ". Positive values "
         "favour LoRA. Absolute original and LoRA scores are retained in the accompanying tables; no rate is selected.",
         {"Complete matched table scores and effects": data, "Displayed equal-table means": summary})]
 

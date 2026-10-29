@@ -137,6 +137,8 @@ def load_studies(track):
         studies += [(6, arm, run) for arm, run in ss.load_arms(6).items()]
         studies += [(7, arm, run) for arm, run in ss.load_arms(7).items() if arm != "8,192 rows"]
     studies.append((8, None, cp.load_campaign(8, track)))
+    from src.visualize.legacy_extensions import studies as extension_studies
+    studies.extend(extension_studies(track))
     return studies
 
 
@@ -166,7 +168,7 @@ def config_labels(data):
 
 def config_order(data):
     """Experiment, then approach, rate, anchoring and arm order: fixed by design."""
-    arm_order = {"All tables": 0, "Large tables": 1, "2,048 rows": 2, "26,000 rows": 3,
+    arm_order = {"All tables": 0, "Large tables": 1, "2,048 rows": 2, "10,000 rows": 3, "11,000 rows": 4, "26,000 rows": 5,
                  "one_sample": 0, "full_pass": 1, "accumulate": 2}
     keys = data.drop_duplicates("config").assign(
         a=lambda f: f.approach.map(APPROACHES.index),
@@ -596,7 +598,7 @@ def plot_table_map(data, track, base):
     return [cp.Page(f"overview_tables_{base}", fig,
         f"{style.model_label(base)}, held-out credit tables: paired change in {'AUC (percentage points)' if track == 'pd' else 'R²'} "
         "of each study arm relative to the original model. Rows are tables, ordered by the original model's mean score "
-        "(in parentheses, averaged over the arms' identical original evaluations); columns are the outcome-independent arms "
+        "(in parentheses, averaged over the available original evaluations; inference recipes can differ across studies); columns are the outcome-independent arms "
         "of the distribution figure, coloured by approach. " + NOTE_PAIRING +
         f"Colours are symmetric about zero and saturate at the 95th percentile of |value| ({limit:.2f}); printed values are exact. "
         "'—' marks a missing complete comparison.",

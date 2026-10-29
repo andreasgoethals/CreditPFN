@@ -1,0 +1,16 @@
+# Isolated v2/v2.6 extension. Caps are operating limits, not matched budgets.
+versions: [v2, v2.6]
+training_rows: {v2: 10000, v2.6: 11000}
+context_rows: {v2: 10000, v2.6: 50000}
+target_updates: 6
+interrupt_after: 3
+row_cap: 128
+monitor_rows: 96
+monitor_members: 2
+training_tables: 2
+held_out_tables: 1
+max_training_rows: 100000
+capacity_updates: 32
+prediction_atol: 1.0e-5
+prediction_rtol: 1.0e-4
+regression_chunk_atol_std: 1.0e-4

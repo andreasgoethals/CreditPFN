@@ -247,6 +247,9 @@ SIZE_STUDY_COLORS = {"All tables": "#0072B2", "Large tables": "#E69F00",
                      "2,048 rows": "#0072B2", "8,192 rows": "#E69F00", "26,000 rows": "#009E73"}
 SIZE_STUDY_STYLES = {"All tables": "-", "Large tables": "--", "2,048 rows": "-",
                      "8,192 rows": "--", "26,000 rows": ":"}
+SIZE_STUDY_COLORS.update({"10,000 rows": SIZE_STUDY_COLORS["26,000 rows"],
+                          "11,000 rows": SIZE_STUDY_COLORS["26,000 rows"]})
+SIZE_STUDY_STYLES.update({"10,000 rows": ":", "11,000 rows": ":"})
 ADAPTER_LR_STYLES = {1e-4: "-", 1e-3: "--", 3e-2: ":"}
 LORA_LR_COLORS = {1e-5: "#0072B2", 1e-4: "#E69F00", 1e-3: "#009E73"}
 LORA_LR_STYLES = {1e-5: "-", 1e-4: "--", 1e-3: ":"}

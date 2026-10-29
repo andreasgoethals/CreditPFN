@@ -13,6 +13,7 @@ from types import MethodType
 
 import torch
 from torch import nn
+from torch.nn.utils import parametrize
 
 SCHEMA = "creditpfn-diagscale-v1"
 
@@ -50,6 +51,22 @@ class QueryScale(nn.Module):
         return self
 
 
+class QueryWeightScale(QueryScale):
+    """Legacy bias-free Q row scaling: exactly a diagonal query multiplier.
+
+    Scaling weights covers stacked-QKV fast paths and cached inference without
+    replacing attention kernels. Frozen K/V slices are copied unchanged.
+    """
+    def __init__(self, weight, start, stop):
+        super().__init__(None, (stop - start,), weight.device)
+        self.start, self.stop = start, stop
+
+    def forward(self, weight):
+        matrix = weight.reshape(-1, weight.shape[-1])
+        selected = matrix[self.start:self.stop] * (1 + self.delta).to(weight.dtype)[:, None]
+        return torch.cat((matrix[:self.start], selected, matrix[self.stop:]), dim=0).reshape_as(weight)
+
+
 def adapter_parameters(model):
     return [m.delta for m in model.modules() if isinstance(m, QueryScale)]
 
@@ -61,10 +78,14 @@ def adapter_state(model):
 
 def inject(model, *, family, base_path=None, base_sha256=None):
     if family not in {"tabpfn", "tabicl"}:
-        raise ValueError("DiagScale supports TabPFN v3 and TabICLv2 only")
-    if adapter_parameters(model):
+        raise ValueError("DiagScale supports TabPFN and TabICLv2 only")
+    if adapter_parameters(model) or hasattr(model, "_creditpfn_lora"):
         raise ValueError("DiagScale already injected")
     targets = []
+    legacy = []
+    from src.model.tabpfn_legacy import supported, targets as legacy_targets
+    if family == "tabpfn" and supported(model):
+        legacy = legacy_targets(model, query_only=True)
     for name, module in model.named_modules():
         if family == "tabpfn" and type(module).__name__ == "SoftmaxScalingMLP":
             ref = next(module.parameters())
@@ -73,11 +94,16 @@ def inject(model, *, family, base_path=None, base_sha256=None):
               and hasattr(module, "ssmax_layer")):
             targets.append((name + ".ssmax_layer", module.ssmax_layer,
                             (module.num_heads, 1, module.head_dim), module.in_proj_weight.device))
-    if not targets:
+    if not targets and not legacy:
         raise ValueError("No compatible query-scaling modules; unsupported architecture/package")
     # Enumerate and validate before mutation; never wrap a descendant twice.
     if family == "tabpfn":
         model.requires_grad_(False)
+    for target in legacy:
+        owner = model.get_submodule(target["module"])
+        start, stop = target["slices"][0]
+        parametrize.register_parametrization(owner, target["weight"],
+            QueryWeightScale(getattr(owner, target["weight"]), start, stop))
     for name, base, shape, device in targets:
         parent, _, attr = name.rpartition(".")
         setattr(model.get_submodule(parent), attr,
@@ -85,7 +111,8 @@ def inject(model, *, family, base_path=None, base_sha256=None):
     model._creditpfn_adapter = dict(schema=SCHEMA, family=family,
                                    base_path=str(base_path) if base_path else None,
                                    base_sha256=base_sha256,
-                                   modules=[t[0] for t in targets])
+                                   modules=[t[0] for t in targets] + [
+                                       t["module"] + ".parametrizations." + t["weight"] + ".0" for t in legacy])
     selected = {id(p) for p in adapter_parameters(model)}
     total = sum(p.numel() for p in model.parameters())
     optimized = sum(p.numel() for p in adapter_parameters(model))

@@ -246,7 +246,7 @@ def _notebook_summary(name: str) -> str:
                    if out.get("output_type") == "stream" and out.get("name") == "stdout")
 
 
-def write_captions(notebooks: tuple[str, ...]) -> Path:
+def write_captions(notebooks: tuple[str, ...], *, migrate: bool = True) -> Path:
     """ONE CAPTIONS.md for the project, grouped per notebook, in notebook order.
 
     Built from each figure manifest, so it regenerates from disk after an interactive run. A
@@ -256,7 +256,8 @@ def write_captions(notebooks: tuple[str, ...]) -> Path:
     from src.visualize.figures import read_manifest, migrate_collection
     from src.visualize.paths import notebook_figures_dir
 
-    migrate_collection(notebooks)
+    if migrate:
+        migrate_collection(notebooks)
 
     lines = [
         "# Figure captions",

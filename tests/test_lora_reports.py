@@ -15,8 +15,8 @@ from src.visualize import campaign as cp, lora_study as ls, style
 from src.visualize.reporting import NotebookReport, page_text
 
 
-def lora_fixture(track="pd"):
-    cfg = load_train_config(config_path=f"config/experiment8/{track}.yaml")
+def lora_fixture(track="pd", cfg=None):
+    cfg = cfg if cfg is not None else load_train_config(config_path=f"config/experiment8/{track}.yaml")
     trials = cp.planned_trials(cfg).assign(status="OK", n_train_datasets=2, n_test_datasets=1)
     trials["gpu_hours"] = 1 + trials.learning_rate * 100
     trials["peak_gpu_gb"] = 20 + trials.partition
@@ -39,8 +39,8 @@ def lora_fixture(track="pd"):
                     clipped_frac=0., amp_skipped_steps=0, data_skipped_steps=0,
                     elapsed_sec=update*.4, lr_applied=trial.learning_rate*(1-fraction),
                     observed_tables=2, full_observed_tables=2, complete_pass=True, partial_epoch=False))
-        short = "v3-default" if "tabpfn" in trial.trial_name else "tabicl-v2"
-        family = "tabpfn" if short == "v3-default" else "tabicl"
+        short = f"{trial.base}-default" if "tabpfn" in trial.trial_name else "tabicl-v2"
+        family = "tabpfn" if "tabpfn" in trial.trial_name else "tabicl"
         for domain, dataset in (("credit", f"Table {trial.partition}"), ("ood", "Panel")):
             delta = effect if domain == "credit" else -effect
             for fold in range(5):
