@@ -2,7 +2,7 @@
 
 ## 29-10-2026
 
-- Runtime recreation `62470745` (`env20261029e`) failed after 28 seconds before any installation: the cache ownership check compared a resolved hard-mount path to an unresolved scratch alias. Resolve both paths before checking containment. The original runtime, checkpoints and results remain unchanged; no new research workload has started.
+- Runtime recreation `62470745` (`env20261029e`) failed after 28 seconds before any installation. Direct inspection found a pip cache but no `conda-packages` directory in the prior owned workspace; requiring both caused the failure. Reuse either cache independently and resolve both paths before checking containment. The original runtime, checkpoints and results remain unchanged; no new research workload has started.
 - Deployment correction: the first isolated build helpers were copied uncommitted to the separate DATA checkout for troubleshooting. The user reiterated the required local-edit → test → commit/push → VSC Git update workflow. Preserve those helper bytes as historical build evidence, deploy subsequent changes through Git, and never update a checkout used by active jobs.
 - Runtime recreation: wICE `62468686` (`env20261029c`) stopped after 12m47s because the recorded TALENT version is Git-installed and unavailable on PyPI. The recorder now retains the exact public Git commits and installed Python-source hashes for TALENT and TabPFN. Retry `62468802` (`env20261029d`) restored both sources but failed its final exact-version check after 47m20s; no runtime was accepted or research job started.
 - **Tried:** install the recorded `torch==2.12.0` with the CUDA-13 index also available.

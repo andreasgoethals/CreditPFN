@@ -16,10 +16,11 @@ export APPTAINER_TMPDIR="$work/apptainer-tmp" APPTAINER_CACHEDIR="$work/apptaine
 export PIP_CACHE_DIR="$work/pip-cache" CONDA_PKGS_DIRS="$work/conda-packages"
 if [[ -n "${CREDITPFN_BUILD_CACHE_FROM:-}" ]]; then
     _cache_from=$(realpath -e "$CREDITPFN_BUILD_CACHE_FROM")
-    [[ "$_cache_from" == "$scratch"/creditpfn-runtime-* && -d "$_cache_from/pip-cache" && -d "$_cache_from/conda-packages" ]] || {
+    [[ "$_cache_from" == "$scratch"/creditpfn-runtime-* && ( -d "$_cache_from/pip-cache" || -d "$_cache_from/conda-packages" ) ]] || {
         echo 'Build-cache reuse escaped a verified owned runtime workspace'; exit 2;
     }
-    export PIP_CACHE_DIR="$_cache_from/pip-cache" CONDA_PKGS_DIRS="$_cache_from/conda-packages"
+    if [[ -d "$_cache_from/pip-cache" ]]; then export PIP_CACHE_DIR="$_cache_from/pip-cache"; fi
+    if [[ -d "$_cache_from/conda-packages" ]]; then export CONDA_PKGS_DIRS="$_cache_from/conda-packages"; fi
     unset _cache_from
 fi
 export PYTHONNOUSERSITE=1
