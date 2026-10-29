@@ -15,7 +15,7 @@ import numpy as np
 
 from src.utils.atomic import write_json
 from src.utils.experiment import code_identity, digest_json, environment_versions, file_digest
-from src.utils.paths import manifests_dir, results_dir
+from src.utils.paths import outputs_dir, resolve_staging_path, OUTPUT_DIR_NAME
 
 CASES = [(track, model) for track in ("pd", "lgd") for model in ("v2", "v2.6", "v3", "tabicl")]
 
@@ -27,11 +27,15 @@ def identifier(value):
 
 
 def root(version):
-    return manifests_dir("experiment0") / "runtime_acceptance" / identifier(version)
+    # Runtime acceptance is shared infrastructure, never an experiment/adapter
+    # sub-scope. Preserve older source-specific receipts when code is updated.
+    return (outputs_dir() / "experiment0" / "manifests" / "runtime_acceptance"
+            / identifier(version) / code_identity(stage="eval"))
 
 
 def evidence(version):
-    return results_dir(experiment="experiment0") / "runtime_acceptance" / identifier(version)
+    return (resolve_staging_path(OUTPUT_DIR_NAME) / "experiment0" / "results"
+            / "runtime_acceptance" / identifier(version) / code_identity(stage="eval"))
 
 
 def identity():

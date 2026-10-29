@@ -611,8 +611,8 @@ sampling and evaluation settings must match. Resolved benchmark defaults, implem
 package versions are frozen too, checked again inside each evaluation task; CLI overrides
 cannot change inference views, context caps or folds. Only the declared episode cap changes in the
 matched large-arm trials. Reference files stay in experiment 8; no copying, hidden rerunning
-or reuse of differently configured experiment-1/3 checkpoints occurs. Cleanup refuses to
-delete experiment 8 while a saved experiment-7 plan still depends on it.
+or reuse of differently configured main-grid or sampling checkpoints occurs. Cleanup refuses to
+delete experiment 8 while a saved experiment-9 plan still depends on it (historical configs 6 and 7).
 
 Every eligible training table must supply every requested episode size. If a future dataset
 version cannot fill 26,000 rows, preparation fails rather than dropping another table,
@@ -623,9 +623,9 @@ new recipe still requires the experiment-0 capacity gate.
 
 Both studies monitor updates 0/250/1k/2.5k/5k/10k and use the same final five-fold credit and
 non-credit benchmark with original/classical controls. Train and benchmark phases remain
-separate. After all plans are prepared, their new training trials may run concurrently;
-experiment-9 benchmarking additionally requires experiment-8 training completion. Analysis
-needs both studies' results and all three matched arms, with complete paired folds. Report
+separate. After all plans are prepared, their new training trials may run concurrently.
+Each completed arm can be evaluated independently; the final comparison requires both
+studies' results and all three matched arms, with complete paired folds. Report
 AUC/proper-score effects alongside rows, queries, GPU allocation time, memory and throughput;
 equal successful updates do not equalize compute or unique-row exposure.
 
@@ -777,8 +777,8 @@ quantiles are finite, ordered and reproduce the recorded scores; its one capped 
 remains a reported numerical limitation, and an overflow-free counterfactual was not measured.
 
 This follow-up asks whether structured additive changes inside the pretrained attention
-layers can produce useful cross-table credit adaptation. It was adopted after experiments
-1–7 were observed and is explicitly exploratory. It does not replace their grid or outputs.
+layers can produce useful cross-table credit adaptation. It was adopted after the earlier
+campaigns were observed and is explicitly exploratory. It does not replace their grid or outputs.
 
 For each targeted weight, `W = W0 + (alpha/r) B A`. `W0` is fixed; A is randomly initialized
 and B starts at zero, so the initial effective weight equals the original. Rank `r=16`

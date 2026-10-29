@@ -81,8 +81,9 @@ scratch. Do not move an installed environment: recreate it from recorded specifi
 container and validate before cutover. Match intensive I/O to the compute filesystem, stage only
 the required working set, publish recovery state durably, and never blanket-delete scratch.
 
-The current Conda-on-DATA runtime and older throttled launchers are **migration debt**, not approved
-defaults for a new campaign. Read the migration status before deployment. Preserve source, runtime,
+The old Conda-on-DATA runtime is retained as a comparator/rollback; the accepted PROJECT container
+`env20261029f` now serves the approved migration campaign. The old environment and throttled launchers
+are not defaults for a new campaign. Read the migration status before deployment. Preserve source, runtime,
 inputs, receipts and recovery state used by active, queued or resumable jobs. Explain and obtain
 agreement for migration, installations, cleanup or new workloads before executing them. Future
 launchers submit independent work without artificial running caps; real validation and data
@@ -154,9 +155,10 @@ anything is finished.
   a local commit alone is not deployed there. Do not change cluster files used by active jobs.
 - **No secrets, credentials, private dataset contents or large log excerpts** in any document —
   both dated logs included, since both are tracked.
-- **Check which environment you are in.** Locally `.venv/Scripts/python.exe`. Existing cluster
-  evidence uses the `CreditPFN` Conda environment, printed as `Active conda env:`; this runtime
-  remains preserved pending the PROJECT-container migration. Future runtime acceptance must
+- **Check which environment you are in.** Locally `.venv/Scripts/python.exe`. Historical cluster
+  evidence uses the `CreditPFN` Conda environment, printed as `Active conda env:`; preserve it as
+  a comparator/rollback while the accepted PROJECT-container campaign runs. New jobs print
+  `Active sealed runtime:`. Runtime acceptance must
   record the SIF digest, actual interpreter and package versions. An active virtualenv can
   silently shadow Conda (`AGENTS_MEMORY.md`, 05-08-2026); never infer the interpreter from a prompt.
 - **Output directory:** `output CreditPFN/<experiment>/` is the user's required name on both storage tiers, a deliberate deviation from the template's generic `output/`. Preserve the space and experiment layer; quote shell paths. Use `src/utils/paths.py`. Detailed training diagnostics and results go to project storage; logs/small manifests to DATA. Weights retain `checkpoints/trained/<experiment>/`.

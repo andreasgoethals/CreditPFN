@@ -2,6 +2,9 @@
 
 ## 29-10-2026
 
+- Make completed layout migrations leave publication metadata untouched and retire their empty staging folder.
+- Retire six verified obsolete VSC build workspaces and three empty failed-runtime folders after preserving compact reproducibility records.
+- Keep runtime acceptance independent of experiment scopes and retain separate receipts for each source identity; preserve the active campaign's deployed source until it finishes.
 - Organize ten studies under four RQs without duplicating the main factorial; add gated runtime/migration/FP32-refresh orchestration and expand paired-context and cross-study reporting.
 - Validate all 29 notebooks and 261 figures; retain complete summaries/captions, paginate dense table maps and use fixed table cohorts across learning-rate curves.
 - Add exact-version container recreation on owned scratch; retain immutable Git package sources and require subsequent CPU/GPU acceptance.

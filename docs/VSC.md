@@ -83,19 +83,24 @@ Arrays have no artificial running throttle. The dispatcher checks the controller
 
 Workflow state is under canonical DATA `output CreditPFN/experiment0/manifests/study_v2/<ID>/`. Runtime acceptance and extension records have separate owned scopes; large evidence and weights remain on PROJECT. `complete.json` is written only after the final audits and publication succeed. Missing/failed receipts are not an invitation to delete or resubmit everything: inspect the exact task and preserve compatible recovery state.
 
+The 29-10 deployment `4bf4535` passed the CPU and ten GPU runtime cases, then verified and migrated both output roots. Its extension preparation exposed a scope-dependent runtime-receipt lookup before GPU work. The running refresh keeps that source unchanged. A temporary link from the extension's `manifests/runtime_acceptance/env20261029f` to the actual global accepted receipts permits the identical gate to be checked. It is a metadata reference, not a copied or relaxed acceptance record. The local correction stores acceptance under `experiment0/manifests/runtime_acceptance/<version>/<source-identity>/` and large comparison evidence at the corresponding PROJECT path, irrespective of extension/LoRA scope. Deploy and independently validate that correction after the current consumers finish; preserve the old receipts and remove only the temporary link.
+
+Queue-admission waits must outlive an interactive SSH connection. Resume a confirmed submission record in the existing persistent lightweight submitter (or an allocated controller), after checking its lock/process and any `in_flight` record. Do not restart a plan or discard accepted job IDs merely because the terminal timed out. The `study20261029` retry uses this mechanism and automatically queues its research controller after the independent extension inspector.
+
 ### Collection, rollback and cleanup
 
 Preserve the original runtime, build specifications, source commit, library pins and migration hash journal. Build specifications currently reside inside the separate DATA checkout's `output CreditPFN/experiment0/runtime/<version>/`; retain them alongside the canonical acceptance records when collecting the final release. The two canonical output roots are complementary, not alternative versions. Download them only after publication is complete, then perform the local layout migration/verified refresh before regenerating all 29 notebooks. Never overlay a new-layout download onto an unmarked old-layout tree.
 
 Own-work cleanup is part of completion: inspect active/queued/resumable consumers, retain compact failure evidence and published checksums, then remove only verified obsolete build workspaces and staging paths created by this task. No blanket scratch deletion. Original datasets, base weights, research checkpoints and recoverable results are outside that cleanup. The original DATA checkout and environment stay available until rollback retirement is explicitly justified.
 
-Temporary-work ledger (29-10-2026; removal remains pending):
+Temporary-work ledger (29-10-2026; active consumers remain protected):
 
 | Owned location | Purpose and retirement condition |
 |---|---|
 | DATA `CreditPFN-study-v2` | Isolated migration checkout. After all consumers finish, preserve specifications/submission records, update and verify the normal DATA `CreditPFN` checkout through Git, then retire this temporary checkout. |
-| Lustre scratch `creditpfn-runtime-env20261029-*`, `env20261029b-*`, `env20261029c-*`, `env20261029d-*`, `env20261029e-*`, `env20261029f-*` | This task's build workspaces. The listed patterns identify candidates, not deletion commands. Resolve each exact owned path, preserve compact build records, verify the sealed runtime and confirm no cache/build/recovery consumer before removal. |
+| Six exact owned Lustre runtime-build directories for `env20261029` and suffixes `b`–`f` | **Removed** by successful wICE job `62471310`, after all build jobs were terminal and 348 compact records were preserved/hash checked in canonical DATA `experiment0/manifests/runtime_builds/study20261029/`. Its `cleanup.json` records each exact removed path. The three empty failed PROJECT runtime directories (`b`, `c`, `d`) were also removed. |
 | Native scratch `CreditPFN/runtimes/env20261029f` and per-job `CreditPFN/cache/<job>` | Execution copies only. Keep while accepted/queued jobs use them; retire after verified persistent publication and consumer checks. |
+| DATA `experiment0/extensions/study20261029/manifests/runtime_acceptance/env20261029f` | Temporary link to the genuine global acceptance receipts for unchanged deployment `4bf4535`. After its consumers finish, unlink only this alias; preserve the accepted target and failed/retry submission records. |
 | Local `tmp/figure_review/` and task-specific helper scripts | Disposable rendering/QA work. Remove after required figure checks and publication; no dataset or model files are included. |
 
 The existing input cache predates this task and must be inspected separately. Neither an empty queue nor this ledger authorizes deleting an unrelated project's files or the original environment.

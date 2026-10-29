@@ -22,7 +22,7 @@ def tree(root):
     return original
 
 
-def test_two_tier_migration_preserves_every_byte_once_and_is_idempotent(tmp_path):
+def test_two_tier_migration_preserves_every_byte_once_and_is_idempotent(tmp_path, monkeypatch):
     roots = [tmp_path/"DATA", tmp_path/"PROJECT"]
     originals = [tree(root) for root in roots]
     preview = layout.migrate(roots)
@@ -36,6 +36,10 @@ def test_two_tier_migration_preserves_every_byte_once_and_is_idempotent(tmp_path
         assert json.loads((root/layout.MARKER).read_text()) == layout.manifest()
         assert layout.payload("experiment1", root) == "shared/main_grid"
         assert not (root/".study-v2-migration.lock").exists()
+        assert not (root/".study-v2-staging").exists()
+    def unexpected_write(*args):
+        raise AssertionError("A completed migration must not rewrite publication metadata")
+    monkeypatch.setattr(layout, "_journal", unexpected_write)
     assert all(r["state"] == "already migrated" for r in layout.migrate(roots, apply=True))
 
 

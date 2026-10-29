@@ -102,6 +102,8 @@ def _migrate(roots, *, apply=False, workers=4):
             continue
         journal = root / ".study-v2-migration.json"
         stage = root / ".study-v2-staging"
+        if stage.is_symlink():
+            raise ValueError("Migration staging directory is linked; inspect its ownership")
         if journal.is_file():
             record = json.loads(journal.read_text())
             if record["mapping"] != CAMPAIGNS:
@@ -152,10 +154,13 @@ def _migrate(roots, *, apply=False, workers=4):
             for (path, expected), actual in zip(pairs, pool.map(_hash, (p for p, _ in pairs))):
                 if actual != expected:
                     raise RuntimeError(f"Migration content mismatch: {path}")
+        stage.rmdir()  # Only the now-empty, owned staging directory; never recursive cleanup.
         reports.append(dict(root=str(root), files=len(pairs), state="hash verified"))
     if apply:
         # Readers switch only after all supplied storage tiers verified successfully.
         for root in roots:
+            if (root / MARKER).is_file():
+                continue  # Already validated above; a completed migration is a true no-op.
             for group, study in manifest()["studies"].items():
                 directory = root/group
                 directory.mkdir(exist_ok=True)
