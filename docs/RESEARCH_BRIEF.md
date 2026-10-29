@@ -305,22 +305,27 @@ in LITERATURE.md.
 
 ## State of the evidence
 
-As of **19-10-2026**, both complementary storage trees have been downloaded locally. All planned
-research training is complete: experiments 1/2/3/5/6/7 contain 512/32/96/48/16/16 completed trials.
-Their final benchmarks contain 4,047/627/1,083/627/297/462 model–table–partition comparisons,
-respectively: **7,143 comparisons and 35,715 successful outer-fold records**. Experiment 4 has
+As of **29-10-2026**, both complementary storage trees have been downloaded locally, including
+the completed TabICLv2 FP32 re-score of experiments 1 and 2. All planned research training is
+complete: experiments 1/2/3/5/6/7/8 contain 512/32/96/48/16/16/48 completed trials.
+Their final benchmarks contain 4,047/627/1,083/627/297/462/627 model–table–partition comparisons,
+respectively: **7,770 comparisons and 38,850 successful outer-fold records**. Experiment 4 has
 250 completed inference tasks and 11,100 original/CPT context cells. Experiment 7 also reuses
 eight experiment-6 controls; these are not additional training runs.
 
-The local audit decodes every standard prediction export, checks receipt sizes, row identities,
-targets and five-fold coverage, and independently reproduces AUC/F1 or RMSE/MAE/R². It also checks
-all context SQLite tasks for nested context identities, context/validation/test disjointness,
-unchanged original/CPT and cross-family query cohorts, complete outer-fold row coverage and
-reproduced primary scores. Small R² differences from float64 recomputation reproduce to machine
-precision under the original float32 calculation; they do not justify changing results. All
-21 executed notebooks have complete ordered summaries, 243 matching inline figures/PDFs and
-captions. The current indexes are tracked. Detailed evidence and historical recoveries remain
-in `AGENTS_MEMORY.md`; no further benchmark or training submission is indicated by this audit.
+The 29-10 local audit checks all standard metric exports for complete folds, finite primary
+metrics, receipt/prediction byte counts and duplicate identities. Every raw result CSV in the
+new experiment-1/2 consolidated inventories is present with no additional CSVs; 6,890 recorded
+source/snapshot files match their checksums. All 1,083 refreshed TabICL prediction exports
+decode (57,925,718 rows), with matching outer test-row/target identities and 29,925 independently
+recalculated metric values agreeing within rounding tolerance. Earlier audits covered the
+other standard prediction exports, including experiment 8 on 27-10, and all experiment-4
+context SQLite tasks for nested contexts, context/validation/test disjointness, matched query
+cohorts and reproduced primary scores. Those older audits are distinct from the new re-score.
+All 25 executed notebooks have complete ordered summaries and 227 matching inline figures/PDFs
+and captions, with no saved execution errors or orphan figures. The current indexes are tracked.
+Detailed evidence and historical recoveries remain in `AGENTS_MEMORY.md`; no further benchmark
+or training submission is indicated by this audit.
 
 ### Current descriptive findings
 
@@ -332,12 +337,14 @@ five-fold mean effects against each exact starting checkpoint are:
 | TabPFN v2 | +0.004773 | +0.004101 |
 | TabPFN v2.6 | −0.000024 | −0.083212 |
 | TabPFN v3 | +0.000430 | −0.028429 |
-| TabICLv2 | +0.003695 | −0.004770 |
+| TabICLv2 | −0.001581 | −0.005485 |
 
 These effects do not establish a universal CPT benefit. TabPFN v2's reference PD AUC improves
-on all 17 tables, while TabICL's median effect is −0.000176: its positive mean is driven by a
-few large gains. The completed **paired inference-precision diagnostic**, independently
-rechecked locally on 21-10-2026, changes the interpretation of those TabICL gains:
+on all 17 tables (16 exceed the descriptive 0.1-percentage-point reporting band). TabICL's
+FP32 mean and median effects are negative (median −0.000584); six tables have a positive
+point estimate, and only one exceeds that reporting band. The former automatic-policy
+TabICL mean was +0.003695. The historical **paired inference-precision diagnostic**,
+independently rechecked locally on 21-10-2026, explains why those former gains needed re-scoring:
 
 | Diagnostic table | Original / CPT AUC, automatic | Original / CPT AUC, FP32 with FA3 disabled |
 |---|---:|---:|
@@ -355,21 +362,20 @@ probes also show automatic-policy boundary sensitivity. These observations estab
 numerical-policy dependence; they do not identify a particular internal SDPA kernel or
 estimate the prevalence across other tables, recipes or models.
 
-The completed main benchmark remains a practical comparison under its recorded automatic
-policy. Its large gains on these two tables cannot be presented as evidence of improved
-FP32 credit transfer. As an exploratory influence check, the other 15 main-study TabICL
-tables have mean ΔAUC −0.001568 under that same automatic policy. This is neither a
-replacement benchmark nor an all-table FP32 estimate; retain every table in the main
-results and report the diagnostic beside them. Apply this interpretation boundary to
-TabICL automatic-policy context, corpus and episode comparisons as well.
+The current main and seed-check benchmarks now use matched FP32/no-FA3 TabICL inference
+on every credit and retention table, rather than the former automatic-policy results.
+The diagnostic remains an appendix qualification, not a prevalence estimate across all
+models. Experiments 3, 4, 6 and 7 retain their recorded automatic TabICL inference policy;
+their within-study comparisons must not be interpreted as isolated contrasts against
+the FP32 studies. Keep each study's own original-model control.
 
 Across the balanced grid, larger learning rates generally hurt and freezing
 or anchoring attenuates degradation; this is a response over the specified recipes, not a
 test-selected deployment recommendation. Calibration and discrimination need separate
-interpretation: for example, TabICL's mean raw Brier reduction is +0.006803, whereas the
-corresponding Platt-calibrated reduction is −0.000268.
+interpretation: for example, the current reference TabICL mean raw Brier reduction is
+−0.000845, and its corresponding Platt-calibrated reduction is −0.000808.
 
-- **Experiment 2:** mean seed-43 minus seed-42 PD AUC changes range from −0.000251 to −0.000017
+- **Experiment 2:** mean seed-43 minus seed-42 PD AUC changes range from −0.000260 to −0.000017
   across bases. LGD is less uniformly stable: TabPFN v3's mean ΔR² is +0.019034, driven mainly
   by one table (maximum +0.147777, median +0.000018). Two seeds cannot estimate general variance.
 - **Experiment 3:** revisiting/accumulating more rows has no consistent predictive advantage.

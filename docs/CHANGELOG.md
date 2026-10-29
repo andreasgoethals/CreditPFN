@@ -2,6 +2,7 @@
 
 ## 29-10-2026
 
+- Verify refreshed prediction exports, snapshot checksums and notebook indexes; update superseded TabICL findings in the research brief.
 - Handle Windows read-only files/directories in family-result cleanup; retain failures for locks, links and other permission errors.
 - Record successful completion of both TabICLv2 FP32 benchmark arrays and remaining artifact collection/analysis.
 

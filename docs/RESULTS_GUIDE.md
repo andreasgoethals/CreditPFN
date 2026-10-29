@@ -55,8 +55,10 @@ with their own original model at three adapter rates. Its plots require observed
 and complete paired folds; pending campaigns produce coverage tables rather than empty
 figures. Training shows native losses, effective Q/V displacement, credit/retention monitors
 and cost. Results show AUC/R², Brier/log loss or RMSE and retention on common table cohorts.
-TabICL uses matched FP32/no-FA3 inference; experiment-1 automatic-policy results are not
-pooled into this comparison. This tests a specified LoRA recipe, not all adapter designs.
+TabICL uses matched FP32/no-FA3 inference, as do the refreshed experiment-1/2 benchmarks.
+Each study retains its own matched original control; differences in training recipes still
+prevent an isolated comparison of adaptation methods. This tests a specified LoRA recipe,
+not all adapter designs.
 
 Training notebooks contain trajectories and native losses, with compact shared choice, movement and cost summaries. Detailed optimizer/device diagnostics remain in tables.
 Results notebooks distinguish fixed-context milestone monitors from completed five-fold final
