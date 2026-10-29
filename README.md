@@ -15,7 +15,7 @@ The study is descriptive: report the behavior of a specified grid, including unf
 ## Workflow
 
 1. Register and sanitize the supplied raw datasets on a CPU node.
-2. Stage verified processed tables and original weights into site-local scratch; prepare an immutable experiment plan.
+2. Resolve verified inputs on compute-native PROJECT storage or stage the required working set to native scratch; prepare an immutable experiment plan.
 3. Validate save/reload behavior and profile throughput with null controls and pilots.
 4. Train the fixed grid, recording successful optimizer updates and trajectories.
 5. Score trained weights against their own untuned bases and tuned classical baselines on held-out datasets.
@@ -171,7 +171,22 @@ Before results exist they show the plan and missing-evidence tables, not synthet
 
 ## Environment and contribution rules
 
-The project uses Python 3.11–3.13 and the dependencies in [pyproject.toml](pyproject.toml), including PyTorch 2.3 or later for its AMP API. Dependency ranges are not an environment lock. It depends on specific upstream training APIs; record and validate the working environment rather than upgrading it during a campaign. The cluster environment is named `CreditPFN`; the local environment is `.venv`. Local tests and notebook execution do not replace the GPU correctness/capacity gates for a new experimental protocol.
+The project uses Python 3.11–3.13 and the dependencies in [pyproject.toml](pyproject.toml), including PyTorch 2.3 or later for its AMP API. Dependency ranges are not an environment lock. It depends on specific upstream training APIs; record and validate the working environment rather than upgrading it during a campaign. The local environment is `.venv`. Local tests and notebook execution do not replace the GPU correctness/capacity gates for a new experimental protocol.
+
+The current [template](docs/TEMPLATE.md#vsc-access-windows-and-agents) requires manual
+`step ssh login --context VSC` authentication, reuse of the existing Windows SSH agent,
+and direct verified VSC inspection when relevant. The actual Git checkout stays on DATA;
+large persistent assets and immutable SIF runtime images belong on PROJECT; scratch is
+temporary working storage. Independent ready jobs should have no artificial running cap.
+
+**Runtime migration is pending.** Completed campaigns used the `CreditPFN` Conda environment
+on DATA. The existing activation scripts, DATA cache fallback, older throttled launchers and
+resource requests have not yet been converted to the new policy. Preserve that environment
+and its evidence; do not treat a documentation update as a validated container deployment.
+New campaign deployment needs an approved migration and CPU/GPU acceptance first. The
+[runbook](docs/VSC.md#access-storage-policy-and-migration-status) records the verified state,
+remaining changes and recovery requirements. No existing results require retraining simply
+because the storage policy or presentation changes.
 
 Read [AGENTS.md](AGENTS.md), [the template](docs/TEMPLATE.md) and [agent memory](docs/AGENTS_MEMORY.md) before editing. Agents may push reviewed, validated changes under the user's authorization of 26-10-2026. Package installations, cluster training and scientific recipe changes still require authorization. Never modify either library submodule here. Record substantive changes in both logs and run the relevant validation before reporting completion.
 

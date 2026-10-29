@@ -52,6 +52,37 @@ Cluster runs cost real VSC credits. Installs change a shared environment. Ask fi
 On 26-10-2026 Andreas authorized agents to push reviewed and validated changes themselves.
 Keep scientific recipe changes subject to explicit agreement; a push is not permission to submit cluster work.
 
+### VSC access, storage and campaign changes
+
+Follow the current [template access and storage policy](docs/TEMPLATE.md#vsc-access-windows-and-agents)
+and [CreditPFN migration status](docs/VSC.md#access-storage-policy-and-migration-status).
+Authentication is manual: Andreas runs `step ssh login --context VSC` in Windows PowerShell
+and approves KU Leuven Authenticator. Reuse the existing Windows SSH agent and native Windows
+OpenSSH. Check certificate validity when access is needed; request that command only if the
+certificate is unavailable or expired. Never initiate authentication, install another SSH setup,
+export credentials or create renewal reminders.
+
+For relevant authorized work, inspect VSC files, logs, results, quotas and jobs directly.
+Use the template's LF-script-over-stdin connection with strict host-key checking and no trailing
+remote command. Verify an output marker and the actual exit status; empty exit-zero output is
+not execution evidence. The 29-10 gateway check needed `exec 2>&1` inside the remote script to
+retain error output; verify both test markers through the combined stream. Keep bounded metadata
+reads on login nodes and authorized computational debugging in Slurm allocations. Distinguish
+local validation from real CPU/GPU acceptance.
+
+The actual checkout and `.git` belong on DATA. Large persistent assets, model caches and immutable,
+versioned SIF runtime images belong on approved PROJECT storage; temporary work belongs on native
+scratch. Do not move an installed environment: recreate it from recorded specifications in a
+container and validate before cutover. Match intensive I/O to the compute filesystem, stage only
+the required working set, publish recovery state durably, and never blanket-delete scratch.
+
+The current Conda-on-DATA runtime and older throttled launchers are **migration debt**, not approved
+defaults for a new campaign. Read the migration status before deployment. Preserve source, runtime,
+inputs, receipts and recovery state used by active, queued or resumable jobs. Explain and obtain
+agreement for migration, installations, cleanup or new workloads before executing them. Future
+launchers submit independent work without artificial running caps; real validation and data
+dependencies, live site admission limits and measured per-task resources still apply.
+
 ## 5. Windows PowerShell 5.1 — no `&&`
 
 No `&&`, no ternary, no `??`. One command per line, or `;` with `if ($?) { ... }`:
@@ -117,9 +148,11 @@ anything is finished.
   a local commit alone is not deployed there. Do not change cluster files used by active jobs.
 - **No secrets, credentials, private dataset contents or large log excerpts** in any document —
   both dated logs included, since both are tracked.
-- **Check which environment you are in.** Locally `.venv/Scripts/python.exe`; on the cluster the
-  conda env named `CreditPFN`, printed as `Active conda env:` in every job log. An active
-  virtualenv silently beats `conda activate` (`AGENTS_MEMORY.md`, 05-08-2026).
+- **Check which environment you are in.** Locally `.venv/Scripts/python.exe`. Existing cluster
+  evidence uses the `CreditPFN` Conda environment, printed as `Active conda env:`; this runtime
+  remains preserved pending the PROJECT-container migration. Future runtime acceptance must
+  record the SIF digest, actual interpreter and package versions. An active virtualenv can
+  silently shadow Conda (`AGENTS_MEMORY.md`, 05-08-2026); never infer the interpreter from a prompt.
 - **Output directory:** `output CreditPFN/<experiment>/` is the user's required name on both storage tiers, a deliberate deviation from the template's generic `output/`. Preserve the space and experiment layer; quote shell paths. Use `src/utils/paths.py`. Detailed training diagnostics and results go to project storage; logs/small manifests to DATA. Weights retain `checkpoints/trained/<experiment>/`.
 - **Keep cluster debugging on VSC.** Read Downloads in place when asked; do not copy its files
   into the repository. The user downloads the completed campaign at the final analysis stage.

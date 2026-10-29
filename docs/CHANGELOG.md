@@ -2,6 +2,7 @@
 
 ## 29-10-2026
 
+- Adopt manual shared-agent VSC access and PROJECT-container policy; document verified deployment/storage gaps and an approval-dependent migration without changing campaigns.
 - Add isolated TabPFN v2/v2.6 coverage for experiments 4–8, native adapters, model-specific caps, one-command VSC validation/research submission, scoped cleanup and notebook reporting.
 - Verify refreshed prediction exports, snapshot checksums and notebook indexes; update superseded TabICL findings in the research brief.
 - Handle Windows read-only files/directories in family-result cleanup; retain failures for locks, links and other permission errors.

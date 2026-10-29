@@ -8,9 +8,103 @@ submission/resume steps and run evidence in this file or the project's own run l
 Check [upstream review flags](../vsc-library/UPSTREAM_CHANGES.md) and the
 [live Leuven status](https://status.vscentrum.be/tier2_leuven.html) before applying a changed policy.
 
-Scientific choices live in [RESEARCH_BRIEF.md](RESEARCH_BRIEF.md); completed cluster evidence lives in [AGENTS_MEMORY.md](AGENTS_MEMORY.md). Commands here are Bash on VSC unless labeled PowerShell. Use the `CreditPFN` conda environment and `$VSC_DATA/CreditPFN` checkout. Local tests cannot certify the installed B200 runtime.
+Scientific choices live in [RESEARCH_BRIEF.md](RESEARCH_BRIEF.md); completed cluster evidence lives in [AGENTS_MEMORY.md](AGENTS_MEMORY.md). Commands here are Bash on VSC unless labeled PowerShell. The actual checkout is `$VSC_DATA/CreditPFN`. Existing campaign commands below describe the preserved `CreditPFN` Conda runtime; they are not yet the new container workflow. Local tests cannot certify the installed B200 runtime.
 
 Operational reference: the independent VSC Library linked above; apply current Leuven rules, and inspect account/QoS limits and storage quota live.
+
+## Access, storage policy and migration status
+
+The local template matches the canonical template byte-for-byte on 29-10-2026
+(SHA-256 `285c7c321b2cd52d8d415e30f41fe775ceb47113f39007c2490fdb0ec23fc8d8`).
+No further template copy was needed. Infrastructure guidance is pinned at VSC Library
+`0ed4ffa89d312b9bb6411681b6a14f81672439f3`. The project's figure layout, ICML widths
+and `output CreditPFN/<experiment>/` names remain the documented template deviations.
+
+### Authentication and direct inspection
+
+Andreas authenticates manually in Windows PowerShell when a certificate is needed:
+
+```powershell
+step ssh login --context VSC
+```
+
+Approve KU Leuven Authenticator, then reuse the existing Windows SSH agent across projects.
+An agent must not initiate this login, install another SSH client/agent, reconfigure a
+project-specific identity, export credentials or schedule authentication reminders. Check the
+loaded certificate's actual validity before access; an expired/missing certificate requires
+the manual command above. Network, host-key and permission failures require their own diagnosis.
+
+Use the [template's tested native OpenSSH transport](TEMPLATE.md#vsc-access-windows-and-agents):
+`C:\Windows\System32\OpenSSH\ssh.exe`, `-F none -T`, batch mode, strict known-host checking,
+bounded connection timeouts and an LF Bash script supplied on stdin, with **no trailing remote
+command**. The 29-10 probe returned the expected output marker and exit 7, but did not deliver
+the error-stream marker until the remote script started with `exec 2>&1`. This explicitly
+combines the streams; do not claim they were verified separately. Subsequent read-only scripts
+used `exec 2>&1`, `set -eu`, start/completion markers and verified exit status. Empty exit-zero
+output is never proof that a remote command ran. No certificate or key material is stored here.
+
+Inspect this project's files, bounded logs/manifests, live queues and storage directly when
+relevant. Use login nodes for lightweight metadata and scheduler queries only. Large inventories,
+hashing, tests and computational debugging require an authorized Slurm allocation. Report which
+checks were local and which actually ran on VSC; a passing local test cannot replace a GPU gate.
+
+### Verified current state and required changes
+
+Read-only inspection at 15:39 CET on 29-10-2026 found both controller queues empty.
+This is a snapshot: recheck before any deployment or migration.
+
+| Component | Verified current implementation | Required policy / outstanding work |
+|---|---|---|
+| Checkout and `.git` | Both resolve to DATA, not a PROJECT symlink | Keep all Git operations there |
+| Deployed source | VSC `7988e7a`; local checkout has newer extensions and policy docs | Review local changes, then deploy only after checking jobs/recovery; no remote pull was performed |
+| Libraries | VSC's TFM checkout differs from its recorded pin; VSC Library is uninitialized there | Preserve/review any library-local work before aligning to the selected commit; never reset it blindly |
+| Runtime | Existing `miniconda3/envs/CreditPFN` on DATA | Recreate the recorded environment in an immutable, versioned SIF on PROJECT; CPU/GPU acceptance before cutover |
+| Persistent cache | DATA `.cache/creditpfn` fallback | Durable model assets on PROJECT; disposable per-job caches on native scratch |
+| Large assets | Existing `/lustre1/project/stg_00211/CreditPFN` contains data, checkpoints and output | Preserve it; verify destination allocation, bytes/inodes and protection before proposing a copy |
+| Root selection | `CREDITPFN_STAGING_ROOT` / `TABPFN_STAGING_ROOT`, plus the existing Lustre default | Add `CREDITPFN_PROJECT_ROOT` / `VSC_PROJECT_ROOT` aliases with explicit precedence and legacy compatibility during migration |
+| Native I/O | Mindwell uses prepared GPFS scratch inputs for Lustre-resident canonical assets | Use native PROJECT directly when appropriate; stage only required cross-filesystem inputs |
+| Submission | New extension arrays are unthrottled; older launchers use `%4` and a 16-slot pool | Remove artificial limits from future launchers; preserve real gates and live site admission checks |
+| Resources | Existing scripts often combine `--cpus-per-task` and `--mem` | Review against current Leuven guidance; verify partition defaults and actual allocated memory before changing requests |
+
+The absence of `/gpfs1/project/stg_00211/CreditPFN` in this inspection does not establish
+whether another GPFS allocation is available. Do not invent an allocation path or assume the
+generic `VSC_PROJECT_GPFS1` variable grants one. PROJECT is not automatically backed up.
+The same inspection reported DATA usage of 56,233/76,800 MiB and 531k/10,000k files;
+the shared Lustre allocation used 538.2 GiB/1 TiB and 45,343/150,000 files. These are
+account/allocation totals, not this project's isolated footprint; refresh both quotas
+before sizing a migration. Both scratch tiers still contain CreditPFN working directories.
+The PROJECT SIF requirement is the user's chosen template policy; the VSC library also describes
+site-supported Conda-on-DATA setups, which does not override that project policy.
+
+### Migration sequence — not executed
+
+The smallest proposed change keeps the current large assets on the existing Lustre PROJECT
+allocation, adds the immutable runtime image there, and stages the required image/inputs to
+native GPFS scratch for Mindwell. This does not require assuming a new GPFS PROJECT allocation
+or moving the completed campaign. Any shared read-only staging needs content verification and
+ownership for all consumers; writable caches remain isolated. Confirm capacity before building.
+
+1. Recheck jobs, pending submitters and recoverable trials. Record source/library pins, environment
+   specification, approved storage roots, ownership and both byte/file quotas. Keep old receipts.
+2. Agree on the PROJECT destination and immutable container build. Recreate from recorded versions;
+   do not move the installed Conda tree or upgrade numerical packages incidentally. Keep a rollback.
+3. Add explicit root aliases, SIF execution/binds, native per-job scratch/cache paths and resource
+   selection. Invalid/unwritable large-asset roots must fail, never redirect writes to DATA.
+   Validate finite predictions, save/reload, adapters and interrupted recovery on the
+   actual CPU/GPU runtime through isolated experiment-0 outputs. Bind new receipts to the SIF digest.
+4. Verify any authorized asset copy against manifests before cutover. Retain original checkpoints,
+   predictions and their provenance. A new runtime must not overwrite or retroactively certify
+   the completed campaigns; use fresh identities for new computation.
+5. Submit independent ready tasks together without a running cap, retaining genuine `afterok`
+   dependencies. Inspect live admission/array/resource limits; refill only known capacity refusals.
+   Stop on ambiguous submission or generic resource/QoS errors instead of risking duplicate jobs.
+6. After verified durable publication and confirmation that no queued, active or resumable job
+   needs them, propose cleanup of exact owned scratch workspaces. Never blanket-clean scratch,
+   delete recovery state merely because the queue is empty, or silently retire the old environment.
+
+No environment/data migration, scratch cleanup, runtime/configuration change or cluster workload
+was executed for this policy adoption. The activation and submission recipes below are retained
+as historical/recovery documentation until the approved migration is implemented and accepted.
 
 ## TabPFN v2/v2.6 extension
 
@@ -113,7 +207,7 @@ CreditPFN conda environment. The local test suite checks the logic, while the B2
 checks the actual installed numerical backend. Infrastructure reference for these
 wrappers: read-only VSC Library pin `3a04134ab7786dc4158a389ac685acfe7b77b62b`.
 
-After committing/pushing the local changes yourself, on VSC:
+After reviewed, validated changes are pushed and the deployment conditions above are met, on VSC:
 
 ```bash
 cd "$VSC_DATA/CreditPFN"
@@ -450,7 +544,7 @@ All batch files use Leuven's login-shell header, explicit controller/partition/a
 
 Every batch activation resets native numerical thread pools to that job's CPU allocation. Training then reserves one core per data worker and limits the main process to the remainder, respecting narrower CPU affinity. XGBoost and CatBoost fitting, pools and predictions also honor the allocation. This matters for two-core CPU audits as well as GPU jobs, and prevents inherited thread settings from crossing CPU/GPU workflow stages. Logs retain per-task/per-node CPU counts, host-memory settings and allocated GPU IDs (`gpus=0` means device index zero); `sacct` remains the source for actual allocated/billed resources. Host-memory requests can cause Slurm to allocate and charge additional CPU cores on wICE: reduce them only after observing peak memory.
 
-`GLOBAL_CONCURRENCY` defaults to 16 per controller for jobs submitted through the bounded launcher. `THROTTLE` defaults to four per array. This does not cap unrelated projects or combine both controllers. Shared lane reservations can leave capacity idle behind stragglers; inspect throughput before expanding them. The 450 queued-task headroom is provisional against historical limits; verify live QOS. Shorter realistic requests improve [backfill opportunities](https://slurm.schedmd.com/sched_config.html), not guaranteed priority.
+The **legacy** bounded launcher defaults to `GLOBAL_CONCURRENCY=16` per controller and `THROTTLE=4` per array. These are implementation debt under the new speed-first policy, not recommended defaults for new campaigns. Shared lane reservations can leave capacity idle behind stragglers. The historical 450 queued-task headroom is not a verified current site limit. Future launchers must inspect live admission limits and avoid artificial running caps; shorter realistic requests improve [backfill opportunities](https://slurm.schedmd.com/sched_config.html), not guaranteed priority. Preserve an existing campaign's scheduler state until its work and recovery requirements are reconciled.
 
 The pool's `afterany` dependencies are capacity reservations, including between unrelated experiments. They wait for the preceding **whole array** to terminate, not just one task. A single held element can therefore block several later arrays even though other elements completed; a main benchmark may wait behind sampling training for this reason. Trace the chain to its first held element and release that existing element once rather than cancelling downstream work or clearing pool state. Inspect both controller queues: independent wICE CPU work can finish while Mindwell is blocked. A Slurm retrieval hold occurs before the batch script can open its application log. Existing `END exit_code=0` logs from earlier requeue attempts do not establish trial completion; require the final manifest outcome and checkpoint audit.
 
