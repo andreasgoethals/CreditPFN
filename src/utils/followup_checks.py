@@ -1,4 +1,4 @@
-"""Isolated experiment-0 gates for experiments 4–7; never submits production work."""
+"""Isolated experiment-0 gates for public experiments 5 and 8–10; never submits production work."""
 from __future__ import annotations
 
 import argparse
@@ -43,7 +43,7 @@ def folder(identifier):
 def require_gate(identifier=None):
     identifier = identifier or os.environ.get("CREDITPFN_FOLLOWUP_GATE", "")
     if not identifier:
-        raise RuntimeError("Experiments 4–7 require CREDITPFN_FOLLOWUP_GATE from completed experiment-0 follow-ups")
+        raise RuntimeError("Experiments 5 and 8–10 require CREDITPFN_FOLLOWUP_GATE from completed experiment-0 follow-ups")
     for stage in ("smoke", "capacity"):
         for task in range(4):
             result = json.loads((folder(identifier) / f"{stage}_{task}.json").read_text(encoding="utf-8"))

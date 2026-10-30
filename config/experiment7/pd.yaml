@@ -1,4 +1,4 @@
-# Experiment 3: One-sample, full-pass and accumulation comparison.
+# Experiment 7: One-sample, full-pass and accumulation comparison.
 # Descriptive credit-domain continued pretraining. Delta over config/train.yaml.
 track: pd
 seed: 42

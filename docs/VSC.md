@@ -62,9 +62,10 @@ requires fresh runtime acceptance and all 80 extension checks, not reuse of pass
 The frozen DATA checkout `CreditPFN-study-v2` at `4bf45351075b3722d85a366da22b8df5f2322f75`
 remains necessary to audit/publish the original `study20261029` refresh under its own source identity.
 Do not update it or rebind its receipts. The normal DATA checkout can be updated only after its
-own consumers are absent. Its previously mismatched TFM checkout and uninitialized VSC Library
-must be verified and synchronized to the parent Git pins before reuse. Inspect local submodule
-changes before updating; both libraries are read-only from this project.
+own consumers are absent. Canonical DATA deployed source `4ac75c3` on 30-10-2026, with TFM
+`26156f3` and VSC Library `0ed4ffa` both verified clean at the parent Git pins. Fresh runtime
+acceptance is still required for this source. Inspect submodule changes before future updates;
+both libraries are read-only from this project.
 
 ## Public numbering and recorded campaign identities
 
@@ -192,6 +193,9 @@ checkpoints, `.resume.pt` files and trial manifests must be preserved until term
 ## Cleanup and controlled cache lifetime
 
 The user approved scoped disposable-cache cleanup and cache-policy tests on 30-10-2026.
+Verified retirement jobs `11755971` / `62475830` removed 137.7 GiB from 466 successful GPFS job
+caches and two empty Lustre caches. Six failed GPFS caches remain protected. Exact inventories
+and removal receipts live in DATA `experiment0/manifests/storage_review/`.
 `job_cache.py` creates an exclusively owned job/restart directory, preferring node-local scratch
 and falling back to the native cluster scratch. NVIDIA, Triton, matplotlib and other library caches
 are confined there. Successful jobs remove only their verified owned directory; failed jobs retain

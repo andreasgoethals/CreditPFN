@@ -45,7 +45,7 @@ def clean(identifier, experiment="all", *, apply=False):
     for path in chosen:
         validate_tree(path)
     figures, metadata = publication_files(identifier, experiment)
-    # Gate receipts are inputs to all production jobs; E6 is E7's shared control.
+    # Gate receipts are inputs to all production jobs; public E8 is E9's shared control.
     protected = [4, 5, 6, 7, 8] if experiment == "0" else [7] if experiment == "6" else []
     for dependent in protected:
         if any(path.is_dir() and any(path.rglob("*")) for path in targets(identifier, str(dependent))):

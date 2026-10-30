@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Isolated controls for experiments 4–7. No production training is submitted.
+# Isolated controls for public experiments 5 and 8–10. No production training is submitted.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
 export CREDITPFN_EXPERIMENT=experiment0

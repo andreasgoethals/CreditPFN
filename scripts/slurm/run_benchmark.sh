@@ -46,7 +46,7 @@ names = (['pd.yaml'] if experiment == 'experiment6' else ['pd_rows2048.yaml', 'p
          if experiment == 'experiment7' else ['pd.yaml', 'lgd.yaml'])
 from src.utils.study_layout import config_folder
 paths = [Path(config_folder(experiment)) / name for name in names]
-# The shared anchor is benchmarked once in experiment 6, not retrained/copied here.
+# The shared anchor is benchmarked once in experiment 8, not retrained/copied here.
 if experiment == 'experiment7' and not dry:
     paths.append(Path('config/experiment8/pd.yaml'))
 for path in paths:

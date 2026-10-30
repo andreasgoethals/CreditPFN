@@ -172,11 +172,11 @@ Processed LGD target distributions, four datasets per page. Bars show fractions 
 
 **[general__02_processed_data__11_partitions_lgd_1](general/general__02_processed_data__11_partitions_lgd_1.pdf)** — `partitions_lgd_1`
 
-Membership of datasets in the four fixed held-out partitions used by experiments 1–3. Each dataset is held out once; the complementary datasets form that partition's adaptation corpus. These are dataset partitions, distinct from outer evaluation folds within a dataset.
+Membership of datasets in the four fixed held-out partitions used by the shared E1/E3/E4 factorial, E2 seed study and E7 sampling study. Each dataset is held out once; the complementary datasets form that partition's adaptation corpus. These are dataset partitions, distinct from outer evaluation folds within a dataset.
 
 **[general__02_processed_data__12_partitions_pd_1](general/general__02_processed_data__12_partitions_pd_1.pdf)** — `partitions_pd_1`
 
-Membership of datasets in the four fixed held-out partitions used by experiments 1–3. Each dataset is held out once; the complementary datasets form that partition's adaptation corpus. These are dataset partitions, distinct from outer evaluation folds within a dataset.
+Membership of datasets in the four fixed held-out partitions used by the shared E1/E3/E4 factorial, E2 seed study and E7 sampling study. Each dataset is held out once; the complementary datasets form that partition's adaptation corpus. These are dataset partitions, distinct from outer evaluation folds within a dataset.
 
 **[general__02_processed_data__13_planned_exposure_lgd_1](general/general__02_processed_data__13_planned_exposure_lgd_1.pdf)** — `planned_exposure_lgd_1`
 

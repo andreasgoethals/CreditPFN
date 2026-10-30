@@ -4980,7 +4980,7 @@ row,track,dataset,fold
 24,lgd,SBA Loans Case (LGD),4
 
 Figure: partitions_lgd_1
-Membership of datasets in the four fixed held-out partitions used by experiments 1–3. Each dataset is held out once; the complementary datasets form that partition's adaptation corpus. These are dataset partitions, distinct from outer evaluation folds within a dataset.
+Membership of datasets in the four fixed held-out partitions used by the shared E1/E3/E4 factorial, E2 seed study and E7 sampling study. Each dataset is held out once; the complementary datasets form that partition's adaptation corpus. These are dataset partitions, distinct from outer evaluation folds within a dataset.
 Panel 1 / matrix 1
 CSV (first column: row index)
 row,Fold 1,Fold 2,Fold 3,Fold 4
@@ -4994,7 +4994,7 @@ PropLGD5,0,0,1,0
 SBA Loans Case (LGD),0,0,0,1
 
 Figure: partitions_pd_1
-Membership of datasets in the four fixed held-out partitions used by experiments 1–3. Each dataset is held out once; the complementary datasets form that partition's adaptation corpus. These are dataset partitions, distinct from outer evaluation folds within a dataset.
+Membership of datasets in the four fixed held-out partitions used by the shared E1/E3/E4 factorial, E2 seed study and E7 sampling study. Each dataset is held out once; the complementary datasets form that partition's adaptation corpus. These are dataset partitions, distinct from outer evaluation folds within a dataset.
 Panel 1 / matrix 1
 CSV (first column: row index)
 row,Fold 1,Fold 2,Fold 3,Fold 4
@@ -5127,17 +5127,17 @@ E1/E3/E4 reuse one 512-run factorial. E9 reuses E8’s exact large-table control
 
 Table: Four research questions and ten analyses
 CSV (first column: row index)
-row,experiment,rq,question,historical_sources,analysis
-0,1,1,Learning rate and training progress,experiment1,Full updates; L2-SP 0.003; all prescribed rates
-1,2,1,Training seed sensitivity,"experiment1, experiment2",Matched reference recipes at seeds 42 and 43
-2,3,2,L2-SP anchoring,experiment1,"Both L2-SP levels, matched within rate/base/scope; retain interaction"
-3,4,2,Backbone freezing,experiment1,Full/frozen at both L2-SP levels; retain interaction
+row,experiment,rq,question,result_sources,analysis
+0,1,1,Learning rate and training progress,shared/main_grid,Full updates; L2-SP 0.003; all prescribed rates
+1,2,1,Training seed sensitivity,"shared/main_grid, experiment2",Matched reference recipes at seeds 42 and 43
+2,3,2,L2-SP anchoring,shared/main_grid,"Both L2-SP levels, matched within rate/base/scope; retain interaction"
+3,4,2,Backbone freezing,shared/main_grid,Full/frozen at both L2-SP levels; retain interaction
 4,5,2,DiagScale recipe,experiment5,All prescribed rates; recipe-level evaluation
-5,6,2,LoRA recipe,experiment8,All prescribed rates; recipe-level evaluation
-6,7,3,Row exposure and update weighting,experiment3,"One sample, full pass and accumulation at equal updates"
-7,8,3,Training corpus composition,experiment6,All versus large PD tables at fixed episode size
-8,9,3,Episode size,"experiment6, experiment7",Fixed large-table corpus; shared 8192-row control
-9,10,4,Labeled target context,experiment4,Original/CPT and paired difference; fixed complete tests; five folds
+5,6,2,LoRA recipe,experiment6,All prescribed rates; recipe-level evaluation
+6,7,3,Row exposure and update weighting,experiment7,"One sample, full pass and accumulation at equal updates"
+7,8,3,Training corpus composition,experiment8,All versus large PD tables at fixed episode size
+8,9,3,Episode size,"experiment8, experiment9",Fixed large-table corpus; shared 8192-row control
+9,10,4,Labeled target context,experiment10,Original/CPT and paired difference; fixed complete tests; five folds
 
 Table: Unique training inventory
 CSV (first column: row index)
@@ -5943,7 +5943,7 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,experiment,arm,gpu_hours,part
 98,TabPFN v3,0.0001,0,False,one_sample,8,unavailable,5.3176355,4
 99,TabPFN v3,0.001,0,False,one_sample,8,unavailable,5.3269876,4
 
-4. Main findings
+4. Main findings and reading guide
 Reference recipe, TabICLv2: mean -0.158 pp AUC, median -0.058, 1/17 tables improved, 6 worse (original 0.7971 → adapted 0.7955).
 Reference recipe, TabPFN v2: mean +0.477 pp AUC, median +0.507, 16/17 tables improved, 0 worse (original 0.7789 → adapted 0.7837).
 Reference recipe, TabPFN v2.6: mean -0.002 pp AUC, median -0.009, 2/17 tables improved, 2 worse (original 0.7922 → adapted 0.7922).
@@ -5956,8 +5956,6 @@ TabICLv2, shared factorial averaged over anchoring and scope: LR 3e-07 -0.151, L
 TabPFN v2, shared factorial averaged over anchoring and scope: LR 3e-07 +0.241, LR 1e-06 +0.275, LR 1e-05 +0.213, LR 3e-05 -0.008 pp AUC.
 TabPFN v2.6, shared factorial averaged over anchoring and scope: LR 3e-07 -0.004, LR 1e-06 -0.013, LR 1e-05 -0.149, LR 3e-05 -0.243 pp AUC.
 TabPFN v3, shared factorial averaged over anchoring and scope: LR 3e-07 +0.050, LR 1e-06 -0.080, LR 1e-05 -1.430, LR 3e-05 -2.502 pp AUC.
-
-4. Reading the research-question notebooks
 RQ1 links learning rates with training-seed stability; RQ2 retains anchoring/freezing interactions and all adapter recipes; RQ3 separates sampling, corpus and episode effects; RQ4 shows original/CPT context curves and paired differences with fixed complete test rows. Numerical precision, table heterogeneity and overlapping training corpora bound the conclusions.
 
 Table: All primary named-table effects
@@ -9393,17 +9391,17 @@ E1/E3/E4 reuse one 512-run factorial. E9 reuses E8’s exact large-table control
 
 Table: Four research questions and ten analyses
 CSV (first column: row index)
-row,experiment,rq,question,historical_sources,analysis
-0,1,1,Learning rate and training progress,experiment1,Full updates; L2-SP 0.003; all prescribed rates
-1,2,1,Training seed sensitivity,"experiment1, experiment2",Matched reference recipes at seeds 42 and 43
-2,3,2,L2-SP anchoring,experiment1,"Both L2-SP levels, matched within rate/base/scope; retain interaction"
-3,4,2,Backbone freezing,experiment1,Full/frozen at both L2-SP levels; retain interaction
+row,experiment,rq,question,result_sources,analysis
+0,1,1,Learning rate and training progress,shared/main_grid,Full updates; L2-SP 0.003; all prescribed rates
+1,2,1,Training seed sensitivity,"shared/main_grid, experiment2",Matched reference recipes at seeds 42 and 43
+2,3,2,L2-SP anchoring,shared/main_grid,"Both L2-SP levels, matched within rate/base/scope; retain interaction"
+3,4,2,Backbone freezing,shared/main_grid,Full/frozen at both L2-SP levels; retain interaction
 4,5,2,DiagScale recipe,experiment5,All prescribed rates; recipe-level evaluation
-5,6,2,LoRA recipe,experiment8,All prescribed rates; recipe-level evaluation
-6,7,3,Row exposure and update weighting,experiment3,"One sample, full pass and accumulation at equal updates"
-7,8,3,Training corpus composition,experiment6,All versus large PD tables at fixed episode size
-8,9,3,Episode size,"experiment6, experiment7",Fixed large-table corpus; shared 8192-row control
-9,10,4,Labeled target context,experiment4,Original/CPT and paired difference; fixed complete tests; five folds
+5,6,2,LoRA recipe,experiment6,All prescribed rates; recipe-level evaluation
+6,7,3,Row exposure and update weighting,experiment7,"One sample, full pass and accumulation at equal updates"
+7,8,3,Training corpus composition,experiment8,All versus large PD tables at fixed episode size
+8,9,3,Episode size,"experiment8, experiment9",Fixed large-table corpus; shared 8192-row control
+9,10,4,Labeled target context,experiment10,Original/CPT and paired difference; fixed complete tests; five folds
 
 Table: Unique training inventory
 CSV (first column: row index)
@@ -10107,7 +10105,7 @@ row,base,learning_rate,l2sp_lambda,frozen,sampling,experiment,arm,gpu_hours,part
 90,TabPFN v3,0.0001,0,False,one_sample,8,unavailable,2.1202483,4
 91,TabPFN v3,0.001,0,False,one_sample,8,unavailable,2.111809,4
 
-4. Main findings
+4. Main findings and reading guide
 Reference recipe, TabICLv2: mean -0.0055 R², median -0.0023, 1/8 tables improved, 5 worse (original 0.5319 → adapted 0.5264).
 Reference recipe, TabPFN v2: mean +0.0041 R², median +0.0013, 4/8 tables improved, 2 worse (original 0.4745 → adapted 0.4786).
 Reference recipe, TabPFN v2.6: mean -0.0832 R², median -0.0647, 1/8 tables improved, 7 worse (original 0.5398 → adapted 0.4566).
@@ -10120,8 +10118,6 @@ TabICLv2, shared factorial averaged over anchoring and scope: LR 3e-07 -0.0024, 
 TabPFN v2, shared factorial averaged over anchoring and scope: LR 3e-07 +0.0014, LR 1e-06 -0.0003, LR 1e-05 -0.0355, LR 3e-05 -0.0690 R².
 TabPFN v2.6, shared factorial averaged over anchoring and scope: LR 3e-07 -0.0417, LR 1e-06 -0.0430, LR 1e-05 -0.0484, LR 3e-05 -0.0704 R².
 TabPFN v3, shared factorial averaged over anchoring and scope: LR 3e-07 -0.0207, LR 1e-06 -0.0422, LR 1e-05 -0.1635, LR 3e-05 -0.2139 R².
-
-4. Reading the research-question notebooks
 RQ1 links learning rates with training-seed stability; RQ2 retains anchoring/freezing interactions and all adapter recipes; RQ3 separates sampling, corpus and episode effects; RQ4 shows original/CPT context curves and paired differences with fixed complete test rows. Numerical precision, table heterogeneity and overlapping training corpora bound the conclusions.
 
 Table: All primary named-table effects
@@ -11629,9 +11625,9 @@ Historical artifact identities remain unchanged. Additional TabPFN v2/TabPFN v2.
 
 Table: Included scientific analyses
 CSV (first column: row index)
-row,experiment,rq,question,historical_sources,analysis
-0,1,1,Learning rate and training progress,experiment1,Full updates; L2-SP 0.003; all prescribed rates
-1,2,1,Training seed sensitivity,"experiment1, experiment2",Matched reference recipes at seeds 42 and 43
+row,experiment,rq,question,result_sources,analysis
+0,1,1,Learning rate and training progress,shared/main_grid,Full updates; L2-SP 0.003; all prescribed rates
+1,2,1,Training seed sensitivity,"shared/main_grid, experiment2",Matched reference recipes at seeds 42 and 43
 
 Table: PD unique training trials
 CSV (first column: row index)
@@ -24151,7 +24147,7 @@ RQ1: transfer and stability — final results
 DATA: no external source selected.
 Project: no external source selected.
 Missing project records are unavailable evidence, not zero effects or failed training.
-E1 learning rates and E2 training seeds are viewed together. E1 keeps full updates with L2-SP 0.003; RQ2 retains the complete factorial. Lines average complete training partitions and table cohorts. These are fixed-context monitors, not final five-fold benchmarks. Final evaluation averages five paired outer folds within table, then weights tables equally. AUC/R² gains are CPT minus original; Brier/RMSE gains reverse direction. RMSE gains here are relative percentages.
+E1 learning rates and E2 training seeds are viewed together. E1 keeps full updates with L2-SP 0.003; RQ2 retains the complete factorial. Final evaluation averages five paired outer folds within table, then weights tables equally. AUC/R² gains are CPT minus original; Brier/RMSE gains reverse direction. RMSE gains here are relative percentages.
 
 1. Coverage, protocols and unique evidence
 Training completion and benchmark completion are separate. All results retain their own matched original checkpoint. The current inference-policy table governs cross-study TabICL comparisons; a pending FP32 refresh is not published evidence.
@@ -25456,7 +25452,7 @@ row,experiment,study,approach,config,base,metric,tables,original,adapted,mean,me
 19,2,Seed 43,Full CPT,E2 Reference · seed 43,TabPFN v3,rmse,8,0.22270379,0.22557189,-0.014066049,-0.0071403847,-0.015506414,-0.0012273708,-0.062174673,0.0013440766,1,1,6,9,40,0.125
 
 3. What changes when a specific choice changes?
-Paired contrasts compare the same table and model. A positive contrast can mean less damage, not positive transfer. E2 compares seeds at the fixed reference; E7 compares sampling with one sample, E8 compares large with all tables, and E9 uses the exact shared 8,192-row control.
+Paired contrasts compare the same table and model. A positive contrast can mean less damage, not positive transfer. E2 compares training seeds 42 and 43 at the predefined reference recipe, on the same tables and evaluation folds.
 
 Table: PD matched choice differences: roc_auc
 CSV (first column: row index)
@@ -29750,11 +29746,11 @@ Historical artifact identities remain unchanged. Additional TabPFN v2/TabPFN v2.
 
 Table: Included scientific analyses
 CSV (first column: row index)
-row,experiment,rq,question,historical_sources,analysis
-2,3,2,L2-SP anchoring,experiment1,"Both L2-SP levels, matched within rate/base/scope; retain interaction"
-3,4,2,Backbone freezing,experiment1,Full/frozen at both L2-SP levels; retain interaction
+row,experiment,rq,question,result_sources,analysis
+2,3,2,L2-SP anchoring,shared/main_grid,"Both L2-SP levels, matched within rate/base/scope; retain interaction"
+3,4,2,Backbone freezing,shared/main_grid,Full/frozen at both L2-SP levels; retain interaction
 4,5,2,DiagScale recipe,experiment5,All prescribed rates; recipe-level evaluation
-5,6,2,LoRA recipe,experiment8,All prescribed rates; recipe-level evaluation
+5,6,2,LoRA recipe,experiment6,All prescribed rates; recipe-level evaluation
 
 Table: PD unique training trials
 CSV (first column: row index)
@@ -82237,10 +82233,10 @@ Historical artifact identities remain unchanged. Additional TabPFN v2/TabPFN v2.
 
 Table: Included scientific analyses
 CSV (first column: row index)
-row,experiment,rq,question,historical_sources,analysis
-6,7,3,Row exposure and update weighting,experiment3,"One sample, full pass and accumulation at equal updates"
-7,8,3,Training corpus composition,experiment6,All versus large PD tables at fixed episode size
-8,9,3,Episode size,"experiment6, experiment7",Fixed large-table corpus; shared 8192-row control
+row,experiment,rq,question,result_sources,analysis
+6,7,3,Row exposure and update weighting,experiment7,"One sample, full pass and accumulation at equal updates"
+7,8,3,Training corpus composition,experiment8,All versus large PD tables at fixed episode size
+8,9,3,Episode size,"experiment8, experiment9",Fixed large-table corpus; shared 8192-row control
 
 Table: PD unique training trials
 CSV (first column: row index)
@@ -91496,7 +91492,7 @@ row,experiment,study,approach,config,base,metric,tables,original,adapted,mean,me
 11,3,Sampling,Full CPT,E7 One sample,TabPFN v3,rmse,8,0.22270379,0.23509739,-0.053774009,-0.0068596014,-0.017154444,-0.0027954002,-0.37654923,0.0013245856,1,1,6,10,40,0.125
 
 3. What changes when a specific choice changes?
-Paired contrasts compare the same table and model. A positive contrast can mean less damage, not positive transfer. E2 compares seeds at the fixed reference; E7 compares sampling with one sample, E8 compares large with all tables, and E9 uses the exact shared 8,192-row control.
+Paired contrasts compare the same table and model. A positive contrast can mean less damage, not positive transfer. E7 compares sampling with one sample, E8 compares large with all tables, and E9 uses the exact shared 8,192-row control.
 
 Table: PD matched choice differences: roc_auc
 CSV (first column: row index)
@@ -96043,7 +96039,7 @@ rq3/02_results: 8 figures -> output CreditPFN/figures/rq3
 ## rq4/01_context_curves
 
 ```
-Experiment 10: labeled context and the value of CPT
+RQ4 (E10): labeled context and the value of CPT
 
 0. Evidence and scope
 DATA: no external source selected.

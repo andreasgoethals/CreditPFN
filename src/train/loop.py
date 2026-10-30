@@ -1785,7 +1785,7 @@ def train_one_config(
     # the same operation in both families: freeze the repeated-block transformer stack that
     # holds the bulk of the parameters, train the embedders / label encoder / head around
     # it. One implementation, `src/train/freeze.py`. Set `cfg.lora.enabled: true` to get
-    # Legacy PEFT is separate from experiment 8's explicit native LoRA mode.
+    # Legacy PEFT is separate from public experiment 6's explicit native LoRA mode.
     #
     # Tracks whether ADAPTERS were inserted, which is NOT the same question as whether the
     # frozen arm was selected. Adapter-factor anchoring is not effective-weight anchoring.

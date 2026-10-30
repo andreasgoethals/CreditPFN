@@ -153,7 +153,7 @@ def inspect_gate(identifier):
 def require_gate(identifier=None):
     identifier = identifier or os.environ.get("CREDITPFN_LORA_GATE", "")
     if not identifier:
-        raise RuntimeError("Experiment 8 requires CREDITPFN_LORA_GATE from completed experiment-0 LoRA checks")
+        raise RuntimeError("Experiment 6 requires CREDITPFN_LORA_GATE from completed experiment-0 LoRA checks")
     workflow, receipts = _complete_gate(identifier)
     inspected = json.loads((folder(identifier) / "inspection.json").read_text(encoding="utf-8"))
     if inspected != {"schema": SCHEMA, "id": identifier, "passed": True,
@@ -231,7 +231,7 @@ def prepare(identifier=None):
     write_json(marker, {"schema": SCHEMA, "id": identifier, "kind": "creditpfn_lora", "prepared": False}, exclusive=True)
     limits = policy()
     inputs, files = {}, []
-    # Production plans live in experiment 8. Preparation records but never trains them.
+    # Production plans live under public experiment 6 (recorded campaign 8). Preparation records but never trains them.
     with workflow_scope(identifier):
         for track in ("pd", "lgd"):
             source = _source(track)

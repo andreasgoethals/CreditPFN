@@ -2,6 +2,7 @@
 
 ## 30-10-2026
 
+- Verify all 15 renamed reports, 133 PDF/inline/caption identities and complete summaries; repair UTF-8 labels without changing numerical evidence.
 - Align public config/launcher numbers with the ten analyses; derive Python layout from YAML and bind it to source identities.
 - Invalidate RQ/overview figures by campaign and extension ownership, preserving unrelated reports and the shared factorial.
 - Remove double caption renumbering and stale runbook paths; preserve immutable checkpoint/run identities.

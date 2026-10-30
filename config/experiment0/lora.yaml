@@ -1,4 +1,4 @@
-# Bounded correctness gates for experiment 8; separate from historical experiment 0.
+# Bounded correctness gates for public experiment 6; separate from historical experiment 0.
 target_updates: 6
 interrupt_after: 3
 row_cap: 128

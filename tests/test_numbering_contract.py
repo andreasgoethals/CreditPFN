@@ -87,3 +87,12 @@ def test_real_job_exit_removes_only_successful_owned_cache(tmp_path,exit_code):
     assert (peer/"keep").read_bytes()==b"peer"
     log=tmp_path/"output CreditPFN/experiment0/logs/cachetest_9000_r0.log"
     assert f"END exit_code={exit_code}" in log.read_text(encoding="utf-8")
+
+
+def test_notebook_sources_have_no_encoding_corruption():
+    # Catch accidental Windows default-decoding before it reaches plot titles.
+    artifacts = ("\u00c2\u00b7", "\u00c2\u00b2", "\u00e2\u20ac", "\ufffd")
+    for path in (ROOT / "notebooks").rglob("*.ipynb"):
+        nb=json.loads(path.read_text(encoding="utf-8"))
+        for cell in nb["cells"]:
+            assert not any(bad in "".join(cell["source"]) for bad in artifacts), path

@@ -46,7 +46,7 @@ def validate_config(cfg):
     extension = OmegaConf.select(cfg, "experiment.extension_id")
     allowed = {REFERENCE_ROWS} if kind == "corpus_policy" else ({2048, 10000, 11000} if extension else {2048, 26000})
     if cap not in allowed:
-        raise ValueError("Unexpected episode cap; the 8192-row reference belongs to experiment 6")
+        raise ValueError("Unexpected episode cap; the 8192-row reference belongs to experiment 8")
     data = OmegaConf.load("config/data.yaml").finetuning
     for base, *_ in grid:
         family = ("tabicl" if "tabicl-" in base else "v3" if "tabpfn-v3-" in base else
