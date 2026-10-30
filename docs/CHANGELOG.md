@@ -2,6 +2,7 @@
 
 ## 30-10-2026
 
+- Gate non-reentrant TabPFN v2 activation recomputation for the matched corpus/episode extensions with output, gradient, update and reload comparisons; preserve their rows, precision and recipes.
 - Bind extension gradient audits to the optimized training model, excluding inference-only monitor clones while checking exact adapter selection.
 - Isolate child Slurm environments from parent container markers and job-owned caches; retain strict runtime-arm validation.
 - Verify all 15 renamed reports, 133 PDF/inline/caption identities and complete summaries; repair UTF-8 labels without changing numerical evidence.

@@ -258,6 +258,10 @@ def capacity_training(identifier, case):
     import pandas as pd
     from src.train.config import load_train_config
     cfg = load_train_config(config_path=case["config"])
+    recomputation = None
+    if cfg.train.get("activation_checkpointing", False):
+        from src.utils.recompute_check import native_probe
+        recomputation = native_probe(cfg)
     gradient = run_training(identifier, case["config"], split=case["split"])
     row = audited(case["config"], case["split"])
     curve = training_dir(str(cfg.track), row["trial"] + ".trajectory.csv", experiment="experiment0")
@@ -266,7 +270,8 @@ def capacity_training(identifier, case):
         raise AssertionError("Production-shape probe did not finish its update budget")
     if case["full_episodes"] and frame.iloc[-1].processed_rows != case["rows"] * limits().capacity_updates:
         raise AssertionError("Training silently shortened the declared episode size")
-    return dict(audit=row, case=case, artifacts=[_binding(gradient), _binding(curve), _binding(row["path"])])
+    return dict(audit=row, case=case, recomputation=recomputation,
+                artifacts=[_binding(gradient), _binding(curve), _binding(row["path"])])
 
 
 def context_probe(case, *, capacity=False):

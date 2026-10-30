@@ -1038,6 +1038,7 @@ def _forward_one_member(
     X_qry: torch.Tensor,           # (n_qry, 1, F)  ALREADY PREPROCESSED
     cat_idx: list[int],
     outlier_removal_std: float | None,
+    activation_checkpointing: bool = False,
 ) -> torch.Tensor:
     """One forward pass through the live training model for ONE preprocessed
     ensemble member.
@@ -1068,11 +1069,14 @@ def _forward_one_member(
         [list(cat_idx)] if cat_idx else None
     )
 
-    pred_logits = model(
+    from src.train.activation import forward
+    pred_logits = forward(
+        model,
         combined_x,
         y_ctx.float(),
         only_return_standard_out=True,
         categorical_inds=cat_inds,
+        enabled=activation_checkpointing,
     )
     return pred_logits
 
@@ -1125,6 +1129,7 @@ def _ensemble_step_loss(
                        # circular import-time pull of tabpfn_preprocessing.
     *,
     criterion,
+    activation_checkpointing: bool = False,
 ) -> torch.Tensor:
     """One training-step loss for the N-estimator preprocessed batch.
 
@@ -1147,6 +1152,8 @@ def _ensemble_step_loss(
     Returns a scalar tensor. Finite microbatch gradients are averaged by
     the optimizer helper before clipping and stepping.
     """
+    if not isinstance(activation_checkpointing, bool):
+        raise ValueError("train.activation_checkpointing must be a boolean")
     members = batch.members
     is_classification = batch.task_type == "classification"
 
@@ -1159,6 +1166,7 @@ def _ensemble_step_loss(
             X_qry=m.X_query,
             cat_idx=m.categorical_idx,
             outlier_removal_std=m.outlier_removal_std,
+            **({"activation_checkpointing": True} if activation_checkpointing else {}),
         )                                      # (n_qry, 1, L)
 
         # Unscramble class permutation if any (classifier only).
@@ -1797,6 +1805,11 @@ def train_one_config(
         if use_lora or (l2sp_lambda is not None and float(l2sp_lambda) != 0):
             raise ValueError("Native LoRA cannot combine the frozen axis or L2-SP")
     family = model_family(base_checkpoint_config)
+    activation_checkpointing = cfg.train.get("activation_checkpointing", False)
+    if not isinstance(activation_checkpointing, bool) or (activation_checkpointing and family != "tabpfn"):
+        raise ValueError("Activation checkpointing requires a boolean and a TabPFN model")
+    if activation_checkpointing:
+        LOGGER.info("Non-reentrant activation recomputation enabled; rows, ensemble and precision unchanged")
     if family == "tabicl":
         from src.train.tabicl_model import load_tabicl_for_training
         model, tabicl_model_config = load_tabicl_for_training(
@@ -2709,6 +2722,7 @@ def train_one_config(
                 elif isinstance(batch, TabPFNEnsembleBatch):
                     loss = _ensemble_step_loss(
                         model, batch, criterion=criterion,
+                        activation_checkpointing=activation_checkpointing,
                     )
                 else:
                     pred_logits, y_target, _, _ = _forward(model, batch)
@@ -3222,6 +3236,7 @@ def train_one_config(
             # a checkpoint that doesn't record it can't be reproduced from
             # its own provenance. (Added 2026-08-04.)
             "n_estimators_finetune": int(n_estimators_finetune),
+            "activation_checkpointing": activation_checkpointing,
             "query_fraction":      query_fraction,
             "epoch_pass_mode":     pass_mode,
             # Swept since run-8. Without it in the provenance the eval cannot tell the

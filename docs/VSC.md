@@ -76,6 +76,20 @@ gradient checks to training optimizer creation, retaining exact parameter select
 numerical checks. Repeat fresh source-bound acceptance and the complete 80-case extension gate
 before research. Never deploy while consumers remain.
 
+Current retry `study20261030c` runs source `fc924571`: **1,279 local tests passed** (one existing
+skip), fresh CPU and all ten runtime GPU checks passed, and independent acceptance `11756638`
+passed. All twelve extension correctness cases `11756713` passed, including the four corrected
+DiagScale audits. Capacity array `11756714` finished with 67 passes and one GPU-memory failure:
+task 55, TabPFN v2 E9 PD / 10,000 rows / partition 3. Inspector `11756715` and controller
+`11756716` were automatically cancelled; no research was released. Preserve this evidence.
+The local correction uses non-reentrant activation recomputation for the matched v2 E8/E9
+configs, including the shared anchor; rows, members, precision and the objective remain fixed.
+The pinned native layer option uses reentrant checkpointing, which failed a strict local BF16
+gradient comparison; it is not used. Native model forwards instead use PyTorch's explicit
+`use_reentrant=False` path with RNG preservation. Paired output/gradient/update/reload checks and the complete capacity gate must pass under a
+fresh source identity before research. The correction passed 57 focused and 1,289 full local tests
+(one existing skip); this memory/runtime change is not yet VSC-accepted.
+
 The frozen DATA checkout `CreditPFN-study-v2` at `4bf45351075b3722d85a366da22b8df5f2322f75`
 remains necessary to audit/publish the original `study20261029` refresh under its own source identity.
 Do not update it or rebind its receipts. The normal DATA checkout can be updated only after its

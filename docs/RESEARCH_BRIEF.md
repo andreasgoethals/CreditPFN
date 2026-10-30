@@ -631,6 +631,13 @@ equal successful updates do not equalize compute or unique-row exposure.
 
 ### Validation and publication scope
 
+The TabPFN v2 additions to E8/E9 use non-reentrant activation recomputation, identically
+in the corpus-policy reference and both episode-size arms. This avoids retaining every layer's
+activations for both native model forwards at the 10,000-row limit; it changes the memory/compute trade-off, not the row cohort,
+ensemble size, precision, loss or optimizer. Original campaigns remain unchanged. The source-bound
+gate must verify paired FP32/BF16 outputs, gradients, updates and reload behavior before full-shape
+capacity checks pass. Record this implementation choice when comparing runtime costs.
+
 The isolated experiment-0 follow-up workflow first checks all four base/task combinations:
 zero-adapter identity, original-weight immutability, nonzero save/reload, cached prediction,
 three learning rates and uninterrupted versus interrupted/resumed updates. A tiny synthetic
@@ -721,7 +728,7 @@ not adding experiments until an average becomes positive:
 |---|---|---|
 | How do the adaptation knobs change transfer, retention and cost? | Complete experiment-1 paired benchmarks; prespecified factor contrasts; trajectories and failure coverage; experiments 2/7 as sensitivity checks | Describe this grid, corpus and horizon; do not promote the best tested recipe into an independently selected winner. |
 | Does CPT help when labeled context is scarce? | Experiment-4 paired curves with unchanged test rows and explicit dataset support at each context size | The fixed validation-label budget and inference views remain part of the evaluated protocol. |
-| What explains the observed response? | Adapter recipe (5), corpus policy (6) and episode budget (7), each compared with its matched control | Different recipes do not isolate only parameter count; corpus filtering changes composition; episode growth changes query exposure and compute too. |
+| What explains the observed response? | DiagScale/LoRA recipes (E5/E6), corpus policy (E8) and episode budget (E9), each compared with its matched control | Different recipes do not isolate only parameter count; corpus filtering changes composition; episode growth changes query exposure and compute too. |
 
 Before inspecting these new outcomes, keep the endpoint, reference arms and signs fixed: large
 minus all for experiment 8, and 2,048/26,000 minus 8,192 for experiment 9. Present paired AUC

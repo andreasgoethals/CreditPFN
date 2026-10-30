@@ -81,6 +81,12 @@ def configurations(identifier):
             cfg.experiment.update(extension_id=identifier, legacy_gate=True, lora_gate=False, followup_gate=False)
             cfg.tunable["classifier_base_paths" if track == "pd" else "regressor_base_paths"] = ["checkpoints/" + base_name(version, track)]
             cfg.train.max_rows_per_step = rows
+            # E9's v2 10k episodes exceed B200 memory on one real partition.
+            # Use native activation recomputation consistently in its E8 anchor
+            # and both E9 arms. Keep all rows, both members and the objective;
+            # strict shared-control matching and GPU equivalence gates remain.
+            if experiment in (6, 7) and version == "v2":
+                cfg.train.activation_checkpointing = True
             cfg.checkpoint.trained_dir = f"checkpoints/trained/experiment{experiment}/extensions/{identifier}"
             if experiment == 7:
                 cfg.experiment.reference_config = str(directory / f"e8_pd_{tag}.yaml")
