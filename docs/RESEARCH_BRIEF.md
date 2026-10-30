@@ -390,7 +390,7 @@ other standard prediction exports, including experiment 6 on 27-10, and all expe
 context SQLite tasks for nested contexts, context/validation/test disjointness, matched query
 cohorts and reproduced primary scores. Those older audits are distinct from the new re-score.
 Before reorganization, all 25 executed notebooks had complete ordered summaries and 227 matching inline figures/PDFs
-and captions, with no saved execution errors or orphan figures. The reorganized collection has 29 notebooks;
+and captions, with no saved execution errors or orphan figures. The compact RQ collection has 15 notebooks;
 its current execution and figure audit is recorded separately in AGENTS_MEMORY.md.
 Detailed evidence and historical recoveries remain in `AGENTS_MEMORY.md`. This audit establishes the original
 campaign baseline; it does not certify the approved new extension or inference refresh.

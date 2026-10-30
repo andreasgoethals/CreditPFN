@@ -211,24 +211,22 @@ def test_null_audit_canonicalizes_legacy_keys_but_checks_weights_and_borders(tmp
 
 def test_results_notebooks_save_paired_figures_and_use_real_brier_column(monkeypatch):
     import ast
-    paths = list(Path("notebooks/experiment1").glob("*_results_*.ipynb"))
-    assert len(paths) == 2
+    paths = list(Path("notebooks/rq1").glob("02_results.ipynb"))
+    assert len(paths) == 1
     for path in paths:
         notebook = json.loads(path.read_text(encoding="utf-8"))
         source = "\n".join("".join(cell["source"]) for cell in notebook["cells"] if cell["cell_type"] == "code")
         tree = ast.parse("\n".join(line for line in source.splitlines() if not line.startswith("%")))
         shown = [ast.unparse(node.args[1]) for node in ast.walk(tree)
                  if isinstance(node, ast.Call) and ast.unparse(node.func) == "cp.show" and len(node.args) >= 2]
-        assert "rv.plot_learning_rates(grid, TRACK)" in shown
-        assert "sy.plot_reference_tables(effects, TRACK)" in shown
-        assert "finish.plot_uncertainty(run)" in shown
-        assert source.index("rv.plot_learning_rates(grid, TRACK)") < source.index("finish.plot_uncertainty(run)")
-        if path.stem.endswith("_pd"):
-            assert "dg.plot_calibration_overview(run)" in shown
-        assert "ce.reference_profiles(run)" in source
-    for number in (3, 4):
-        notebook=json.loads(Path(f"notebooks/experiment{number}/02_results.ipynb").read_text(encoding="utf-8"))
-        assert "rv.plot_factorial" in "\n".join("".join(c["source"]) for c in notebook["cells"])
+        assert any(item.startswith('rq.plot_effects(') for item in shown)
+        assert any(item.startswith('sy.plot_reference_tables(') for item in shown)
+        assert "finish.plot_uncertainty(main)" in shown
+        assert source.index("rq.plot_effects(") < source.index("finish.plot_uncertainty(main)")
+        assert "dg.plot_calibration_overview(main)" in shown
+        assert "ce.reference_profiles(main)" in source
+    notebook=json.loads(Path("notebooks/rq2/02_results.ipynb").read_text(encoding="utf-8"))
+    assert "rq.plot_factorial" in "\n".join("".join(c["source"]) for c in notebook["cells"])
     # Metric selection lives in src, keeping the notebooks free of analysis logic.
     from src.visualize import choice_effects
     requested = []

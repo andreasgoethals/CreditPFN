@@ -195,7 +195,8 @@ def test_downloaded_compact_snapshot_is_read_without_import(tmp_path, monkeypatc
 
 def test_all_notebooks_are_thin_ordered_and_use_owned_savers():
     notebooks=sorted(Path("notebooks").rglob("*.ipynb"))
-    assert len(notebooks) == 29  # Separate L2-SP and freezing views share the original factorial.
+    assert len(notebooks) == 15  # RQ phases combine analyses without duplicating shared evidence.
+    assert {p.parent.name for p in notebooks} == {'experiment0','general','rq1','rq2','rq3','rq4'}
     for path in notebooks:
         nb=json.loads(path.read_text(encoding="utf8"))
         code=["".join(c["source"]) for c in nb["cells"] if c["cell_type"]=="code"]

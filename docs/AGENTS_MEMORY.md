@@ -2,8 +2,19 @@
 
 ## 30-10-2026
 
+- RQ notebook compaction validated locally: **15/15 notebooks, 133 figures** (previously 29/261); full suite **1,229 passed, one existing absent-manifest skip** in 10m17s. Visually reviewed all new/changed RQ and overview figures, including full-resolution label checks. Independently verified every PDF/inline/caption identity, all final summaries in `All_Results.md`, notebook schemas, execution counts, no embedded definitions and no orphan publication artifacts. Scientific result/checkpoint paths and the shared factorial are unchanged. These reports use the currently downloaded evidence; they do not claim the pending VSC FP32/context/extension work has passed or been published.
+- **Tried:** run the v2/v2.6 extension gate after local adapter-mapping tests passed.
+  **Result:** all four DiagScale training-entry checks failed; one LoRA case crashed without a Python traceback.
+  **Why:** the training loop retained a v3-only filename check. The native-crash cause remains unresolved; it must not be described as a numerical-prediction failure without evidence.
+  **Instead:** validate the actual loaded projection layout through the existing strict injector, add four production-entry regressions, enable fault-handler traces and use a fresh source-bound gate after deployment/acceptance. Never reuse stale successful receipts or change the scientific recipes to bypass the gate.
+- **Tried:** combine adapter prediction diagnostics under one RQ.
+  **Result:** report generation detected duplicate comparison labels for the three LoRA learning rates.
+  **Why:** the old label fallback identified every LoRA recipe as one-sample training; extension readers also depended on a temporary loader scope.
+  **Instead:** retain LoRA rate identity and resolve prediction roots in the configuration's explicit extension scope; regression tests cover both. Saved predictions are unchanged.
+
 | Run | Verified outcome | Scope |
 |---|---|---|
+| Mindwell `11753657`, extension smoke gate, source `4bf4535`, runtime `env20261029f` | Seven of twelve passed; cases 4–7 failed before training; case 9 exited 139 | All four context probes and three LoRA cases passed. The four DiagScale cases reached an obsolete v3-only training guard despite successful standalone adapter probes. LoRA LGD v2.6 crashed in a native process after saving the second reference checkpoint; its cause is not established. Inspector `11753862` and research controller `11753901` were cancelled; new extension research was not released. Preserve the failed gate and its recovery evidence. |
 | wICE `62473876`, FP32 benchmark preflight, accepted runtime `env20261029f`, source `4bf4535` | Completed, exit 0, 4m24s; **459 comparisons / 2,295 folds / 30,967,719 saved predictions** passed independent metric and cohort checks | Public E7/E8/E9 (historical campaigns 3/6/7): 228/99/132 comparisons. All 320 benchmark shards have successful completion receipts. Original results remain active; context checks and final publication are still pending. Submission and audit receipts are under canonical DATA `experiment0/manifests/study_v2/study20261029/benchmark-preflight*.json`. |
 
 - Final local validation of the migration read guard and runtime-selection/bootstrap changes: **1,211 passed, one existing absent-manifest skip**, with the final full rerun taking 12m30s. The final immutable-runtime seal and bootstrap input-staging checks also passed their focused 40-test run. The default activation now refuses implicit DATA Conda use; the explicit same-GPU comparator remains available, and the sealed Slurm submission bootstrap preserves its acceptance dependencies. These changes are not deployed into active VSC source `4bf4535`.

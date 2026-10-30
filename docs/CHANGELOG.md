@@ -2,6 +2,9 @@
 
 ## 30-10-2026
 
+- Compact 29 notebooks into 15 RQ/validation/general reports with paired cross-experiment figures and unchanged scientific storage.
+- Preserve distinct LoRA learning-rate labels and explicitly scoped extension predictions in combined diagnostics.
+- Remove the obsolete v3-only DiagScale training guard; validate loaded projections and expose native-crash traces in extension checks.
 - Independently verify all 459 refreshed FP32 benchmark comparisons; retain original publication until context and extension audits finish.
 - Keep sealed-runtime manifests immutable: revalidate unchanged images without rewriting, and reject same-version image, wrapper or environment drift.
 

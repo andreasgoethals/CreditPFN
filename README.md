@@ -54,6 +54,13 @@ The approved migration workflow gates actual work in this order: recorded contai
 
 ## Local notebooks and tests
 
+The 15 notebooks are organized by question rather than by individual experiment:
+`rq1/` combines E1/E2, `rq2/` E3–E6, `rq3/` E7–E9, and `rq4/` E10.
+RQ1–RQ3 each have `01_training` and `02_results`; RQ4 has `01_context_curves`.
+`experiment0/` retains four validation notebooks and `general/` the two corpus notebooks
+and PD/LGD overviews. This deliberate template deviation changes presentation folders only;
+scientific output, configuration and checkpoint identities keep the mapping above.
+
 From this repository in Windows PowerShell:
 
 ```powershell
@@ -68,7 +75,7 @@ Run every notebook in parallel, with live progress:
 
 The runner prevents overlapping runs, regenerates each notebook's own publication output, retires renamed notebooks' figures, embeds the figures in the executed notebooks and produces:
 
-- `output CreditPFN/figures/<public experiment>/`: publication-width PDFs and ownership metadata; corpus/overview figures use `general/`.
+- `output CreditPFN/figures/<notebook group>/`: publication-width PDFs and ownership metadata, grouped as `rq1`–`rq4`, `experiment0` and `general`.
 - `output CreditPFN/figures/CAPTIONS.md`: paper-ready descriptions, ordered by notebook and figure occurrence.
 - `output CreditPFN/All_Results.md`: every notebook's complete final printed summary, in filesystem order.
 

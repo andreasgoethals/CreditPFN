@@ -1843,8 +1843,8 @@ def train_one_config(
         effective_l2sp = l2sp_lambda if l2sp_lambda is not None else cfg.optimizer.l2sp_lambda
         if use_lora or lora_adapters_inserted or float(effective_l2sp) != 0:
             raise ValueError("DiagScale requires frozen_backbone=false, no LoRA and L2-SP=0")
-        if family == "tabpfn" and not Path(base_checkpoint_config).name.startswith("tabpfn-v3-"):
-            raise ValueError("DiagScale requires explicit TabPFN v3 weights")
+        # Injection validates the loaded architecture and every query projection.
+        # A filename-based v3-only check would reject the validated v2/v2.6 maps.
         inject(model, family=family, base_path=base_checkpoint_config,
                base_sha256=file_digest(base_checkpoint_path))
 

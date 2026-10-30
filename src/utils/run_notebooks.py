@@ -3,10 +3,10 @@
     python -m src.utils.run_notebooks                     every notebook, outputs written
                                                           back into the .ipynb
     python -m src.utils.run_notebooks --only general   corpus notebooks
-    python -m src.utils.run_notebooks --only experiment1  the main-sweep notebooks
+    python -m src.utils.run_notebooks --only rq1         transfer and stability notebooks
     python -m src.utils.run_notebooks --summaries-only    rebuild the two .md files only
 
-    output CreditPFN/figures/<experiment>/*.pdf        notebook-prefixed PDFs
+    output CreditPFN/figures/<notebook group>/*.pdf    notebook-prefixed PDFs
     output CreditPFN/figures/CAPTIONS.md                all captions in notebook order
     output CreditPFN/All_Results.md                     every notebook's printed summary, alphabetical
 

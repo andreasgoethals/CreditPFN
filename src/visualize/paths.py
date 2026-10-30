@@ -1,7 +1,22 @@
 """Publication paths, independent of the frozen cluster training-path contract."""
 from pathlib import Path
 
-from src.utils.paths import notebook_parts, outputs_dir
+from src.utils.paths import notebook_parts as legacy_notebook_parts, outputs_dir, EXPERIMENTS
+
+RQ_GROUPS = ("rq1", "rq2", "rq3", "rq4")
+PUBLICATION_GROUPS = (*EXPERIMENTS, *RQ_GROUPS)
+
+
+def notebook_parts(notebook: str) -> tuple[str, Path]:
+    """RQ publication groups do not change historical scientific path routing."""
+    path = Path(notebook)
+    if path.is_absolute() or ".." in path.parts or not path.parts:
+        raise ValueError("Notebook name must be a relative path without parent traversal")
+    if path.parts[0] in RQ_GROUPS:
+        if len(path.parts) < 2:
+            raise ValueError("RQ notebook name needs a filename")
+        return path.parts[0], Path(*path.parts[1:])
+    return legacy_notebook_parts(notebook)
 
 
 def figures_dir() -> Path:
@@ -24,7 +39,7 @@ def notebook_figures_dir(notebook: str) -> Path:
 
 
 def figure_prefix(notebook: str) -> str:
-    """Unique notebook ownership within an experiment folder."""
+    """Unique notebook ownership within a publication group."""
     group, name = notebook_parts(notebook)
     parts = (group, *name.parts)
     if len(parts) < 2 or any(not p or "__" in p or not all(

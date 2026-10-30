@@ -1,7 +1,7 @@
 """One publication tree, with disjoint notebook ownership and paper captions.
 
-PDFs: output CreditPFN/figures/<experiment>/<owner>__<NN>_<name>.pdf
-Metadata: output CreditPFN/figures/<experiment>/_metadata/<notebook>.json
+PDFs: output CreditPFN/figures/<group>/<owner>__<NN>_<name>.pdf
+Metadata: output CreditPFN/figures/<group>/_metadata/<notebook>.json
 
 Constructing a saver removes that notebook's previous figures, including the old
 folder layout. Other notebooks and scientific evidence are never cleared by it.
@@ -18,7 +18,8 @@ import matplotlib.pyplot as plt
 
 from src.utils.paths import REPO_ROOT, EXPERIMENTS, manifests_dir
 from src.utils.paths import figures_dir as legacy_figures_dir
-from src.visualize.paths import figures_dir, figure_prefix, notebook_figures_dir
+from src.visualize.paths import (figures_dir, figure_prefix, notebook_figures_dir,
+                                 notebook_parts, PUBLICATION_GROUPS)
 
 #: Vector already, but heatmaps and scatter clouds inside a PDF rasterise, so it still needs a
 #: print DPI.
@@ -31,7 +32,6 @@ MANIFEST = "_figures.json"
 
 
 def manifest_path(notebook: str) -> Path:
-    from src.utils.paths import notebook_parts
     _, name = notebook_parts(notebook)
     return notebook_figures_dir(notebook) / "_metadata" / f"{name.as_posix()}.json"
 
@@ -167,6 +167,10 @@ def clear_collection(notebooks: tuple[str, ...]) -> None:
     old_metadata = figures_dir() / "00_general" / "_metadata"
     owners.update("general/" + p.relative_to(old_metadata).with_suffix("").as_posix()
                   for p in old_metadata.rglob("*.json"))
+    for group in PUBLICATION_GROUPS:
+        root = notebook_figures_dir(f"{group}/placeholder") / "_metadata"
+        owners.update(group + "/" + p.relative_to(root).with_suffix("").as_posix()
+                      for p in root.rglob("*.json"))
     for group in EXPERIMENTS:
         for root in (manifests_dir(group) / "figures",
                      notebook_figures_dir(f"{group}/placeholder") / "_metadata"):

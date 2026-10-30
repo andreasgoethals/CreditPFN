@@ -203,11 +203,11 @@ def test_lora_figures_preserve_values_geometry_and_native_losses(tmp_path):
 
 def test_lora_notebooks_are_thin_and_end_with_complete_summary():
     for stem in ("01_training", "02_results"):
-        path = Path("notebooks/experiment8") / (stem + ".ipynb")
+        path = Path("notebooks/rq2") / (stem + ".ipynb")
         notebook = json.loads(path.read_text(encoding="utf8"))
         code = ["".join(cell["source"]) for cell in notebook["cells"] if cell["cell_type"] == "code"]
         assert code[-1].strip() == "print(report.summary(sink))"
-        assert f"FigureSaver('experiment8/{stem}')" in "\n".join(code)
+        assert f"FigureSaver('rq2/{stem}')" in "\n".join(code)
         for source in code:
             tree = ast.parse("\n".join(line for line in source.splitlines() if not line.startswith("%")))
             assert not any(isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)) for node in ast.walk(tree))

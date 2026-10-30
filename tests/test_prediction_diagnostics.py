@@ -80,6 +80,37 @@ def test_receipts_and_folds_are_required(tmp_path, monkeypatch):
     assert result.empty and coverage.status.eq("unavailable").all()
 
 
+def test_lora_rates_remain_distinct_in_combined_diagnostics(tmp_path, monkeypatch):
+    run = fixture(tmp_path, monkeypatch)
+    original = run.evaluation[run.evaluation.source.str.endswith('-untuned')]
+    trained = run.evaluation[run.evaluation.source.str.endswith('-trained')]
+    run.evaluation = pd.concat([original, *[trained.assign(adaptation_mode='lora', lr=rate,
+        method_dirname=f'lora_lr{rate}') for rate in (1e-5,1e-4,1e-3)]],ignore_index=True)
+    result, coverage = pred.analyze(run)
+    assert len(result) == 3 and coverage.status.eq('verified').all()
+    assert set(result.arm) == {'LoRA LR 1e-05','LoRA LR 0.0001','LoRA LR 0.001'}
+    # A second method with the same recipe/table is still rejected, not averaged.
+    duplicate = run.evaluation[run.evaluation.method_dirname.eq('lora_lr1e-05')].assign(method_dirname='duplicate')
+    run.evaluation = pd.concat([run.evaluation,duplicate],ignore_index=True)
+    with pytest.raises(ValueError,match='one held-out training partition'):
+        pred.analyze(run)
+
+
+def test_prediction_reader_uses_extension_identity_after_loading_scope_ends(tmp_path, monkeypatch):
+    import os
+    run = fixture(tmp_path,monkeypatch)
+    run.cfg.experiment = SimpleNamespace(extension_id='testscope')
+    observed=[]
+    def location(*args):
+        observed.append(os.environ.get('CREDITPFN_LEGACY_ID'))
+        return tmp_path
+    monkeypatch.setattr(pred,'analysis_location',location)
+    before=dict(os.environ)
+    pred._PredictionReader(run)
+    assert observed == ['testscope']
+    assert dict(os.environ) == before
+
+
 def test_missing_predictions_are_unavailable_not_zero(tmp_path, monkeypatch):
     run = fixture(tmp_path, monkeypatch)
     next(tmp_path.rglob("*.csv.gz")).unlink()

@@ -59,7 +59,7 @@ def size_arms(experiment, configuration, version):
     return ss.load_arms(experiment, configs=mapping)
 
 
-def studies(track):
+def studies(track, *, campaigns=None):
     """Add only the missing bases to the cross-experiment synthesis."""
     selection = selected()
     if selection is None:
@@ -67,6 +67,8 @@ def studies(track):
     configuration = configs(selection)
     result = []
     for experiment in (5, 6, 7, 8):
+        if campaigns is not None and experiment not in campaigns:
+            continue
         if track != "pd" and experiment in (6, 7):
             continue
         with scope(selection[1]["id"], f"experiment{experiment}"):

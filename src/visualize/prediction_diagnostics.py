@@ -9,6 +9,7 @@ from __future__ import annotations
 import io
 import json
 from pathlib import PurePosixPath
+from contextlib import nullcontext
 
 from matplotlib.lines import Line2D
 import numpy as np
@@ -65,7 +66,10 @@ def paired_values(original, adapted, track):
 class _PredictionReader:
     def __init__(self, campaign):
         group = group_for_run(str(campaign.cfg.run_name))
-        self.root = analysis_location(group, "results", results_dir(experiment=group))
+        extension = getattr(getattr(campaign.cfg, 'experiment', None), 'extension_id', None)
+        from src.utils.legacy_design import scope
+        with scope(str(extension), group) if extension else nullcontext():
+            self.root = analysis_location(group, "results", results_dir(experiment=group))
         self.track = campaign.track
         self.paths = {}
         for path in (self.root / self.track.upper()).rglob("*.csv"):
@@ -135,6 +139,8 @@ def _arm(row, reference):
         return "Reference CPT"
     if row.adaptation_mode == "diagscale":
         return f"Adapter LR {row.lr:g}"
+    if row.adaptation_mode == "lora":
+        return f"LoRA LR {row.lr:g}"
     return style.SAMPLING_LABELS.get(row.epoch_pass_mode, row.epoch_pass_mode)
 
 

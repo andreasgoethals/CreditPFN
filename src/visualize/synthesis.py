@@ -124,21 +124,24 @@ def table_effects(run, metric, *, experiment, arm=None, domain="credit"):
     return data
 
 
-def load_studies(track):
+def load_studies(track, *, campaigns=None):
     """Every completed research study for a track, excluding experiment-0 controls.
 
     Experiment 7 reuses experiment 6's large-table checkpoints as its 8,192-row arm;
     that arm enters once, as experiment 6's large-table policy.
     """
     from src.visualize import size_studies as ss
-    studies = [(1, None, cp.load_campaign(1, track)), (2, None, cp.load_campaign(2, track)),
-               (3, None, cp.load_campaign(3, track)), (5, None, cp.load_campaign(5, track))]
+    wanted = set(STUDIES if campaigns is None else campaigns)
+    studies = [(e, None, cp.load_campaign(e, track)) for e in (1, 2, 3, 5) if e in wanted]
     if track == "pd":
-        studies += [(6, arm, run) for arm, run in ss.load_arms(6).items()]
-        studies += [(7, arm, run) for arm, run in ss.load_arms(7).items() if arm != "8,192 rows"]
-    studies.append((8, None, cp.load_campaign(8, track)))
+        if 6 in wanted:
+            studies += [(6, arm, run) for arm, run in ss.load_arms(6).items()]
+        if 7 in wanted:
+            studies += [(7, arm, run) for arm, run in ss.load_arms(7).items() if arm != "8,192 rows"]
+    if 8 in wanted:
+        studies.append((8, None, cp.load_campaign(8, track)))
     from src.visualize.legacy_extensions import studies as extension_studies
-    studies.extend(extension_studies(track))
+    studies.extend(extension_studies(track, campaigns=wanted))
     return studies
 
 
@@ -590,7 +593,7 @@ def plot_outcomes(data, track):
     fig.suptitle(f"{track.upper()}: tables improved, unchanged or worse")
     band = style.TIE_BAND[metric] * SCALE[metric]
     return [cp.Page("overview_outcomes", fig,
-        f"For the same arms as the distribution figure, the share of held-out credit tables whose paired "
+        f"For the predefined full/frozen reference and all prescribed follow-up arms, the share of held-out credit tables whose paired "
         f"{'AUC' if track == 'pd' else 'R²'} change relative to the original model exceeds +{band:g} "
         f"{'percentage points' if track == 'pd' else ''} (improved), lies within ±{band:g} (negligible) or falls below "
         f"−{band:g} (worse); numbers give improved/total tables. The ±{band:g} band is a reporting convention for this study, "

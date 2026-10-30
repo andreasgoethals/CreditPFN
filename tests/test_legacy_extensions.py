@@ -115,6 +115,39 @@ def test_legacy_query_scale_is_query_multiplier_only():
     assert torch.equal(scaled[:, 8:], original[:, 8:])
 
 
+@pytest.mark.parametrize("version", ["v2", "v2p6"])
+@pytest.mark.parametrize("track", ["pd", "lgd"])
+def test_training_entry_reaches_validated_legacy_diagscale(version, track, monkeypatch, tmp_path):
+    """Exercise the production entry point, not just the standalone adapter mapper."""
+    from src.train import loop
+    from src.utils import paths
+
+    cfg = design.configurations("entryprobe")[f"e5_{track}_{version}"]
+    cfg.device = "cpu"
+    cfg.train.dataloader_workers = 0
+    base = tmp_path / "base.ckpt"
+    base.write_bytes(b"mock checkpoint; the native loader is replaced below")
+    model = PerFeatureTransformer() if version == "v2" else TabPFNV2p6()
+    monkeypatch.setattr(paths, "resolve_base_checkpoint", lambda _: base)
+    monkeypatch.setattr(loop, "split_from_cfg", lambda *a, **kw: SimpleNamespace(
+        train=[SimpleNamespace(dataset_id="synthetic", n_rows=32)], test=[], summary={}))
+    monkeypatch.setattr(loop, "load_tabpfn_for_training", lambda *a, **kw: (model, None, None, None))
+    original = diagscale.inject
+
+    class InjectionVerified(Exception):
+        pass
+
+    def verify_injection(*args, **kwargs):
+        parameters = original(*args, **kwargs)
+        assert parameters and all(p.requires_grad for p in parameters)
+        assert model._creditpfn_adapter["base_sha256"]
+        raise InjectionVerified
+
+    monkeypatch.setattr(diagscale, "inject", verify_injection)
+    with pytest.raises(InjectionVerified):
+        loop.train_one_config(cfg)
+
+
 @pytest.mark.parametrize("mode", [lora, diagscale])
 def test_real_legacy_cache_preserves_adapted_predictions(mode):
     model = PerFeatureTransformer()

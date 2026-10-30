@@ -394,7 +394,7 @@ def test_reliability_examples_do_not_guess_unknown_sizes_or_change_full_view():
 
 def test_lgd_results_do_not_offer_classification_only_calibration_panels():
     root = Path(__file__).resolve().parents[1]
-    book = json.loads((root / "notebooks/experiment1/04_results_lgd.ipynb").read_text(encoding="utf-8"))
+    book = json.loads((root / "notebooks/rq1/02_results.ipynb").read_text(encoding="utf-8"))
     text = "\n".join("".join(cell.get("source", [])) for cell in book["cells"])
-    assert "5. Regression errors and prediction shifts" in text
+    assert "finish.plot_lgd_distribution(main)" in text
     assert "dg.plot_reliability" not in text and "pub.plot_thresholds" not in text
