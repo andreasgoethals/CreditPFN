@@ -167,6 +167,9 @@ def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
     provenances = {}
     trackers = []
     observed_rates = []
+    request_interruption = [False]
+    stop_marker = tmp_path / "batch-warning.requested"
+    monkeypatch.setenv("CREDITPFN_STOP_REQUEST_FILE", str(stop_marker))
     simulated_allocation = [181_080_000_000]
     real_tracker = telemetry.CudaMemoryPeaks
 
@@ -230,23 +233,21 @@ def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
         result = original_step(model, optimizer, scaler, **kwargs)
         if result[1]:
             observed_rates[-1].append(applied)
+            if request_interruption[0] and len(observed_rates[-1]) == 3:
+                stop_marker.touch()
         return result
 
     monkeypatch.setattr(optimization, "step_mean_gradient", observe_step)
     expected_trajectory = []
     expected = loop.train_one_config(cfg, pass_mode=mode, save_path=tmp_path / "continuous.ckpt",
                                      on_trajectory_end=expected_trajectory.append)
-    real_save = recovery.save_recovery
-
-    def interrupt_after_three(*args, **kwargs):
-        real_save(*args, **kwargs)
-        if kwargs["progress"]["successful_updates"] == 3:
-            raise recovery.TrainingInterrupted("simulated allocation interruption")
-
-    monkeypatch.setattr(recovery, "save_recovery", interrupt_after_three)
+    # Exercise the real shell-marker branch, actual checkpoint save and exception,
+    # rather than injecting an interruption inside the serialization function.
+    request_interruption[0] = True
     with pytest.raises(recovery.TrainingInterrupted):
         loop.train_one_config(cfg, pass_mode=mode, save_path=tmp_path / "resumed.ckpt")
-    monkeypatch.setattr(recovery, "save_recovery", real_save)
+    request_interruption[0] = False
+    stop_marker.unlink()
     simulated_allocation[0] = 1_000_000_000
     trajectory = []
     actual = loop.train_one_config(cfg, pass_mode=mode, save_path=tmp_path / "resumed.ckpt",

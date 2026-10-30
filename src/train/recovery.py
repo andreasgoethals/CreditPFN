@@ -16,6 +16,13 @@ class TrainingInterrupted(RuntimeError):
     """The trial can continue from a verified recovery checkpoint (CLI exit 75)."""
 
 
+def stop_requested() -> bool:
+    """Read the native signal flag or the batch shell's private stop marker."""
+    request = os.environ.get("CREDITPFN_STOP_REQUEST_FILE")
+    return (os.environ.get("CREDITPFN_STOP_REQUESTED") == "1"
+            or bool(request and Path(request).is_file()))
+
+
 def configure_execution(deterministic: bool) -> dict:
     """Set the trial's numerical policy before the first CUDA operation.
 

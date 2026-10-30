@@ -76,7 +76,7 @@ gradient checks to training optimizer creation, retaining exact parameter select
 numerical checks. Repeat fresh source-bound acceptance and the complete 80-case extension gate
 before research. Never deploy while consumers remain.
 
-Current retry `study20261030c` runs source `fc924571`: **1,279 local tests passed** (one existing
+Retry `study20261030c` used source `fc924571`: **1,279 local tests passed** (one existing
 skip), fresh CPU and all ten runtime GPU checks passed, and independent acceptance `11756638`
 passed. All twelve extension correctness cases `11756713` passed, including the four corrected
 DiagScale audits. Capacity array `11756714` finished with 67 passes and one GPU-memory failure:
@@ -88,7 +88,50 @@ The pinned native layer option uses reentrant checkpointing, which failed a stri
 gradient comparison; it is not used. Native model forwards instead use PyTorch's explicit
 `use_reentrant=False` path with RNG preservation. Paired output/gradient/update/reload checks and the complete capacity gate must pass under a
 fresh source identity before research. The correction passed 57 focused and 1,289 full local tests
-(one existing skip); this memory/runtime change is not yet VSC-accepted.
+(one existing skip); its native training-equivalence and full-capacity checks remain pending.
+
+Source `9c55d72` was pushed and deployed through Git after verifying there were no CreditPFN
+consumers; both library pins remain clean. Fresh workflow `study20261030d` bootstrap `11757088`
+completed in 56 seconds. Its durable receipt confirms CPU `11757089`, GPU `11757090`, independent
+acceptance `11757091` and extension launch `11757092`. CPU, all ten GPU runtime cases and independent
+acceptance passed. The launcher submitted prepare `11757168`, smoke `11757169`, capacity `11757170`,
+inspector `11757171` and gated research controller `11757172`. All 80 extension cases must pass
+before research; do not duplicate them. All twelve correctness and 68 capacity cases passed;
+independent inspection `11757171` binds all 80 passing receipts. The former 10,000-row v2 OOM
+case passed 32 full-size updates and native FP32/BF16 comparisons with exact output/gradient/update
+agreement and observed backward recomputation. At 16:53 CET controller `11757172` had accepted
+all 128 training trials, all 250 context tasks and 116 of 896 benchmark shards; five training tasks
+were running. Remaining submission proceeds automatically under actual site admission limits,
+without an artificial running throttle. Its completed FP32 refresh is still
+bound to `study20261029` and the frozen original evaluator.
+
+Production exposed a separate signal-transport issue: the immutable site wrapper does not forward
+the shell warning to the native trainer, so five E5 LGD v2 tasks exited 138 near 90 minutes.
+Periodic checkpoints were preserved. Pending training allocations were increased to three hours
+without changing the 90-minute internal segments or any scientific settings. Nine running trainers
+were checkpointed through their verified native handlers and requeued with that margin. Recovery
+arrays `11759835` / `11759836` resume the five failed trials under the same frozen source and plans.
+The separate `signal-recovery.submission.json` records their admission and the two cancelled
+benchmark arrays requiring repair. Reconcile supplemental recovery/benchmark jobs with final
+publication dependencies; submission is not completion. A wrapper-safe signal implementation and
+actual E0 container warning/restart test remain required before final project completion. Do not
+update the active checkout to implement that fix. Keep failed logs and recovery files until verified
+recovery and compact archival; original submission receipts remain unchanged.
+
+The local permanent fix requests recovery through a unique marker in the job-owned cache, visible
+inside the container, and polls it only at optimizer boundaries. It restores the outer traps and
+removes only its own marker after the child exits. Child submissions do not inherit this control
+path. Native Python USR1 handling remains available. The non-exec-wrapper regressions and twelve
+real-loop exact-resume comparisons pass locally; the full suite passed 1,292 tests (one existing
+skip, two existing CPU-backend warnings) in 14m52s. Actual VSC warning/restart acceptance remains
+required before cutover. Keep the current campaign on its frozen source and recovery identities.
+
+Controller `11757172` has a verified 31-10-2026 04:27:01 CET deadline. Guarded continuation
+`62483670` is queued on wICE, not before 04:35 CET, with a three-day CPU allowance. It verifies
+frozen source `9c55d72`, skips a confirmed final submission, and resumes the same tracked command
+only if the original controller timed out; cancellation/unknown states and ambiguous receipts fail
+closed. Its separate durable receipt is `study20261030d/submission-continuation.json` under the
+study manifests. Preserve this queued source consumer, and retire it explicitly if no longer needed.
 
 The frozen DATA checkout `CreditPFN-study-v2` at `4bf45351075b3722d85a366da22b8df5f2322f75`
 remains necessary to audit/publish the original `study20261029` refresh under its own source identity.

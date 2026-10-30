@@ -75,7 +75,7 @@ def submission_environment():
     container markers, container injection options or job-owned cache/log paths.
     Each child activates its own runtime and creates its own cache and log.
     """
-    inherited_overrides = {"CREDITPFN_STOP_AFTER_UPDATES", "CREDITPFN_STOP_REQUESTED",
+    inherited_overrides = {"CREDITPFN_STOP_AFTER_UPDATES", "CREDITPFN_STOP_REQUESTED", "CREDITPFN_STOP_REQUEST_FILE",
                            "CREDITPFN_EVAL_TASK_INDEX", "CREDITPFN_EVAL_FAMILY",
                            "CREDITPFN_OWNED_CACHE", "CREDITPFN_ACTIVE_LOG"}
     return {key: value for key, value in os.environ.items()

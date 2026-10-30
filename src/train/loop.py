@@ -2331,7 +2331,7 @@ def train_one_config(
     if any(v < 0 or v > total_steps for v in trajectory_steps):
         raise ValueError("Trajectory updates must lie between zero and the training budget")
 
-    from src.train.recovery import load_recovery, save_recovery, TrainingInterrupted
+    from src.train.recovery import load_recovery, save_recovery, TrainingInterrupted, stop_requested
     recovery_every = int(getattr(cfg.train, "recovery_every_updates", 0))
     recovery_path = Path(str(save_path) + ".resume.pt")
     resuming = recovery_every > 0 and recovery_path.is_file()
@@ -2594,7 +2594,7 @@ def train_one_config(
             nonlocal last_saved_update
             if micro_since_step or successful_updates >= total_steps:
                 return
-            interrupted = (os.environ.get("CREDITPFN_STOP_REQUESTED") == "1"
+            interrupted = (stop_requested()
                            or (int(os.environ.get("CREDITPFN_STOP_AFTER_UPDATES", "0")) > 0
                                and successful_updates >= int(os.environ["CREDITPFN_STOP_AFTER_UPDATES"]))
                            or (segment_seconds and time.monotonic() - segment_started >= segment_seconds))

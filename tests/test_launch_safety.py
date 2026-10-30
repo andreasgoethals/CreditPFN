@@ -348,9 +348,14 @@ def test_training_warning_reaches_child_and_preserves_recovery_exit(tmp_path):
     script = '''set -euo pipefail
 source "$1"
 python() {
-    trap 'echo checkpoint_requested; exit 75' USR1
     touch "$READY"
-    for ((i=0; i<100; i++)); do sleep 0.02; done
+    for ((i=0; i<100; i++)); do
+        if [[ -f "$CREDITPFN_STOP_REQUEST_FILE" ]]; then
+            echo checkpoint_requested
+            exit 75
+        fi
+        sleep 0.02
+    done
     exit 42
 }
 sent=0

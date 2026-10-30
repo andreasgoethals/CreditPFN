@@ -234,6 +234,7 @@ def test_container_submitter_does_not_mark_host_children_as_contained(tmp_path, 
         "SINGULARITYENV_CREDITPFN_ACTIVE_LOG": "/parent/log",
         "CREDITPFN_OWNED_CACHE": "/parent/cache",
         "CREDITPFN_ACTIVE_LOG": "/parent/log",
+        "CREDITPFN_STOP_REQUEST_FILE": "/parent/cache/train-stop/requested",
         "SBATCH_ARRAY_INX": "0%1",
     }
     for key, value in parent_only.items():
