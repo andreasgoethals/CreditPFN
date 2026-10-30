@@ -2,6 +2,7 @@
 
 ## 30-10-2026
 
+- Isolate child Slurm environments from parent container markers and job-owned caches; retain strict runtime-arm validation.
 - Verify all 15 renamed reports, 133 PDF/inline/caption identities and complete summaries; repair UTF-8 labels without changing numerical evidence.
 - Align public config/launcher numbers with the ten analyses; derive Python layout from YAML and bind it to source identities.
 - Invalidate RQ/overview figures by campaign and extension ownership, preserving unrelated reports and the shared factorial.

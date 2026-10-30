@@ -59,13 +59,20 @@ dependent controllers were cancelled, and no extension research was released. Th
 retains strict projection validation; native fault traces are enabled for the fresh gate. A new source
 requires fresh runtime acceptance and all 80 extension checks, not reuse of passing old-source receipts.
 
+The first new-source recovery (`study20261030a`, bootstrap `11756161`) passed CPU checks but
+stopped its original-runtime GPU arms because container-submitted jobs inherited parent container
+markers. The submission boundary must remove those markers and parent cache/log ownership while
+retaining scientific settings. The arm check stays strict. Use a fresh recovery ID after this fix;
+the failed attempt does not authorize any extension research.
+
 The frozen DATA checkout `CreditPFN-study-v2` at `4bf45351075b3722d85a366da22b8df5f2322f75`
 remains necessary to audit/publish the original `study20261029` refresh under its own source identity.
 Do not update it or rebind its receipts. The normal DATA checkout can be updated only after its
-own consumers are absent. Canonical DATA deployed source `4ac75c3` on 30-10-2026, with TFM
-`26156f3` and VSC Library `0ed4ffa` both verified clean at the parent Git pins. Fresh runtime
-acceptance is still required for this source. Inspect submodule changes before future updates;
-both libraries are read-only from this project.
+own consumers are absent. Canonical DATA and local public-numbering code were synchronized on
+30-10-2026, with TFM `26156f3` and VSC Library `0ed4ffa` both verified clean at the parent Git
+pins. Each submission receipt records its actual source revision; a source change requires fresh
+runtime acceptance. Inspect submodule changes before future updates; both libraries are read-only
+from this project.
 
 ## Public numbering and recorded campaign identities
 
@@ -116,7 +123,7 @@ CPU preparation, ten runtime GPU checks, independent runtime acceptance, extensi
 Use a fresh ID after a source change. This recorded specification is preserved in canonical DATA:
 
 ```bash
-CREDITPFN_RUNTIME_VERSION=env20261029f sbatch scripts/slurm/study_cpu.slurm submit study20261030a --runtime-version env20261029f --specification "$PWD/output CreditPFN/experiment0/manifests/runtime_builds/study20261029/checkout/runtime/env20261029f/environment.json" --refresh-id study20261029 --refresh-checkout /data/leuven/383/vsc38338/CreditPFN-study-v2
+CREDITPFN_RUNTIME_VERSION=env20261029f sbatch scripts/slurm/study_cpu.slurm submit study20261030b --runtime-version env20261029f --specification "$PWD/output CreditPFN/experiment0/manifests/runtime_builds/study20261029/checkout/runtime/env20261029f/environment.json" --refresh-id study20261029 --refresh-checkout /data/leuven/383/vsc38338/CreditPFN-study-v2
 ```
 
 **Do not rerun this example if its durable submission receipt already exists.** Inspect the receipt

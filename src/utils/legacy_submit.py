@@ -68,6 +68,22 @@ def _research_plan(identifier):
     return training + context + benchmarks
 
 
+def submission_environment():
+    """A submitted batch starts on the host, not inside its submitting container.
+
+    Preserve requested runtime/scientific settings, but never export parent
+    container markers, container injection options or job-owned cache/log paths.
+    Each child activates its own runtime and creates its own cache and log.
+    """
+    inherited_overrides = {"CREDITPFN_STOP_AFTER_UPDATES", "CREDITPFN_STOP_REQUESTED",
+                           "CREDITPFN_EVAL_TASK_INDEX", "CREDITPFN_EVAL_FAMILY",
+                           "CREDITPFN_OWNED_CACHE", "CREDITPFN_ACTIVE_LOG"}
+    return {key: value for key, value in os.environ.items()
+            if not key.startswith(("SBATCH_", "APPTAINER_", "SINGULARITY_",
+                                   "APPTAINERENV_", "SINGULARITYENV_"))
+            and key not in inherited_overrides}
+
+
 def submit_plan(plan, destination, *, runner=subprocess.run, sleep=time.sleep, max_array_size=None):
     """Resume confirmed submissions only; genuine prerequisites use afterok."""
     state = json.loads(destination.read_text(encoding="utf-8")) if destination.exists() else {
@@ -86,10 +102,7 @@ def submit_plan(plan, destination, *, runner=subprocess.run, sleep=time.sleep, m
     for item in plan:
         if item["tasks"] and (min(item["tasks"]) < 0 or max(item["tasks"]) >= max_array_size):
             raise ValueError("Stable task IDs exceed the verified MaxArraySize")
-    inherited_overrides = {"CREDITPFN_STOP_AFTER_UPDATES", "CREDITPFN_STOP_REQUESTED",
-                           "CREDITPFN_EVAL_TASK_INDEX", "CREDITPFN_EVAL_FAMILY"}
-    environment = {k: v for k, v in os.environ.items()
-                   if not k.startswith("SBATCH_") and k not in inherited_overrides}
+    environment = submission_environment()
     for index in range(state["index"], len(plan)):
         item = plan[index]
         tasks = item["tasks"]

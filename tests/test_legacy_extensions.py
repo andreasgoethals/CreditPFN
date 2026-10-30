@@ -222,6 +222,47 @@ def test_single_gate_contains_all_cases_and_only_true_dependencies():
     assert not any("%" in arg for p in plan for arg in p["args"])
 
 
+def test_container_submitter_does_not_mark_host_children_as_contained(tmp_path, monkeypatch):
+    import os
+    import sys
+    parent_only = {
+        "APPTAINER_CONTAINER": "/parent/container.sif",
+        "SINGULARITY_CONTAINER": "/parent/container.sif",
+        "APPTAINER_BIND": "/parent/cache:/cache",
+        "SINGULARITY_NV": "1",
+        "APPTAINERENV_CREDITPFN_OWNED_CACHE": "/parent/cache",
+        "SINGULARITYENV_CREDITPFN_ACTIVE_LOG": "/parent/log",
+        "CREDITPFN_OWNED_CACHE": "/parent/cache",
+        "CREDITPFN_ACTIVE_LOG": "/parent/log",
+        "SBATCH_ARRAY_INX": "0%1",
+    }
+    for key, value in parent_only.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setenv("CREDITPFN_RUNTIME_VERSION", "image1")
+    monkeypatch.setenv("CREDITPFN_LEGACY_ID", "scope1")
+    monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
+    calls = []
+
+    def runner(command, **kwargs):
+        environment = kwargs["env"]
+        assert not (parent_only.keys() & environment.keys())
+        assert environment["CREDITPFN_RUNTIME_VERSION"] == "image1"
+        assert environment["CREDITPFN_LEGACY_ID"] == "scope1"
+        assert environment["CREDITPFN_OUTPUT_ROOT"] == str(tmp_path)
+        # Exercise a real child, not just the filtering implementation: it must
+        # identify the host arm without changing the submitting process itself.
+        subprocess.run([sys.executable, "-c",
+            "import os; assert not (os.getenv('APPTAINER_CONTAINER') or os.getenv('SINGULARITY_CONTAINER'))"],
+            env=environment, check=True)
+        calls.append(command)
+        return SimpleNamespace(returncode=0, stdout="190;mindwell\n", stderr="")
+
+    launch.submit_plan([dict(key="runtime", needs=[], tasks=[0], args=["runtime.slurm"])],
+        tmp_path / "receipt.json", runner=runner, max_array_size=1001)
+    assert len(calls) == 1
+    assert all(os.environ[key] == value for key, value in parent_only.items())
+
+
 @pytest.mark.parametrize("refusal", ["QOSMaxSubmitJobPerUserLimit", "maximum number of submitted jobs"])
 def test_submission_quota_split_resume_and_dependencies(tmp_path, refusal):
     calls = []

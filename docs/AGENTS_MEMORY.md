@@ -2,6 +2,11 @@
 
 ## 30-10-2026
 
+- **Tried:** source `7aa6d75` bootstrap `11756161`, submitting runtime compatibility jobs from inside the sealed container.
+  **Result:** CPU preparation passed; all eight original-runtime GPU arms stopped before comparison with `Runtime arm is not executing in the requested environment`. Research stayed gated.
+  **Why:** `sbatch --export=ALL` inherited the submitting container's environment markers into new host batch jobs. The preserved Conda interpreter was selected, but inherited container markers correctly failed the arm check.
+  **Instead:** filter parent Apptainer/Singularity markers/options/injection variables and job-owned cache/log paths at submission, preserve explicit runtime/scientific settings, test a real subprocess, and repeat fresh source-bound acceptance. Keep the strict arm check unchanged. The correction passed **50 focused tests**, then the full suite: **1,265 passed, one existing absent-manifest skip in 12m56s**. Fresh workflow ID: `study20261030b`; check its actual submission receipt before issuing anything.
+- Live owned-cache lifecycle passed in bootstrap `11756161` and CPU preparation `11756169`: both used `/tmp/CreditPFN/job_cache/<user>/<job>-r0` and removed only that directory on exit 0. Failed GPU checks did not invoke success cleanup.
 - Numbering/cache/recovery validation: full local pytest **1,263 passed, one existing absent-manifest skip** (10m14s); 49 Slurm shell files pass Bash syntax checks. All **15 notebooks / 133 figures** reran successfully. After repairing UTF-8 separators and rerunning the affected reports, all 133 inline images match the previously reviewed images byte-for-byte. Verified PDF/inline/caption ownership, every final summary in `All_Results.md`, no orphan PDFs, valid notebook schemas and the local schema-2 result layout. The added source-encoding regression passes with the 13-test numbering suite. These reports still use the prior download; current-source VSC runtime acceptance remains pending.
 - Deployed source `4ac75c3` through Git into canonical DATA after checking consumers. Both read-only library checkouts now match the recorded pins (TFM `26156f3`, VSC `0ed4ffa`); the frozen refresh evaluator remains `4bf4535`. Cache jobs `11755971` / `62475830` were submitted with a durable receipt; consult their final removal inventories rather than inferring reclaimed bytes from the earlier storage estimate.
 - **Tried:** bounded SSH deployment and initial VSC-library checkout.
@@ -34,6 +39,8 @@
 
 | Run | Verified outcome | Scope |
 |---|---|---|
+| Mindwell `11756161` / `11756169`, recovery bootstrap and CPU runtime gate, source `7aa6d75` | Completed, exit 0, 1m27s / 59s; all 238 packages and CPU checks passed, 53 input files verified/staged | `study20261030a`; child GPU array `11756170`, acceptance `11756171`, controller `11756173`; no research released |
+| Mindwell `11756170`, ten-case runtime gate, source `7aa6d75` | Eight original-runtime arms failed the container-boundary guard before predictions; both FP32 capacity cases passed (50,000 context / 4,096 query / 64 features, 77.04 GiB peak) | Acceptance `11756171` and controller `11756173` were automatically cancelled; no research released. Preserve source-specific evidence and repeat the full sequence after the submission-environment correction |
 | Mindwell `11755971`, cache retirement, source `4ac75c3` | Completed, exit 0, 6m34s; 466 completed-job caches / 147,810,082,354 bytes removed | Six failed-job caches protected; final plan-bound removal receipt records every removed path; no research/runtime assets selected |
 | wICE `62475830`, cache retirement, source `4ac75c3` | Completed, exit 0, 34 seconds; two empty completed-job caches retired | Exact removal receipt under `experiment0/manifests/storage_review`; no scientific files selected |
 | wICE `62474641`, full FP32 inspection, source `4bf4535`, runtime `env20261029f` | Completed, exit 0, 9m27s; all 445 tasks passed | 459 benchmark comparisons / 2,295 folds / 30,967,719 predictions; 5,550 context cells / 147,493,764 predictions. Publication remains staged |
