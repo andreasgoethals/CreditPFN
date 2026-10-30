@@ -2,6 +2,10 @@
 
 ## 30-10-2026
 
+| Run | Verified outcome | Scope |
+|---|---|---|
+| wICE `62473876`, FP32 benchmark preflight, accepted runtime `env20261029f`, source `4bf4535` | Completed, exit 0, 4m24s; **459 comparisons / 2,295 folds / 30,967,719 saved predictions** passed independent metric and cohort checks | Public E7/E8/E9 (historical campaigns 3/6/7): 228/99/132 comparisons. All 320 benchmark shards have successful completion receipts. Original results remain active; context checks and final publication are still pending. Submission and audit receipts are under canonical DATA `experiment0/manifests/study_v2/study20261029/benchmark-preflight*.json`. |
+
 - Final local validation of the migration read guard and runtime-selection/bootstrap changes: **1,211 passed, one existing absent-manifest skip**, with the final full rerun taking 12m30s. The final immutable-runtime seal and bootstrap input-staging checks also passed their focused 40-test run. The default activation now refuses implicit DATA Conda use; the explicit same-GPU comparator remains available, and the sealed Slurm submission bootstrap preserves its acceptance dependencies. These changes are not deployed into active VSC source `4bf4535`.
 
 ## 29-10-2026

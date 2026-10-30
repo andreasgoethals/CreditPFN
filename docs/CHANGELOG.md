@@ -2,6 +2,7 @@
 
 ## 30-10-2026
 
+- Independently verify all 459 refreshed FP32 benchmark comparisons; retain original publication until context and extension audits finish.
 - Keep sealed-runtime manifests immutable: revalidate unchanged images without rewriting, and reject same-version image, wrapper or environment drift.
 
 ## 29-10-2026
