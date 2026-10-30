@@ -48,23 +48,32 @@ class ScaleAudit:
 
 def run_observed(argv, destination):
     from src.utils.lora_training_probe import AdapterAudit
+    from src.train import loop
     from src.train.config import load_train_config
     cfg = load_train_config(config_path=argv[argv.index("--config") + 1])
     mode = str(cfg.train.get("adaptation_mode", "full"))
     module = lora if mode == "lora" else diagscale
-    original, audits, frozen = module.inject, [], []
+    original, audits, frozen = loop._make_optimizer_and_scheduler, [], []
 
-    def inject(*args, **kwargs):
-        parameters = original(*args, **kwargs)
-        model = args[0]
-        audits.append(AdapterAudit(model) if mode == "lora" else ScaleAudit(model))
-        frozen.extend((p, p.detach().cpu().clone()) for p in model.parameters() if not p.requires_grad)
-        return parameters
+    def make_optimizer(model, *args, **kwargs):
+        optimizer, scheduler = original(model, *args, **kwargs)
+        if mode in ("lora", "diagscale"):
+            expected = {id(p) for p in module.adapter_parameters(model)}
+            selected = [id(p) for group in optimizer.param_groups for p in group["params"]]
+            if not expected or set(selected) != expected or len(selected) != len(expected):
+                raise AssertionError("Training optimizer must contain exactly the declared adapters")
+            # Monitoring reloads DiagScale bundles into separate inference models.
+            # Observe the model actually handed to the training optimizer, never
+            # those inference-only clones. Every optimized adapter must still
+            # receive finite gradients and change; frozen weights must stay equal.
+            audits.append(AdapterAudit(model) if mode == "lora" else ScaleAudit(model))
+            frozen.extend((p, p.detach().cpu().clone()) for p in model.parameters() if not p.requires_grad)
+        return optimizer, scheduler
 
     previous = sys.argv
     code = 0
     try:
-        with patch.object(module, "inject", inject):
+        with patch.object(loop, "_make_optimizer_and_scheduler", make_optimizer):
             sys.argv = ["scripts/train_pipeline.py", *argv]
             try:
                 runpy.run_path("scripts/train_pipeline.py", run_name="__main__")

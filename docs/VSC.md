@@ -65,6 +65,17 @@ markers. The submission boundary must remove those markers and parent cache/log 
 retaining scientific settings. The arm check stays strict. Use a fresh recovery ID after this fix;
 the failed attempt does not authorize any extension research.
 
+The corrected source `a525906` passed the full local suite (1,265 tests, one existing skip),
+then fresh VSC CPU checks, all ten GPU cases and independent acceptance `11756349`.
+All eight original/container comparisons matched exactly; both full-shape FP32 capacity checks
+passed. Retry `study20261030b` passed all four context and four LoRA correctness cases. Its four
+DiagScale cases exposed an observation bug: the auditor counted inference-only monitor clones
+alongside the successfully optimized model. Capacity array `11756414`, inspector `11756415` and
+controller `11756416` were automatically cancelled; no research was released. The correction binds
+gradient checks to training optimizer creation, retaining exact parameter selection and all existing
+numerical checks. Repeat fresh source-bound acceptance and the complete 80-case extension gate
+before research. Never deploy while consumers remain.
+
 The frozen DATA checkout `CreditPFN-study-v2` at `4bf45351075b3722d85a366da22b8df5f2322f75`
 remains necessary to audit/publish the original `study20261029` refresh under its own source identity.
 Do not update it or rebind its receipts. The normal DATA checkout can be updated only after its
@@ -123,7 +134,7 @@ CPU preparation, ten runtime GPU checks, independent runtime acceptance, extensi
 Use a fresh ID after a source change. This recorded specification is preserved in canonical DATA:
 
 ```bash
-CREDITPFN_RUNTIME_VERSION=env20261029f sbatch scripts/slurm/study_cpu.slurm submit study20261030b --runtime-version env20261029f --specification "$PWD/output CreditPFN/experiment0/manifests/runtime_builds/study20261029/checkout/runtime/env20261029f/environment.json" --refresh-id study20261029 --refresh-checkout /data/leuven/383/vsc38338/CreditPFN-study-v2
+CREDITPFN_RUNTIME_VERSION=env20261029f sbatch scripts/slurm/study_cpu.slurm submit study20261030c --runtime-version env20261029f --specification "$PWD/output CreditPFN/experiment0/manifests/runtime_builds/study20261029/checkout/runtime/env20261029f/environment.json" --refresh-id study20261029 --refresh-checkout /data/leuven/383/vsc38338/CreditPFN-study-v2
 ```
 
 **Do not rerun this example if its durable submission receipt already exists.** Inspect the receipt
