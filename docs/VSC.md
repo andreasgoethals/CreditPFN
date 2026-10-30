@@ -124,7 +124,9 @@ removes only its own marker after the child exits. Child submissions do not inhe
 path. Native Python USR1 handling remains available. The non-exec-wrapper regressions and twelve
 real-loop exact-resume comparisons pass locally; the full suite passed 1,292 tests (one existing
 skip, two existing CPU-backend warnings) in 14m52s. Actual VSC warning/restart acceptance remains
-required before cutover. Keep the current campaign on its frozen source and recovery identities.
+required before cutover. Implementation commit `8649f26` is validated and pushed; canonical DATA
+remains frozen at `9c55d72`. Do not pull the signal fix into that active checkout or reuse its old
+prepared/recovery identities under the new training identity.
 
 Controller `11757172` has a verified 31-10-2026 04:27:01 CET deadline. Guarded continuation
 `62483670` is queued on wICE, not before 04:35 CET, with a three-day CPU allowance. It verifies
