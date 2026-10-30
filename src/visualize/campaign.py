@@ -71,12 +71,9 @@ def show(sink, pages, *, track=None):
         if getattr(sink, "report", None) is not None:
             sink.report._pending.append("No measurements available for this figure group.")
     for page in pages:
-        if page.provenance.get("study_numbering") != "v2":
-            from src.visualize.research_views import study_text
-            page.caption = study_text(page.caption)
-            if page.figure._suptitle is not None:
-                page.figure._suptitle.set_text(study_text(page.figure._suptitle.get_text()))
-            page.provenance["study_numbering"] = "v2"
+        # Captions are authored in the public numbering. Runtime renumbering can
+        # silently translate already-current labels for a second time.
+        page.provenance["study_numbering"] = "v2"
         if track is not None:
             if track not in ("pd", "lgd"):
                 raise ValueError("Figure track must be pd or lgd")
@@ -108,7 +105,8 @@ def config_path(experiment: int, track: str, phase: str | None = None) -> Path:
         if phase is not None:
             raise ValueError("Only experiment 0 has named phases")
         name = f"{track}.yaml"
-    return REPO_ROOT / "config" / f"experiment{experiment}" / name
+    from src.utils.study_layout import config_folder
+    return REPO_ROOT / config_folder(experiment) / name
 
 
 def planned_trials(cfg) -> pd.DataFrame:

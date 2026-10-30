@@ -15,7 +15,7 @@ from src.utils.experiment import apply_split_index, digest_json
 
 def configs():
     return [load_train_config(config_path=p) for p in
-            ['config/experiment6/pd.yaml', 'config/experiment7/pd_rows2048.yaml', 'config/experiment7/pd_rows26000.yaml']]
+            ['config/experiment8/pd.yaml', 'config/experiment9/pd_rows2048.yaml', 'config/experiment9/pd_rows26000.yaml']]
 
 
 @pytest.fixture
@@ -113,9 +113,9 @@ def test_real_preparation_binds_and_preserves_shared_reference(pool, tmp_path, m
     monkeypatch.setattr(experiment, 'environment_versions', lambda **kwargs: {'test': 'synthetic'})
     monkeypatch.setattr(retention, 'load_refs', lambda *args: [])
     with pytest.raises(FileNotFoundError):
-        prep.prepare(Path('config/experiment7/pd_rows2048.yaml'), write=True)
-    source = prep.prepare(Path('config/experiment6/pd.yaml'), write=True)
-    child = prep.prepare(Path('config/experiment7/pd_rows2048.yaml'), write=True)
+        prep.prepare(Path('config/experiment9/pd_rows2048.yaml'), write=True)
+    source = prep.prepare(Path('config/experiment8/pd.yaml'), write=True)
+    child = prep.prepare(Path('config/experiment9/pd_rows2048.yaml'), write=True)
     reference, bound = prep.read_plan(Path(source['plan'])), prep.read_plan(Path(child['plan']))
     assert bound['shared_reference']['sha256'] == reference['sha256']
     assert len(bound['shared_reference']['trials']) == 8
@@ -188,6 +188,7 @@ def test_actual_sampler_preserves_requested_rows_and_has_disjoint_context_query(
 
 @pytest.mark.parametrize('experiment,names', [(6,['pd.yaml']), (7,['pd_rows2048.yaml','pd_rows26000.yaml'])])
 def test_size_benchmark_array_routes_every_cell_once(experiment,names):
+    from src.utils.study_layout import NUMBERS
     from tests.test_benchmark_submission import bash_path
     code='''set -euo pipefail
 for ((i=0;i<COUNT;i++)); do
@@ -201,7 +202,7 @@ done
     run=subprocess.run([bash_path(),'--noprofile','--norc','-c',code],env=env,text=True,capture_output=True,timeout=15)
     assert run.returncode==0,run.stderr
     rows=[line.split('|') for line in run.stdout.splitlines()]
-    assert rows==[['pd',str(f),str(s),f'/data/test/CreditPFN/config/experiment{experiment}/{name}']
+    assert rows==[['pd',str(f),str(s),f'/data/test/CreditPFN/config/experiment{NUMBERS[experiment]}/{name}']
                   for name in names for f in range(4) for s in range(16)]
 
 

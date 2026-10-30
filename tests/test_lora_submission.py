@@ -16,7 +16,7 @@ def bash_path():
     return path
 
 
-@pytest.mark.parametrize("name", ["run_experiment0_lora.sh", "lora_prepare.slurm", "lora_gpu.slurm", "run_experiment8.sh"])
+@pytest.mark.parametrize("name", ["run_experiment0_lora.sh", "lora_prepare.slurm", "lora_gpu.slurm", "run_experiment6.sh"])
 def test_lora_shell_syntax(name):
     result = subprocess.run([bash_path(), "-n", str(REPO / "scripts/slurm" / name)], capture_output=True, text=True, timeout=15)
     assert result.returncode == 0, result.stderr
@@ -53,7 +53,7 @@ python() { echo MOCK_GATE; return 1; }
 sbatch() { echo UNEXPECTED; }
 export -f source python sbatch
 bash "$1" train
-''', "test", (REPO / "scripts/slurm/run_experiment8.sh").as_posix()], capture_output=True, text=True, timeout=15)
+''', "test", (REPO / "scripts/slurm/run_experiment6.sh").as_posix()], capture_output=True, text=True, timeout=15)
     assert result.returncode == 1 and "UNEXPECTED" not in result.stdout
     assert "MOCK_GATE" in result.stdout
 

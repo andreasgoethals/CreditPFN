@@ -71,7 +71,7 @@ def test_symlink_on_later_tier_prevents_all_deletion(isolated_output, monkeypatc
     ("SubmitLine=sbatch scripts/slurm/lora_prepare.slurm selected1 inspect", True),
     ("SubmitLine=sbatch scripts/slurm/lora_gpu.slurm smoke other2", False),
     ("SubmitLine=sbatch scripts/slurm/lora_gpu.slurm diagnose other2", False),
-    ("SubmitLine=sbatch --export=ALL,CREDITPFN_CONFIG=config/experiment8/pd.yaml train.slurm", True),
+    ("SubmitLine=sbatch --export=ALL,CREDITPFN_CONFIG=config/experiment6/pd.yaml train.slurm", True),
     ("SubmitLine=sbatch --export=ALL,CREDITPFN_CONFIG=config/experiment5/pd.yaml train.slurm", False),
     ("SubmitLine=unknown", True),
 ])

@@ -341,7 +341,7 @@ def plot_primary(run):
         Line2D([], [], color=style.color("reference"), marker="D", label="Equal-table mean")],
         loc="outside lower center", ncol=2)
     return [cp.Page(f"lora_primary_{run.track}", fig,
-        f"Experiment 8, final five-fold benchmark: paired change in {db.monitor_label(run)} ({label}) of rank-16 "
+        f"Experiment 6, final five-fold benchmark: paired change in {db.monitor_label(run)} ({label}) of rank-16 "
         "query/value LoRA CPT relative to the original checkpoint of the same base, at the three LoRA learning rates "
         "(logarithmic axis). Upper panels: held-out credit tables; lower panels: the four same-task non-credit retention "
         "tables, each first averaged over all four CPT partitions. Points are tables, the line connects equal-table means "
@@ -376,7 +376,7 @@ def plot_secondary(run):
         ax.set_title(style.model_label(base))
         ax.set_ylabel(style.EFFECT_LABELS.get(metric, effect_label(metric)))
     return [cp.Page(f"lora_secondary_{run.track}", fig,
-        "Experiment 8: LoRA prediction-quality effects on held-out credit tables, paired with the original checkpoint of the same base. "
+        "Experiment 6: LoRA prediction-quality effects on held-out credit tables, paired with the original checkpoint of the same base. "
         "Positive effects indicate improvement. Lines show equal-table mean effects and shading the table "
         "interquartile range, not confidence intervals. Each model uses a common table cohort across all three "
         "rates and both displayed metrics, with complete five-fold pairs. RMSE is a fractional reduction relative "

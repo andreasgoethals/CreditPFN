@@ -105,7 +105,7 @@ def discover(names: tuple[str, ...] | None = None) -> tuple[str, ...]:
     """Relative notebook names, alphabetical, excluding hidden backup folders.
 
     Selectors match case-insensitive substrings of the complete relative name:
-    ``experiment1`` selects a study and ``results_pd`` selects its PD benchmark.
+    ``rq1`` selects a research question and ``02_results`` selects result notebooks.
     Including the folder also distinguishes identically named notebooks in different studies.
     """
     root = notebooks_dir()

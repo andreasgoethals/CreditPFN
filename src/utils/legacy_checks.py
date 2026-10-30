@@ -19,7 +19,7 @@ from src.utils.lora_checks import _binding, verify_bindings
 
 def fingerprint():
     files = [REPO_ROOT / "config/experiment0/legacy.yaml"]
-    files += [p for e in range(4, 9) for p in (REPO_ROOT / f"config/experiment{e}").glob("*.yaml")]
+    files += [p for e in (5, 6, 8, 9, 10) for p in (REPO_ROOT / f"config/experiment{e}").glob("*.yaml")]
     # Reused job bodies, activation and logging are part of runtime acceptance too.
     files += sorted((REPO_ROOT / "scripts/slurm").glob("*.sh"))
     files += sorted((REPO_ROOT / "scripts/slurm").glob("*.slurm"))
@@ -134,11 +134,11 @@ def _prepare(identifier):
     write_json(marker, dict(kind="creditpfn_legacy", id=identifier, prepared=False), exclusive=True)
     paths = write_configs(identifier)
     files, inputs, smoke, capacity = [], {}, [], []
-    # Prepare E6 before its E7 shared controls, irrespective of iteration order.
-    for key in sorted(paths, key=lambda k: (int(k[1]), k)):
+    # Context checks first; prepare E8 before E9's shared controls.
+    for key in sorted(paths, key=lambda k: (0 if k.startswith('e10_') else 1, int(k.split('_')[0][1:]), k)):
         path = paths[key]
         files.append(_binding(path))
-        if key.startswith("e4_"):
+        if key.startswith("e10_"):
             cfg = policy(path)
             with scope(identifier, "experiment4"):
                 planned, count = context_plan(path)

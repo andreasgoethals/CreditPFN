@@ -232,7 +232,7 @@ def plot_partitions(data: pd.DataFrame) -> list[Page]:
         for number, (start, stop) in enumerate(style.page_slices(len(matrix), style.SIMPLE_PAGE_ROWS), 1):
             page = matrix.iloc[start:stop]
             fig = _heatmap(page,f"{track.upper()}: dataset hold-out assignment",diverging=False,limits=(0,1),label="Held out (1) / training (0)")
-            pages.append(Page(f"partitions_{track}_{number}",fig,"Membership of datasets in the four fixed held-out partitions used by experiments 1–3. Each dataset is held out once; the complementary datasets form that partition's adaptation corpus. These are dataset partitions, distinct from outer evaluation folds within a dataset."))
+            pages.append(Page(f"partitions_{track}_{number}",fig,"Membership of datasets in the four fixed held-out partitions used by the shared E1/E3/E4 factorial, E2 seed study and E7 sampling study. Each dataset is held out once; the complementary datasets form that partition's adaptation corpus. These are dataset partitions, distinct from outer evaluation folds within a dataset."))
     return pages
 
 

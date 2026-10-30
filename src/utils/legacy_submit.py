@@ -41,7 +41,7 @@ def _research_plan(identifier):
     workflow = require_gate(identifier)
     training, context, benchmarks = [], [], []
     for key, path in sorted(workflow["production"].items()):
-        if key.startswith("e4_"):
+        if key.startswith("e10_"):
             cfg = OmegaConf.load(path)
             with scope(identifier, "experiment4"):
                 plan_path = manifests_dir("experiment4") / "plans" / (cfg.run_name + ".json")

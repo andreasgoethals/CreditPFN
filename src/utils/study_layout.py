@@ -12,31 +12,52 @@ import hashlib
 import json
 import os
 from pathlib import Path
+from omegaconf import OmegaConf
 
 MARKER = "STUDY_LAYOUT.json"
-CAMPAIGNS = {"experiment1": "shared/main_grid", "experiment2": "experiment2",
-             "experiment3": "experiment7", "experiment4": "experiment10",
-             "experiment5": "experiment5", "experiment6": "experiment8",
-             "experiment7": "experiment9", "experiment8": "experiment6"}
-NUMBERS = {1: 1, 2: 2, 3: 7, 4: 10, 5: 5, 6: 8, 7: 9, 8: 6}
-STUDIES = {
-    1: (1, "Learning rate and training progress", ["experiment1"], "Full updates; L2-SP 0.003; all prescribed rates"),
-    2: (1, "Training seed sensitivity", ["experiment1", "experiment2"], "Matched reference recipes at seeds 42 and 43"),
-    3: (2, "L2-SP anchoring", ["experiment1"], "Both L2-SP levels, matched within rate/base/scope; retain interaction"),
-    4: (2, "Backbone freezing", ["experiment1"], "Full/frozen at both L2-SP levels; retain interaction"),
-    5: (2, "DiagScale recipe", ["experiment5"], "All prescribed rates; recipe-level evaluation"),
-    6: (2, "LoRA recipe", ["experiment8"], "All prescribed rates; recipe-level evaluation"),
-    7: (3, "Row exposure and update weighting", ["experiment3"], "One sample, full pass and accumulation at equal updates"),
-    8: (3, "Training corpus composition", ["experiment6"], "All versus large PD tables at fixed episode size"),
-    9: (3, "Episode size", ["experiment6", "experiment7"], "Fixed large-table corpus; shared 8192-row control"),
-    10: (4, "Labeled target context", ["experiment4"], "Original/CPT and paired difference; fixed complete tests; five folds"),
-}
+_DESIGN = OmegaConf.to_container(OmegaConf.load(Path(__file__).resolve().parents[2] / "config/study.yaml"), resolve=True)
+CAMPAIGNS = _DESIGN["campaigns"]
+_BY_PAYLOAD = {value: key for key, value in CAMPAIGNS.items()}
+STUDIES = {int(key.removeprefix("experiment")): (value["rq"], value["title"],
+    [_BY_PAYLOAD[source] for source in value["sources"]], value["analysis"])
+    for key, value in _DESIGN["studies"].items()}
+NUMBERS = {int(key.removeprefix("experiment")): (1 if value == "shared/main_grid"
+           else int(value.removeprefix("experiment"))) for key, value in CAMPAIGNS.items()}
+
+
+def campaign_for_study(number):
+    """Primary immutable campaign identity for a public study, not its controls."""
+    number = int(str(number).removeprefix("experiment"))
+    if number == 0:
+        return "experiment0"
+    if number not in STUDIES:
+        raise ValueError("Expected public experiment 0–10")
+    return STUDIES[number][2][-1]
+
+
+def config_folder(campaign):
+    """Public config directory for an immutable campaign identity."""
+    number = int(str(campaign).removeprefix('experiment'))
+    return f'config/experiment{NUMBERS.get(number, number)}'
+
+
+def notebook_campaigns(notebook):
+    """Dependencies of combined reports; corpus notebooks have no training dependency."""
+    group = notebook.split("/", 1)[0]
+    if group in {"rq1", "rq2", "rq3", "rq4"}:
+        return sorted({campaign for rq, _, campaigns, _ in STUDIES.values()
+                       if rq == int(group[2:]) for campaign in campaigns})
+    if group == "general" and notebook.split("/", 1)[-1].startswith(("03_", "04_")):
+        return sorted(CAMPAIGNS)
+    if group == "experiment0":
+        return ["experiment0"]
+    return []
 
 
 def manifest():
     return dict(schema=2, campaigns=CAMPAIGNS, studies={f"experiment{k}":
         dict(rq=v[0], title=v[1], sources=[CAMPAIGNS[s] for s in v[2]], analysis=v[3])
-        for k, v in STUDIES.items()}, factorial_unique_runs=512)
+        for k, v in STUDIES.items()}, factorial_unique_runs=_DESIGN["factorial_unique_runs"])
 
 
 def payload(group, root):

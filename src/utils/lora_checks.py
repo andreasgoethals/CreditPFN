@@ -70,11 +70,11 @@ def policy():
 
 def fingerprint():
     files = [REPO_ROOT / "config" / name for name in (
-        "experiment0/lora.yaml", "experiment8/pd.yaml", "experiment8/lgd.yaml",
+        "experiment0/lora.yaml", "experiment6/pd.yaml", "experiment6/lgd.yaml",
         "train.yaml", "eval.yaml", "data.yaml", "retention.yaml")]
     files += [REPO_ROOT / "scripts/slurm" / name for name in (
         "run_experiment0_lora.sh", "lora_prepare.slurm", "lora_gpu.slurm",
-        "run_experiment8.sh", "run_benchmark.sh", "_benchmark_dispatch.sh",
+        "run_experiment6.sh", "run_benchmark.sh", "_benchmark_dispatch.sh",
         "benchmark_foundation.slurm", "benchmark_classical.slurm")]
     return digest_json({"train": code_identity(stage="train"), "eval": code_identity(stage="eval"),
                         "files": {p.relative_to(REPO_ROOT).as_posix(): file_digest(p) for p in files}})
@@ -164,7 +164,7 @@ def require_gate(identifier=None):
 
 def _source(track):
     from src.train.config import load_train_config
-    return load_train_config(config_path=str(REPO_ROOT / f"config/experiment8/{track}.yaml"))
+    return load_train_config(config_path=str(REPO_ROOT / f"config/experiment6/{track}.yaml"))
 
 
 def validate_evaluation(train_cfg, eval_cfg):
@@ -237,7 +237,7 @@ def prepare(identifier=None):
             source = _source(track)
             if list(source.tunable.learning_rates) != list(limits.learning_rates):
                 raise ValueError("LoRA smoke rates must cover the entire production grid")
-            production = prepare_training(REPO_ROOT / f"config/experiment8/{track}.yaml", write=True)
+            production = prepare_training(REPO_ROOT / f"config/experiment6/{track}.yaml", write=True)
             files.append(_binding(production["plan"]))
             for index in range(int(source.corpus.n_splits)):
                 split = split_from_cfg(apply_split_index(OmegaConf.create(OmegaConf.to_container(source)), index))

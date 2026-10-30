@@ -2,6 +2,12 @@
 
 ## 30-10-2026
 
+- Align public config/launcher numbers with the ten analyses; derive Python layout from YAML and bind it to source identities.
+- Invalidate RQ/overview figures by campaign and extension ownership, preserving unrelated reports and the shared factorial.
+- Remove double caption renumbering and stale runbook paths; preserve immutable checkpoint/run identities.
+- Add owned node-local job caches, success-only cleanup and accounting-verified legacy-cache retirement.
+
+- Recover failed extensions with fresh source-bound gates while auditing completed FP32 work under its original evaluator; preserve resumable publication journals.
 - Compact 29 notebooks into 15 RQ/validation/general reports with paired cross-experiment figures and unchanged scientific storage.
 - Preserve distinct LoRA learning-rate labels and explicitly scoped extension predictions in combined diagnostics.
 - Remove the obsolete v3-only DiagScale training guard; validate loaded projections and expose native-crash traces in extension checks.

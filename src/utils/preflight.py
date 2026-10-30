@@ -37,7 +37,7 @@ from omegaconf import OmegaConf
 REPO = pathlib.Path(__file__).resolve().parents[2]
 EXPERIMENTS = tuple(f"config/experiment0/{phase}_{track}.yaml"
                     for phase in ("null", "pilot", "recovery", "budget") for track in ("pd", "lgd")) + tuple(
-    f"config/experiment{number}/{track}.yaml" for number in (1, 2, 3) for track in ("pd", "lgd"))
+    f"config/experiment{number}/{track}.yaml" for number in (1, 2, 7) for track in ("pd", "lgd"))
 
 # MEASURED probe points, (rows, peak_GB_or_None, ran_ok). B200 183 GB, 2 training members.
 # Sources: probe job 11524668 §9, plus the exp0 real-training run 11527923 that caught the v2

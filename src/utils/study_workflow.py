@@ -10,6 +10,8 @@ import argparse
 import json
 import os
 from pathlib import Path
+import subprocess
+import sys
 
 from src.utils.atomic import write_json
 from src.utils.experiment import file_digest
@@ -19,6 +21,68 @@ from src.utils.runtime_validation import identifier, require
 
 def root(value):
     return manifests_dir("experiment0") / "study_v2" / identifier(value)
+
+
+def existing_refresh(value, checkout, version):
+    """Bind completed work to its own clean Git checkout, never the retry's code."""
+    from src.utils import evaluation_refresh as refresh
+    checkout = Path(checkout).resolve(strict=True)
+    if os.environ.get("VSC_DATA") and not checkout.is_relative_to(Path(os.environ["VSC_DATA"]).resolve()):
+        raise ValueError("Refresh checkout must reside on DATA")
+    def git(*args):
+        return subprocess.run(["git", "-C", str(checkout), *args], text=True,
+                              capture_output=True, check=True, timeout=30).stdout.strip()
+    if git("status", "--porcelain", "--untracked-files=normal"):
+        raise RuntimeError("Existing refresh checkout must remain clean")
+    commit = git("rev-parse", "HEAD")
+    path = refresh.root(identifier(value)) / "workflow.json"
+    record = json.loads(path.read_text())
+    if record.get("prepared") is not True or record.get("id") != value or record.get("runtime_version") != version:
+        raise RuntimeError("Existing refresh does not match the accepted runtime/workflow")
+    return dict(id=value, checkout=str(checkout), commit=commit, workflow_sha256=file_digest(path))
+
+
+def verify_refresh_source(record):
+    binding = record.get("existing_refresh")
+    if binding and existing_refresh(binding["id"], binding["checkout"], record["runtime_version"]) != binding:
+        raise RuntimeError("Existing refresh source or preparation changed")
+
+
+def run_refresh(record, value, action):
+    """Audit and publish with the original evaluator and all of its identity gates."""
+    from src.utils import evaluation_refresh as refresh
+    if action not in ("inspect", "promote"):
+        raise ValueError("Recovery can only inspect or publish existing refresh work")
+    binding = record.get("existing_refresh")
+    if binding:
+        verify_refresh_source(record)
+        environment = {k: v for k, v in os.environ.items() if k not in {
+            "PYTHONPATH", "CREDITPFN_LEGACY_ID", "CREDITPFN_LORA_WORKFLOW",
+            "CREDITPFN_EVAL_REFRESH", "CREDITPFN_RUNTIME_ACCEPTANCE"}}
+        subprocess.run([sys.executable, "-m", "src.utils.evaluation_refresh", action, binding["id"]],
+                       cwd=binding["checkout"], env=environment, check=True)
+    else:
+        getattr(refresh, action)(value)
+
+
+def finalize_refresh(record, value):
+    from src.utils import evaluation_refresh as refresh
+    refresh_id = record.get("existing_refresh", {}).get("id", value)
+    journal = refresh.root(refresh_id) / "publication.json"
+    # A partial rename is recoverable using its already bound inspection. A new
+    # inspection cannot read sources that have already moved into active output.
+    if not journal.exists():
+        run_refresh(record, value, "inspect")
+    run_refresh(record, value, "promote")
+    progress = json.loads(journal.read_text())
+    if progress.get("complete") is not True:
+        raise RuntimeError("Refresh publication is incomplete")
+    for move in progress["moves"]:
+        target = Path(move["target"])
+        actual = {str(p.relative_to(target)): file_digest(p) for p in target.rglob("*") if p.is_file()}
+        if not move["done"] or actual != move["files"]:
+            raise RuntimeError("Published or archived refresh evidence changed")
+    return refresh_id
 
 
 def runtime_plan(value, version, specification):
@@ -34,7 +98,7 @@ def runtime_plan(value, version, specification):
     ]
 
 
-def submit(value, version, specification):
+def submit(value, version, specification, *, refresh_id=None, refresh_checkout=None):
     from src.utils.legacy_submit import submit_plan
     from src.utils.clean_run import check_cluster_writers
     identifier(value); identifier(version)
@@ -42,6 +106,12 @@ def submit(value, version, specification):
     folder = root(value)
     source = dict(id=value,runtime_version=version,specification=str(specification),
                   specification_sha256=file_digest(specification))
+    if (refresh_id is None) != (refresh_checkout is None):
+        raise ValueError("Existing refresh ID and checkout must be supplied together")
+    if refresh_id is not None:
+        if refresh_id == value:
+            raise ValueError("A source-changing extension retry needs a fresh workflow ID")
+        source["existing_refresh"] = existing_refresh(refresh_id, refresh_checkout, version)
     folder.mkdir(parents=True, exist_ok=True)
     lock = folder / "runtime.submit.lock"
     with lock.open("x", encoding="utf-8") as stream:
@@ -51,7 +121,10 @@ def submit(value, version, specification):
         if marker.exists():
             if json.loads(marker.read_text())!=source:raise RuntimeError("Study workflow identity changed")
         else:
-            check_cluster_writers()
+            # Fresh recovery scopes never migrate shared payloads. Their gates may
+            # run alongside the original refresh's read-only audit.
+            if not source.get("existing_refresh"):
+                check_cluster_writers()
             write_json(marker,source,exclusive=True)
         return submit_plan(runtime_plan(value,version,specification),folder/"runtime.submission.json")
     finally:
@@ -62,6 +135,7 @@ def settings(value):
     record=json.loads((root(value)/"workflow.json").read_text())
     if record["id"]!=value:raise RuntimeError("Study workflow ID mismatch")
     require(record["runtime_version"])
+    verify_refresh_source(record)
     return record
 
 
@@ -70,18 +144,19 @@ def launch(value):
     from src.utils.study_layout import migrate
     from src.utils import evaluation_refresh as refresh, legacy_submit as legacy
     record=settings(value)
-    check_cluster_writers()
-    report=migrate([outputs_dir(),resolve_staging_path(OUTPUT_DIR_NAME)],apply=True,
-                   workers=min(8,int(os.environ.get("SLURM_CPUS_PER_TASK","1"))))
-    write_json(root(value)/"migration.json",report)
-    # Prepare only after paths have reached their final, verified locations.
-    if not (refresh.root(value)/"workflow.json").exists():
-        prepared=refresh.prepare(value,record["runtime_version"])
-    else:
-        prepared=refresh.read(value,full_hash=True)
-    refresh_plan=[dict(key="refresh",needs=[],tasks=list(range(len(prepared["tasks"]))),
-                       args=["scripts/slurm/refresh_gpu.slurm",value])]
-    legacy.submit_plan(refresh_plan,root(value)/"refresh.submission.json")
+    if not record.get("existing_refresh"):
+        check_cluster_writers()
+        report=migrate([outputs_dir(),resolve_staging_path(OUTPUT_DIR_NAME)],apply=True,
+                       workers=min(8,int(os.environ.get("SLURM_CPUS_PER_TASK","1"))))
+        write_json(root(value)/"migration.json",report)
+        # Prepare only after paths have reached their final, verified locations.
+        if not (refresh.root(value)/"workflow.json").exists():
+            prepared=refresh.prepare(value,record["runtime_version"])
+        else:
+            prepared=refresh.read(value,full_hash=True)
+        refresh_plan=[dict(key="refresh",needs=[],tasks=list(range(len(prepared["tasks"]))),
+                           args=["scripts/slurm/refresh_gpu.slurm",value])]
+        legacy.submit_plan(refresh_plan,root(value)/"refresh.submission.json")
     legacy.submit(value,"tests")
     test_state=json.loads((legacy.root(value)/"tests.submission.json").read_text())
     prerequisites=[job["id"] for job in test_state["accepted"] if job["key"]=="inspect"]
@@ -94,14 +169,22 @@ def launch(value):
 
 def research(value):
     from src.utils import legacy_submit as legacy
-    settings(value)
+    record=settings(value)
     legacy.submit(value,"research")
-    states=[json.loads(p.read_text()) for p in (root(value)/"refresh.submission.json",
+    refresh_id=record.get("existing_refresh",{}).get("id",value)
+    states=[json.loads(p.read_text()) for p in (root(refresh_id)/"refresh.submission.json",
             legacy.root(value)/"research.submission.json")]
     jobs=[r["id"] for state in states for r in state["accepted"]]
+    # Completed jobs can leave Slurm's controller before a recovery finishes.
+    # Depend on live consumers only; final artifact audits still require every task.
+    queue=subprocess.run(["squeue","-M","mindwell","-u",os.environ["USER"],"-h","-o","%i"],
+                         text=True,capture_output=True,check=True,timeout=45).stdout
+    live={line.strip().split("_")[0] for line in queue.splitlines() if line.strip()}
+    jobs=list(dict.fromkeys(job for job in jobs if job in live))
     # Even failed tasks trigger an audit; it will refuse publication. Any cancelled
     # dependency is made terminal by --kill-on-invalid-dep on dependent arrays.
-    finish=[dict(key="finish",needs=[],tasks=None,args=["--dependency=afterany:"+":".join(jobs),
+    dependencies=["--dependency=afterany:"+":".join(jobs)] if jobs else []
+    finish=[dict(key="finish",needs=[],tasks=None,args=[*dependencies,
              "--time=12:00:00","scripts/slurm/study_cpu.slurm","finish",value])]
     legacy.submit_plan(finish,root(value)/"finish.submission.json")
 
@@ -121,7 +204,7 @@ def audit_extension(value):
     os.environ.pop("CREDITPFN_EVAL_REFRESH",None)
     os.environ.update(CREDITPFN_EVAL_FAMILY="tabpfn",CREDITPFN_EVAL_KIND="foundation")
     for key,path in sorted(workflow["production"].items()):
-        if key.startswith("e4_"):
+        if key.startswith("e10_"):
             context_runs.append(path);continue
         with scope(value):
             report=audit(Path(path))
@@ -187,23 +270,22 @@ def finish(value):
     from src.utils.legacy_checks import require_gate
     from src.utils.consolidate_output import consolidate
     from src.train.config import load_train_config
-    settings(value)
+    record=settings(value)
     audit_extension(value)
     os.environ.pop("CREDITPFN_LEGACY_ID",None)
-    refresh.inspect(value)
-    refresh.promote(value)
+    refresh_id=finalize_refresh(record,value)
     workflow=require_gate(value)
     seen=set()
     for key,path in sorted(workflow["production"].items()):
-        if key.startswith("e4_"):continue
+        if key.startswith("e10_"):continue
         cfg=load_train_config(config_path=path)
         if cfg.run_name in seen:continue
         with scope(value,str(cfg.experiment.output_group)):
             consolidate(str(cfg.run_name),apply=True)
         seen.add(cfg.run_name)
-    write_json(root(value)/"complete.json",dict(passed=True,
+    write_json(root(value)/"complete.json",dict(passed=True,existing_refresh=record.get("existing_refresh"),
         extension_audit_sha256=file_digest(root(value)/"extension-audit.json"),
-        refresh_publication_sha256=file_digest(refresh.root(value)/"publication.json")))
+        refresh_publication_sha256=file_digest(refresh.root(refresh_id)/"publication.json")))
     print("COMPLETE: migrated storage, accepted runtime, additions audited, FP32 results published.",flush=True)
 
 
@@ -211,8 +293,10 @@ def main():
     p=argparse.ArgumentParser(description=__doc__)
     p.add_argument("action",choices=("submit","launch","research","finish"));p.add_argument("id")
     p.add_argument("--runtime-version");p.add_argument("--specification",type=Path)
+    p.add_argument("--refresh-id");p.add_argument("--refresh-checkout",type=Path)
     a=p.parse_args()
-    if a.action=="submit":submit(a.id,a.runtime_version,a.specification)
+    if a.action=="submit":submit(a.id,a.runtime_version,a.specification,
+                                refresh_id=a.refresh_id,refresh_checkout=a.refresh_checkout)
     else:globals()[a.action](a.id)
 
 

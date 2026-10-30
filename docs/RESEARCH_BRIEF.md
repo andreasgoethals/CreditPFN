@@ -15,7 +15,7 @@ This is a descriptive, theory-informed organization refined after the original r
 
 **The 512 original main-grid runs are counted once.** E1/E3/E4 are complementary analyses of them, not three new campaigns. The original scientific campaigns contain 768 unique completed training runs. The approved v2/v2.6 extension adds 128, giving 896 only after all gates, training and benchmark audits actually succeed. It is an exploratory model-coverage extension; existing controls are reused. Both frozen-plus-L2-SP arms and every remaining factorial cell stay available.
 
-Historical config directories, run names and checkpoint paths remain immutable. Public E1/E3/E4 read the historical `experiment1` payload now mapped to `shared/main_grid`; E2←old2, E5←old5, E6←old8, E7←old3, E8←old6, E9←old7, E10←old4. `config/study.yaml` is the machine-readable authority. Numbered prose below uses the public analyses; literal config/run paths deliberately retain historical IDs.
+Public config directories follow E0–E10; embedded campaign identities, run names and checkpoint paths remain immutable. Public E1/E3/E4 read the historical `experiment1` payload now mapped to `shared/main_grid`; E2←old2, E5←old5, E6←old8, E7←old3, E8←old6, E9←old7, E10←old4. `config/study.yaml` is the machine-readable authority. Numbered prose below uses the public analyses; run/checkpoint identities deliberately retain their recorded IDs.
 
 ### Comparability and inference harmonization
 
@@ -180,7 +180,7 @@ Experiment **0** owns debugging and readiness: null controls, positive-LR/recove
 
 Recovery equivalence uses strict deterministic execution and a 2,048-row training cap to separate serialization correctness from GPU arithmetic variation. Null/short/budget pilots and the research grid retain production row caps and fast kernels. A fixed seed controls stochastic inputs; it does not guarantee bitwise equality on nondeterministic GPU kernels. Numerical execution settings are recorded. Small recovery controls establish state restoration under their tested conditions, not capacity or cross-platform reproducibility.
 
-Immutable historical configs remain under `config/experiment0/` through `config/experiment8/`; public notebooks use experiments 0–10 plus `general/`. The mapping in `config/study.yaml` separates publication questions from historical campaign IDs. Experiments 1, 2, 7 retain their `cpt_*_v5` identities; experiments 10, 5, 8, 9 have separate run names and the additional validation gate described below. Isolated auxiliary pilots use unique `cpt_pilot_aux_*` names. Earlier v4 controls remain historical evidence, not passing controls for v5.
+Configs use public experiment folders; E3/E4 reuse E1 rather than duplicate its grid. Notebooks use `rq1/`–`rq4/`, `experiment0/` and `general/`. The mapping in `config/study.yaml` separates publication questions from historical campaign IDs. Experiments 1, 2, 7 retain their `cpt_*_v5` identities; experiments 10, 5, 8, 9 have separate run names and the additional validation gate described below. Isolated auxiliary pilots use unique `cpt_pilot_aux_*` names. Earlier v4 controls remain historical evidence, not passing controls for v5.
 
 ## Shared factorial: experiments 1, 3 and 4
 
@@ -252,7 +252,7 @@ A finite but disappointing/flat curve does not stop training. Only numerical fai
 
 This is a small paired sensitivity check: did changing the training randomness materially alter the reference behavior? Two seeds do not reliably estimate a seed distribution, and this check says nothing about robustness at every other recipe. Show paired differences and curves; do not count the repetitions as extra independent datasets. A future expansion to 64 additional trials would add seed 44 for the same recipe, only if the initial comparison warrants it.
 
-**Experiment 7**, `config/experiment3/{pd,lgd}.yaml`, defines a separate **96-trial** study at LR `3e-7`, lambda `0.003`, full updates, seed 42: three sampling modes × four bases × four folds × two tasks. **All three modes use proportional PD sampling** (`train.context_sampling: stratified`), with uniform LGD sampling. Covering each row exactly once cannot force balanced class prevalence without dropping or repeating rows. This proportional `one_sample` control is therefore deliberately separate from the main grid's balanced-PD reference; their PD difference is a prevalence-policy change, not a pass-mode effect.
+**Experiment 7**, `config/experiment7/{pd,lgd}.yaml`, defines a separate **96-trial** study at LR `3e-7`, lambda `0.003`, full updates, seed 42: three sampling modes × four bases × four folds × two tasks. **All three modes use proportional PD sampling** (`train.context_sampling: stratified`), with uniform LGD sampling. Covering each row exactly once cannot force balanced class prevalence without dropping or repeating rows. This proportional `one_sample` control is therefore deliberately separate from the main grid's balanced-PD reference; their PD difference is a prevalence-policy change, not a pass-mode effect.
 
 The research campaign contains **512 main + 96 sampling + 32 additional seed trials = 640 trials**. All three experiments initialize from the original base weights; neither experiment 2 nor experiment 7 requires an experiment-1 checkpoint or a selected winner. Their training can overlap after fixing the shared budget, inputs and code. The seed comparison needs the matching seed-42 main references before analysis, not before seed-43 training. Experiment 7 has its own one-sample controls. Use the same pilot-selected budget and trajectory points throughout; measure full-pass/accumulation GPU behavior and cost before launching that grid, because experiment 0's production pilots use one_sample.
 
@@ -489,7 +489,7 @@ These implementations require new experiment-0 validation receipts before resear
 Accepted validation receipts and subsequent VSC outcomes are recorded in `AGENTS_MEMORY.md`.
 Experiments 1, 2, 7 retain their configurations and identities.
 The earlier generic-data control and prevalence proposal are excluded. The remaining designs
-use the current public numbering below; historical dated records and literal config paths retain their original IDs.
+use the current public numbering below; historical dated records and immutable run/checkpoint identities retain their original IDs.
 
 | Experiment | Fixed question | Design |
 |---|---|---|
@@ -574,7 +574,7 @@ one-sample visitation, two training views, 60/40 context/query and 10,000 succes
 Fix the total episode cap at **8,192 rows** in both arms. A traversal visits each eligible table
 once in random order; one sampled episode gives one optimizer update. Small tables use their
 available rows without padding or duplicates. This gives 2 bases × 2 corpus policies × 4 folds
-= **16 new trials**, run `cpt_corpus_v1` in `config/experiment6/pd.yaml`.
+= **16 new trials**, run `cpt_corpus_v1` in `config/experiment8/pd.yaml`.
 
 The local processed corpus gives full/large training counts **13/9, 13/8, 12/7, 13/9**;
 held-out counts remain **4, 4, 5, 4**. All currently eligible large tables exceed 26,000 rows.
@@ -599,7 +599,7 @@ Experiment 10 separately varies inference context while keeping the complete tes
 
 Reuse the eight 8,192-row large-arm trials of experiment 8 as the shared control. Train only
 the 2,048- and 26,000-row levels: 2 bases × 2 new sizes × 4 folds = **16 additional trials**.
-The configurations are `config/experiment7/pd_rows{2048,26000}.yaml`, with run names
+The configurations are `config/experiment9/pd_rows{2048,26000}.yaml`, with run names
 `cpt_episode_rows2048_v1` and `cpt_episode_rows26000_v1`. There are 24 analyzed cells in this
 experiment but only **32 distinct new training trials across experiments 8 and 9**. The
 previous, unrun 48-cell factorial design is retired. The smaller design does not estimate
@@ -612,7 +612,7 @@ package versions are frozen too, checked again inside each evaluation task; CLI 
 cannot change inference views, context caps or folds. Only the declared episode cap changes in the
 matched large-arm trials. Reference files stay in experiment 8; no copying, hidden rerunning
 or reuse of differently configured main-grid or sampling checkpoints occurs. Cleanup refuses to
-delete experiment 8 while a saved experiment-9 plan still depends on it (historical configs 6 and 7).
+delete experiment 8 while a saved experiment-9 plan still depends on it (recorded checkpoint campaigns 6 and 7).
 
 Every eligible training table must supply every requested episode size. If a future dataset
 version cannot fill 26,000 rows, preparation fails rather than dropping another table,
@@ -849,7 +849,7 @@ After the `lora1` LGD batch-splitting failure, the query-chunk acceptance bound 
 to 1e-4 synthetic context-target standard deviations; same-batch identity, merge/cache and
 recovery criteria stayed unchanged. This is a post-diagnostic engineering tolerance,
 not a preregistered scientific result. `lora1` remains failed and a fresh gate is required;
-[VSC.md](VSC.md#experiment-8-lora-workflow) records the evidence and exact scope.
+[VSC.md](VSC.md#experiment-6-lora-workflow) records the evidence and exact scope.
 Production-shape probes visit all four dataset partitions with their actual feature widths.
 An independent inspection binds receipts to code, environment, configurations, bases and
 data before production launch. Local checks include real tiny TabICLv2 models; the local

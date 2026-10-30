@@ -79,7 +79,7 @@ def _check_cells(frame, task, receipt, cfg):
 
 
 def load_context_study(*, cfg_override=None):
-    cfg = OmegaConf.to_container(cfg_override if cfg_override is not None else OmegaConf.load(REPO_ROOT / "config/experiment4/context.yaml"), resolve=True)
+    cfg = OmegaConf.to_container(cfg_override if cfg_override is not None else OmegaConf.load(REPO_ROOT / "config/experiment10/context.yaml"), resolve=True)
     mroot = analysis_location("experiment4", "manifests", manifests_dir("experiment4"))
     rroot = analysis_location("experiment4", "results", results_dir(experiment="experiment4")) / cfg["run_name"]
     plan_path = mroot / "plans" / (cfg["run_name"] + ".json")

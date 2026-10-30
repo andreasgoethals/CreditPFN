@@ -1,1195 +1,262 @@
 # CreditPFN on VSC
 
-Shared infrastructure reference: [VSC Library](../vsc-library/README.md). The parent Git commit pins its revision; inspect it with `git submodule status -- vsc-library`.
-Its [official repository snapshot](<../vsc-library/VSC Repository.txt>),
-[guides](../vsc-library/guides/) and [Slurm templates](<../vsc-library/slurm templates/README.md>)
-are read-only. Keep this project's actual paths, environment, resource choices,
-submission/resume steps and run evidence in this file or the project's own run logs.
-Check [upstream review flags](../vsc-library/UPSTREAM_CHANGES.md) and the
-[live Leuven status](https://status.vscentrum.be/tier2_leuven.html) before applying a changed policy.
-
-Scientific choices live in [RESEARCH_BRIEF.md](RESEARCH_BRIEF.md); completed cluster evidence lives in [AGENTS_MEMORY.md](AGENTS_MEMORY.md). Commands here are Bash on VSC unless labeled PowerShell. The preserved original checkout is `$VSC_DATA/CreditPFN`; the isolated migration checkout is `$VSC_DATA/CreditPFN-study-v2`. Both are actual DATA Git checkouts. The current workflow is described first; older campaign commands remain recovery references. Local tests cannot certify the installed B200 runtime.
-
-Operational reference: the independent VSC Library linked above; apply current Leuven rules, and inspect account/QoS limits and storage quota live.
+Scientific methods belong in [RESEARCH_BRIEF.md](RESEARCH_BRIEF.md), primary sources in
+[LITERATURE.md](LITERATURE.md), and dated run evidence in [AGENTS_MEMORY.md](AGENTS_MEMORY.md).
+Commands below are Bash on VSC unless labeled PowerShell. The pinned [VSC Library](../vsc-library/README.md)
+is read-only; this runbook owns project-specific paths and decisions.
 
 ## Access, storage policy and migration status
 
-The local template matches the canonical template byte-for-byte on 29-10-2026
-(SHA-256 `0ed244c16cab8ea86afab5ed90eea36eef3a9e218314c38538e227e4f009fd3c`).
-The established synchronization commit `5186e75` incorporated the latest development/testing/cleanup guidance. Infrastructure guidance is pinned at VSC Library
-`0ed4ffa89d312b9bb6411681b6a14f81672439f3`. The project's figure layout, ICML widths
-and `output CreditPFN/<experiment>/` names remain the documented template deviations.
-
-### Authentication and direct inspection
-
-Andreas authenticates manually in Windows PowerShell when a certificate is needed:
+Follow [TEMPLATE.md](TEMPLATE.md#vsc-access-windows-and-agents). Authentication is manual:
+Andreas runs the following in Windows PowerShell and approves KU Leuven Authenticator when
+his existing certificate is missing or expired. Agents never initiate login or schedule reminders.
 
 ```powershell
 step ssh login --context VSC
 ```
 
-Approve KU Leuven Authenticator, then reuse the existing Windows SSH agent across projects.
-An agent must not initiate this login, install another SSH client/agent, reconfigure a
-project-specific identity, export credentials or schedule authentication reminders. Check the
-loaded certificate's actual validity before access; an expired/missing certificate requires
-the manual command above. Network, host-key and permission failures require their own diagnosis.
+Reuse the existing Windows SSH agent. Use native `C:\Windows\System32\OpenSSH\ssh.exe`
+with `-F none -T`, batch mode, strict known-host checking, bounded timeouts and an LF Bash
+script on stdin, with **no trailing remote command**. Begin the remote script with `exec 2>&1`
+and `set -eu`, emit start/completion markers and check the real exit status. The tested gateway
+otherwise omitted stderr. Empty exit-zero output does not prove execution. Do not export credentials.
+Login nodes are for bounded metadata and scheduler queries; hashing, inventories and computational
+checks run through Slurm.
 
-Use the [template's tested native OpenSSH transport](TEMPLATE.md#vsc-access-windows-and-agents):
-`C:\Windows\System32\OpenSSH\ssh.exe`, `-F none -T`, batch mode, strict known-host checking,
-bounded connection timeouts and an LF Bash script supplied on stdin, with **no trailing remote
-command**. The 29-10 probe returned the expected output marker and exit 7, but did not deliver
-the error-stream marker until the remote script started with `exec 2>&1`. This explicitly
-combines the streams; do not claim they were verified separately. Subsequent read-only scripts
-used `exec 2>&1`, `set -eu`, start/completion markers and verified exit status. Empty exit-zero
-output is never proof that a remote command ran. No certificate or key material is stored here.
+### Storage ownership
 
-Inspect this project's files, bounded logs/manifests, live queues and storage directly when
-relevant. Use login nodes for lightweight metadata and scheduler queries only. Large inventories,
-hashing, tests and computational debugging require an authorized Slurm allocation. Report which
-checks were local and which actually ran on VSC; a passing local test cannot replace a GPU gate.
-
-### Approved migration and Git deployment
-
-The user authorized runtime recreation, output migration, the remaining TabICL FP32 re-evaluations and the isolated v2/v2.6 extension on 29-10-2026. Preserve original campaigns and recovery state. Edit/test locally → commit/push → verify no checkout consumers → `git pull --ff-only` on DATA → verify the exact commit → submit Slurm work. Do not copy uncommitted source or patch remote source directly.
-
-The original DATA checkout and installed Conda environment remain unchanged. A separate clean DATA checkout, `CreditPFN-study-v2`, pulled build revision `d6e183e1b61456c298fb4791ff343955bacd5aab`. Earlier untracked build helpers are preserved in that checkout's Git stash as historical evidence. Build `62470828` completed version `env20261029f` in 8m48s on owned Lustre scratch from recorded Conda URLs, strict pip distribution versions and immutable Git-source pins. All 238 recorded distribution versions and installed Git-source bytes matched. Only the sealed site-wrapper SIF/SquashFS images and their launch wrappers are published to `/lustre1/project/stg_00211/CreditPFN/runtimes/<version>`. Successful construction is not CPU/GPU acceptance; consult AGENTS_MEMORY.md and the actual receipts for that outcome.
-
-Before using the runtime, the study controller requires:
-
-1. CPU package/version, metric, tensor/autograd and serialization checks in the actual container.
-2. Eight original-versus-container comparisons, on the same B200 allocation and fixed rows, covering four bases × PD/LGD and original/CPT weights. Predictions must match the declared tolerances; container/source/inputs are bound to receipts.
-3. Two explicit-FP32 TabICL production-context shape checks, plus verified native-scratch runtime/input staging.
-4. Independent acceptance against the sealed image digest and current source/environment identities.
-
-The legacy environment remains a rollback and the comparator. It must not be moved or removed merely because the new build finishes. No new GPU stage may silently fall back to it. The current approved allocation is Lustre `stg_00211`; GPFS PROJECT availability is not assumed. Mindwell uses native GPFS scratch, wICE native Lustre scratch. Recheck byte and inode quotas before adding checkpoints. At the initial read-only audit DATA was 56,233/76,800 MiB and shared PROJECT 538.2 GiB/1 TiB; these are historical allocation totals, not current free space.
-
-### One gated study workflow
-
-After the build, local validation and Git deployment, use the recorded interpreter for the lightweight submission command. Substitute the actual accepted build ID/specification and a fresh study ID; never reuse another scientific scope after changing its identity:
-
-```bash
-/data/leuven/383/vsc38338/miniconda3/envs/CreditPFN/bin/python -m src.utils.study_workflow submit study20261029 --runtime-version env20261029f --specification "$PWD/output CreditPFN/experiment0/runtime/env20261029f/environment.json"
-```
-
-This queues CPU preparation, the ten runtime GPU cases, independent acceptance and the next controller. Only successful acceptance allows the controller to hash and migrate both output roots. `STUDY_LAYOUT.json` is published after verification of both tiers. Completed scientific bytes are moved intact; historical configs, trial identities and checkpoint locations do not change. The shared main factorial has one payload at `shared/main_grid`; public E1/E3/E4 are analysis views. Public study numbering and immutable campaign IDs are mapped in `config/study.yaml` and README.md.
-
-After migration, independent branches run:
-
-- **Inference refresh:** historical sampling/corpus/episode benchmarks and TabICL context curves, explicit FP32/no-FA3. Five configurations × four partitions × sixteen benchmark shards plus 125 context tasks = 445 submitted tasks, including legitimate empty shards. Original results remain active until independent metric/test-cohort checks pass. Original/CPT pairs use the same precision.
-- **Model extension gate:** twelve correctness cases, sixty-eight capacity cases and an independent inspector. Successful inspection releases 128 training trials, 250 context tasks and 896 foundation benchmark shards. Each benchmark depends on its own training completion; unrelated branches are submitted together.
-- **Final audit/publication:** exact expected comparison coverage, five successful folds, finite saved predictions, independently recomputed AUC/Brier or R²/RMSE, complete unchanged test rows and context separation. FP32 replacements are promoted atomically with a recovery journal; superseded predictions and their original consolidation pointers are retained. New extension results are consolidated in their own scope.
-
-Arrays have no artificial running throttle. The dispatcher checks the controller's actual array limit, retries only explicit site submission-admission refusals and preserves every accepted job ID. Genuine gates use `afterok`; failed prerequisites cannot release research. Eight-hour FP32 refresh allocations allow for the previously observed large-table inference times; this is a ceiling, not an elapsed-time forecast. CPU count selects partition-default memory unless an actual measured need requires another request.
-
-Workflow state is under canonical DATA `output CreditPFN/experiment0/manifests/study_v2/<ID>/`. Runtime acceptance and extension records have separate owned scopes; large evidence and weights remain on PROJECT. `complete.json` is written only after the final audits and publication succeed. Missing/failed receipts are not an invitation to delete or resubmit everything: inspect the exact task and preserve compatible recovery state.
-
-The 29-10 deployment `4bf4535` passed the CPU and ten GPU runtime cases, then verified and migrated both output roots. Its extension preparation exposed a scope-dependent runtime-receipt lookup before GPU work. The running refresh keeps that source unchanged. A temporary link from the extension's `manifests/runtime_acceptance/env20261029f` to the actual global accepted receipts permits the identical gate to be checked. It is a metadata reference, not a copied or relaxed acceptance record. The local correction stores acceptance under `experiment0/manifests/runtime_acceptance/<version>/<source-identity>/` and large comparison evidence at the corresponding PROJECT path, irrespective of extension/LoRA scope. Deploy and independently validate that correction after the current consumers finish; preserve the old receipts and remove only the temporary link.
-
-Queue-admission waits must outlive an interactive SSH connection. Resume a confirmed submission record in the existing persistent lightweight submitter (or an allocated controller), after checking its lock/process and any `in_flight` record. Do not restart a plan or discard accepted job IDs merely because the terminal timed out. The `study20261029` retry uses this mechanism and automatically queues its research controller after the independent extension inspector.
-
-Future activation requires an explicit `CREDITPFN_RUNTIME_VERSION`; omitting it fails before creating caches instead of silently selecting the DATA Conda environment. The same-GPU compatibility job explicitly selects `CREDITPFN_LEGACY_RUNTIME_COMPARISON=1` only for its preserved original arm, then clears it before container activation. This local change is not deployed into the active `4bf4535` checkout; validate the final source independently before its cutover.
-
-For a future approved workflow after that deployment, `study_cpu.slurm submit <ID> --runtime-version <VERSION> --specification <ENVIRONMENT_JSON>` runs the lightweight submission controller in the sealed PROJECT container, inside Slurm. Export the same `CREDITPFN_RUNTIME_VERSION` with `sbatch`. This bootstrap may queue the CPU/GPU acceptance graph before the new source is accepted; research remains behind independent acceptance, migration and extension checks. It replaces the historical DATA-Python submission command above and avoids installing or invoking project dependencies on a login node. Preserve the old runtime only while same-GPU comparisons or explicitly retained rollback require it.
-
-### Collection, rollback and cleanup
-
-At the 30-10-2026 smoke inspection, `study20261029` was **not ready for extension research**: cases 4–7 failed an obsolete v3-only DiagScale training guard, and case 9 (LoRA LGD v2.6) exited 139 without a Python traceback. Seven cases passed; the dependent inspector and research controller were cancelled. Preserve those receipts and checkpoints. The local correction removes only the stale filename guard, retains strict projection validation and enables native fault traces. It requires deployment through Git, current-source runtime acceptance and a fresh extension ID; the existing FP32 refresh remains bound to its frozen source and must not be restarted or silently rebound.
-
-Preserve the original runtime, build specifications, source commit, library pins and migration hash journal. Build specifications currently reside inside the separate DATA checkout's `output CreditPFN/experiment0/runtime/<version>/`; retain them alongside the canonical acceptance records when collecting the final release. The two canonical output roots are complementary, not alternative versions. Download them only after publication is complete, then perform the local layout migration/verified refresh before regenerating all 15 RQ/validation/general notebooks. Notebook and figure grouping does not rename scientific payloads or change the active campaign. Never overlay a new-layout download onto an unmarked old-layout tree.
-
-Own-work cleanup is part of completion: inspect active/queued/resumable consumers, retain compact failure evidence and published checksums, then remove only verified obsolete build workspaces and staging paths created by this task. No blanket scratch deletion. Original datasets, base weights, research checkpoints and recoverable results are outside that cleanup. The original DATA checkout and environment stay available until rollback retirement is explicitly justified.
-
-Temporary-work ledger (29-10-2026; active consumers remain protected):
-
-| Owned location | Purpose and retirement condition |
+| Tier | CreditPFN location and role |
 |---|---|
-| DATA `CreditPFN-study-v2` | Isolated migration checkout. Specifications and the three historical pre-Git helpers are archived/hash verified under canonical DATA `experiment0/manifests/runtime_builds/study20261029/`. After all consumers finish, preserve any final submission records, update and verify the normal DATA `CreditPFN` checkout through Git, then retire this temporary checkout. |
-| Six exact owned Lustre runtime-build directories for `env20261029` and suffixes `b`–`f` | **Removed** by successful wICE job `62471310`, after all build jobs were terminal and 348 compact records were preserved/hash checked in canonical DATA `experiment0/manifests/runtime_builds/study20261029/`. Its `cleanup.json` records each exact removed path. The three empty failed PROJECT runtime directories (`b`, `c`, `d`) were also removed. |
-| Native scratch `CreditPFN/runtimes/env20261029f` and per-job `CreditPFN/cache/<job>` | Execution copies only. Keep while accepted/queued jobs use them; retire after verified persistent publication and consumer checks. |
-| DATA `experiment0/extensions/study20261029/manifests/runtime_acceptance/env20261029f` | Temporary link to the genuine global acceptance receipts for unchanged deployment `4bf4535`. After its consumers finish, unlink only this alias; preserve the accepted target and failed/retry submission records. |
-| DATA and PROJECT `output CreditPFN/.study-v2-staging` | Both empty directories retired after verifying the published layout markers. Exact paths are recorded in `experiment0/manifests/runtime_builds/study20261029/empty-migration-staging-cleanup.json`; migration journals remain available. |
-| Local `tmp/figure_review/` and task-specific helper scripts | Disposable rendering/QA work. Remove after required figure checks and publication; no dataset or model files are included. |
+| DATA | `/data/leuven/383/vsc38338/CreditPFN`: actual Git checkout and `.git`, compact logs, manifests, receipts |
+| PROJECT | `/lustre1/project/stg_00211/CreditPFN`: canonical datasets, weights, predictions, detailed training/results and versioned sealed runtimes |
+| Mindwell scratch | `$VSC_SCRATCH_GPFS1/CreditPFN`: staged working inputs/runtime; temporary only |
+| wICE scratch | `$VSC_SCRATCH_LUSTRE1/CreditPFN`: staged working inputs/runtime; temporary only |
+| Node-local scratch | `$VSC_SCRATCH_NODE/CreditPFN/job_cache/<user>/<job>-r<restart>`: owned disposable library caches |
 
-The existing input cache predates this task and must be inspected separately. Neither an empty queue nor this ledger authorizes deleting an unrelated project's files or the original environment.
+GPFS PROJECT is not assumed to be allocated. Check current quotas before staging more assets.
+The output name is `output CreditPFN/` on both persistent tiers, a deliberate template deviation.
+The shared publication tree `figures/{rq1,rq2,rq3,rq4,experiment0,general}` and actual ICML figure
+widths are the other documented deviations.
 
-## Historical campaign commands and recovery references
+`env20261029f` is the immutable PROJECT container rebuilt from the recorded environment:
+238 distribution versions and installed Git-source bytes matched at construction. Runtime acceptance
+is separately bound to the actual image digest, interpreter, package versions and source identity.
+The old DATA Conda environment is retained solely for explicit compatibility comparisons/rollback;
+new computational jobs require `CREDITPFN_RUNTIME_VERSION` and cannot silently fall back to it.
+Never relocate an installed environment.
 
-The remaining commands use immutable **historical campaign/config numbers**, not the new public notebook numbers. For example, `run_experiment8.sh` still means the LoRA campaign now presented as public E6. New work should use the gated workflow above. These references preserve the exact earlier launches and cleanup boundaries; do not rerun an older campaign just because its public presentation number changed.
+### Current campaign state
 
-## TabPFN v2/v2.6 extension
+At the verified 30-10-2026 full audit, all **445 FP32 refresh tasks** completed: 320 benchmark
+shards and 125 context tasks. Independent audit `62474641` passed 459 benchmark comparisons,
+2,295 folds and 30,967,719 saved predictions, plus 5,550 context cells / 147,493,764 predictions.
+The audit verified unchanged benchmark cohorts/targets and complete fixed context-test rows.
+These results remain staged until the final publication gate; notebook results are still the prior download.
 
-The 29-10-2026 extension preserves experiments 1–3 and all existing follow-up
-outputs. It adds v2/v2.6 only in experiments 4–8. Scientific choices and counts
-are in [RESEARCH_BRIEF.md](RESEARCH_BRIEF.md#additional-model-coverage-tabpfn-v2-and-v26).
-The infrastructure review used VSC-library pin
-`1c29213086a0ae76b8f95cdd8eccbb9db8d6ca87`; live scheduler/account limits remain authoritative.
+The original extension gate failed: seven smoke cases passed; four DiagScale cases hit an obsolete
+v3-only guard; one LoRA LGD v2.6 case exited 139 without a Python traceback. Its capacity jobs and
+dependent controllers were cancelled, and no extension research was released. The guard correction
+retains strict projection validation; native fault traces are enabled for the fresh gate. A new source
+requires fresh runtime acceptance and all 80 extension checks, not reuse of passing old-source receipts.
 
-After existing CreditPFN jobs finish, pull the validated source. Keep the conda
-environment and source unchanged through validation and production. No installation
-or model download is part of this workflow: the four original v2/v2.6 PD/LGD weights,
-processed tables and fixed experiment-1 reference checkpoints must already exist.
+The frozen DATA checkout `CreditPFN-study-v2` at `4bf45351075b3722d85a366da22b8df5f2322f75`
+remains necessary to audit/publish the original `study20261029` refresh under its own source identity.
+Do not update it or rebind its receipts. The normal DATA checkout can be updated only after its
+own consumers are absent. Its previously mismatched TFM checkout and uninitialized VSC Library
+must be verified and synchronized to the parent Git pins before reuse. Inspect local submodule
+changes before updating; both libraries are read-only from this project.
 
-```bash
-git pull --ff-only
-```
+## Public numbering and recorded campaign identities
 
-Choose a new alphanumeric ID; `legacy1` is an example. One command queues CPU
-preparation, 12 GPU correctness tasks, 68 GPU capacity tasks, and independent CPU
-inspection, connected with `afterok`. Failed prerequisites cancel descendants;
-they never silently authorize production.
+`config/study.yaml` is read by the implementation and is the layout authority. Public config
+folders, launcher names, notebook prose and scientific output use the following numbering.
+Only immutable run IDs, embedded checkpoint campaign identities and dated evidence retain their
+recorded identities. They are provenance, not alternative public experiment numbers.
 
-```bash
-bash scripts/slurm/run_legacy_extensions.sh tests legacy1
-```
+### Recorded campaign identities
 
-The launcher prints its persistent submission log and backgrounds only the light
-submission process; heavy hashing/preparation/checks run in allocations. GPU arrays
-have **no `%N` running cap**. The submitter splits rejected admission batches without
-limiting concurrent execution. It waits on explicit submission-quota refusals; for
-Slurm's generic accounting/QOS message it waits only after an identical resource
-request has already been accepted. An unproven singleton request stops for diagnosis,
-so an invalid time/memory request cannot loop forever. Accepted
-job IDs are saved before advancing; ambiguous responses stop for reconciliation.
-Reissuing the same phase resumes confirmed submission state, not completed computation.
-Ordinary queue priority/resource waits still apply, and an environment-retrieval hold
-requires scheduler diagnosis. Do not repeatedly launch new IDs to bypass a hold.
+| Public analysis | Config folder | Persistent result payload | Recorded checkpoint campaign |
+|---|---|---|---|
+| E1 learning rate/progress | `config/experiment1` | `shared/main_grid` | `experiment1` |
+| E2 seed sensitivity | `config/experiment2` | `experiment2` | `experiment2` |
+| E3 L2-SP / E4 freezing | Reuse E1 config, no independent grid | `shared/main_grid` via `STUDY.json` pointers | `experiment1` |
+| E5 DiagScale | `config/experiment5` | `experiment5` | `experiment5` |
+| E6 LoRA | `config/experiment6` | `experiment6` | `experiment8` |
+| E7 sampling | `config/experiment7` | `experiment7` | `experiment3` |
+| E8 corpus composition | `config/experiment8` | `experiment8` | `experiment6` |
+| E9 episode size | `config/experiment9` | `experiment9` | `experiment7` |
+| E10 target context | `config/experiment10` | `experiment10` | `experiment4` |
 
-Inspect the experiment-0 `legacy_inspect` log: it must end with `PASS` for all
-80 cases and exit 0. Then one command queues the entire research extension:
+Weights remain `checkpoints/trained/<recorded campaign>/<track>/`; run names and checkpoint
+basenames are unchanged for resume and provenance. Embedded `experiment.output_group` and internal
+`CREDITPFN_EXPERIMENT` denote that recorded identity; path helpers map it to the public payload.
+**Do not set that internal variable from a public number by guessing.** Public launchers/cleanup
+arguments perform the conversion. Job logging reads the config's explicit owner, never its folder number.
+The shell bootstrap mapping is regression-tested against the YAML authority.
 
-```bash
-bash scripts/slurm/run_legacy_extensions.sh research legacy1
-```
+Both DATA and PROJECT already have schema-2 `STUDY_LAYOUT.json` markers and verified migration
+journals. The 512-run factorial is stored once; E1/E3/E4 are analyses of it, never three independent
+campaigns. E9 reuses E8's large-table 8,192-row control. Do not duplicate those controls or delete E8
+while a saved E9 plan consumes it. Never apply the numbering permutation twice to an already marked tree.
 
-This submits 128 training trials, 250 context-curve tasks and 896 foundation-benchmark
-shards. Training and context curves have no artificial cross-experiment dependencies;
-each benchmark waits only for its own model/track/partition training array to succeed.
-Benchmarks are already queued by this command; do not submit them separately.
-Training retains checkpoint recovery/requeue, and context tasks retain cell-level resume.
-A job exit or accepted submission is not evidence of scientific completeness. Check
-final audit/benchmark outcomes before analysis; diverged or missing checkpoints block
-the corresponding benchmark. Empty benchmark shards may be legitimate.
+## Deployment and one gated workflow
 
-Correctness checks include native packed/separate projections, unchanged original
-weights, nonzero adapter gradients, zero-initialization parity, live/export/reload and
-cached predictions, automatic/FP32 inference, and interrupted versus uninterrupted
-six-update training at every adapter rate. Capacity checks use all four partitions
-and real training tables/features at each requested episode size for 32 updates.
-Context capacity uses the model's full inference cap and at least the widest real
-table's feature count, a conservative synthetic envelope, at the production ensemble
-size. These checks do not certify arbitrary future datasets or changed packages.
+1. Edit and test locally. Run full pytest and all notebooks after plotting/notebook changes.
+2. Commit and push validated source. Inspect remote jobs, checkout changes and submodules.
+3. In a safe DATA checkout, `git pull --ff-only`, update clean submodules to their recorded pins,
+   and verify the exact commit. Preserve any checkout used by active, queued or recoverable jobs.
+4. Run current-source CPU/GPU gates through Slurm. Inspect real artifacts and logs on failure,
+   repair locally, push and deploy again. Never patch remote source directly.
+5. Only passing independent gates release the already authorized research and final publication.
 
-Small files/logs/generated configs: DATA `output CreditPFN/<experiment>/extensions/<ID>/`.
-Trajectories/results/predictions: the same relative tree on PROJECT.
-Weights: PROJECT `checkpoints/trained/<experiment>/extensions/<ID>/`.
-The final two tiers can be downloaded with the existing output download commands;
-no historical file needs replacing. Existing notebooks automatically include one
-prepared extension. If multiple are present, explicitly select the intended one
-with `CREDITPFN_ANALYSIS_EXTENSION_ID`; readers never choose by performance.
-
-Cleanup is preview-first and covers only the chosen ID, both storage tiers and
-explicitly tagged extension figures. Stop the submitter and wait for/cancel its
-jobs before applying cleanup. It refuses active CreditPFN writers, linked paths,
-unknown ownership and deleting E6 while E7 still depends on it.
+The recovery workflow below queues the full sequence once from the sealed container, including
+CPU preparation, ten runtime GPU checks, independent runtime acceptance, extension preparation,
+12 correctness cases, 68 capacity cases, independent inspection, research and final audit/publication.
+Use a fresh ID after a source change. This recorded specification is preserved in canonical DATA:
 
 ```bash
-sbatch scripts/slurm/maintenance.slurm clean-extensions --id legacy1
+CREDITPFN_RUNTIME_VERSION=env20261029f sbatch scripts/slurm/study_cpu.slurm submit study20261030a --runtime-version env20261029f --specification "$PWD/output CreditPFN/experiment0/manifests/runtime_builds/study20261029/checkout/runtime/env20261029f/environment.json" --refresh-id study20261029 --refresh-checkout /data/leuven/383/vsc38338/CreditPFN-study-v2
 ```
 
-After reviewing the preview, this deletes **only that extension**, including its
-new experiment-0 probes; it preserves every original experiment and base weight:
+**Do not rerun this example if its durable submission receipt already exists.** Inspect the receipt
+and queue first. `--refresh-id` plus `--refresh-checkout` binds the original clean commit, preparation
+hash and runtime; it skips completed migration/FP32 computation. The old evaluator independently
+checks and publishes its own results from its frozen checkout. A partial publication resumes its
+journal and validates every retained file, rather than treating absent moved source files as missing work.
+
+Runtime checks cover packages, metrics, tensors/autograd and serialization; eight same-B200
+original-versus-container comparisons (four bases × PD/LGD, original and CPT weights); and two
+explicit-FP32 TabICL production-context shapes. All use fixed inputs and declared tolerances.
+Successful runtime construction or Slurm exit zero alone is not acceptance.
+
+### TabPFN v2/v2.6 extension
+
+After all 80 checks pass, the controller queues **128 new training trials, 250 context tasks and
+896 foundation-benchmark shards** across public E5/E6/E8/E9/E10. No base-weight download or recipe
+change is part of this recovery. Arrays have no artificial running-task throttle. Admission retries
+respect actual Slurm limits; benchmark dependencies follow only the training they consume.
+Accepted job IDs are persisted before further submissions; ambiguous responses require reconciliation.
+
+Correctness checks cover packed/separate projections, untouched base weights, nonzero adapter
+gradients, initialization parity, live/export/reload/cache parity, automatic/FP32 inference and
+interrupted-versus-uninterrupted training at every adapter rate. Capacity checks exercise real
+partition tables, production ensemble/features and 32 updates. Full-context probes cover each model's
+inference cap. These checks do not certify other future datasets, packages or caps.
+
+| Base | Measured training episode ceiling | E10 inference context ceiling |
+|---|---:|---:|
+| TabPFN v2 | 10,000 | 10,000 |
+| TabPFN v2.6 | 11,000 | 50,000 |
+| TabPFN v3 / TabICLv2 | 26,000 | 50,000 in this study |
+
+Training ceilings describe context-plus-query rows under the recorded feature/ensemble setup;
+inference context is a different quantity. E9 uses 2,048, the shared 8,192 control, and the relevant
+measured maximum. Do not increase caps without a new actual GPU probe. Five-fold test rows remain
+complete while E10 reduces nested labeled context; v2/v2.6 never exceed their respective context caps.
+
+Small extension records live on DATA at `output CreditPFN/<public payload>/extensions/<ID>/`;
+large results/trajectories/predictions mirror that path on PROJECT. Weights use the recorded checkpoint
+campaign with the same extension ID. Validation lives in `experiment0/extensions/<ID>/` on both tiers.
+A reader accepts one prepared extension or an explicit `CREDITPFN_ANALYSIS_EXTENSION_ID`; it never
+chooses by performance. Failed scopes must not masquerade as completed extension evidence.
+
+### Experiment 6: LoRA workflow
+
+LoRA uses `train.adaptation_mode: lora` and native query/value projections, not the old frozen/PEFT
+flag. Its original dedicated gate is `CREDITPFN_LORA_GATE`; isolated validation lives under
+`experiment0/lora/<ID>/`. The v2/v2.6 extension has its separate 80-case gate. Do not substitute
+one gate's receipt for another. The accepted scientific recipe and known differences from DiagScale
+are recorded in the research brief. Prior completed E6 trials are preserved; the new extension adds coverage.
+
+### Individual commands
+
+The whole-study controller above is the approved path for the remaining campaign. Standalone
+`run_experiment5.sh`, `run_experiment6.sh`, `run_experiment8.sh`, `run_experiment9.sh` and
+`run_experiment10.sh` now follow **public** numbers. `run_benchmark.sh experiment7`, for example,
+means sampling. E3/E4 reject separate benchmark submission because E1 supplies that evidence.
+The older standalone launchers preserve their explicit compatibility/concurrency options; they
+are not the uncapped controller used for the current extension. Do not use them to duplicate
+work already accepted in the workflow receipts.
+
+Inspect the live queue independently of artifact completion:
 
 ```bash
-sbatch scripts/slurm/maintenance.slurm clean-extensions --id legacy1 --apply
+squeue -M mindwell,wice -u "$USER" -o "%.20i %.28j %.12T %.12M %.65R %.80E"
 ```
 
-Use `--experiment 5` (or 0/4/6/7/8) to narrow cleanup. Reuse of an already submitted
-phase does not resubmit deleted completed jobs: reconcile that phase explicitly or
-start a fresh ID after diagnosis. Rerun notebooks after cleanup to refresh shared
-overview figures and `All_Results.md`. Do not use the older whole-experiment cleaner
-for deleting just these additions.
+`Dependency`, `Priority`, `Resources` and an explicitly configured array throttle are scheduler
+states, not failed scientific output. An environment-retrieval hold needs a targeted `scontrol`
+inspection; never cancel/resubmit an entire campaign to clear one held task. SIGUSR1/requeue
+checkpoints, `.resume.pt` files and trial manifests must be preserved until terminal success.
 
-## Final inference check before writing
+## Cleanup and controlled cache lifetime
 
-This is a finishing diagnostic inside experiment 0, **not a repeat of experiments 1–7**.
-Deploy the reviewed source after the previous campaign has finished; do not upgrade the
-CreditPFN conda environment. The local test suite checks the logic, while the B200 run
-checks the actual installed numerical backend. Infrastructure reference for these
-wrappers: read-only VSC Library pin `3a04134ab7786dc4158a389ac685acfe7b77b62b`.
+The user approved scoped disposable-cache cleanup and cache-policy tests on 30-10-2026.
+`job_cache.py` creates an exclusively owned job/restart directory, preferring node-local scratch
+and falling back to the native cluster scratch. NVIDIA, Triton, matplotlib and other library caches
+are confined there. Successful jobs remove only their verified owned directory; failed jobs retain
+it for diagnosis. Cache-cleanup failure is logged separately and cannot rewrite the scientific exit status.
+Datasets, shared staged inputs, runtime images and recovery files never belong in these directories.
 
-After reviewed, validated changes are pushed and the deployment conditions above are met, on VSC:
+`storage_cache.slurm` inventories older numeric per-job cache directories in a Slurm allocation.
+It requires exact project/scratch ownership, terminal successful CreditPFN accounting state,
+no other active CreditPFN consumers, known cache contents and unchanged inventory before deletion.
+Unknown/failed jobs, symlinks, foreign-owned files and unfamiliar contents are retained. Its preview
+and apply receipts record exact paths/counts/bytes; never use a blanket scratch deletion.
 
 ```bash
-cd "$VSC_DATA/CreditPFN"
+sbatch scripts/slurm/storage_cache.slurm
 ```
+
+The already approved scoped application runs the same checks before removal:
 
 ```bash
-git pull --ff-only
+sbatch scripts/slurm/storage_cache.slurm apply
 ```
 
-Prepare on wICE; this verifies existing data/checkpoint provenance, checks the
-existing Mindwell input cache before GPU submission, and writes an
-unchanged-weight save control. It performs no optimization. `papercheck1` names an
-immutable diagnostic; choose a new ID only when intentionally changing its code,
-environment or configuration.
+Do not run a second cleanup while the first or another CreditPFN consumer is active. Use the
+appropriate cluster/partition override for wICE; shared training/input/runtime trees stay protected.
+
+Scientific cleanup is separate and defaults to preview. `clean_run --experiment experiment6`
+means public LoRA; internal recovery can explicitly use `--campaign experiment8`. Clearing shared
+E1/E3/E4 scientific evidence requires `--shared-factorial`. Figure cleanup uses metadata dependencies
+across RQ and overview folders, not guessed experiment folders. It removes the dependent PDFs and
+caption entries; rerun notebooks to regenerate inline output and final summaries.
+
+Extension cleanup affects only its named additions on both tiers, including tagged publication pages:
 
 ```bash
-sbatch scripts/slurm/inference_review_cpu.slurm prepare papercheck1
+sbatch scripts/slurm/maintenance.slurm clean-extensions --id FAILED_ID
 ```
 
-Wait for its `PREPARED papercheck1: 15 inference tasks` message and exit 0 in
-`output CreditPFN/experiment0/logs/inference_review_prepare_papercheck1_*.log`.
-Then submit the entire diagnostic:
+After reviewing ownership/consumers and preserving necessary failure evidence, add `--apply`.
+Optional `--experiment` accepts public 0/5/6/8/9/10. Preserve original experiments and all base weights.
+Do not delete submitted-phase receipts and assume reissuing them will recreate deleted completed work;
+use a reconciled recovery or fresh ID.
 
-```bash
-sbatch scripts/slurm/inference_review_gpu.slurm papercheck1
-```
+## Final publication, collection and retirement
 
-The array has 15 tasks, at most two GPUs at once, with a four-hour limit per allocation.
-This is a ceiling, not a runtime forecast. Three credit tables × five folds compare
-original, unchanged-save and fixed-reference CPT weights under automatic and FP32/no-FA3
-settings. Native-context cells predict every outer test row. Only Vehicle Loan fold zero
-adds 24 bounded threshold probes (four context sizes × three policies × two weight states)
-using a fixed, label-independent 256-row query subset. Backend instrumentation reports
-actual FA3/torch-SDPA calls and input dtypes; it does not identify PyTorch's internal SDPA
-kernel. TF32 settings are recorded separately.
+Final publication requires complete trial rosters, finite predictions, independently reproduced metrics,
+fixed fold membership/targets and full context-test rows. Incomplete evidence remains explicit.
+The old FP32 publication and the new extension audit remain separately source-bound.
 
-Each cell commits its predictions atomically in a per-task SQLite journal. If a task
-times out, first inspect accounting; resubmit **only that array index** with the same ID
-and unchanged source/environment. Already committed cells are verified and reused.
-An unchanged-save parity failure is not a timeout and must be investigated.
-Do not run overlapping copies of the same task; a process lock rejects a second writer.
-
-When the array finishes, audit all 15 journals on wICE:
-
-```bash
-sbatch scripts/slurm/inference_review_cpu.slurm inspect papercheck1
-```
-
-Require `"passed": true` and exit 0. This independently recomputes AUC/Brier, row pairing,
-checksums and save/reload parity. It **does not** mean precision has no effect: compare
-the policy-specific gains before finalizing the TabICL interpretation.
-
-Download both output trees as usual. New small plans/receipts live on DATA at
-`output CreditPFN/experiment0/manifests/inference_review/papercheck1/`;
-prediction journals live at the corresponding PROJECT `results/inference_review/` path.
-The save control is in PROJECT `checkpoints/trained/experiment0/inference_review/`.
-Repeated weight reads use node-local scratch; processed input uses the existing
-verified GPFS cache. Completed scientific output is never replaced.
-
-Locally, from the repository root:
+Collect both complementary persistent output roots only after successful publication. The destination
+must have the same schema-2 layout; never overlay a new-layout download onto an unmarked historical
+tree. Local data/checkpoints stay outside Git. Rerun all 15 RQ/E0/general notebooks:
 
 ```powershell
 .\.venv\Scripts\python.exe -m src.utils.run_notebooks --workers 2
 ```
 
-The existing auxiliary notebook shows the review receipts and a single comparison
-figure once all tasks pass. Main result notebooks already compute reference uncertainty,
-source/partition sensitivity and LGD score/boundary diagnostics from saved output.
-The shared `All_Results.md`, inline figures, PDFs and `figures/CAPTIONS.md` are rebuilt.
-
-The current KU Leuven Tier-2 systems are **wICE and Mindwell**, both on Rocky Linux 9.6. `login.hpc.kuleuven.be` selects one of four wICE login nodes; Mindwell has no dedicated login nodes. Genius documentation is historical. Our batch wrappers already select wICE for CPU maintenance/classical evaluation and Mindwell `gpu_b200` for production GPU work, with explicit clusters, account and `--gpus-per-node=1`. The older Genius activation anecdote and scratch alias do not route current submissions there. Do not change fingerprinted activation code merely to remove historical wording during a live campaign.
-
-Publications using these resources must acknowledge VSC using the wording in the snapshot's `source/how_do_i_acknowledge_the_vsc_in_publications.rst`; KU Leuven also requests adding the paper to the `KUL-HPC` collection in Lirias.
-
-## Storage and output
-
-| Tier | Location | Contents |
-|---|---|---|
-| DATA | `$VSC_DATA/CreditPFN` | Repository, logs, small manifests/plans and workflow state |
-| Project | `/lustre1/project/stg_00211/CreditPFN` | Canonical data, weights, detailed measurements, predictions and consolidated tables |
-| Mindwell GPFS | `$VSC_SCRATCH_GPFS1/CreditPFN/inputs/<hash>` | Verified immutable working copies of processed/public tables and base weights |
-| Mindwell GPFS | `$VSC_SCRATCH_GPFS1/CreditPFN/output CreditPFN/<experiment>/training_work/<attempt>` | Frequent diagnostic writes, published to project storage at allocation/trial exit |
-| Node scratch | `$VSC_SCRATCH_NODE` | Transient monitor weights and runtime caches |
-
-Both bytes and inodes matter. The [official KU Leuven storage documentation](https://docs.vscentrum.be/leuven/tier2_hardware/kuleuven_storage.html) describes DATA's 75 GiB default and scratch policy. It does not establish the current quota or backup policy of `stg_00211`; inspect `myquota` and the allocation's limits. Intensive Mindwell reads **and writes** belong on GPFS; wICE uses Lustre. Bulk transfers between filesystems are allowed when they occupy a small fraction of the job. The explicit GPFS path is used even when preparing Mindwell inputs from a wICE CPU job. An optional wICE GPU route selects a separately prepared `$VSC_SCRATCH_LUSTRE1/CreditPFN/ACTIVE_INPUTS.json`; it must not reuse Mindwell's cache by default. See the snapshot's `KU Leuven storage` and `Transferring data between Lustre and GPFS` sections.
-
-The user requires `output CreditPFN/`, with the experiment layer below it. The name intentionally differs from the template's generic `output/`; quote paths containing the space:
-
-```text
-DATA/CreditPFN/output CreditPFN/
-  All_Results.md               all notebook summaries in folder/name order
-  figures/                      complete local publication collection
-    CAPTIONS.md                 all captions in notebook/drawing order
-    general/                    corpus PDFs; likewise experiment0–experiment7
-      _metadata/                per-notebook caption records
-  general/
-    logs/                       data preparation and general maintenance
-    manifests/scheduler/        shared per-controller capacity pool, cluster locks
-  experiment0/                  likewise experiment1–experiment7
-    logs/                       one file per job/attempt, including setup and exit status
-    manifests/
-      <run>_sNN_<track>.csv      trial outcomes; used by evaluation and resume
-      plans/                    immutable code/data/config/environment identities
-      resolved/                 effective entry-point configurations
-      workflow/                 experiment-0 stage state and audit receipts
-
-PROJECT/CreditPFN/
-  data/{raw,processed,retention}/
-  checkpoints/<base>.ckpt
-  checkpoints/trained/<experiment>/<track>/
-    <trial>.ckpt                final weights
-    <trial>.ckpt.provenance.json
-    <trial>.ckpt.resume.pt      latest optimizer/RNG/cursor state while unfinished
-  output CreditPFN/<experiment>/
-    training/<track>/
-      <trial>.csv               epoch objectives, gradients, skips and timings
-      <trial>.trajectory.csv    fixed-update credit/non-credit scores and drift
-      <trial>.parameters.csv.gz milestone tensor summaries, compressed
-      <trial>.resources.csv     periodic device/process counters
-    results/<PD|LGD>/<method>/  outer-fold scores, identities and compressed predictions
-    evaluation_cache/          reusable untuned/classical controls and predictions
-    consolidated/<run>/        LATEST + immutable compressed analysis snapshot
-```
-
-Locally both tiers collapse into one `output CreditPFN/` tree. Keep `CREDITPFN_OUTPUT_ROOT` and `CREDITPFN_STAGING_ROOT` pointing to the enclosing **CreditPFN project roots**, not `output CreditPFN/`. Weights retain the template's explicit `checkpoints/` exception. This experiment layer and project-tier training diagnostics are intentional template extensions.
-
-Mindwell accumulates epoch, trajectory, parameter and resource files on GPFS. Normal completion, a saved interruption and ordinary Python errors publish complete files to project storage using temporary files and atomic replacement. Resource samples carry forward between allocations; other histories are reconstructed from recovery state. Project diagnostics therefore update at segment/trial exit, while the DATA log remains live. A publication failure fails the trial and retains the GPFS work directory named in the log; inspect it before retrying. An abrupt kill/node failure can also leave unpublished samples there. These temporary directories are not a third permanent output archive and are not removed by the two-tier campaign cleaner; recover or remove leftovers only after checking stopped jobs. GPFS scratch has a 30-day no-access purge policy, not backup protection.
-
-Fresh `cpt_*_v5` plans are independent of v4 records and weights. Both tiers create `output CreditPFN/` automatically. Relative legacy `output/...` settings resolve to the canonical name rather than creating another tree. Keep any historical copy only if wanted; a fresh run does not require it. Downloads stay where the user put them. No notebook logs or notebook locks are created.
-
-Null, short and budget configs use `cpt_*_v5_check2`; corrected deterministic recovery uses `cpt_recovery_v5_check3`. Standalone recovery probes add a unique workflow suffix. Changed source must not overwrite existing immutable plans. Use an isolated recovery launch for a recovery diagnosis, and the separate follow-up workflow for experiments 4–7. A complete fresh part 1 requires explicitly retiring its old output/plans first; it is not needed merely to add a new isolated control. Preserve accepted evidence and completed research weights.
-
-Only final weights and the most recent recovery state persist. Intermediate milestone weights are transient; numeric measurements persist. After final publication (including numerical divergence), recovery state is removed. Known repetitive deprecation messages are filtered and repeated numerical errors are counted with bounded log summaries; fatal errors remain visible. Do not hide errors to make a run look successful.
-
-`peak_gpu_gb` measures the whole trial's maximum PyTorch-allocated memory in decimal GB, including monitoring and resumed segments. Epoch/trajectory CSVs record allocated and reserved bytes since the preceding epoch reset; a resumed partial epoch retains its earlier peak. These allocator measurements differ from the periodic, whole-device `nvidia-smi` samples. Unmeasured attempt summaries remain unknown. Before the 28-09-2026 reporting fix, the manifest queried a reset counter and ordinary epoch CSV peaks stayed at zero: use the saved console measurements as approximate historical evidence, not those fields. Existing files are not silently rewritten, and repairing telemetry does not require retraining completed weights.
-
-`lr` records the next scheduled learning rate; `lr_applied` records the rate used by the last successful update in that epoch or at that trajectory point. An epoch with no successful update leaves `lr_applied` unknown. Before the 28-09-2026 correction, that field duplicated the next rate and was absent at trajectory points. The schedule itself was correct. Resubmitting a fingerprinted numerical failure preserves the DIVERGED outcome and nonzero exit status without retraining it.
-
-Finish an in-flight audit with its original checkout before deploying any runtime fix, including reporting changes. Preserve its accepted receipts and original source identity as historical evidence. New experiment plans must use the new source identity; do not bypass or rewrite the old fingerprints to make them appear current.
-
-Shell-owned logs keep their original `<task>_<job>_r<restart>.log` filename throughout every child process. Trial identities appear inside the log and in manifests. Do not rename an active job log: later recovery children would recreate the old path as a separate summary file.
-
-Experiment 1 writes to its own directory. Keep the final accepted experiment-0 receipts, plans, audits and numerical measurements: they establish the controls and justify the selected budget. If a protocol change requires a complete fresh validation, stop CreditPFN writers before the targeted experiment-0 cleanup and rerun part 1 followed by part 2. Preserve general dataset manifests when the processed corpus has already been rebuilt. Scoped repairs can instead use the isolated recovery/pilot stages below without deleting earlier evidence. Keep the downloaded debugging ZIP locally if desired. **Do not clean again between accepted experiment-0 checks and experiment 1:** the full cleaner removes every experiment, receipt and trained-weight tree. Tiny general scheduler state should not be manually reset while jobs are active.
-
-For read-only project-output inspection, run each separately:
-
-```bash
-du -h --max-depth=2 /lustre1/project/stg_00211/CreditPFN/output "/lustre1/project/stg_00211/CreditPFN/output CreditPFN"
-```
-
-```bash
-find /lustre1/project/stg_00211/CreditPFN -maxdepth 2 -type d
-```
-
-A missing legacy `output/` is expected after the rename. These totals exclude weights; inspect `checkpoints/trained/` separately when assessing space. ZIP downloads of logs/manifests can be inspected directly, without extracting or copying their contents into the repository.
-
-## One-command experiment 0
-
-Push reviewed, validated changes locally, then pull on VSC. Agents may push under the user's standing authorization of 26-10-2026. With CreditPFN writers stopped, run each command separately:
-
-```bash
-cd "$VSC_DATA/CreditPFN"
-```
-
-```bash
-git pull --ff-only
-```
-
-Synchronize the read-only library checkout to the repository's recorded pin; fetching its objects during `git pull` alone may leave the old checkout in place:
-
-```bash
-git submodule update --init tfm-library
-```
-
-```bash
-source "$VSC_DATA/miniconda3/etc/profile.d/conda.sh"
-```
-
-Deactivate an unrelated virtualenv if its shell function is present:
-
-```bash
-if declare -F deactivate >/dev/null; then deactivate; fi
-```
-
-```bash
-conda activate CreditPFN
-```
-
-An already-active conda environment can retain a shadowing PATH entry. Make the selected interpreter explicit and clear Bash's command cache:
-
-```bash
-export PATH="$VSC_DATA/miniconda3/envs/CreditPFN/bin:$PATH"
-```
-
-```bash
-hash -r
-```
-
-```bash
-command -v python
-```
-
-Confirm this points to `miniconda3/envs/CreditPFN/bin/python`. The job activator also removes an inherited virtualenv that would shadow conda, verifies imports, and fails rather than using a different environment. Use explicit interactive activation: sourcing the complete job activator interactively previously stalled.
-
-For a new GPU environment or a resource-sampling failure, verify counters with one allocation capped at three minutes. Do not repeat this after successful training resource audits. It loads no model or dataset and creates only the normal experiment-0 maintenance log:
-
-```bash
-CREDITPFN_CONFIG= CREDITPFN_EXPERIMENT=experiment0 sbatch --clusters=mindwell --partition=gpu_b200 --gpus-per-node=1 --time=00:03:00 scripts/slurm/maintenance.slurm preflight --gpu-resources
-```
-
-Mindwell requires `--gpus-per-node`; its submission plugin rejects `--gpus` before creating a job. Read `output CreditPFN/experiment0/logs/maintenance_<JOBID>_r0.log`. Require `gpu_status: sampled` in the JSON and `END exit_code=0`; idle utilization may correctly be zero. On failure, inspect `gpu_error`/`gpu_exit_code` before allocating training jobs. The sampler uses the allocated GPU's UUID with NVIDIA's prefix, logs a bounded failure message once per trial, and leaves unsupported counters empty. After the standalone check passes:
-
-```bash
-bash scripts/slurm/run_experiment0.sh part1
-```
-
-This is the only experiment-0 part-1 launch command. It downloads/reuses the two packaged and eight pinned public non-credit datasets on the network-enabled login node. No installation occurs. Compute nodes never download. A short wICE CPU job checks configuration, prepares plans and stages inputs. It then releases, in order:
-
-1. **16 null controls**, 2 successful zero-LR updates each; initially 30-minute requests.
-2. CPU audit: exact upstream-loaded weights/inference buffers, fixed-monitor parity, parameter records and successful GPU resource measurements.
-3. **32 short pilots**, 250 updates; initially one-hour requests.
-4. CPU audit: complete identities, budgets, trajectories and no divergence.
-5. **Eight recovery pairs**, four bases × two tasks: 12 uninterrupted updates versus stop at 5 and resume to 12; eight GPU allocations capped at 30 minutes, up to four concurrent. These controls request strict deterministic kernels and at most 2,048 training rows per step. The preceding pilots exercise production row caps and fast kernels. Each recovery pair also runs five-fold scoring on its small packaged non-credit table, checking metrics, requested quantiles and complete row-prediction output through the final evaluation code.
-6. CPU audit and `output CreditPFN/experiment0/manifests/workflow/part1_passed.json`.
-
-GPU completion callbacks update a locked DATA ledger. The last successful task submits a short CPU audit; that audit alone releases the next stage. Stages advance without a polling allocation and without assuming cross-controller dependency support. Submission can still pause if the user submit quota is full; no GPU allocation waits for another stage. Incomplete/failed tasks stop progression. A unique submission claim prevents accidentally launching the same part twice. Do not delete claims or pool state while jobs run; inspect failed/uncertain submission logs before arranging recovery.
-
-Each ledger folder contains `state.json` and structured audit reports. Job IDs appear in the preparation/audit job logs. Read `output CreditPFN/experiment0/logs/`; no files need downloading during debugging. Check the queue separately:
-
-```bash
-squeue -M mindwell,wice -u "$USER" -o "%.18i %.28j %.10T %.12M %R"
-```
-
-A queued job is not a hung shell. If submission fails to return within about 45 seconds, do not blindly repeat it: acceptance may be uncertain. Inspect queue/accounting first. Do not cancel unrelated CreditICL/TabPFNCredit jobs.
-
-Part 1 never launches the large sweep. Its audit requires zero skipped data batches and optimizer updates; reaching the successful-update target alone cannot pass. Inspect numerical summaries and table visitation alongside the receipt: zero skips is not a guarantee of uniform exposure, and a two-update null control cannot visit every table. After the full part 1 passes and timing/diagnostics are reviewed, launch the **eight longer budget pilots** separately:
-
-```bash
-bash scripts/slurm/run_experiment0.sh part2
-```
-
-Part 2 checks the current part-1 receipt and unchanged prepared input/environment identities. Its 20k-update runs use two-hour work segments plus ten minutes for monitoring/checkpoint publication. They automatically requeue up to the configured limit (default 20); reaching that limit leaves a resumable checkpoint for inspection, not a claimed completion. `BUDGET_SEGMENT_MINUTES` may change segment length after reviewing pilot costs. `NULL_WALLTIME` and `PILOT_WALLTIME` override the initial part-1 allocations.
-
-Keep the accepted part-1 output, plans, weights and prepared data while part 2 runs. No cleanup or repeat of part 1 is needed for that transition. Full-update entries in `pilot_audit.json` estimate each base/task's 20k cost from short pilots. Their sum is GPU allocation time across eight independent trials, not elapsed calendar time; parallel jobs overlap, while queueing and requeues add wall-clock delay. These extrapolations are planning estimates, not completion guarantees. Historical measured estimates belong in agent memory.
-
-Only segmented training requests `--signal=B:USR1@600`; its allocation includes the extra ten-minute margin. Ordinary null/short jobs do not request this warning. Combining a ten-minute allocation with a ten-minute warning sends it during startup, before checkpoint handling exists. Setup signals now log their name and exit nonzero; child training temporarily forwards warnings to Python, then restores the outer handlers. An `END exit_code=0` from the old logger is insufficient evidence of success: require trial records/audits and check Slurm's `State` and `ExitCode` (the suffix is the terminating signal). See [Slurm's signal semantics](https://slurm.schedmd.com/sbatch.html#OPT_signal).
-
-The long pilots measure 0/250/1k/2.5k/5k/10k/20k updates. Their cosine schedule spans 20k: their 10k point is not a separately trained 10k-schedule endpoint. The reviewed curves support the fixed **10k research horizon** below; keep the accepted 20k trajectories as longer-run evidence rather than repeating them with a shorter schedule.
-
-## Identity, recovery and resource choices
-
-Training plans fingerprint scientific settings, code, package versions, base bytes, credit inputs and the public monitoring panel. Incompatible completed checkpoints are rejected. Evaluation has its own fingerprints, so plot/benchmark orchestration changes need not alter training identity. Never bypass a mismatch; use a new run identity for changed training semantics.
-
-Package ranges in `pyproject.toml` are compatibility declarations, not a reproducible lockfile.
-PyTorch must expose `torch.amp.GradScaler` (2.3 or later); direct process/thread telemetry
-dependencies are declared as well. Keep the recorded environment throughout accepted jobs.
-Do not install upgrades or pull shared runtime changes into their checkout while training or
-benchmark jobs are queued/running. A new benchmark phase can evaluate completed checkpoints
-under reviewed newer code: its evaluation identity is separate from the original training
-identity. Retain the original plans/provenance and expect incompatible evaluation caches to
-be recomputed. Use new isolated experiment-0 receipts before training new follow-up studies.
-
-The 28-09 TabPFN loss corrections change classification from full-head CE to active-class CE, and align regression query targets with each member's context-fitted target transform before NLL. The earlier reporting-only assessment does **not** cover them. Preserve accepted old experiment-0 artifacts with their original identities; short positive-LR/recovery validation of the affected TabPFN PD/LGD paths is required before research submission. Old TabICL results retain their objective interpretation, and its unchanged trajectories still motivate the 10k descriptive horizon. Do not rerun the bundled command over existing immutable plans or rewrite passing receipts to the new fingerprint; validation needs fresh control run names and plans. No repeat of every 20k pilot is implied solely to retain that horizon.
-
-Do not pull source changes into a running campaign's checkout: jobs and callbacks read it after submission. Threading, scratch publication and launcher changes are included in the training/workflow identities too. Deploy changes only with CreditPFN writers stopped. Changes to numerical training, preprocessing, serialization or execution require relevant GPU controls before research training; a substantial protocol repair warrants a fresh part 1. A verified reporting-only correction does not require repeating completed scientific trials: retain their original receipts and identities, document the assessment, and prepare new research plans for the corrected source. An earlier receipt still certifies only its original executable. Finish an already-pending audit under that original checkout before updating it.
-
-Null audits compare canonical upstream-loaded tensors because TabPFN v2 may convert serialized key names and v3 may construct inference criterion borders. All inference tensors/borders must match. The accumulated diagnostic `criterion.losses_per_bucket` affects neither returned loss nor predictions and is excluded from the inference-state gate. Recovery audits report its delta separately, together with complete saved tensor-state equality, and gate on the remaining tensors plus fixed monitor trajectories with explicit tolerances. Tolerant equality does not prove bitwise CUDA determinism.
-
-Experiment-0 trial audits also require epoch histories with valid zero counts for skipped data batches and skipped optimizer updates. Reaching the requested number of successful updates is insufficient when a problematic table was systematically skipped. Missing skip counters fail this debugging gate. Research grids retain numerical failures as descriptive outcomes; the stricter gate is specific to experiment 0.
-
-If recovery fails, first inspect the existing pairs on a CPU node, substituting the identifier from the workflow folder. This creates only the normal maintenance log and never trains, changes a ledger or grants a passing receipt:
-
-```bash
-CREDITPFN_CONFIG= CREDITPFN_EXPERIMENT=experiment0 sbatch --time=00:10:00 scripts/slurm/maintenance.slurm inspect-recovery --id WORKFLOW_ID
-```
-
-The log separates the largest non-diagnostic state difference from `criterion.losses_per_bucket`, checks selected checkpoint identities, and reports monitor differences at updates 0, 5 and 12. Exit 0 means inspection completed; check the comparison fields for failures. A difference already at update 5 predates the pause and cannot be attributed solely to resuming. Preserve successful null/pilot trials and investigate independent-run repeatability before allocating another full recovery stage. Do not weaken tolerances or delete immutable plans to get past this gate.
-
-After correcting recovery behavior, validate only that stage before a clean full rerun:
-
-```bash
-bash scripts/slurm/run_experiment0.sh recovery
-```
-
-This creates its own source-checked workflow and uniquely named probe arms, prepares four reference/resumed plans on CPU, and submits the eight GPU pairs. It never reuses the failed workflow or repeats null/pilot trials. Benchmark outputs use `results/<PD|LGD>/recovery_smoke/<workflow>/`, preventing retry collisions. Its audit writes `recovery_passed.json`; that diagnostic receipt **cannot** release part 2. The fresh full part 1 must independently produce `part1_passed.json`. `RECOVERY_WALLTIME` overrides the 30-minute request when actual measurements justify it.
-
-For production-size validation after a scoped repair, the standalone `pilot` stage copies the existing 250-update recipes into a fresh workflow, preserving all scientific settings except the requested base selection. CPU preparation writes new plans, selected trials run on B200, and the final CPU audit requires full budgets, finite required monitor scores, recorded diagnostics and zero numerical skips. It writes `pilot_passed.json` and never starts recovery, budget pilots or research experiments. Prior receipts remain unchanged; inspect `pilot_bases` and `trial_counts` for coverage. Omitting the base options runs all 32 short pilots.
-
-The 28-09 loss repairs require **20** selected pilots: PD v2/v2.6/v3 and LGD v2/v3, each at LR `{3e-7, 3e-5}` and full/frozen adaptation, L2-SP `0.003`, the first dataset fold and production row caps. The corrected recovery checks already passed under training identity `6d309cc1f4db21d3ff6897f7fb1f64bd69cfd395dbe6c6289b90f87506a3dd28`. Adding this launch option changes workflow identity but not that training identity; it does not require repeating those recovery checks. After pushing/pulling the launcher changes, use:
-
-```bash
-PILOT_WALLTIME=00:15:00 bash scripts/slurm/run_experiment0.sh pilot --pd-bases v2 v2.6 v3 --lgd-bases v2 v3
-```
-
-The earlier equivalent-size trials took 66–179 seconds of recorded trial time each; a 15-minute request leaves startup/monitoring margin without requesting the previous hour. This is a walltime ceiling, not a queue-time estimate. Wait for `Experiment 0 pilot PASSED` before preparing the research plans. The selected pilot receipt supplements the historical controls and current recovery evidence; it does not relabel either as a fresh complete part 1 or authorize part 2.
-
-`train.deterministic: true` is limited to recovery configs and is fingerprinted along with their lower `train.max_rows_per_step` cap. Strict execution applies to training, monitoring and the benchmark smoke; unsupported nondeterministic operations raise an error. Python, NumPy and Torch seeds are initialized, and the CUDA workspace is configured before device initialization. Effective settings are recorded in checkpoint provenance and logs. Strict mode does not force math attention globally. Normal research runs use the fast backend policy: their seed identifies stochastic inputs, not a guarantee of bitwise GPU equality. See [PyTorch reproducibility](https://docs.pytorch.org/docs/2.12/notes/randomness.html); deterministic kernels can change performance, so synthetic first-call timings must not be used as production throughput estimates.
-
-The TabPFN ensemble classification loss selects/permutates the active classes, then flattens member/query pairs into samples before cross-entropy. This preserves the mean objective over active classes, avoiding Torch 2.12's spatial NLL reduction, which [explicitly rejects strict determinism](https://github.com/pytorch/pytorch/blob/v2.12.0/aten/src/ATen/native/cuda/NLLLoss2d.cu). Do not switch to warning-only mode to pass recovery. Local loss/gradient checks do not certify the installed B200 runtime; all eight pairs must pass there.
-
-To isolate GPU arithmetic after a pre-pause mismatch, use one small model/batch diagnostic:
-
-```bash
-CREDITPFN_CONFIG= CREDITPFN_EXPERIMENT=experiment0 sbatch --clusters=mindwell --partition=gpu_b200 --gpus-per-node=1 --time=00:05:00 scripts/slurm/maintenance.slurm probe-repeatability --track pd --base v2
-```
-
-It uses 512 synthetic rows, 16 features and the configured member count. TabPFN follows the production ensemble forward/loss; synthetic views bypass CPU preprocessing. Each of the three profiles repeats the forward/backward calculation three times, restoring weights, criterion buffers and Python/NumPy/Torch/CUDA RNG each time. No optimizer step or checkpoint write occurs. The profiles are default kernels, deterministic kernels, and deterministic math attention without TF32; BF16 autocast remains enabled. `CUBLAS_WORKSPACE_CONFIG` is fixed before CUDA initialization and printed in the report, so this is a controlled diagnostic, not an exact recreation of an unspecified production environment.
-
-For repeated non-finite losses on a particular TabPFN training table, the same utility accepts its numeric registry prefix. This example probes PD table 0011 at the 2,048-row recovery size where the failure also occurred:
-
-```bash
-CREDITPFN_CONFIG= CREDITPFN_EXPERIMENT=experiment0 sbatch --clusters=mindwell --partition=gpu_b200 --gpus-per-node=1 --cpus-per-task=4 --mem=32G --time=00:05:00 scripts/slurm/maintenance.slurm probe-repeatability --track pd --base v2 --rows 2048 --table-number 11
-```
-
-This uses the real epoch-zero batch, retaining its position in the complete training corpus so sampling/preprocessing seeds agree. Six settings compare current clipping, installed upstream clipping, and upstream clipping with float64 calculations, each with BF16/FP32 model arithmetic. Float64 is used only inside the last clipping comparison; inputs return to their original dtype before model forward. This tests overflow in clipping calculations without changing production preprocessing. Model/criterion/RNG are restored before each attempt.
-
-Aggregate inputs print before the first forward and each profile's result prints immediately. Expected runtime/import errors and TabPFN's encoded-input `ValueError` are recorded per setting so later comparisons can proceed. Unexpected exceptions still fail the diagnostic; no raw rows, optimizer updates, checkpoints, manifests or workflow changes are produced. A completed real-table diagnostic may exit zero even when every profile reports an error: inspect those failures as evidence, not a new passing control. Preserve the existing output and receipt while investigating. The utility is included in the broader workflow source fingerprint, so deploying diagnostic changes alone does not authorize reuse of the previous receipt; never bypass that check.
-
-Inspect changes in missing-value counts as well as finite losses: upstream float32 clipping can erase information when its statistics overflow. The data sanitizer now changes the units of extreme-range finite columns before casting, records the power-of-two divisors in `numeric_unit_shifts` in the existing general dataset manifests, and leaves ordinary columns unchanged. A clipping-bound overflow refuses the batch explicitly instead of replacing finite measurements with NaNs. Historical processed CSVs are not repaired by a source pull: regenerate them from canonical raw inputs on a CPU node, with CreditPFN writers stopped, before preparing new plans or evaluating the correction. The default data pipeline refreshes processed CSVs without deleting raw data, weights or previous evidence:
-
-```bash
-CREDITPFN_CONFIG= CREDITPFN_EXPERIMENT=experiment0 sbatch --time=00:30:00 scripts/slurm/data.slurm
-```
-
-Wait for that CPU job to finish successfully before GPU validation. The real-table probe above is an optional focused diagnostic; a fresh full part 1 can instead provide the GPU validation through its production-size pilots and zero-skip audit gates. Clear obsolete experiment-0 weights and output using the targeted procedure below, preserving general dataset manifests. A full campaign wipe would also remove those manifests and require CPU data preparation again to restore unit-conversion provenance. Unit conversion can change feature selection and data fingerprints, so old checkpoints/plans/receipts do not certify the corrected inputs. Keep part 2 blocked until the new full part 1 passes; CPU preparation alone cannot certify GPU behavior.
-
-For the synthetic diagnostic, read the experiment-0 maintenance log's `profiles`: `repeatable: false` demonstrates variation in that calculation; `status: error` can identify a kernel lacking a deterministic implementation. Its exit 0 means at least one profile was measured, not that recovery passed. Even three repeatable profiles on this small batch do not certify all production shapes, preprocessing, monitoring or resume behavior. No workflow receipt is changed. `--base` also accepts `v2.6`, `v3` and `tabicl`, and `--track lgd` selects regression; widen the diagnostic only when the first result warrants it.
-
-Each optimizer-boundary recovery saves weights, optimizer, scheduler, scaler, Python/NumPy/Torch/CUDA RNG, sampler cursor and accumulated history. Restoring preserves the full-budget learning-rate schedule. Slurm's warning reaches Python; it saves and exits 75. Abrupt node failure can lose work since the last periodic checkpoint. One trial/task prevents rerunning packed siblings.
-
-Measured two-member training caps remain **v2 10k, v2.6 11k, v3 26k, TabICLv2 26k**. Keep them until a new probe and actual training show enough margin; frozen weights do not imply cheap activations. Four data workers are the initial compromise. Compare 0/4/8 only if recorded data waiting or CPU pressure warrants it. GPU samples and internal training time are not billed allocation time: inspect `sacct` as well.
-
-All batch files use Leuven's login-shell header, explicit controller/partition/account, one task, and `--gpus-per-node=1` for GPU work. The default training/recovery request is **24 CPU cores, 120 GiB host RAM and one B200**. This fits the documented B200 limit of 24 cores/194,400 MiB per GPU; requested walltimes stay below its 72-hour maximum. GPU memory capacity is a separate limit. Optional A100/H100 routes need their own row-cap measurements and Lustre staging; B200 measurements do not certify an 80-GB card. See [KU Leuven Slurm specifics](https://docs.vscentrum.be/leuven/slurm_specifics.html).
-
-Every batch activation resets native numerical thread pools to that job's CPU allocation. Training then reserves one core per data worker and limits the main process to the remainder, respecting narrower CPU affinity. XGBoost and CatBoost fitting, pools and predictions also honor the allocation. This matters for two-core CPU audits as well as GPU jobs, and prevents inherited thread settings from crossing CPU/GPU workflow stages. Logs retain per-task/per-node CPU counts, host-memory settings and allocated GPU IDs (`gpus=0` means device index zero); `sacct` remains the source for actual allocated/billed resources. Host-memory requests can cause Slurm to allocate and charge additional CPU cores on wICE: reduce them only after observing peak memory.
-
-The **legacy** bounded launcher defaults to `GLOBAL_CONCURRENCY=16` per controller and `THROTTLE=4` per array. These are implementation debt under the new speed-first policy, not recommended defaults for new campaigns. Shared lane reservations can leave capacity idle behind stragglers. The historical 450 queued-task headroom is not a verified current site limit. Future launchers must inspect live admission limits and avoid artificial running caps; shorter realistic requests improve [backfill opportunities](https://slurm.schedmd.com/sched_config.html), not guaranteed priority. Preserve an existing campaign's scheduler state until its work and recovery requirements are reconciled.
-
-The pool's `afterany` dependencies are capacity reservations, including between unrelated experiments. They wait for the preceding **whole array** to terminate, not just one task. A single held element can therefore block several later arrays even though other elements completed; a main benchmark may wait behind sampling training for this reason. Trace the chain to its first held element and release that existing element once rather than cancelling downstream work or clearing pool state. Inspect both controller queues: independent wICE CPU work can finish while Mindwell is blocked. A Slurm retrieval hold occurs before the batch script can open its application log. Existing `END exit_code=0` logs from earlier requeue attempts do not establish trial completion; require the final manifest outcome and checkpoint audit.
-
-Scheduler queries and submissions have a 45-second response timeout. A queue-query failure stops submission. An uncertain `sbatch` result retains the pool's pending marker and blocks automatic retries, because the controller may already have accepted the job. Waiting for known quota pressure still intentionally checks once per minute; do not replace that with rapid polling.
-
-## Experiments 1–3 and evaluation
-
-After the accepted experiment-0 audits, prepare immutable plans on CPU nodes for `config/experiment{1,2,3}/{pd,lgd}.yaml`. The pilot-informed research budget is **10,000 successful updates**, with measurements at **0/250/1k/2.5k/5k/10k** and a 4,000-epoch safety rail. Counts are **512 main, 32 additional seed, 96 sampling**. Experiment 0 adds 72 training arms across its original two parts, including 16 small recovery arms, plus 52 six-update auxiliary arms before experiments 2 and 3. Never count a requeued segment as another scientific trial. A pre-existing 5k research plan is incompatible: preparation must reject it; do not overwrite it or relabel any weights. Preserve accepted experiment-0 evidence and use a new run identity if an incompatible research plan already exists.
-
-Experiments 2 and 3 can be submitted before experiment 1 finishes: each starts from original base weights and has separate output/weight directories. Only experiment-2 analysis waits for its corresponding seed-42 reference cells. Keep source and all six prepared plans fixed while overlapping work runs. The shared pool defaults to 16 concurrent tasks per controller across these launchers, not 16 for each experiment; dependencies may put later submissions behind earlier arrays. Overlap shares the allocation rather than multiplying capacity. The auxiliary stage below verifies full-pass/accumulation and saved-segment behavior at small shapes. One-sample budget pilots do not establish production accumulation time per update; inspect that cost in the first research segments.
-
-Before experiments 2 and 3, run the fast **auxiliary experiment-0 stage** in the active CreditPFN environment:
-
-```bash
-bash scripts/slurm/run_experiment0.sh auxiliary
-```
-
-This submits CPU preparation first, then eight Mindwell GPU tasks (four bases × two tracks), at most four concurrent and sharing the global queue cap. Each task requests 15 minutes, 24 CPU cores and 120 GiB host memory, and executes its short cases sequentially. The GPU-request ceiling is two GPU-hours across all eight tasks, not a runtime prediction; preparation, final CPU audit and queue time are additional. `AUXILIARY_WALLTIME` changes the allocation limit without changing the six-update checks. The stage does not launch experiments 2 or 3.
-
-The control policy is `config/experiment0/auxiliary.yaml`; generated training configs and eight task reports belong to that workflow's DATA manifests. Detailed trajectories remain under project `output CreditPFN/experiment0/training/`, five-fold smoke outputs under `experiment0/results/<track>/auxiliary_smoke/<workflow>/`, and weights under project `checkpoints/trained/experiment0/`. A successful CPU audit writes `workflow/auxiliary_passed.json`. Check its eight successful callbacks and reports; a Slurm COMPLETED task alone is insufficient. Preserve this evidence. A fresh auxiliary stage does not require deleting or repeating the earlier controls.
-
-After the auxiliary audit passes, prepare the experiment-2 and experiment-3 PD/LGD plans with the existing maintenance `prepare --config ... --write` action. Review each preparation result, preview submissions with `DRY=1`, then use the ordinary `STAGES=train SEGMENT_MINUTES=90 CREDITPFN_AUTO_REQUEUE=1` launcher for those configs. Neither requires experiment 1 to finish training. They share its queue/GPU capacity; run the bounded submitter in a persistent terminal. Inspect the first production accumulation segments for actual cost and capacity: the tiny control cannot establish their throughput. Existing research identities and scientific schedules remain unchanged.
-
-Example main-PD preparation:
-
-```bash
-sbatch scripts/slurm/maintenance.slurm prepare --config config/experiment1/pd.yaml --write
-```
-
-After successful preparation, preview a short resumable launch:
-
-```bash
-DRY=1 SEGMENT_MINUTES=90 CREDITPFN_AUTO_REQUEUE=1 bash scripts/slurm/run_experiment.sh config/experiment1/pd.yaml
-```
-
-Submit without `DRY=1` only after reviewing the plans and pilot costs. Repeat for LGD. The main/seed/sampling launches remain deliberate user actions; experiment 0 never releases them automatically. Large submission loops may wait for queue room; use a persistent terminal session.
-
-Final scoring uses five outer folds, an inner validation split for baseline HPO/F1 thresholds/calibration, native context caps and full outer test folds. Credit and non-credit domains are tagged and analyzed separately. Reusable untuned/classical metrics and predictions must match every evaluation fingerprint.
-
-```bash
-STAGES=eval bash scripts/slurm/run_experiment.sh config/experiment1/pd.yaml
-```
-
-```bash
-STAGES=eval EVAL_KIND=classical bash scripts/slurm/run_experiment.sh config/experiment1/pd.yaml
-```
-
-These individual-stage commands remain available for compatibility and scoped recovery. For a new complete benchmark phase, prefer the unified launcher below: it queues both tasks, all dataset partitions and both resource kinds in one invocation after checking readiness. GPU foundation scoring and CPU classical HPO remain separate allocations. Successful cells survive resubmission. Predictions use parquet when available and gzip CSV otherwise; no installation is required for the fallback.
-
-For each completed follow-up, first run the existing checkpoint audit against its PD/LGD prepared plans. Then submit its complete benchmark once, replacing `experiment2` with `experiment1` or `experiment3` as appropriate:
-
-```bash
-EVAL_WALLTIME=04:00:00 bash scripts/slurm/run_benchmark.sh experiment2
-```
-
-This scores all 32 seed checkpoints or all 96 sampling checkpoints; neither experiment selects a winning main-grid checkpoint. The unified launcher requests four hours by default for each packed task. Reuse measured production walltime with `EVAL_WALLTIME`: the older individual foundation wrapper's two-hour default has already timed out on a main-PD shard containing multiple large-table comparisons. Completion of a small control does not certify that request. Do not repeat a launch while its arrays are queued or running.
-
-Experiment 2 does not depend scientifically on experiment 3 finishing: audit its own 32 checkpoints, then queue its complete benchmark phase. Its eventual seed comparisons require matched experiment-1 reference results. Shared scheduler capacity can add a dependency even when the scientific experiment is independent. Keep pending capacity chains and recovery checkpoints intact; do not pull an unfinished analysis branch into the active cluster checkout, because evaluation fingerprints include utilities used by the notebook runner too.
-
-Both evaluation wrappers import already-published controls from the other research experiments through `_eval_cache.sh`. It creates non-overwriting hard links between sibling `experiment{1,2,3}/evaluation_cache/` directories on project storage, avoiding another copy of their prediction payloads. Experiment 0 is excluded. The existing reader still requires the exact data/model/config/code/environment key, all five successful folds and complete predictions before reuse. Only controls are cached; adapted checkpoints are evaluated separately. Atomic writers replace directory entries, preserving the linked published bytes. No training or evaluation source fingerprint changes are needed for this storage operation.
-
-Sharing happens when each job starts. Schedule follow-up benchmarks after the relevant experiment-1 controls are published to avoid recomputing them; concurrent cache misses can still perform duplicate work. Running the classical follow-up stage remains useful: it materializes the cached controls under that experiment's result tree and computes any genuinely missing cells. Do not delete caches while evaluation writers are active.
-
-Evaluation writes predictions atomically and publishes its identity receipt last. With prediction saving enabled, resumption also requires the recorded prediction artifact and matching byte count; incomplete output is retried. An unavailable Parquet engine permits gzip CSV, but storage errors remain failures. Classical rows record selected parameters and completed/requested HPO trials; requesting tuning without Optuna fails visibly.
-
-Before the full evaluation arrays, profile one representative large-table foundation task at its actual context/member settings and one classical HPO task. Experiment 0's small five-fold recovery benchmark checks correctness, not the memory or runtime of those production-size evaluations. Use the measured task times to set requests; short requests improve possible backfill, not scheduling priority itself.
-
-To start with one real packed task from each track and execution kind, use the existing wrappers with `--array=0-0%1`, `EVAL_TASKS=16`, and split index zero. The task pack includes expensive cells first; these are retained benchmark results, not a separate smoke experiment. For example, after checking the PD prepared plan and checkpoint audit:
-
-```bash
-CREDITPFN_USE_SCRATCH=1 CREDITPFN_CONFIG=config/experiment1/pd.yaml CREDITPFN_SPLIT_INDEX=0 CREDITPFN_EVAL_KIND=foundation EVAL_TASKS=16 sbatch --array=0-0%1 scripts/slurm/eval_pd.slurm
-```
-
-```bash
-CREDITPFN_CONFIG=config/experiment1/pd.yaml CREDITPFN_SPLIT_INDEX=0 EVAL_TASKS=16 sbatch --array=0-0%1 scripts/slurm/eval_classical.slurm
-```
-
-Repeat with the LGD config and, for foundation models, `eval_lgd.slurm`. The wrappers request time limits of two hours for GPU jobs and four hours for CPU jobs; these are ceilings, not measured runtimes. Only four initial jobs are submitted this way, outside the bounded full-array launcher. Keep the source fixed until they finish. After their logs confirm complete cells and acceptable resource use, use `EVAL_WALLTIME` with the measured margin in the full launch commands above. Completed five-fold cells and compatible baseline caches are reused, including across task repacking; an individual packed task does not certify every table/model's memory requirements.
-
-Those four profiling jobs are **not the complete benchmark arrays**: `--array=0-0` runs shard zero of the 16-way task packing, and `CREDITPFN_SPLIT_INDEX=0` selects only the first training-dataset partition. With the default 16 shards and four training partitions, each ordinary full `STAGES=eval` launch submits four arrays containing 64 task elements in total. PD/LGD × foundation/classical therefore uses four launch commands, 16 array submissions and 256 task elements. The five outer evaluation folds run inside each model–dataset comparison; they are distinct from the four training-dataset partitions. Existing complete comparisons are retained on resubmission.
-
-With a run's writers stopped, consolidate it:
-
-```bash
-sbatch scripts/slurm/maintenance.slurm consolidate --run cpt_main_v5 --apply
-```
-
-Consolidation verifies input/readback checksums and atomically publishes one snapshot: attempts, latest trials, training curves, parameter summaries, resources and evaluation tables for each task. Keep tensor/resource tables separate to avoid a large sparse join. Raw predictions and weights remain in place. Do not accumulate unlimited snapshots; a previous snapshot with missing raw sources cannot be overwritten by a partial reconstruction.
-
-At final analysis, obtain **both** cluster `output CreditPFN/` trees. They can be combined locally or read in place: `CREDITPFN_ANALYSIS_ROOT` selects the DATA folder/ZIP and `CREDITPFN_ANALYSIS_PROJECT_ROOT` the complementary project folder/ZIP. The readers never extract or modify a supplied ZIP. Project storage can be downloaded through the same SFTP session, without an intermediate DATA copy. Analysis-only compact snapshots must include `LATEST.json` and its referenced directory; their hashes are checked. Keep datasets/private display mappings locally for corpus notebooks and final weights on project storage unless needed elsewhere.
-
-For interactive MFA, prefer one SFTP session for both storage locations. Open the
-[VSC firewall page](https://firewall.vscentrum.be/), sign in and keep it open, then start
-the connection from local PowerShell:
-
-```powershell
-sftp vsc38338@login.hpc.kuleuven.be
-```
-
-If prompted, open the newly printed authentication link while this command is still waiting.
-Copy it with the mouse; Ctrl+C cancels the waiting process. A `challenge not found` response
-means that challenge is no longer recognized; expiration or cancellation are possibilities,
-not a confirmed diagnosis. End that stale attempt and generate a fresh request. If a fresh
-request immediately fails too, retain the error and time for VSC support. Never record the
-challenge URL in tracked files. See the [official MFA instructions](https://docs.vscentrum.be/accounts/mfa_login_firewall.html).
-
-After the `sftp>` prompt appears, enter these SFTP commands one at a time. `lcd` selects the
-local repository; each `get -R` downloads the same remote folder name into it, merging both
-storage trees under one `output CreditPFN` layer:
-
-```text
-lcd "C:/Users/U0152019/PhD Documents/Projects/3. CreditPFN/CreditPFN"
-```
-
-```text
-get -R "/data/leuven/383/vsc38338/CreditPFN/output CreditPFN"
-```
-
-```text
-get -R "/lustre1/project/stg_00211/CreditPFN/output CreditPFN"
-```
-
-```text
-bye
-```
-
-Wait for each transfer to finish before entering the next command. Existing files are
-overwritten from the source; unmatched local files are preserved. Keep the ordinary `get`
-behavior when refreshing results: append-style resumption assumes existing bytes match the
-remote file, which need not hold for rewritten manifests/results. No input ZIP extraction,
-cluster-side staging copy or experiment rerun is needed.
-
-Alternatively, one `scp` invocation can merge both output directories into this checkout.
-It can open a separate SSH connection for each source, so one command does not guarantee one
-MFA challenge. The destination is the **repository directory**, not its existing output child:
-
-```powershell
-scp -r "vsc38338@login.hpc.kuleuven.be:/data/leuven/383/vsc38338/CreditPFN/output CreditPFN" "vsc38338@login.hpc.kuleuven.be:/lustre1/project/stg_00211/CreditPFN/output CreditPFN" "C:\Users\U0152019\PhD Documents\Projects\3. CreditPFN\CreditPFN"
-```
-
-This downloads results/diagnostics, not data or model weights, and does not delete unmatched local files. An active campaign is a partial, changing snapshot; repeat after completion for the final analysis. After a successful transfer, remove any earlier ZIP input selection before rerunning notebooks:
-
-```powershell
-Remove-Item Env:CREDITPFN_ANALYSIS_ROOT, Env:CREDITPFN_ANALYSIS_PROJECT_ROOT -ErrorAction SilentlyContinue
-```
-
-```powershell
-.\.venv\Scripts\python.exe -m src.utils.run_notebooks --workers 4
-```
-
-Run the latter from the local repository directory. Generated figures and summaries remain in the normal publication tree.
-
-A DATA-only download supports progress and partition-level endpoint checks, not full training-trajectory or final benchmark analysis. Missing project measurements are reported as unavailable, not replaced by local historical files. Generated figures, caption metadata and complete text summaries still go to this repository's normal `output CreditPFN/` tree. Unset both analysis variables to read the merged local tree. No change to running jobs or their storage variables is required for this analysis.
-
-Verify the project path through the actual transfer connection before downloading. A path recorded in compute/OnDemand logs is historical evidence, not proof of its current visibility through SFTP. If scp reports `remote readdir ... No such file or directory`, first locate the requested files through an authenticated SSH shell on the same endpoint. A silent one-shot search is insufficient: inspect the directory tree and symlinks in an established VSC shell and check the exit status. Distinguish a changed path from unavailable storage before changing hosts, copying archives between tiers or rerunning jobs.
-
-### Re-scoring TabICLv2 in FP32 (experiments 1 and 2)
-
-Decided 27-10-2026. Experiments 1 and 2 originally scored TabICLv2 (original and adapted) under the
-automatic FP16/FlashAttention-3 policy, which mis-scored the original checkpoint on some PD tables
-(experiment-0 numerical review). Their configs now set `evaluation.tabicl_inference_options:
-{use_amp: false, use_fa3: false}`, as experiments 5 and 8 already do. This is inference only:
-training plans, checkpoints and every other model's results stay as they are. Experiment 2 is
-included because its seed comparison pairs with experiment 1's reference; the seed notebook refuses
-to compare runs with different TabICLv2 inference settings.
-
-Do not rerun the complete benchmark for this: the evaluation-code fingerprint changed after the
-campaign, so a full rerun would re-score every model and baseline. `FAMILY=tabicl` re-scores only
-TabICLv2. Run one command per step, from `$VSC_DATA/CreditPFN`, after `git pull`, and wait for each
-job to finish before the next step.
-
-1. Confirm that no CreditPFN job is queued or running (`reset-family --apply` also refuses then):
-
-```bash
-squeue --me -M mindwell,wice
-```
-
-2. Preview the folders that will be deleted. The log is
-   `output CreditPFN/experiment1/logs/maintenance_<JOBID>_r0.log`; expect 34 folders
-   (16 recipes + original × PD/LGD):
-
-```bash
-CREDITPFN_EXPERIMENT=experiment1 sbatch --time=00:15:00 scripts/slurm/maintenance.slurm reset-family --experiment experiment1 --family tabicl
-```
-
-   The preview also warns if any other source of the current consolidated snapshot is already
-   missing (for example archived raw shards); `--apply` then refuses and deletes nothing.
-
-3. Delete them (also supersedes the consolidated snapshot pointer, keeping the old snapshot folder):
-
-```bash
-CREDITPFN_EXPERIMENT=experiment1 sbatch --time=00:30:00 scripts/slurm/maintenance.slurm reset-family --experiment experiment1 --family tabicl --apply
-```
-
-4. Repeat steps 2 and 3 for experiment 2 (expect 4 folders):
-
-```bash
-CREDITPFN_EXPERIMENT=experiment2 sbatch --time=00:30:00 scripts/slurm/maintenance.slurm reset-family --experiment experiment2 --family tabicl --apply
-```
-
-5. Preview the submission (prints the sbatch command; submits nothing):
-
-```bash
-DRY=1 FAMILY=tabicl bash scripts/slurm/run_benchmark.sh experiment1
-```
-
-6. Submit the TabICLv2-only GPU arrays. FP32 inference measured 5–10× slower than the automatic
-   policy in the experiment-0 review (the original TabICLv2 benchmark used about 10 GPU-hours), so
-   allow a longer walltime:
-
-```bash
-FAMILY=tabicl EVAL_WALLTIME=08:00:00 bash scripts/slurm/run_benchmark.sh experiment1
-```
-
-```bash
-FAMILY=tabicl EVAL_WALLTIME=08:00:00 bash scripts/slurm/run_benchmark.sh experiment2
-```
-
-   The launcher refuses while TabICLv2 result files older than the last reset exist. If tasks time
-   out, submit the same command again: completed five-fold cells are kept and skipped, and files
-   written after the reset do not block the resubmission.
-
-7. When all tasks have finished, re-consolidate both runs:
-
-```bash
-sbatch scripts/slurm/maintenance.slurm consolidate --run cpt_main_v5 --apply
-```
-
-```bash
-sbatch scripts/slurm/maintenance.slurm consolidate --run cpt_seeds_v5 --apply
-```
-
-8. Download the experiment 1 and 2 output trees as usual and rerun the notebooks. The experiment
-   notebooks and the overviews pick up the FP32 results without code changes.
-
-Experiments 3, 6 and 7 and the experiment-4 context curves still use the automatic TabICLv2 policy.
-Experiments 6 and 7 bind their evaluation protocol into immutable plans, so changing them needs new
-plans rather than a config edit.
-
-## Cleanup and failure inspection
-
-Check the [live Leuven status page](https://status.vscentrum.be/tier2_leuven.html) first when storage disappears or scheduling stalls. The detailed site page may show an active incident while the overview still lists it as planned maintenance. Wait for confirmed restoration of required storage before retrying; an announced end time is not a completion notice. CreditPFN reads/writes Lustre project storage even when computation uses GPFS, so a reservation explicitly restricted to jobs without Lustre access is unsuitable. Storage downtime is not evidence that output was deleted, and it does not justify retraining completed models.
-
-`output CreditPFN/` is the active output directory on both tiers. `python -m src.utils.clean_run` previews those trees and trained weights. `maintenance.slurm clean --all-experiments --clean` deletes the whole campaign, preserving the current maintenance log and all original data/base weights; processed inputs are retained unless `--processed` is explicitly requested. Use this for the user-requested fresh validation run only after debugging passes, with writers stopped and the preview inspected. It also deletes plans, recovery state and submission state. No notebook locks exist.
-
-Deleting only the output directories is insufficient: incompatible final weights can still occupy `checkpoints/trained/<experiment>/` on project storage. Prepared plans do not remove them, and a successful CPU preflight does not certify their compatibility. For a complete campaign reset, wait for the cleaner to finish successfully before launching part 1. `sbatch --wait` can provide that ordering; it intentionally waits through queueing and execution and returns the cleanup job's exit status. Do not automatically start training after a failed cleanup.
-
-Prefer the scoped cleaner for a failed experiment. Preview both tiers first:
-
-```bash
-sbatch --time=00:10:00 scripts/slurm/maintenance.slurm clean --experiment experiment5
-```
-
-After inspecting the preview, remove only that experiment's output and trained weights:
-
-```bash
-sbatch --time=00:10:00 scripts/slurm/maintenance.slurm clean --experiment experiment5 --clean
-```
-
-Use `--scope benchmark` to preserve training, `--scope training` to preserve benchmarks, or
-`--scope figures` for publication PDFs/metadata only. Full experiment cleanup includes its
-logs, plans, recovery weights and both DATA/PROJECT remnants. Shared scheduler state,
-raw/processed inputs, original weights and all other experiment trees are preserved.
-Rebuild local notebook summaries/captions after local cleanup; shared publication reports
-are not experiment-owned directories and are not silently edited by scoped cleanup.
-
-For a single new experiment-0 follow-up workflow, add `--workflow WORKFLOW_ID` to
-`--experiment experiment0`. It matches the complete identifier, not a filename substring.
-Deletion fails closed if queued/running CreditPFN writers have the same or unknown ownership,
-a context job depends on selected experiment-1 weights, a new job depends on experiment-0 validation,
-a scheduler query fails, or any selected path contains symlinks/junctions. The active maintenance
-log is retained. A whole-campaign deletion requires the explicit `--all-experiments` switch.
-The default without `--clean` remains a read-only preview. No cleanup has been performed by
-adding this facility.
-
-For an experiment-0-only reset, substitute `experiment0` in the two commands above and wait
-for successful cleanup before launching controls. Do not delete earlier controls merely to
-add the new workflow: the workflow identifier already isolates its files.
-
-Proceed only after successful removal. In an active CreditPFN environment, the measured short-job requests can be applied without changing the controls:
-
-```bash
-NULL_WALLTIME=00:10:00 PILOT_WALLTIME=00:15:00 RECOVERY_WALLTIME=00:10:00 bash scripts/slurm/run_experiment0.sh part1
-```
-
-The preparation stage refreshes immutable plans and stages the already-prepared data; it does not repeat data sanitization. General scheduler lane records are safe to retain: the launcher only adds dependencies for job IDs still present in the live queue. Do not erase an unresolved `pending_submission` marker without reconciling it with Slurm.
-
-- Identity mismatch: reconcile code, config, inputs and environment; do not disable fingerprinting.
-- Workflow failure: inspect its state/audit and the named logs; later stages were not released.
-- `user env retrieval failed requeued held`: Slurm failed to reconstruct the login environment before starting the script, so no application log may exist. Identify the held job's role from the workflow ledger. Release that exact existing job once with `scontrol -M <cluster> release <job-id>`; check its accounting/log before declaring success. If release is denied or the hold repeats, obtain `scontrol -M <cluster> show job <job-id>` and investigate the login/site failure before replacing only the affected stage. A held final CPU audit does not require rerunning completed GPU trials. `--export=NONE` and `--export=ALL,<variables>` can implicitly request environment retrieval; simply changing to NONE is not a remedy. See the [Slurm environment options](https://slurm.schedmd.com/sbatch.html#OPT_get-user-env) and [release command](https://slurm.schedmd.com/scontrol.html#OPT_release).
-- Exit 75: saved interruption, not success; inspect requeue count and resume the same identity.
-- Numerical divergence: retain the outcome; do not repeat until a favorable result appears.
-- `pending_submission`: acceptance is uncertain; reconcile the queue with `output CreditPFN/general/manifests/scheduler/` before retrying.
-- Unwritable project storage: fix the mount/permissions; modern jobs refuse large-file fallback to DATA.
-- Missing scratch: restage verified canonical inputs on a CPU node.
-- OOM or kernel error: retain the first diagnostic and run a separate named probe; never silently change row caps.
-- Quota pressure: inspect bytes and inodes, finish/stop writers, consolidate and retire only chosen artifacts.
-
-Record actual cluster outcomes in agent memory. Source review, synthetic CPU training and notebook execution are validation evidence, not proof that the next GPU allocation will pass.
-
-
-## Follow-up validation and experiments 4–7
-
-Keep the checkout fixed while jobs are queued/running or old training needs resuming.
-Completed experiment-1/2/3 checkpoints remain loadable by the reviewed follow-up code.
-`check_prepared(..., stage="eval")` validates the original plan, scientific settings and
-trial identities without requiring the current code to match the training implementation.
-Training resume still requires that match. Never overwrite an old plan to bypass this check.
-
-If source was updated after training finished but before experiment-3 benchmarking began,
-no rollback or retraining is needed. The experiment-3 YAMLs, native checkpoint loaders and
-five-fold evaluation protocol retain their existing behavior; new adapter/size-study paths
-are opt-in. Evaluation keys include current source and package versions, so incompatible
-old control caches are recomputed. This is a new evaluation of the saved weights, not a
-rewrite of how they were trained. Do not upgrade the environment as part of deployment.
-
-Deploy all reviewed fixes first, including experiment-7 shell routing, then freeze that
-checkout. Submit the entire experiment-3 benchmark with:
-
-```bash
-EVAL_WALLTIME=04:00:00 bash scripts/slurm/run_benchmark.sh experiment3
-```
-
-This submits both resource arrays (128 foundation tasks on Mindwell and 128 classical tasks
-on wICE). Do not repeat it if those benchmark jobs are already queued/running. The new
-experiment-0 checks can run alongside this benchmark on the same fixed code. If a check
-fails, preserve its output and finish active jobs before deploying a shared-code repair.
-The four direct smoke/capacity tasks are capped at two concurrent GPUs separately from the
-benchmark pool; their allocations are additional. A queue becoming empty is not a success
-receipt: inspect final logs and evidence before declaring either phase complete.
-
-After the user has committed/pushed and pulled the new version on VSC, launch the **new**
-experiment-0 correctness workflow from the repository:
-
-```bash
-bash scripts/slurm/run_experiment0_followups.sh prepare
-```
-
-This is a wICE CPU preparation job followed by four Mindwell tasks, at most two concurrent:
-PD/LGD × TabPFN v3/TabICLv2. Each checks identity, nonzero native/cached adapter inference,
-actual original/CPT context loaders and three short uninterrupted/recovered learning-rate
-pairs. The original/CPT check uses synthetic rows and is debugging evidence, not a result.
-It also verifies the existing experiment-1 reference checkpoints/provenance. The CPU log
-prints a workflow ID; all configs/receipts go to experiment0/manifests/followups/ID and
-logs to experiment0/logs. Detailed receipts and training telemetry stay on PROJECT.
-Original/null/pilot/recovery workflows do not get renamed or overwritten.
-
-Once all four smoke receipts pass, submit the separate capacity phase using that ID:
-
-```bash
-bash scripts/slurm/run_experiment0_followups.sh capacity WORKFLOW_ID
-```
-
-The four capacity tasks request at most three hours each (at most two concurrent). They run
-16 FP32 adapter updates on the real training corpus; the PD tasks also run 16 updates for
-both all/large-table policies at 8,192 rows and for the fixed large pool at 2,048/26,000 rows.
-Their recorded row exposure must match the declared cap. All tasks probe original-model context sizes up to 50,000
-at the production inference-view counts and 4,096-row query batches, using 64 synthetic
-numeric features. Record the measured shapes; this is not a proof that every categorical
-preprocessing expansion has the same memory footprint. These are capacity measurements, not a prediction
-of runtime: a failed cap must be revised and revalidated, never silently skipped. The smoke
-phase requests one hour per task. Requested limits are ceilings, not measured durations.
-
-In an active CreditPFN environment, inspect all eight current receipts:
-
-```bash
-bash scripts/slurm/run_experiment0_followups.sh inspect WORKFLOW_ID
-```
-
-Then select the accepted workflow for later preparation/submission (also required inside jobs):
-
-```bash
-export CREDITPFN_FOLLOWUP_GATE=WORKFLOW_ID
-```
-
-Retain that workflow's receipts and project evidence until the new campaigns finish;
-production and resumed jobs recheck them. Cleaning a failed workflow does not remove
-other workflow IDs or any experiment-1/2/3 output.
-
-Prepare experiment 4 on a CPU node; do not hash/read the full corpus on a login node:
-
-```bash
-CREDITPFN_EXPERIMENT=experiment4 sbatch --time=00:30:00 scripts/slurm/maintenance.slurm prepare-context --config config/experiment4/context.yaml
-```
-
-After successful preparation, submit the 250 context tasks in one bounded GPU array:
-
-```bash
-bash scripts/slurm/run_experiment4.sh "$VSC_DATA/CreditPFN/output CreditPFN/experiment4/manifests/plans/context_v1.json"
-```
-
-Project output is `output CreditPFN/experiment4/results/context_v1/task_NNNN.sqlite`
-plus `task_NNNN.csv.gz` metrics. Each SQLite transaction stores one completed
-context-size/weight-state cell and its compressed predictions, so a retry skips committed cells.
-DATA holds the immutable plan, logs and completion receipts. There are no new experiment-4 weights.
-Use the unchanged plan when retrying; do not resubmit while the same tasks are still queued/running.
-
-Prepare each experiment-5 track with `maintenance.slurm prepare --config
-config/experiment5/pd.yaml --write` and its LGD counterpart. For the size studies, prepare
-`config/experiment6/pd.yaml --write` first and wait for that CPU job to succeed. Then prepare
-`config/experiment7/pd_rows2048.yaml --write` and `pd_rows26000.yaml --write` the same way.
-Experiment-7 plans bind experiment 6's plan hash and shared 8,192-row trial identities;
-missing or incompatible references stop preparation before training.
-The saved size-study plans also bind the resolved benchmark settings, code and package versions.
-Evaluation rechecks them inside the job, including CLI overrides; changing the output location
-alone is allowed. Keep this common protocol fixed until both benchmarks finish.
-
-After the corresponding plans pass, use `run_experiment5.sh train`, `run_experiment6.sh train`
-or `run_experiment7.sh train`. Experiments 6/7 add 16 trials each and may train concurrently
-once their plans exist. Their separate `benchmark` action follows successful training;
-experiment-7 readiness also requires the completed experiment-6 weights. Training retains
-segmented 90-minute allocations and recovery; evaluation uses the existing five-fold protocol.
-Each benchmark action queues its foundation and classical arrays together. With the default
-16 shards per partition, experiment 6 has 64 tasks per resource array and experiment 7 has
-128. These are evaluation shards, not additional training trials. Experiment 6 benchmarks
-the shared control once; experiment 7's notebooks read those results from experiment 6.
-No launch action starts a different scientific experiment automatically.
-
-After all eight follow-up receipts and all preparation jobs pass, experiments 4–7 can be
-submitted in the same session: 250 context tasks and 80 new training trials (48/16/16).
-There is no scientific requirement to finish one of these training campaigns before starting
-another. The shared concurrency pool can still add capacity dependencies; keep accepted jobs
-in place and wait for every submitter to return before closing its terminal. Benchmark phases
-are submitted after their own training completes, with experiment 7 also requiring its
-experiment-6 control weights. Preserve the accepted workflow ID in
-`CREDITPFN_FOLLOWUP_GATE` for all preparation, training and benchmark submissions.
-
-The two size studies write separate DATA logs/plans and PROJECT diagnostics/results/weights.
-The eight shared controls remain owned by experiment 6. Download both groups for experiment-7
-analysis. Scoped cleanup refuses to remove experiment-6 evidence while an experiment-7 plan
-still references it, even when no jobs are active. If abandoning both studies, retire
-experiment 7 first. Do not delete or rewrite a reference plan to bypass provenance checks.
-
-DiagScale final checkpoints contain small adapter tensors, the family/module specification,
-the original-base reference/hash and ordinary provenance. Native stock loaders must reject
-this custom schema; CreditPFN reconstructs the exact original architecture and applies adapters
-before creating inference caches. Recovery files retain full model/optimizer/random state.
-Keep original base weights while any adapter checkpoint is needed. Neither file type belongs
-in DATA or Git. Experiments 6 and 7 write ordinary full-weight checkpoints under their own groups.
-
-## Experiment 8: LoRA workflow
-
-Validated on 26-10-2026: workflow `lora2` at source `cfa9658` passed preparation
-(`11738977`), all four smoke tasks (`11738978`), all four capacity tasks (`11738979`),
-and independent inspection (`11738980`, exit 0 at 11:07:30 CEST). The downloaded
-DATA receipts and inspection hashes agree. These authorize experiment-8 training
-on that source/environment; do not resubmit or clean the accepted workflow.
-The subsequent notebook-only refinements do not change the gate fingerprint.
-The commands below also describe how to validate a future changed implementation;
-use a fresh ID in that case, not `lora2` again.
-
-Experiment 8 adds 48 trials: TabPFN v3 / TabICLv2, PD / LGD, four existing dataset
-partitions and three adapter learning rates. It does not extend or overwrite experiment 1.
-The [research brief](RESEARCH_BRIEF.md) defines the fixed Q/V adapter and comparison limits.
-Native LoRA uses PyTorch parametrizations; no new PEFT installation is required. Local
-TabPFN installations without the v3 architecture cannot certify the released v3 checkpoint:
-the following Mindwell B200 checks are mandatory before production.
-
-Deploy the reviewed source to VSC before starting, with no jobs using the checkout.
-The pinned libraries remain read-only. From the repository root:
-
-```bash
-git pull --ff-only
-```
-
-Use a new alphanumeric workflow ID, here `lora2`. One command activates the existing
-CreditPFN environment and submits the whole testing sequence:
-
-```bash
-bash scripts/slurm/run_experiment0_lora.sh all lora2
-```
-
-It queues CPU preparation → four GPU smoke tasks → four GPU capacity tasks → CPU
-inspection. All stages use the **Mindwell controller**, with CPU work on `batch_graniterapids`
-and GPU work on `gpu_b200`; this avoids relying on cross-controller dependencies.
-The partitions are documented in the [Mindwell guide](https://docs.vscentrum.be/leuven/mindwell_quick_start.html)
-and pinned VSC Library `3bcdf55e576d10161d6189b40ac39380bbba9eca`.
-Slurm `afterok` dependencies require every task in the preceding array to succeed;
-`--kill-on-invalid-dep=yes` cancels downstream stages when a prerequisite fails.
-After all four submission IDs are printed and the command returns, the terminal may close.
-The sequence never submits production training. Preparation writes experiment-8 plans
-and separate debugging plans. Individual `prepare`, `smoke`, `capacity` and `inspect`
-actions remain available for deliberate diagnostics, but do not submit them on top of an `all` chain.
-
-DATA `output CreditPFN/experiment0/lora/lora2/submission.json` records submitted IDs and
-dependencies. Reusing an existing ID is rejected before submission. If submission itself
-is interrupted or rejected, inspect this record and the queue before retrying: accepted jobs
-are preserved, and an uncertain submission is never automatically retried or cancelled.
-
-The smoke array has four tasks, one per family/task pair, with at most two concurrent.
-Each exercises all three rates, native exports and prediction paths, zero-update identity,
-frozen-base and packed-key integrity, finite gradient paths and effective updates in **every Q/V projection**, and interruption/
-recovery comparisons within declared numerical tolerances. These are tiny training probes,
-not reported research results. All four successful receipts are required for capacity checks.
-The gradient audit wraps the real debug training entry point; it observes A/B gradients
-without modifying them, records per-projection BA norms, and binds these JSON records into
-the gate evidence on PROJECT. Both packed Q and V slices must pass. Zero dL/dA on the
-first step is expected; a missing B gradient or zero effective update cannot pass.
-
-Regression query-chunk checks use a maximum error of `1e-4` times the fixed synthetic
-context-target standard deviation (0.01% of that scale), identical for original,
-zero-export and changed checkpoints. The scale comes from the 96 context labels,
-never the query labels or observed prediction errors. The earlier pointwise comparison
-is still logged. Classification, same-batch repeat/zero-export identity, native attention
-merge/cache and recovery comparisons retain their existing tolerances. This is a
-debugging acceptance rule, not a change to production precision or model predictions.
-It addresses the near-zero false alarm diagnosed on 26-10-2026; changed query shapes
-can alter floating-point reduction results ([PyTorch numerical accuracy](https://docs.pytorch.org/docs/2.12/notes/numerical_accuracy.html#batched-computations-or-slice-computations)).
-The bound is our explicit engineering choice, not a tolerance prescribed by PyTorch.
-
-The second four-task array tests each family/task on all four partitions with the existing
-production row/cell caps, monitors and 16 updates per partition. This checks launch and
-memory feasibility, not the entire 10,000-update trajectory or performance benefit.
-Default limits are one hour per smoke task and three hours per capacity task. These are
-allocation ceilings, not measured runtime predictions. The final CPU audit starts automatically.
-
-Inspection runs on a CPU node, verifies all eight receipts, source/environment/input
-identity and checkpoint evidence, and writes the required inspection receipt. An empty
-queue is not proof of success: the inspection log must report success and exit zero.
-Logs and receipts use DATA `output CreditPFN/experiment0/lora/lora2/`; larger diagnostics
-use the matching PROJECT subtree. Debug weights use
-`checkpoints/trained/experiment0/lora/lora2/` on PROJECT. Older experiment-0 output stays
-outside this scope. After inspection passes:
-
-```bash
-CREDITPFN_LORA_GATE=lora2 bash scripts/slurm/run_experiment8.sh train
-```
-
-Keep the terminal until both track submitters return. Existing controller quotas and
-segmented recovery apply. Production launch and jobs require the accepted gate; changing
-bound source, configuration, environment or evidence requires fresh validation. Inspection
-performs full evidence hashing on a CPU node. Repeated gate checks verify receipt hashes
-and large-file identity metadata; training additionally verifies the actual trial inputs.
-A metadata check alone is not a new full-content audit.
-
-The 26-10-2026 20:54 DATA download records all 48 trials complete, including all eight
-segmented recoveries. PROJECT checkpoint/trajectory contents are not in that archive.
-From the VSC repository, this single command runs both CPU audits, waits for their outcomes,
-and submits the benchmark only if both exit successfully. Keep the terminal open until
-both benchmark array IDs have printed. Do not run it if that benchmark is already queued.
-
-```bash
-bash -c 'set -e
-for track in pd lgd; do
-  sbatch --wait --time=00:30:00 scripts/slurm/maintenance.slurm audit --config "config/experiment8/$track.yaml"
-done
-CREDITPFN_LORA_GATE=lora2 bash scripts/slurm/run_experiment8.sh benchmark
-'
-```
-
-Audit logs are saved under DATA `output CreditPFN/experiment8/logs/maintenance_*`.
-Failure stops the sequence; inspect that log rather than clearing or resubmitting training.
-If both audits have already passed, submit the benchmark once directly:
-
-```bash
-CREDITPFN_LORA_GATE=lora2 bash scripts/slurm/run_experiment8.sh benchmark
-```
-
-This checks readiness and submits both resource arrays together: 128 GPU and 128 CPU
-shards by default (two tracks, four partitions, 16 shards). The existing five-fold protocol
-saves individual predictions. Original and adapted TabICL both use FP32 with FA3 disabled.
-Final LoRA exports are ordinary merged native checkpoints; recovery files retain unmerged
-factors, optimizer and random state. Scientific results use `output CreditPFN/experiment8/`,
-with small logs/plans on DATA, diagnostics/results on PROJECT, and weights under
-PROJECT `checkpoints/trained/experiment8/`.
-
-### Scoped cleanup and reruns
-
-If a smoke task fails, retain its output and probe checkpoints until the failure
-is understood. An accepted submission or an empty queue does not establish a pass;
-the receipt must say `passed: true`, and final inspection must exit zero.
-
-For a failed native prediction comparison, this inference-only command reuses the
-existing original, zero-update and changed probe checkpoints. It defaults to task
-2 (TabPFN v3 LGD), requests one GPU task with a 15-minute ceiling, and trains no
-weights. `LORA_TASK=0`, `1` or `3` selects PD TabPFN, PD TabICL or LGD TabICL.
-
-```bash
-bash scripts/slurm/run_experiment0_lora.sh diagnose lora1
-```
-
-The diagnostic records repeated-call and query-chunk differences separately for
-each checkpoint, including shapes, nonfinite counts, tolerances and error sizes.
-It compares FP32 with inherited TF32 settings, FP32 with TF32 disabled, and the
-TabPFN automatic policy. Different-precision outputs are not required to match.
-Original/zero-export identity is checked separately within each policy. Small
-reports go to DATA `output CreditPFN/experiment0/lora/lora1/diagnostics/`, and logs
-to that workflow's `logs/`. No existing receipt, plan or checkpoint is overwritten.
-This diagnostic intentionally allows a historical failed workflow after code
-instrumentation changes, records both identities, and **cannot authorize production**.
-Even exit zero means the diagnostic ran, not that the failed LoRA gate passed.
-
-The 26-10-2026 `lora1` diagnostic completed, but its original failed smoke receipt
-remains failed. Keep this record and use a fresh ID, e.g. `lora2`, for preparation,
-all four smoke tasks, all four capacity tasks and inspection after deploying the
-revised batch-comparison rule and per-projection gradient audit. The `all` command
-enforces the stage order automatically. These changes affect the gate: the training source identity still matches the
-downloaded preparation, so an experiment-8 plan reset is not needed for this fix.
-If a later change produces a plan mismatch, stop and investigate rather than
-deleting production output automatically. Only export `CREDITPFN_LORA_GATE=lora2`
-after its inspection passes. Retain that accepted workflow throughout experiment 8.
-
-Preview only the failed LoRA debugging workflow on both tiers:
-
-```bash
-python -m src.utils.clean_run --lora-workflow lora1
-```
-
-After checking the paths and ensuring its jobs and experiment-8 consumers have stopped,
-delete only that workflow:
-
-```bash
-python -m src.utils.clean_run --lora-workflow lora1 --clean
-```
-
-Use a fresh workflow ID for replacement checks. Other workflow IDs, original weights,
-shared datasets and experiments 1–7 remain outside the target. Preserve an accepted gate
-while experiment 8 needs it. A scope marker written before environment activation allows
-cleanup of setup-only failures. Ambiguous ownership, active writers and linked/escaped
-paths cause cleanup to refuse deletion. Production plans remain outside debug cleanup.
-
-Preview a complete reset of experiment 8, including its weights on both tiers:
-
-```bash
-python -m src.utils.clean_run --experiment experiment8
-```
-
-Add `--clean` only when intentionally discarding that experiment. To retain training and
-reset only its benchmark, use `--experiment experiment8 --scope benchmark` with the same
-preview-first convention. Production cleanup does not delete the separate experiment-0
-gate. No cleanup runs automatically after a failed job.
-
-If debugging fails and a code fix changes the runtime fingerprint before any production
-training has started, the old experiment-8 preparation plans are deliberately immutable.
-Preview and reset the unused experiment-8 scope as well as the failed debug workflow,
-then prepare a new workflow ID. Do not overwrite those plans or silently delete completed
-production work to make a new fingerprint fit. Once production results exist, preserve
-them and use an explicit new run identity for a changed method.
+Check every changed figure visually, PDF/inline identity, caption ownership and complete final printed
+summaries in `All_Results.md`. Scientific payload folders follow public experiments; figures follow RQs.
+
+Keep compact failed-test evidence, source/runtime pins, migration checksums, submission receipts and
+publication journals. Historical pre-Git build helpers and failed-build records are already archived
+and hash-verified in canonical DATA `experiment0/manifests/runtime_builds/study20261029/`. Six obsolete
+runtime-build workspaces and three empty failed runtime directories were retired by `62471310`.
+After its final publication consumers finish, archive remaining provenance and remove the temporary
+`CreditPFN-study-v2` checkout and only verified obsolete task-owned staging. Remove one-off migration
+helpers after their recovery role ends; retain the layout reader and immutable migration journal.
+The comparator environment stays until compatibility/rollback no longer needs it. Other projects,
+scientific output and recoverable checkpoints are outside this cleanup.

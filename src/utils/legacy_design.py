@@ -60,6 +60,7 @@ def base_name(version, track):
 def configurations(identifier):
     """Materialize configs only in the owned manifest scope, never overwrite originals."""
     from src.train.config import load_train_config
+    from src.utils.study_layout import config_folder, NUMBERS
     validate_id(identifier)
     caps = limits()
     configs = {}
@@ -71,10 +72,10 @@ def configurations(identifier):
             (7, "pd", 2048), (7, "pd", int(caps.training_rows[version])),
             (8, "pd", int(caps.training_rows[version])), (8, "lgd", int(caps.training_rows[version])),
         ):
-            source = (f"config/experiment7/pd_rows2048.yaml" if experiment == 7 else
-                      f"config/experiment{experiment}/{track}.yaml")
+            source = (f"config/experiment9/pd_rows2048.yaml" if experiment == 7 else
+                      f"{config_folder(experiment)}/{track}.yaml")
             cfg = load_train_config(config_path=str(REPO_ROOT / source))
-            name = f"e{experiment}_{track}_{tag}" + (f"_rows{rows}" if experiment == 7 else "")
+            name = f"e{NUMBERS[experiment]}_{track}_{tag}" + (f"_rows{rows}" if experiment == 7 else "")
             prefix = {5: "cpt_diagscale", 6: "cpt_corpus", 7: f"cpt_episode_rows{rows}", 8: "cpt_lora"}[experiment]
             cfg.run_name = f"{prefix}_legacy_{identifier}_{tag}"
             cfg.experiment.update(extension_id=identifier, legacy_gate=True, lora_gate=False, followup_gate=False)
@@ -82,16 +83,16 @@ def configurations(identifier):
             cfg.train.max_rows_per_step = rows
             cfg.checkpoint.trained_dir = f"checkpoints/trained/experiment{experiment}/extensions/{identifier}"
             if experiment == 7:
-                cfg.experiment.reference_config = str(directory / f"e6_pd_{tag}.yaml")
+                cfg.experiment.reference_config = str(directory / f"e8_pd_{tag}.yaml")
             configs[name] = cfg
-        cfg = OmegaConf.load(REPO_ROOT / "config/experiment4/context.yaml")
+        cfg = OmegaConf.load(REPO_ROOT / "config/experiment10/context.yaml")
         cfg.run_name = f"context_legacy_{identifier}_{tag}"
         cfg.extension_id = identifier
         cfg.base_version = version
         cfg.families = ["tabpfn"]
         cfg.max_context_rows = int(caps.context_rows[version])
         cfg.context_rows = sorted(set([n for n in cfg.context_rows if n <= cfg.max_context_rows] + [cfg.max_context_rows]))
-        configs[f"e4_{tag}"] = cfg
+        configs[f"e10_{tag}"] = cfg
     return configs
 
 

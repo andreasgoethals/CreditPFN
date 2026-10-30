@@ -96,10 +96,14 @@ def stage_targets(stage: str) -> list[Path]:
     else:
         for group in EXPERIMENTS:
             found += list(results_dir(experiment=group).glob("**/*"))
-            found += list(resolve_staging_path(f"output CreditPFN/{group}/evaluation_cache").glob("**/*"))
-            found += list((outputs_dir() / group / "figures").glob("**/*"))
-            found += list((manifests_dir(group) / "figures").glob("**/*.json"))
             found += list(logs_dir(group).glob("eval_*.log"))
+        from src.utils.study_layout import CAMPAIGNS, payload
+        from src.utils.publication_cleanup import plan
+        for output in set((outputs_dir(), resolve_staging_path(OUTPUT_DIR_NAME))):
+            for group in EXPERIMENTS:
+                found += list((output / payload(group, output) / "evaluation_cache").glob("**/*"))
+            publications, _ = plan(output, set(CAMPAIGNS) | {"experiment0"})
+            found += publications
     return list(dict.fromkeys(p for p in found if p.is_file() and p.name not in KEEP))
 
 
@@ -135,7 +139,7 @@ def experiment_roots(experiment: str, scope: str = "all") -> list[Path]:
         raise ValueError("Unknown cleanup scope")
     selected = []
     for root in (outputs_dir(), resolve_staging_path(OUTPUT_DIR_NAME)):
-        from src.utils.study_layout import payload, NUMBERS
+        from src.utils.study_layout import payload
         folder = root / payload(group, root)
         if scope == "all":
             selected.append(folder)
@@ -143,9 +147,6 @@ def experiment_roots(experiment: str, scope: str = "all") -> list[Path]:
             selected.append(folder / "training")
         elif scope == "benchmark":
             selected += [folder / "results", folder / "evaluation_cache"]
-        if scope in {"all", "figures"}:
-            number=int(group.removeprefix("experiment"))
-            selected.append(root / "figures" / f"experiment{NUMBERS.get(number,number)}")
     if scope in {"all", "training"}:
         selected += [checkpoints_dir("trained", group), resolve_output_path(f"checkpoints/trained/{group}")]
     return list(dict.fromkeys(selected))
@@ -186,7 +187,7 @@ def check_cluster_writers(experiment=None):
             if experiment and owner is None:
                 details = subprocess.run(["scontrol", "-M", cluster, "show", "job", "-o", job],
                                          text=True, capture_output=True, timeout=45, check=True).stdout
-                groups = set(re.findall(r"(?:config/|CREDITPFN_EXPERIMENT=)(experiment[0-8])(?:/|,|\s|$)", details))
+                groups = job_campaigns(details)
                 if len(groups) == 1:
                     owner = groups.pop()
             if experiment is None or owner is None or owner in consumers:
@@ -205,8 +206,18 @@ def check_saved_consumers(experiment, scope):
     plans = manifests_dir("experiment7") / "plans"
     for path in plans.glob("*.json"):
         if json.loads(path.read_text(encoding="utf-8")).get("shared_reference"):
-            raise RuntimeError("Experiment 7 still references experiment 6. Preserve the shared control, "
-                               "or explicitly retire experiment 7 first; scoped cleanup deleted nothing.")
+            raise RuntimeError("E9 still references E8. Preserve the shared control, "
+                               "or explicitly retire E9 first; scoped cleanup deleted nothing.")
+
+
+def job_campaigns(details):
+    """Public config paths and explicit immutable environment IDs are distinct."""
+    import re
+    from src.utils.study_layout import campaign_for_study
+    groups = set(re.findall(r'CREDITPFN_EXPERIMENT=(experiment[0-8])(?:,|\s|$)', details))
+    groups.update(campaign_for_study(group) for group in
+                  re.findall(r'config/(experiment(?:10|[0-9]))/', details))
+    return groups
 
 
 def lora_workflow_roots(identifier):
@@ -242,7 +253,7 @@ def check_lora_writers(identifier):
             details = subprocess.run(["scontrol", "-M", cluster, "show", "job", "-o", job],
                                      text=True, capture_output=True, timeout=45, check=True).stdout
             workflow = re.search(r"lora_(?:gpu|prepare)\.slurm\s+(?:(?:smoke|capacity|diagnose)\s+)?([A-Za-z0-9]+)(?:\s|$)", details)
-            groups = set(re.findall(r"(?:config/|CREDITPFN_EXPERIMENT=)(experiment[0-8])(?:/|,|\s|$)", details))
+            groups = job_campaigns(details)
             if workflow:
                 if workflow.group(1) == identifier:
                     active.append(job)
@@ -350,7 +361,9 @@ def main(argv: list[str] | None = None) -> int:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
     )
     parser.add_argument("--clean", action="store_true", help="actually delete; default lists only")
-    parser.add_argument("--experiment", help="only this experiment on both storage tiers")
+    parser.add_argument("--experiment", help="public experiment number, e.g. experiment6 = LoRA")
+    parser.add_argument("--campaign", help="explicit immutable historical campaign identity (recovery only)")
+    parser.add_argument("--shared-factorial", action="store_true", help="acknowledge retiring shared E1/E3/E4 scientific evidence")
     parser.add_argument("--scope", choices=["all", "training", "benchmark", "figures"], default="all")
     parser.add_argument("--workflow", help="only the named experiment-0 follow-up workflow")
     parser.add_argument("--lora-workflow", help="only the named isolated experiment-0 LoRA workflow on both tiers")
@@ -362,6 +375,15 @@ def main(argv: list[str] | None = None) -> int:
                              " — clear only what those stages produced, instead of the "
                              "whole output CreditPFN/ tree")
     args = parser.parse_args(argv)
+    if args.experiment and args.campaign:
+        parser.error('Choose public --experiment or historical --campaign, never both')
+    if args.experiment:
+        from src.utils.study_layout import campaign_for_study
+        if args.clean and args.experiment in {'experiment1', 'experiment3', 'experiment4'} and args.scope != 'figures' and not args.shared_factorial:
+            parser.error('E1/E3/E4 share one factorial. Add --shared-factorial only when retiring all three analyses together.')
+        args.experiment = campaign_for_study(args.experiment)
+    elif args.campaign:
+        args.experiment = args.campaign
     if args.lora_workflow:
         if (args.experiment not in (None, "experiment0") or args.workflow or args.processed
                 or args.stages or args.all_experiments or args.scope != "all"):
@@ -386,7 +408,8 @@ def main(argv: list[str] | None = None) -> int:
     if active_log:
         path = Path(active_log).resolve()
         from src.utils.paths import EXPERIMENTS
-        allowed = {(outputs_dir() / g / "logs").resolve() for g in EXPERIMENTS}
+        from src.utils.study_layout import payload
+        allowed = {(outputs_dir() / payload(g, outputs_dir()) / "logs").resolve() for g in EXPERIMENTS}
         if path.parent not in allowed or path.suffix != ".log":
             parser.error("CREDITPFN_ACTIVE_LOG must name a .log inside output CreditPFN/<experiment>/logs")
         keep_paths = frozenset({path})
@@ -396,6 +419,15 @@ def main(argv: list[str] | None = None) -> int:
     # No writers may be active during a clean; this is not a concurrent deletion service.
     clean_processed = args.processed or bool(args.stages and "data" in args.stages.split(","))
     targets = experiment_roots(args.experiment, args.scope) if args.experiment else roots(processed=clean_processed)
+    publications, metadata = [], {}
+    if args.experiment and not args.workflow and args.scope in {'all', 'figures', 'benchmark'}:
+        from src.utils.publication_cleanup import plan
+        for tier in dict.fromkeys((outputs_dir(), resolve_staging_path(OUTPUT_DIR_NAME))):
+            files, edits = plan(tier, {args.experiment})
+            publications.extend(files)
+            metadata.update(edits)
+        for path in publications:
+            print(f'Dependent publication: {path}')
     for root in targets:
         validate_tree(root)
 
@@ -438,6 +470,12 @@ def main(argv: list[str] | None = None) -> int:
             return 0
         for f in files:
             f.unlink(missing_ok=True)
+        if "eval" in names:
+            from src.utils.study_layout import CAMPAIGNS
+            from src.utils.publication_cleanup import plan, apply
+            for output in set((outputs_dir(), resolve_staging_path(OUTPUT_DIR_NAME))):
+                publications, edits = plan(output, set(CAMPAIGNS) | {"experiment0"})
+                apply(publications, edits)
         print(f"\nDeleted {len(files)} files. Clean.")
         return 0
 
@@ -461,6 +499,9 @@ def main(argv: list[str] | None = None) -> int:
     print("\nDeleting:")
     for root in targets:
         print(f"  removed {wipe(root, keep_paths=keep_paths):>6} files from {root}")
+    if metadata:
+        from src.utils.publication_cleanup import apply
+        apply(publications, metadata)
     print("\nClean.")
     return 0
 

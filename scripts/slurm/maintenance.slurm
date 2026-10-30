@@ -16,7 +16,7 @@
 set -euo pipefail
 cd "${VSC_DATA:?}/CreditPFN"
 for arg in "$@"; do
- case "$arg" in *config/experiment[0-8]/*) export CREDITPFN_EXPERIMENT="$(basename "$(dirname "$arg")")" ;; esac
+ case "$arg" in *config/experiment*/*.yaml) export CREDITPFN_CONFIG="$arg" ;; esac
 done
 if [[ "${1:-}" == clean-extensions ]]; then
     unset CREDITPFN_LEGACY_ID CREDITPFN_LORA_WORKFLOW

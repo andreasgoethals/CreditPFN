@@ -109,7 +109,7 @@ def test_research_phase_configs_share_only_identical_evaluation_controls(monkeyp
     monkeypatch.setattr(cache, "environment_versions", lambda **kwargs: {"test": "same-environment"})
     handle = SimpleNamespace(source=source, name=source, base_path=None)
     configs = [load_eval_configs([], [], config_path=f"config/experiment{experiment}/{track}.yaml")[0]
-               for experiment in (1, 2, 3)]
+               for experiment in (1, 2, 7)]
     keys = [cache.evaluation_key(handle, "test", track=track, config=OmegaConf.to_container(cfg, resolve=True))
             for cfg in configs]
     if source == "tabicl-untuned":

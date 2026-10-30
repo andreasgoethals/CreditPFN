@@ -157,11 +157,14 @@ def reset(experiment: str, family: str, *, apply: bool = False) -> dict:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--experiment", required=True)
+    parser.add_argument("--experiment", required=True, help="public experiment number")
     parser.add_argument("--family", required=True, choices=FAMILIES)
     parser.add_argument("--apply", action="store_true", help="delete; default only lists")
     args = parser.parse_args(argv)
-    report = reset(args.experiment, args.family, apply=args.apply)
+    from src.utils.study_layout import campaign_for_study
+    if args.experiment in {'experiment3', 'experiment4'}:
+        parser.error('E3/E4 share the E1 benchmark. Explicitly select experiment1 to reset that shared evidence.')
+    report = reset(campaign_for_study(args.experiment), args.family, apply=args.apply)
     action = "Deleted" if report["applied"] else "Would delete"
     print(f"{action} {len(report['folders'])} {args.family} result folders ({report['files']} files) "
           f"for {args.experiment}:")

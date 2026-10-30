@@ -57,7 +57,7 @@ def test_evaluation_rechecks_validated_numerical_protocol(monkeypatch, override)
     from src.eval.config import load_eval_configs
     calls = []
     monkeypatch.setattr(checks, "require_gate", lambda: calls.append("verified"))
-    eval_cfg, train_cfg = load_eval_configs([], [], config_path="config/experiment8/pd.yaml", split_index=1)
+    eval_cfg, train_cfg = load_eval_configs([], [], config_path="config/experiment6/pd.yaml", split_index=1)
     # Relocating output does not change the scientific protocol.
     eval_cfg.results.base_dir = "other/output"
     checks.validate_evaluation(train_cfg, eval_cfg)
@@ -73,12 +73,12 @@ def test_actual_benchmark_entry_rechecks_gate_before_building_models(monkeypatch
         raise RuntimeError("independent LoRA inspection is stale")
     monkeypatch.setattr(checks, "require_gate", reject)
     from src.eval.config import load_eval_configs
-    eval_cfg, train_cfg = load_eval_configs([], [], config_path="config/experiment8/pd.yaml", split_index=0)
+    eval_cfg, train_cfg = load_eval_configs([], [], config_path="config/experiment6/pd.yaml", split_index=0)
     with pytest.raises(RuntimeError, match="inspection is stale"):
         eval_pipeline._build_roster(eval_cfg, train_cfg, "pd")
     monkeypatch.setattr(eval_pipeline, "_ensure_processed", lambda *a, **kw: pytest.fail("stale gate reached shared data cache"))
     with pytest.raises(RuntimeError, match="inspection is stale"):
-        eval_pipeline.run(config="config/experiment8/pd.yaml", split_index=0)
+        eval_pipeline.run(config="config/experiment6/pd.yaml", split_index=0)
 
 
 @pytest.mark.parametrize("what", ["base", "config", "evidence", "artifact", "source", "environment", "failed", "wrong_task", "wrong_id", "unprepared"])
@@ -131,7 +131,7 @@ def test_smoke_changes_only_scoped_workload_capacity_keeps_all_partitions(track,
     basename = (f"tabpfn-v3-{kind}-v3_default.ckpt" if family == "tabpfn"
                 else f"tabicl-{kind}-v2-20260212.ckpt")
     monkeypatch.setattr(checks, "_base", lambda t, f: Path("checkpoints") / basename)
-    source = load_train_config(config_path=f"config/experiment8/{track}.yaml")
+    source = load_train_config(config_path=f"config/experiment6/{track}.yaml")
     source_before = OmegaConf.to_container(source, resolve=True)
     limits = checks.policy()
     train = [SimpleNamespace(dataset_id="train1"), SimpleNamespace(dataset_id="train2")]

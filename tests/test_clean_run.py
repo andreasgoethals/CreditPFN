@@ -173,13 +173,17 @@ def test_cleanup_rejects_keep_log_outside_log_directory(isolated_output, monkeyp
 
 
 def test_eval_cleanup_removes_figures_and_eval_logs_but_keeps_training(isolated_output):
+    import json
     from src.utils.paths import outputs_dir
-    paths = [outputs_dir() / "general" / name for name in (
-        "figures/example/01_plot.pdf", "manifests/figures/example.json",
-        "logs/eval_example.log", "manifests/train.csv")]
+    paths = [outputs_dir() / name for name in (
+        "figures/rq2/02_results_plot.pdf", "figures/rq2/_metadata/02_results.json",
+        "experiment5/logs/eval_example.log", "experiment5/manifests/train.csv")]
     for path in paths:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("record", encoding="utf-8")
+    paths[1].write_text(json.dumps([dict(stem="02_results_plot", name="plot", caption="Fixture",
+        index=1, provenance=dict(campaign_ids=["experiment5"]))]), encoding="utf-8")
     clean_run.main(["--clean", "--stages", "eval", "--all-experiments"])
-    assert all(not p.exists() for p in paths[:3])
+    assert not paths[0].exists() and not paths[2].exists()
+    assert json.loads(paths[1].read_text()) == []
     assert paths[3].exists()

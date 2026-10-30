@@ -96,7 +96,7 @@ def test_main_and_sampling_grid_counts_and_shared_partitions():
     from src.train.corpus import _assign_folds
     for track, size in (("pd", 17), ("lgd", 8)):
         main = load_train_config(config_path=f"config/experiment1/{track}.yaml")
-        sampling = load_train_config(config_path=f"config/experiment3/{track}.yaml")
+        sampling = load_train_config(config_path=f"config/experiment7/{track}.yaml")
         assert len(resolve_grid(main, single=False)) * main.corpus.n_splits == 256
         assert len(resolve_grid(sampling, single=False)) * sampling.corpus.n_splits == 48
         assert set(sampling.tunable.epoch_pass_modes) == {"one_sample", "full_pass", "accumulate"}

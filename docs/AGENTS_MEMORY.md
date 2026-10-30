@@ -2,6 +2,21 @@
 
 ## 30-10-2026
 
+- Numbering/cache/recovery validation: full local pytest **1,263 passed, one existing absent-manifest skip** (10m14s); 49 Slurm shell files pass Bash syntax checks. All 15 notebook source contracts pass. Notebook execution/visual verification is continuing separately; visual review identified and corrected UTF-8 label corruption in five edited notebooks, whose affected outputs must be regenerated before final report publication. No VSC acceptance of this source is claimed yet.
+
+- Full refresh audit **62474641** completed on wICE at 10:26 CET (9m27s, exit 0): all 445 refresh tasks passed. Independently verified 459 benchmark comparisons / 2,295 folds / 30,967,719 predictions and 125 context tasks / 5,550 cells / 147,493,764 predictions, with unchanged cohorts/targets and complete context test rows. `experiment0/manifests/evaluation_refresh/study20261029/inspection.json` is passing; publication is still staged. No extension research was released.
+- Public configs/Slurm wrapper names now follow E1/E2/E5/E6/E7/E8/E9/E10; E3/E4 reuse E1. Compared all eight moved YAML files with Git: scientific values unchanged apart from the relocated control-config reference. Embedded campaign/checkpoint identities stay immutable. YAML now supplies the actual layout, and source identities include it. Combined publication cleanup follows campaign/extension dependencies; shell mappings and real log routing are checked against the registry.
+- User approved scoped successful-job cache retirement and node-local cache-policy tests. Accounting matched 472 GPFS cache directories: 466 successful, six failed; failed/unmatched contents remain protected. These counts do not establish current bytes reclaimed. A 55-second login-node recursive inventory timed out; move inventory/deletion into bounded Slurm jobs. No cache removal has yet occurred.
+- **Tried:** focused tests after replacing folder-number inference with explicit config ownership and renaming public config paths.
+  **Result:** older mock launcher fixtures lacked real config files and cleanup fixtures still created obsolete figure folders.
+  **Why:** fixtures encoded the removed inference/layout rather than the deployed contract.
+  **Instead:** supply real owner-bearing configs and current RQ metadata; test all public-to-recorded identities, both source fingerprints, and successful/failed job EXIT cleanup while preserving peers.
+- **Tried:** one ad-hoc source-text edit with Python's Windows default decoding.
+  **Result:** four UTF-8 plotting/runner files were re-encoded incorrectly; no numerical evidence changed.
+  **Why:** implicit CP1252 decoding rather than explicit UTF-8.
+  **Instead:** reverse the exact encoding transformation, use explicit UTF-8 thereafter, and rerun source/notebook validation before publication.
+
+- At 09:54 CET all **445 FP32 tasks** had completed with Slurm exit `0:0`. The old extension's 68 capacity cases were contained in 18 cancelled array submissions; no capacity gate or extension research passed. Recovery must use a fresh extension/source identity and retain the original evaluator for its completed refresh. The recovery coordinator now binds that evaluator's clean Git commit and preparation digest, repeats current-source acceptance, preserves all final artifact gates and avoids dependencies on terminal jobs that have left Slurm's controller.
 - RQ notebook compaction validated locally: **15/15 notebooks, 133 figures** (previously 29/261); full suite **1,229 passed, one existing absent-manifest skip** in 10m17s. Visually reviewed all new/changed RQ and overview figures, including full-resolution label checks. Independently verified every PDF/inline/caption identity, all final summaries in `All_Results.md`, notebook schemas, execution counts, no embedded definitions and no orphan publication artifacts. Scientific result/checkpoint paths and the shared factorial are unchanged. These reports use the currently downloaded evidence; they do not claim the pending VSC FP32/context/extension work has passed or been published.
 - **Tried:** run the v2/v2.6 extension gate after local adapter-mapping tests passed.
   **Result:** all four DiagScale training-entry checks failed; one LoRA case crashed without a Python traceback.
@@ -14,6 +29,7 @@
 
 | Run | Verified outcome | Scope |
 |---|---|---|
+| wICE `62474641`, full FP32 inspection, source `4bf4535`, runtime `env20261029f` | Submitted; outcome pending direct inspection | Checks all benchmark predictions and all fixed-test context curves before any publication; durable receipt `full-inspection.submission.json` under the original study scope |
 | Mindwell `11753657`, extension smoke gate, source `4bf4535`, runtime `env20261029f` | Seven of twelve passed; cases 4–7 failed before training; case 9 exited 139 | All four context probes and three LoRA cases passed. The four DiagScale cases reached an obsolete v3-only training guard despite successful standalone adapter probes. LoRA LGD v2.6 crashed in a native process after saving the second reference checkpoint; its cause is not established. Inspector `11753862` and research controller `11753901` were cancelled; new extension research was not released. Preserve the failed gate and its recovery evidence. |
 | wICE `62473876`, FP32 benchmark preflight, accepted runtime `env20261029f`, source `4bf4535` | Completed, exit 0, 4m24s; **459 comparisons / 2,295 folds / 30,967,719 saved predictions** passed independent metric and cohort checks | Public E7/E8/E9 (historical campaigns 3/6/7): 228/99/132 comparisons. All 320 benchmark shards have successful completion receipts. Original results remain active; context checks and final publication are still pending. Submission and audit receipts are under canonical DATA `experiment0/manifests/study_v2/study20261029/benchmark-preflight*.json`. |
 

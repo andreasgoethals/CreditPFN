@@ -2,7 +2,13 @@
 # One benchmark phase: submit both resource arrays for both tasks and all partitions.
 set -euo pipefail
 cd "$(dirname "$0")/../.."
-EXPERIMENT="${1:?usage: run_benchmark.sh experiment1|experiment2|experiment3|experiment5|experiment6|experiment7|experiment8}"
+PUBLIC_EXPERIMENT="${1:?usage: run_benchmark.sh experiment1|experiment2|experiment5|experiment6|experiment7|experiment8|experiment9}"
+case "$PUBLIC_EXPERIMENT" in
+ experiment3|experiment4) echo 'E3/E4 reuse the E1 factorial benchmark. Submit experiment1 once, not each analysis.' >&2; exit 2 ;;
+ experiment0|experiment10) echo 'E0 uses validation; E10 uses the context evaluator.' >&2; exit 2 ;;
+esac
+source scripts/slurm/_study_map.sh
+EXPERIMENT=$(study_campaign "$PUBLIC_EXPERIMENT")
 case "$EXPERIMENT" in experiment[1-3]|experiment[5-8]) ;; *) echo 'Expected experiment1–3 or experiment5–8' >&2; exit 2 ;; esac
 CONFIG_COUNT=2
 [[ "$EXPERIMENT" == experiment6 ]] && CONFIG_COUNT=1
@@ -38,10 +44,11 @@ if family and not dry:
 splits = []
 names = (['pd.yaml'] if experiment == 'experiment6' else ['pd_rows2048.yaml', 'pd_rows26000.yaml']
          if experiment == 'experiment7' else ['pd.yaml', 'lgd.yaml'])
-paths = [Path('config') / experiment / name for name in names]
+from src.utils.study_layout import config_folder
+paths = [Path(config_folder(experiment)) / name for name in names]
 # The shared anchor is benchmarked once in experiment 6, not retrained/copied here.
 if experiment == 'experiment7' and not dry:
-    paths.append(Path('config/experiment6/pd.yaml'))
+    paths.append(Path('config/experiment8/pd.yaml'))
 for path in paths:
     cfg = load_train_config(config_path=str(path))
     track = str(cfg.track)

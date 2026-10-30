@@ -65,7 +65,7 @@ def submit(identifier):
     write_json(destination, record)
     print(f"Entire safety sequence queued for {identifier}. You may close the terminal.", flush=True)
     print("Failed prerequisites prevent downstream tests from running. No production jobs submitted.", flush=True)
-    print(f"After successful inspection: CREDITPFN_LORA_GATE={identifier} bash scripts/slurm/run_experiment8.sh train", flush=True)
+    print(f"After successful inspection: CREDITPFN_LORA_GATE={identifier} bash scripts/slurm/run_experiment6.sh train", flush=True)
     return record
 
 

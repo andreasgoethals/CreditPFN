@@ -21,7 +21,7 @@ from src.utils.atomic import write_json
 from src.utils.paths import manifests_dir, results_dir, checkpoints_dir, resolve_base_checkpoint
 
 
-def policy(path="config/experiment4/context.yaml"):
+def policy(path="config/experiment10/context.yaml"):
     cfg = OmegaConf.to_container(OmegaConf.load(path), resolve=True)
     sizes = cfg["context_rows"]
     legacy = bool(cfg.get("extension_id"))
@@ -30,7 +30,7 @@ def policy(path="config/experiment4/context.yaml"):
         from src.utils.runtime_validation import identifier
         from src.utils.paths import REPO_ROOT
         identifier(cfg["refresh_id"])
-        expected = OmegaConf.to_container(OmegaConf.load(REPO_ROOT / "config/experiment4/context.yaml"), resolve=True)
+        expected = OmegaConf.to_container(OmegaConf.load(REPO_ROOT / "config/experiment10/context.yaml"), resolve=True)
         expected.update(run_name=f"context_fp32_{cfg['refresh_id']}", refresh_id=cfg["refresh_id"],
                         families=["tabicl"], tabicl_inference_options={"use_amp": False, "use_fa3": False})
         if legacy or cfg != expected:
@@ -141,7 +141,7 @@ def reference_checkpoint(track, family, partition, cfg):
                 cpt_sha256=file_digest(path), provenance_sha256=file_digest(Path(str(path)+".provenance.json"))), split.test
 
 
-def prepare(path="config/experiment4/context.yaml"):
+def prepare(path="config/experiment10/context.yaml"):
     cfg = policy(path)
     if cfg.get("extension_id"):
         import os

@@ -34,7 +34,7 @@ def fingerprint() -> str:
               for phase in ("null", "pilot", "recovery") for track in ("pd", "lgd")]
     files += [REPO_ROOT / "config/experiment0/auxiliary.yaml", REPO_ROOT / "src/utils/auxiliary_check.py",
               REPO_ROOT / "scripts/slurm/auxiliary.slurm"]
-    files += [REPO_ROOT / f"config/experiment{exp}/{track}.yaml" for exp in (1, 2, 3) for track in ("pd", "lgd")]
+    files += [REPO_ROOT / f"config/experiment{exp}/{track}.yaml" for exp in (1, 2, 7) for track in ("pd", "lgd")]
     return digest_json({"training_code": code_identity(), "evaluation_code": code_identity(stage="eval"),
                         "configs": {p.relative_to(REPO_ROOT).as_posix(): file_digest(p) for p in files}})
 

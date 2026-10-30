@@ -12,7 +12,7 @@ def main():
     from src.eval.context_curve import prepare, run_task
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=["prepare", "run"])
-    parser.add_argument("--config", default="config/experiment4/context.yaml")
+    parser.add_argument("--config", default="config/experiment10/context.yaml")
     parser.add_argument("--plan", type=Path)
     parser.add_argument("--task", type=int)
     args = parser.parse_args()

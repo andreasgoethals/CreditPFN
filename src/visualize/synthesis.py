@@ -127,8 +127,8 @@ def table_effects(run, metric, *, experiment, arm=None, domain="credit"):
 def load_studies(track, *, campaigns=None):
     """Every completed research study for a track, excluding experiment-0 controls.
 
-    Experiment 7 reuses experiment 6's large-table checkpoints as its 8,192-row arm;
-    that arm enters once, as experiment 6's large-table policy.
+    Experiment 9 reuses experiment 8's large-table checkpoints as its 8,192-row arm;
+    that arm enters once, as experiment 8's large-table policy.
     """
     from src.visualize import size_studies as ss
     wanted = set(STUDIES if campaigns is None else campaigns)
@@ -466,9 +466,9 @@ def plot_landscape(data, track):
         "checkpoint of the same base, followed by the number of tables that improved by more than "
         f"{band:g} {'pp' if track == 'pd' else 'R²'} and the number of complete tables. " + NOTE_PAIRING +
         "Rows are grouped by experiment (E1 main grid: four learning rates × L2-SP λ ∈ {0, 0.003} × all or "
-        "frozen-backbone updates; E2 the reference recipe with a second training seed; E3 sampling protocols; "
-        "E5 DiagScale query-scaling adapters; E6 all versus large training tables; E7 episode sizes on the large-table "
-        "corpus; E8 rank-16 query/value LoRA). The bold row is the predefined reference recipe (full updates, "
+        "frozen-backbone updates; E2 the reference recipe with a second training seed; E7 sampling protocols; "
+        "E5 DiagScale query-scaling adapters; E8 all versus large training tables; E9 episode sizes on the large-table "
+        "corpus; E6 rank-16 query/value LoRA). The bold row is the predefined reference recipe (full updates, "
         "LR 3e-7, λ 0.003); every other row is reported in full rather than selected. Label colours identify the "
         "adaptation approach. Colours are symmetric about zero and saturate at the 95th percentile of |cell value| "
         f"({limit:.2f}); printed values are exact. 'Not run' marks base/approach combinations outside a study's design. "
@@ -706,8 +706,8 @@ def plot_rate_response(data, track):
     fig.suptitle(f"{track.upper()}: learning-rate response by approach")
     return [cp.Page("overview_rate_response", fig,
         f"Equal-table mean paired change in {'AUC (percentage points)' if track == 'pd' else 'R²'} relative to the original "
-        "model, against peak learning rate, for full-parameter and frozen-backbone CPT (experiment 1; solid λ = 0.003, "
-        "dashed λ = 0), DiagScale query-scaling adapters (experiment 5) and query/value LoRA (experiment 8). Shaded bands "
+        "model, against peak learning rate, for full-parameter and frozen-backbone CPT (shared E1/E3/E4 factorial; solid λ = 0.003, "
+        "dashed λ = 0), DiagScale query-scaling adapters (experiment 5) and query/value LoRA (experiment 6). Shaded bands "
         "span the table interquartile range, not confidence intervals. Each curve retains the same complete table cohort across its rates. " + NOTE_PAIRING +
         "The rate scales are not interchangeable across approaches: DiagScale updates multiplicative query scales and LoRA "
         "updates low-rank factors, so their rates are shown on a common axis only to display each approach's own "
@@ -832,7 +832,7 @@ def plot_cost_effect(data, cost, track):
 
 
 def plot_context_gain(study, track):
-    """Experiment 4: CPT − original change against labelled context, per family."""
+    """Experiment 10: CPT − original change against labelled context, per family."""
     from src.visualize import context_curves as cc
     metric = PRIMARY[track]
     paired = cc.paired_tables(study, metric)
@@ -869,7 +869,7 @@ def plot_context_gain(study, track):
         ax.legend()
     fig.suptitle(f"{track.upper()}: CPT effect as labelled context grows")
     return [cp.Page("overview_context", fig,
-        f"Experiment 4: paired change in {'AUC (percentage points)' if track == 'pd' else 'R²'} of the fixed reference CPT "
+        f"Experiment 10: paired change in {'AUC (percentage points)' if track == 'pd' else 'R²'} of the fixed reference CPT "
         "checkpoint (experiment 1: full updates, LR 3e-7, L2-SP λ 0.003) relative to its original model, as a function of the "
         "number of labelled context rows supplied at prediction time. Contexts are nested prefixes and test rows are identical "
         "for both weight states. Each line is a fixed table cohort that contributes at every size up to its horizon; the band "

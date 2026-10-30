@@ -235,6 +235,13 @@ class FigureSaver:
         self.folder.mkdir(parents=True, exist_ok=True)
         manifest_path(notebook).parent.mkdir(parents=True, exist_ok=True)
         self.entries: list[dict] = [] if clear_first else read_manifest(notebook)
+        from src.utils.study_layout import notebook_campaigns
+        self.dependencies = {"campaign_ids": notebook_campaigns(notebook), "extension_ids": []}
+        if set(self.dependencies['campaign_ids']).intersection({'experiment4', 'experiment5', 'experiment6', 'experiment7', 'experiment8'}):
+            from src.visualize.legacy_extensions import selected
+            selection = selected()
+            if selection:
+                self.dependencies['extension_ids'] = [selection[1]['id']]
 
     def __call__(self, fig: plt.Figure, name: str, caption: str = "", **kwargs) -> None:
         return self.save(fig, name, caption=caption, **kwargs)
@@ -263,8 +270,7 @@ class FigureSaver:
         _guard(path, self.folder)
         fig.savefig(path, format="pdf", dpi=DPI)
         entry = {"index": index, "stem": stem, "name": name, "caption": caption.strip()}
-        if provenance:
-            entry["provenance"] = provenance
+        entry["provenance"] = {**self.dependencies, **(provenance or {})}
         self.entries.append(entry)
         # Rewritten after every figure, so a notebook that dies halfway still has a manifest
         # describing the figures it did produce.

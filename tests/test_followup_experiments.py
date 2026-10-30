@@ -257,16 +257,16 @@ def test_budget_deduplication_and_capacity_guard():
 
 def test_new_grid_sizes_and_existing_design_unchanged():
     from src.train.config import load_train_config, resolve_grid
-    for exp, total in [(1,512),(2,32),(3,96),(5,48)]:
+    for exp, total in [(1,512),(2,32),(7,96),(5,48)]:
         assert sum(len(resolve_grid(c:=load_train_config(config_path=f'config/experiment{exp}/{t}.yaml'),single=False))*int(c.corpus.n_splits)
                    for t in ('pd','lgd'))==total
-    configs=[*Path('config/experiment6').glob('*.yaml'), *Path('config/experiment7').glob('*.yaml')]
+    configs=[*Path('config/experiment8').glob('*.yaml'), *Path('config/experiment9').glob('*.yaml')]
     assert len(configs)==3
     assert sum(len(resolve_grid(c:=load_train_config(config_path=str(p)),single=False))*int(c.corpus.n_splits) for p in configs)==32
     for path in configs:
         cfg=load_train_config(config_path=str(path))
         assert cfg.train.max_rows_per_step<=26000
-        assert {t[6] for t in resolve_grid(cfg,single=False)} == ({0,10001} if 'experiment6' in str(path) else {10001})
+        assert {t[6] for t in resolve_grid(cfg,single=False)} == ({0,10001} if 'experiment8' in str(path) else {10001})
     for track in ('pd','lgd'):
         cfg=load_train_config(config_path=f'config/experiment5/{track}.yaml')
         grid=resolve_grid(cfg,single=False)
@@ -293,7 +293,7 @@ def test_scoped_cleanup_never_crosses_experiment_boundaries(tmp_path,monkeypatch
     monkeypatch.setattr(clean,'resolve_output_path',lambda p:data/p)
     monkeypatch.setattr(clean,'checkpoints_dir',lambda *p:project/'checkpoints'/Path(*p))
     roots=clean.experiment_roots('experiment5')
-    assert len(roots)==6
+    assert len(roots)==4  # Scientific tiers + weights; figures use manifest ownership.
     for tier in (data,project):
         for exp in (1,5):
             p=tier/'output CreditPFN'/f'experiment{exp}'/'results'/'value.csv'
@@ -501,7 +501,7 @@ def test_new_slurm_scripts_parse_and_never_submit_locally():
     import subprocess
     from tests.test_benchmark_submission import bash_path
     names=['run_experiment0_followups.sh','followup_prepare.slurm','followup_gpu.slurm',
-           'run_experiment4.sh','context_benchmark.slurm','run_experiment5.sh','run_experiment6.sh','run_experiment7.sh']
+           'run_experiment10.sh','context_benchmark.slurm','run_experiment5.sh','run_experiment8.sh','run_experiment9.sh']
     for name in names:
         result=subprocess.run([bash_path(),'-n',str(Path('scripts/slurm')/name)],capture_output=True,text=True)
         assert result.returncode==0, result.stderr

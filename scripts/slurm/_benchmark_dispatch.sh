@@ -13,4 +13,6 @@ TRACK="${config%%[_.]*}"
 local_index=$(( index % total_per_config ))
 export CREDITPFN_SPLIT_INDEX=$(( local_index / EVAL_TASKS ))
 export CREDITPFN_EVAL_TASK_INDEX=$(( local_index % EVAL_TASKS ))
-export CREDITPFN_CONFIG="$VSC_DATA/CreditPFN/config/${CREDITPFN_EXPERIMENT:?}/$config"
+source scripts/slurm/_study_map.sh
+config_group=$(study_config_group "${CREDITPFN_EXPERIMENT:?}")
+export CREDITPFN_CONFIG="$VSC_DATA/CreditPFN/config/$config_group/$config"

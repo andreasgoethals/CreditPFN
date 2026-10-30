@@ -98,7 +98,7 @@ def test_preflight_uses_smallest_partition_and_rejects_mixed_pass_packing(monkey
     report = Report()
     check_step_budget(cfg, "synthetic", report)
     assert report.n_fail == 1  # 1201/13 fits; 1201/12 does not.
-    cfg = load_train_config(config_path="config/experiment3/pd.yaml")
+    cfg = load_train_config(config_path="config/experiment7/pd.yaml")
     report = Report()
     check_packing_divides([(cfg, "synthetic")], report, trials_per_task=2)
     assert report.n_fail == 1
@@ -199,6 +199,9 @@ def test_training_lookup_failure_stops_before_smoke_or_training(tmp_path, failur
     scripts.mkdir(parents=True)
     for name in ("train_pd.slurm", "_train_job.sh", "_run_train.sh", "_job_log.sh"):
         shutil.copyfile(repo / "scripts/slurm" / name, scripts / name)
+    config_file = node / 'CreditPFN/config/experiment0/null_pd.yaml'
+    config_file.parent.mkdir(parents=True)
+    config_file.write_text('experiment:\n  output_group: experiment0\n')
     (scripts / "_activate_env.sh").write_text('''python() {
     if [[ "$*" == *"$FAIL_LOOKUP"* ]]; then echo 'lookup failed' >&2; return 29; fi
     if [[ "$*" == *--list-trials* ]]; then echo 8; return; fi
@@ -227,11 +230,15 @@ def test_batch_entrypoints_route_setup_failures_to_the_selected_experiment(tmp_p
     scripts = node / "CreditPFN/scripts/slurm"
     scripts.mkdir(parents=True)
     for name in (f"{job}.slurm", "_job_log.sh", "_train_job.sh", "_eval_job.sh",
-                 "_benchmark_dispatch.sh"):
+                 "_benchmark_dispatch.sh", "_study_map.sh"):
         shutil.copyfile(repo / "scripts/slurm" / name, scripts / name)
     (scripts / "_activate_env.sh").write_text(
         'echo "synthetic activation failure" >&2\nreturn 17\n', encoding="utf-8")
-    config = f"config/{experiment}/pd.yaml"
+    from src.utils.study_layout import config_folder
+    config = f"{config_folder(experiment)}/pd.yaml"
+    config_file = node / 'CreditPFN' / config
+    config_file.parent.mkdir(parents=True)
+    config_file.write_text(f'experiment:\n  output_group: {experiment}\n')
     env = dict(os.environ, VSC_DATA=node.as_posix(), SLURM_JOB_ID="synthetic",
                SLURM_RESTART_COUNT="0", SLURM_ARRAY_TASK_ID="0",
                CREDITPFN_OUTPUT_ROOT=(node / "CreditPFN").as_posix(),

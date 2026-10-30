@@ -10,7 +10,7 @@ from copy import deepcopy
 
 from omegaconf import OmegaConf
 
-REFERENCE_CONFIG = "config/experiment6/pd.yaml"
+REFERENCE_CONFIG = "config/experiment8/pd.yaml"
 REFERENCE_ROWS = 8192
 LARGE_MINIMUM = 10001
 

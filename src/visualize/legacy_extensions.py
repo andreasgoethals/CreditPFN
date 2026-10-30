@@ -9,6 +9,7 @@ from omegaconf import OmegaConf
 
 from src.utils.legacy_design import scope, validate_id
 from src.utils.paths import outputs_dir
+from src.utils.study_layout import NUMBERS
 from src.visualize.inputs import analysis_location
 from src.visualize import campaign as cp
 
@@ -42,7 +43,7 @@ def configs(selection):
         path = folder / "configs" / "production" / name
         result[key] = OmegaConf.create(path.read_text(encoding="utf-8"))
         cfg = result[key]
-        identifier = cfg.get("extension_id") if key.startswith("e4_") else cfg.experiment.extension_id
+        identifier = cfg.get("extension_id") if key.startswith("e10_") else cfg.experiment.extension_id
         if identifier != workflow["id"]:
             raise ValueError("Extension config ownership differs from its workflow")
     return result
@@ -51,10 +52,10 @@ def configs(selection):
 def size_arms(experiment, configuration, version):
     from src.visualize import size_studies as ss
     tag = version.replace(".", "p")
-    mapping = {6: configuration[f"e6_pd_{tag}"]}
+    mapping = {6: configuration[f"e8_pd_{tag}"]}
     if experiment == 7:
         for key, cfg in configuration.items():
-            if key.startswith(f"e7_pd_{tag}_"):
+            if key.startswith(f"e9_pd_{tag}_"):
                 mapping[int(cfg.train.max_rows_per_step)] = cfg
     return ss.load_arms(experiment, configs=mapping)
 
@@ -77,7 +78,7 @@ def studies(track, *, campaigns=None):
                     result += [(experiment, label, run) for label, run in size_arms(experiment, configuration, version).items()
                                if experiment != 7 or label != "8,192 rows"]
                 else:
-                    cfg = configuration[f"e{experiment}_{track}_{version.replace('.', 'p')}"]
+                    cfg = configuration[f"e{NUMBERS[experiment]}_{track}_{version.replace('.', 'p')}"]
                     result.append((experiment, None, cp.load_campaign(experiment, track, cfg_override=cfg)))
     return result
 
@@ -96,7 +97,7 @@ def render(report, sink, experiment, phase):
             tag = version.replace(".", "p")
             pages = []
             if experiment == 4:
-                study = cc.load_context_study(cfg_override=configuration[f"e4_{tag}"])
+                study = cc.load_context_study(cfg_override=configuration[f"e10_{tag}"])
                 report.table(f"{version}: context protocol", cc.protocol_table(study))
                 report.table(f"{version}: verified context exports", study.inventory)
                 pages = cc.plot_context_curves(study) + cc.plot_table_curves(study)
@@ -117,7 +118,7 @@ def render(report, sink, experiment, phase):
             else:
                 module = ds if experiment == 5 else ls
                 for track in ("pd", "lgd"):
-                    run = cp.load_campaign(experiment, track, cfg_override=configuration[f"e{experiment}_{track}_{tag}"])
+                    run = cp.load_campaign(experiment, track, cfg_override=configuration[f"e{NUMBERS[experiment]}_{track}_{tag}"])
                     report.table(f"{version} {track.upper()}: trial coverage", run.trials)
                     if phase == "training":
                         pages += module.plot_optimization(run) + module.plot_monitors(run)

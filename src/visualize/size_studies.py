@@ -46,8 +46,8 @@ def plan(run):
 
 def load_arms(experiment, *, configs=None):
     if experiment not in (6, 7):
-        raise ValueError('Expected experiment 6 or 7')
-    cfg = configs[6] if configs else load_train_config(config_path=str(REPO_ROOT/'config/experiment6/pd.yaml'))
+        raise ValueError('Expected recorded campaign 6 (public E8) or 7 (public E9)')
+    cfg = configs[6] if configs else load_train_config(config_path=str(REPO_ROOT/'config/experiment8/pd.yaml'))
     corpus = cp.load_campaign(6, 'pd', cfg_override=cfg)
     if experiment == 6:
         return {'All tables':_select(corpus, 0), 'Large tables':_select(corpus, 10001)}
@@ -55,12 +55,12 @@ def load_arms(experiment, *, configs=None):
     reference = plan(corpus)
     caps = sorted(k for k in configs if k != 6) if configs else (2048, 26000)
     for cap in caps:
-        cfg = configs[cap] if configs else load_train_config(config_path=str(REPO_ROOT/f'config/experiment7/pd_rows{cap}.yaml'))
+        cfg = configs[cap] if configs else load_train_config(config_path=str(REPO_ROOT/f'config/experiment9/pd_rows{cap}.yaml'))
         current = cp.load_campaign(7, 'pd', cfg_override=cfg)
         payload = plan(current)
         if payload is not None:
             if reference is None or payload.get('shared_reference', {}).get('sha256') != reference['sha256']:
-                raise ValueError('Experiment 7 needs its original experiment-6 reference plan in the download')
+                raise ValueError('Experiment 9 needs its original experiment-8 reference plan in the download')
             if match_reference(payload, reference) != payload['shared_reference']['trials']:
                 raise ValueError('Shared-control trial mapping does not match the downloaded plans')
         elif current.trials.status.ne('PENDING').any() or not current.evaluation.empty or not current.trajectories.empty:
@@ -210,7 +210,7 @@ def plot_benchmark(arms, metric='roc_auc'):
     reference='All tables' if 'All tables' in arms else '8,192 rows'
     differences=contrasts(data,reference)
     scale=style.EFFECT_SCALE.get(metric,1.)
-    study=6 if 'All tables' in arms else 7
+    study=8 if 'All tables' in arms else 9
     fig,axes=db._grid(f'PD: experiment {study}, CPT − original {"AUC" if metric=="roc_auc" else "Brier score"}')
     stats=[]
     for ax,(domain,diff) in zip(axes,[(d,c) for d in ('credit','ood') for c in (False,True)]):
@@ -239,9 +239,9 @@ def plot_benchmark(arms, metric='roc_auc'):
         (f'Experiment {study}, PD final five-fold benchmark ({", ".join(sorted(data.base.unique()))}; full updates, LR 3e-7, L2-SP 0.003, '
          'proportional class sampling). '
          + ('Arms: CPT on all training tables versus only tables with more than 10,000 rows, both with 8,192-row episodes. '
-            if study == 6 else
+            if study == 8 else
             'Arms: ' + ', '.join(arms) + ' on the same large-table corpus; the 8,192-row arm is the '
-            'experiment-6 large-table checkpoint, reused rather than retrained. ')
+            'experiment-8 large-table checkpoint, reused rather than retrained. ')
          + f'Left panels: paired change in {style.METRIC_LABELS.get(metric, metric)} ({style.EFFECT_LABELS.get(metric, effect_label(metric))}) '
          'relative to the original checkpoint of the same base; right panels: difference between each arm and the '
          f'{reference} arm within table (same scale), positive favouring the named arm. Upper panels use held-out credit '

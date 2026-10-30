@@ -17,17 +17,17 @@ from src.utils.paths import REPO_ROOT, manifests_dir, results_dir, checkpoints_d
 
 
 def fingerprint():
-    files = [*sorted((REPO_ROOT / "config/experiment4").glob("*.yaml")),
+    files = [*sorted((REPO_ROOT / "config/experiment10").glob("*.yaml")),
              *sorted((REPO_ROOT / "config/experiment5").glob("*.yaml")),
-             *sorted((REPO_ROOT / "config/experiment6").glob("*.yaml")),
-             *sorted((REPO_ROOT / "config/experiment7").glob("*.yaml")),
+             *sorted((REPO_ROOT / "config/experiment8").glob("*.yaml")),
+             *sorted((REPO_ROOT / "config/experiment9").glob("*.yaml")),
              *(REPO_ROOT / "config" / name for name in ("train.yaml", "eval.yaml", "data.yaml", "retention.yaml")),
              REPO_ROOT / "config/experiment0/followups.yaml",
              REPO_ROOT / "scripts/context_pipeline.py"]
     files += [REPO_ROOT / "scripts/slurm" / name for name in (
         "run_experiment0_followups.sh", "followup_prepare.slurm", "followup_gpu.slurm",
-        "run_experiment4.sh", "context_benchmark.slurm", "run_experiment5.sh", "run_experiment6.sh",
-        "run_experiment7.sh", "run_benchmark.sh", "_benchmark_dispatch.sh",
+        "run_experiment10.sh", "context_benchmark.slurm", "run_experiment5.sh", "run_experiment8.sh",
+        "run_experiment9.sh", "run_benchmark.sh", "_benchmark_dispatch.sh",
         "benchmark_foundation.slurm", "benchmark_classical.slurm")]
     return digest_json(dict(code=code_identity(stage="eval"),
                             training_code=code_identity(stage="train"),
@@ -65,7 +65,7 @@ def prepare():
     root.mkdir(parents=True, exist_ok=False)
     limits = OmegaConf.load("config/experiment0/followups.yaml")
     # Validate the complete large-table design without launching training.
-    for path in [Path("config/experiment6/pd.yaml"), *sorted(Path("config/experiment7").glob("*.yaml"))]:
+    for path in [Path("config/experiment8/pd.yaml"), *sorted(Path("config/experiment9").glob("*.yaml"))]:
         prepare_training(path)
     for track in ("pd", "lgd"):
         source = load_train_config(config_path=f"config/experiment5/{track}.yaml")
@@ -332,10 +332,10 @@ def capacity(identifier, track, trial):
     if track == "pd":
         # Test all four distinct policies through real feature widths. Each
         # 16-update probe visits every table in its first training partition.
-        cases = [("config/experiment6/pd.yaml", 2*trial),
-                 ("config/experiment6/pd.yaml", 2*trial+1),
-                 ("config/experiment7/pd_rows2048.yaml", trial),
-                 ("config/experiment7/pd_rows26000.yaml", trial)]
+        cases = [("config/experiment8/pd.yaml", 2*trial),
+                 ("config/experiment8/pd.yaml", 2*trial+1),
+                 ("config/experiment9/pd_rows2048.yaml", trial),
+                 ("config/experiment9/pd_rows26000.yaml", trial)]
         for case, (source_path, trial_index) in enumerate(cases):
             large = load_train_config(config_path=source_path)
             cap = int(large.train.max_rows_per_step)

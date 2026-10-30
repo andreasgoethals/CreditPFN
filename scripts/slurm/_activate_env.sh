@@ -55,33 +55,24 @@ if [[ -n "${SLURM_CPUS_PER_TASK:-}" ]]; then
 fi
 
 # --------------------------------------------------------------------------
-# KEEP CACHES OUT OF $VSC_HOME (added 2026-08-06 after a 99%-of-3 GB quota
-# warning on /user/leuven/383/<id>).
-#
-# Nothing in this project writes to HOME directly, but every Python cache
-# DEFAULTS there, and a 96-job GPU sweep fills it fast:
-#   ~/.cache/huggingface  the TabICL checkpoints are ~225 MB and hf_hub_download
-#                         keeps its own copy even after we cp to staging
-#   ~/.cache/pip          wheel cache from repeated `pip install -e .`
-#   ~/.triton, ~/.nv      JIT kernel caches, written by EVERY GPU job
-#   ~/.cache/torch, ~/.config/matplotlib, wandb state
-# $VSC_HOME is only ~3 GB and is not meant for bulk data; $VSC_DATA is.
-# Exported before conda so every job and every child process inherits them.
+# Disposable library caches belong to one job/restart on node-local scratch,
+# with owned native-scratch fallback. Canonical model assets and accepted runtime
+# images stay on PROJECT; DATA holds source and compact evidence, never these caches.
+# Export before activation so child Python processes inherit the same ownership.
+# Successful-job cleanup is installed by _job_log.sh; failed caches are retained.
 # --------------------------------------------------------------------------
-if [[ -n "${CREDITPFN_RUNTIME_VERSION:-}" ]]; then
-    case "${SLURM_CLUSTER_NAME:-}" in
-        mindwell) _native_cache="${VSC_SCRATCH_GPFS1:?}" ;;
-        wice) _native_cache="${VSC_SCRATCH_LUSTRE1:?}" ;;
-        *) echo 'Unknown native cache filesystem' >&2; return 1 ;;
-    esac
-    _CACHE_ROOT="${CREDITPFN_CACHE_ROOT:-${_native_cache}/CreditPFN/cache/${SLURM_JOB_ID:?}}"
-    unset _native_cache
+if [[ -n "${SLURM_JOB_ID:-}" ]]; then
+    _cache_helper="${BASH_SOURCE[0]%/*}/../../src/utils/job_cache.py"
+    _CACHE_ROOT=$("${CREDITPFN_SYSTEM_PYTHON:-/usr/bin/python3}" "$_cache_helper" create) || return
+    export CREDITPFN_OWNED_CACHE="$_CACHE_ROOT"
+    echo "Owned disposable job cache: $CREDITPFN_OWNED_CACHE"
+    unset _cache_helper
 elif [[ "${CREDITPFN_USE_SCRATCH:-0}" == 1 ]]; then
     _CACHE_ROOT="${CREDITPFN_CACHE_ROOT:-${VSC_SCRATCH_NODE:?}/creditpfn-cache-${SLURM_JOB_ID:-local}}"
 else
     _CACHE_ROOT="${CREDITPFN_CACHE_ROOT:-${VSC_DATA:-$HOME}/.cache/creditpfn}"
 fi
-mkdir -p "${_CACHE_ROOT}" 2>/dev/null || true
+mkdir -p "${_CACHE_ROOT}" || return
 export XDG_CACHE_HOME="${_CACHE_ROOT}"
 export HF_HOME="${_CACHE_ROOT}/huggingface"
 export TORCH_HOME="${_CACHE_ROOT}/torch"

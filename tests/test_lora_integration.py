@@ -30,7 +30,7 @@ def test_production_grid_and_names_are_separate_and_unambiguous(track):
     from src.visualize.campaign import planned_trials
     from src.visualize.training_viz import parse_trial_name
     from src.utils.paths import group_for_run
-    cfg = load_train_config(config_path=f'config/experiment8/{track}.yaml')
+    cfg = load_train_config(config_path=f'config/experiment6/{track}.yaml')
     assert len(resolve_grid(cfg, single=False)) == 6
     assert cfg.corpus.n_splits == cfg.corpus.n_folds == 4
     assert cfg.train.target_total_steps == 10000
@@ -57,7 +57,7 @@ def test_production_grid_and_names_are_separate_and_unambiguous(track):
     'tunable.classifier_base_paths=[checkpoints/tabpfn-v3.5-classifier.ckpt]',
 ])
 def test_incompatible_lora_designs_fail_before_loading_weights(override):
-    cfg = load_train_config([override], config_path='config/experiment8/pd.yaml')
+    cfg = load_train_config([override], config_path='config/experiment6/pd.yaml')
     with pytest.raises(ValueError):
         resolve_grid(cfg, single=False)
 
@@ -81,7 +81,7 @@ def test_workflow_routing_is_scoped_on_both_storage_tiers(tmp_path, monkeypatch)
 
 def test_optimizer_contains_only_adapter_factors():
     from src.train.loop import _make_optimizer_and_scheduler
-    cfg = load_train_config(config_path='config/experiment8/pd.yaml')
+    cfg = load_train_config(config_path='config/experiment6/pd.yaml')
     model = adapted_linear()
     optimizer, _ = _make_optimizer_and_scheduler(model, cfg, total_steps=4)
     assert {id(p) for g in optimizer.param_groups for p in g['params']} == {

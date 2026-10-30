@@ -13,28 +13,10 @@ from src.utils.atomic import write_json
 
 
 def publication_files(identifier, experiment):
-    """Only explicitly tagged extension pages; preserve shared historical figures."""
-    from src.visualize.paths import figures_dir
+    """Tagged extension dependencies, including combined RQ and overview pages."""
+    from src.utils.publication_cleanup import plan
     groups = [0, 4, 5, 6, 7, 8] if experiment == "all" else [int(experiment)]
-    edits, files = {}, []
-    for number in groups:
-        from src.utils.study_layout import NUMBERS
-        folder = figures_dir() / f"experiment{NUMBERS.get(number, number)}"
-        for manifest in (folder / "_metadata").glob("*.json"):
-            entries = json.loads(manifest.read_text(encoding="utf-8"))
-            owned = [e for e in entries if e.get("provenance", {}).get("extension_id") == identifier]
-            if not owned:
-                continue
-            validate_tree(manifest)
-            for entry in owned:
-                stem = entry["stem"]
-                if Path(stem).name != stem or "/" in stem or "\\" in stem:
-                    raise ValueError("Invalid publication filename; refusing cleanup")
-                path = folder / (stem + ".pdf")
-                validate_tree(path)
-                files.append(path)
-            edits[manifest] = [e for e in entries if e not in owned]
-    return files, edits
+    return plan(outputs_dir(), {f'experiment{number}' for number in groups}, extension_id=identifier)
 
 
 def targets(identifier, experiment):
@@ -100,10 +82,13 @@ def clean(identifier, experiment="all", *, apply=False):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--id", required=True)
-    parser.add_argument("--experiment", choices=("all", "0", "4", "5", "6", "7", "8"), default="all")
+    parser.add_argument("--experiment", choices=("all", "0", "5", "6", "8", "9", "10"), default="all",
+                        help="Public experiment number; E6 is LoRA, E10 is target context")
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args(argv)
-    clean(args.id, args.experiment, apply=args.apply)
+    from src.utils.study_layout import campaign_for_study
+    campaign = 'all' if args.experiment == 'all' else campaign_for_study(args.experiment).removeprefix('experiment')
+    clean(args.id, campaign, apply=args.apply)
 
 
 if __name__ == "__main__":

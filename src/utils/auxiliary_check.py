@@ -55,11 +55,11 @@ def make_configs(folder):
     limits = policy()
     paths = []
     for track in ("pd", "lgd"):
-        source = load_train_config(config_path=f"config/experiment3/{track}.yaml")
+        source = load_train_config(config_path=f"config/experiment7/{track}.yaml")
         train, held = select_tables(source, limits)
         for case in cases(track):
             seed_case = case.startswith("seed")
-            cfg = load_train_config(config_path=f"config/experiment{2 if seed_case else 3}/{track}.yaml")
+            cfg = load_train_config(config_path=f"config/experiment{2 if seed_case else 7}/{track}.yaml")
             cfg.seed = 43 if case == "seed43" else 42
             cfg.experiment.training_seeds = [cfg.seed]
             cfg.experiment.output_group = "experiment0"

@@ -18,8 +18,8 @@ from src.utils.experiment import apply_split_index, digest_json, file_digest, sc
 from src.utils.paths import REPO_ROOT, manifests_dir, results_dir, activate_experiment, resolve_base_checkpoint
 from src.utils.runtime_validation import identifier, identity
 
-CONFIGS=("config/experiment3/pd.yaml", "config/experiment3/lgd.yaml", "config/experiment6/pd.yaml",
-         "config/experiment7/pd_rows2048.yaml", "config/experiment7/pd_rows26000.yaml")
+CONFIGS=("config/experiment7/pd.yaml", "config/experiment7/lgd.yaml", "config/experiment8/pd.yaml",
+         "config/experiment9/pd_rows2048.yaml", "config/experiment9/pd_rows26000.yaml")
 OPTIONS={"use_amp":False,"use_fa3":False}
 
 
@@ -119,7 +119,7 @@ def prepare(value, runtime_version):
             file=manifests_dir()/f"{cfg.run_name}_s{split:02d}_{cfg.track}.csv"
             bindings[str(file)]=_bind(file)
             tasks.extend(dict(kind="benchmark",config=source,split=split,shard=i,shards=16) for i in range(16))
-    context=OmegaConf.load(REPO_ROOT/"config/experiment4/context.yaml")
+    context=OmegaConf.load(REPO_ROOT/"config/experiment10/context.yaml")
     context.update(run_name=f"context_fp32_{value}",refresh_id=value,families=["tabicl"],tabicl_inference_options=OPTIONS)
     context_path=folder/"context.yaml"
     OmegaConf.save(context,context_path)

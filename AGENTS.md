@@ -125,7 +125,7 @@ Newest first, dates `DD-MM-YYYY`.
   training notebook and one combined results notebook per RQ1–RQ3, and an evaluation-only
   context notebook for RQ4. Combine experiments in a figure when their quantities and
   comparison units agree; retain explicit recipe differences and individual-table evidence.
-  `config/study.yaml` maps immutable historical campaign/config/checkpoint IDs
+  `config/study.yaml` maps immutable recorded campaign/checkpoint IDs
   to the public layout. E1/E3/E4 reuse the same 512-run factorial stored once in
   `shared/main_grid`; never count those analyses as independent runs or drop the interaction.
 - **Never pick a colour or a size.** `src/visualize/style.py` owns both, so every notebook here
@@ -167,7 +167,7 @@ anything is finished.
   `Active sealed runtime:`. Runtime acceptance must
   record the SIF digest, actual interpreter and package versions. An active virtualenv can
   silently shadow Conda (`AGENTS_MEMORY.md`, 05-08-2026); never infer the interpreter from a prompt.
-- **Output directory:** `output CreditPFN/<experiment>/` is the user's required name on both storage tiers, a deliberate deviation from the template's generic `output/`. Preserve the space and experiment layer; quote shell paths. Use `src/utils/paths.py`. Detailed training diagnostics and results go to project storage; logs/small manifests to DATA. Weights retain `checkpoints/trained/<experiment>/`.
+- **Output directory:** `output CreditPFN/<experiment>/` is the user's required name on both storage tiers, a deliberate deviation from the template's generic `output/`. Preserve the space and experiment layer; quote shell paths. Use `src/utils/paths.py`. Detailed training diagnostics and results go to project storage; logs/small manifests to DATA. Weights retain `checkpoints/trained/<recorded campaign>/`. Config directories and launcher names use public numbers; embedded `output_group` and internal `CREDITPFN_EXPERIMENT` are recorded campaign IDs, mapped by the YAML authority. Never infer an output owner from a public config folder number.
 - **Keep cluster debugging on VSC.** Read Downloads in place when asked; do not copy its files
   into the repository. The user downloads the completed campaign at the final analysis stage.
   Local notebook stdout stays in the executed `.ipynb`, with its final summary in
@@ -179,7 +179,7 @@ anything is finished.
 - Training notebooks cover trajectories, optimizer and resource diagnostics; result notebooks
   cover endpoint comparisons and final benchmarks, explicitly distinguishing monitor outcomes
   from five-fold evaluation. RQ1–RQ3 combine their respective experiments by phase; RQ4 is evaluation only.
-- Public experiment 6 (historical config/campaign 8) uses `train.adaptation_mode: lora`, not the legacy frozen/PEFT switch.
+- Public experiment 6 (recorded checkpoint campaign 8) uses `train.adaptation_mode: lora`, not the legacy frozen/PEFT switch.
   Its gate is `CREDITPFN_LORA_GATE`; debugging output belongs to `experiment0/lora/<ID>/`
   on both tiers. Preserve old experiment-0 receipts and never substitute follow-up gates.
 - **Where the knowledge lives.** `docs/RESEARCH_BRIEF.md` is the self-contained research brief and

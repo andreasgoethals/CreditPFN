@@ -261,7 +261,7 @@ def plot_sampling_endpoints(run, *, benchmark=False, metric=None):
         axes[0].set_title("CPT − original"); axes[0].set_xlabel(style.EFFECT_LABELS.get(metric, effect_label(metric)))
         axes[1].set_title("Protocol − one sample"); axes[1].set_xlabel("Difference in paired effect (same units, + better)")
         pages.append(cp.Page(f"sampling_{stage}_{domain}", fig,
-            f"Experiment 3, {label.lower()}: {'final five-fold benchmark' if benchmark else str(run.target)+'-update fixed-context monitor'} effects of the reference recipe "
+            f"Experiment 7, {label.lower()}: {'final five-fold benchmark' if benchmark else str(run.target)+'-update fixed-context monitor'} effects of the reference recipe "
             "(full updates, LR 3e-7, L2-SP 0.003, 10,000 updates) under three training protocols: one sampled episode per table visit, a full pass "
             "over non-overlapping chunks of each table, or gradients accumulated over those chunks into one update per table. Left: paired change "
             "relative to the original model of the same base; right: each protocol minus one sample within table. "

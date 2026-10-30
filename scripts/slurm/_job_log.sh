@@ -4,10 +4,13 @@ start_job_log() {
     local task="${1:?log task name required}"
     export CREDITPFN_OUTPUT_ROOT="${CREDITPFN_OUTPUT_ROOT:-${VSC_DATA:?}/CreditPFN}"
     local group="${CREDITPFN_EXPERIMENT:-general}"
-    case "${CREDITPFN_CONFIG:-}" in
-        */config/experiment[0-8]/*|config/experiment[0-8]/*)
-            group="$(basename "$(dirname "$CREDITPFN_CONFIG")")" ;;
-    esac
+    # Public config folder numbers differ from immutable checkpoint campaign IDs.
+    # Read the explicit scalar instead of inferring ownership from a directory.
+    if [[ -f "${CREDITPFN_CONFIG:-}" ]]; then
+        local declared
+        declared=$(sed -n -E 's/^  output_group: (experiment[0-9]+)\r?$/\1/p; s/^experiment: (experiment[0-9]+)\r?$/\1/p' "$CREDITPFN_CONFIG")
+        [[ -z "$declared" ]] || group="$declared"
+    fi
     export CREDITPFN_EXPERIMENT="$group"
     case "$group" in general|experiment[0-8]) ;; *) echo "Invalid output group: $group" >&2; return 2 ;; esac
     local scope="$group"
@@ -34,7 +37,7 @@ start_job_log() {
     LOG="${CREDITPFN_OUTPUT_ROOT}/output CreditPFN/${scope}/logs/${task}_${SLURM_JOB_ID:?}_r${SLURM_RESTART_COUNT:-0}.log"
     export CREDITPFN_ACTIVE_LOG="$LOG"
     exec >> "$LOG" 2>&1
-    trap 'rc=$?; echo "END exit_code=${rc} - $(date)"' EXIT
+    trap 'rc=$?; if [[ "$rc" == 0 && -n "${CREDITPFN_OWNED_CACHE:-}" ]]; then "${CREDITPFN_SYSTEM_PYTHON:-/usr/bin/python3}" -m src.utils.job_cache clean "$CREDITPFN_OWNED_CACHE" || echo "CACHE CLEANUP PENDING: preserve ownership record for inspection"; fi; echo "END exit_code=${rc} - $(date)"' EXIT
     # Install before setup. Without explicit handlers, Bash's EXIT trap can
     # print the preceding command's zero status after an unhandled signal.
     # Training temporarily replaces USR1/TERM with checkpoint forwarding.

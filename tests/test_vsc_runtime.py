@@ -161,6 +161,8 @@ def test_explicit_runtime_uses_container_branch_without_conda(tmp_path):
     (scripts / "_activate_runtime.sh").write_text(
         "printf 'SEALED_BRANCH\\n'\npython() { :; }\n", encoding="utf-8", newline="\n")
     env = dict(os.environ, CREDITPFN_RUNTIME_VERSION="recorded1",
+               CREDITPFN_SYSTEM_PYTHON=sys.executable,
+               VSC_SCRATCH_NODE=tmp_path.as_posix(),
                CREDITPFN_LEGACY_RUNTIME_COMPARISON="", CREDITPFN_USE_SCRATCH="0",
                SLURM_JOB_ID="123", SLURM_CLUSTER_NAME="mindwell", SLURM_CPUS_PER_TASK="2",
                CREDITPFN_CACHE_ROOT=(tmp_path / "cache").as_posix(),

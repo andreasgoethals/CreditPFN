@@ -16,7 +16,7 @@ from src.visualize.reporting import NotebookReport, page_text
 
 
 def lora_fixture(track="pd", cfg=None):
-    cfg = cfg if cfg is not None else load_train_config(config_path=f"config/experiment8/{track}.yaml")
+    cfg = cfg if cfg is not None else load_train_config(config_path=f"config/experiment6/{track}.yaml")
     trials = cp.planned_trials(cfg).assign(status="OK", n_train_datasets=2, n_test_datasets=1)
     trials["gpu_hours"] = 1 + trials.learning_rate * 100
     trials["peak_gpu_gb"] = 20 + trials.partition

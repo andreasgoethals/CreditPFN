@@ -177,24 +177,24 @@ def test_extension_design_preserves_old_files_and_declared_factors(monkeypatch, 
     from src.train.config import resolve_grid, validate_lora_config
     from src.train.size_studies import validate_config
     monkeypatch.setattr(design, "root", lambda identifier: tmp_path / identifier)
-    before = {p: p.read_bytes() for n in range(4, 9) for p in Path(f"config/experiment{n}").glob("*.yaml")}
+    before = {p: p.read_bytes() for n in (5, 6, 8, 9, 10) for p in Path(f"config/experiment{n}").glob("*.yaml")}
     configs = design.configurations("unit1")
     assert len(configs) == 16
-    counts = {5: 0, 6: 0, 7: 0, 8: 0}
+    counts = {5: 0, 6: 0, 8: 0, 9: 0}
     for name, cfg in configs.items():
-        if name.startswith("e4"):
+        if name.startswith("e10"):
             assert cfg.context_rows[-1] == (10000 if cfg.base_version == "v2" else 50000)
             assert cfg.outer_folds == 5 and cfg.families == ["tabpfn"]
             continue
-        counts[int(name[1])] += len(resolve_grid(cfg, single=False)) * 4
+        counts[int(name.split("_")[0][1:])] += len(resolve_grid(cfg, single=False)) * 4
         assert cfg.experiment.extension_id == "unit1" and cfg.experiment.legacy_gate
         assert "extensions/unit1" in cfg.checkpoint.trained_dir
         assert cfg.corpus.n_folds == 4 and cfg.corpus.split_seed == 1729
         validate_config(cfg)
-        if name.startswith("e8"):
+        if name.startswith("e6"):
             validate_lora_config(cfg)
         assert cfg.train.max_rows_per_step <= (11000 if "v2p6" in name else 10000)
-    assert counts == {5: 48, 6: 16, 7: 16, 8: 48}
+    assert counts == {5: 48, 6: 48, 8: 16, 9: 16}
     assert before == {p: p.read_bytes() for p in before}
 
 
@@ -333,7 +333,7 @@ def test_preparation_generates_all_production_debug_plans_and_shared_controls(mo
     assert (len(workflow["smoke"]), len(workflow["capacity"])) == (12, 68)
     assert sum(c["kind"] == "adapter" for c in workflow["smoke"]) == 8
     for key, path in workflow["production"].items():
-        if key.startswith("e7_"):
+        if key.startswith("e9_"):
             cfg = OmegaConf.load(path)
             with design.scope("safety1", "experiment7"):
                 plan = prep.read_plan(prep.plan_path(cfg.run_name, "pd"))
@@ -344,9 +344,9 @@ def test_preparation_generates_all_production_debug_plans_and_shared_controls(mo
     monkeypatch.setattr(prep, "check_prepared", lambda _: None)
     plan = launch.research_plan("safety1")
     assert not os.environ.get("CREDITPFN_LEGACY_ID")
-    trained = [p for p in plan if p["key"].startswith(("e5_", "e6_", "e7_", "e8_")) and not p["needs"]]
+    trained = [p for p in plan if p["key"].startswith(("e5_", "e8_", "e9_", "e6_")) and not p["needs"]]
     benchmarks = [p for p in plan if p["needs"]]
-    contexts = [p for p in plan if p["key"].startswith("e4_")]
+    contexts = [p for p in plan if p["key"].startswith("e10_")]
     assert sum(len(p["tasks"]) for p in trained) == 128
     assert sum(len(p["tasks"]) for p in benchmarks) == 896
     assert sum(len(p["tasks"]) for p in contexts) == 250
@@ -384,7 +384,7 @@ def test_publication_cleanup_preserves_original_pages(monkeypatch, tmp_path):
     monkeypatch.delenv("VSC_DATA", raising=False)
     monkeypatch.delenv("CREDITPFN_ACTIVE_LOG", raising=False)
     write_json(design.root("unit") / ".scope.json", dict(kind="creditpfn_legacy_scope", id="unit"))
-    folder = figures_dir() / "experiment5"
+    folder = figures_dir() / "rq2"
     entries = [dict(index=1, stem="old", name="old", caption="Original"),
                dict(index=2, stem="new", name="new", caption="Extension", provenance=dict(extension_id="unit"))]
     manifest = folder / "_metadata/01_training.json"

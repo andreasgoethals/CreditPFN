@@ -23,22 +23,22 @@ Experiment 0 contains correctness, recovery, capacity and runtime checks. Experi
 
 The **512 unique factorial training runs are stored once** and support experiments 1, 3 and 4. The original campaigns contain 768 unique completed training runs; the approved model extension adds 128, for 896 if all succeed. Reused controls are never counted as new runs. DiagScale and LoRA differ in several recipe settings: these results cannot identify an intrinsically superior adapter mechanism.
 
-## Stable campaign identities and storage
+## Results and storage
 
-`config/study.yaml` defines the new presentation. Historical config directories, run names, trial IDs and checkpoint paths remain immutable:
+The same public result layout is used locally and on both VSC storage tiers:
 
-| Historical campaign/config | Public analysis / output payload |
-|---|---|
-| `experiment1` / `cpt_main_v5` | E1/E3/E4; `shared/main_grid` |
-| `experiment2` / `cpt_seeds_v5` | E2; `experiment2` |
-| `experiment3` / `cpt_sampling_v5` | E7; `experiment7` |
-| `experiment4` / context | E10; `experiment10` |
-| `experiment5` / DiagScale | E5; `experiment5` |
-| `experiment6` / corpus policy | E8; `experiment8` |
-| `experiment7` / episode size | E9; `experiment9` |
-| `experiment8` / LoRA | E6; `experiment6` |
+```text
+output CreditPFN/
+  experiment0/                 validation and operational evidence
+  shared/main_grid/            one factorial payload for E1, E3 and E4
+  experiment1,3,4/STUDY.json   analysis pointers to that shared payload
+  experiment2,5,...,10/        each remaining experiment's own results
+  figures/                     rq1-rq4, experiment0 and general publication figures
+  All_Results.md               complete notebook summaries
+  STUDY_LAYOUT.json            verified layout and source identities
+```
 
-The hash-verified migration publishes `STUDY_LAYOUT.json` only after both supplied storage tiers pass. Readers support old downloads and migrated output; never manually merge those two layouts. Checkpoints retain `checkpoints/trained/<historical campaign>/`, with additional models isolated under `extensions/<ID>/`. Old controls and superseded inference evidence remain recoverable. Commands accepting historical config/campaign IDs retain that meaning; public notebook numbers are not interchangeable with those arguments.
+`config/study.yaml` is read by the implementation and defines the ten analyses and their shared controls. Config folders and Slurm launcher names follow public experiment numbers; E3/E4 reuse the E1 factorial. Embedded campaign IDs and checkpoint paths retain their recorded identities for reproducibility. Additional model runs use isolated `extensions/<ID>/` scopes within the relevant experiment. Training, results, consolidated snapshots and compact manifests retain distinct subdirectories. The [operational identity mapping](docs/VSC.md#recorded-campaign-identities) preserves reproducible commands and checkpoint references.
 
 On VSC, the actual Git checkout and compact logs/manifests live on **DATA**. Canonical datasets, checkpoints, predictions, consolidated results and the immutable versioned container live on **PROJECT**. Native cluster scratch is temporary working storage. The required output name remains `output CreditPFN/` on both tiers. [VSC.md](docs/VSC.md) owns exact paths, deployment, gates, submission, collection and cleanup.
 
@@ -59,7 +59,7 @@ The 15 notebooks are organized by question rather than by individual experiment:
 RQ1–RQ3 each have `01_training` and `02_results`; RQ4 has `01_context_curves`.
 `experiment0/` retains four validation notebooks and `general/` the two corpus notebooks
 and PD/LGD overviews. This deliberate template deviation changes presentation folders only;
-scientific output, configuration and checkpoint identities keep the mapping above.
+scientific output uses the public experiment layout above.
 
 From this repository in Windows PowerShell:
 

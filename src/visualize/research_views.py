@@ -1,25 +1,18 @@
 """Research-question views of existing campaigns, without creating extra trials."""
 from dataclasses import replace
-import re
 
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 import numpy as np
 import pandas as pd
 
-from src.utils.study_layout import NUMBERS, STUDIES
+from src.utils.study_layout import NUMBERS, STUDIES, CAMPAIGNS
 from src.visualize import campaign as cp, choice_effects as ce, style
-
-
-def study_text(text):
-    """Translate historical prose labels, never scientific IDs or file paths."""
-    return re.sub(r"\b([Ee]xperiment) ([1-8])\b", lambda m:
-                  f"{m[1]} {NUMBERS[int(m[2])]}", text)
 
 
 def design_table():
     return pd.DataFrame([dict(experiment=n, rq=v[0], question=v[1],
-                             historical_sources=", ".join(v[2]), analysis=v[3]) for n, v in STUDIES.items()])
+                             result_sources=", ".join(CAMPAIGNS[c] for c in v[2]), analysis=v[3]) for n, v in STUDIES.items()])
 
 
 def unique_training_inventory(studies):

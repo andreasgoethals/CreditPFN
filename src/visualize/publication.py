@@ -309,7 +309,7 @@ def plot_sampling_endpoint(campaign, *, benchmark=False):
             fig=cp._heatmap(part.rename(columns=style.SAMPLING_LABELS), f"{base}: protocol effects",
                             label=effect_label(campaign.metric))
             pages.append(cp.Page(f"sampling_endpoint_{campaign.track}_{base}_{benchmark}_{page_no}", fig,
-                "Dataset-level endpoint effects for the three sampling protocols within experiment 3. "
+                "Dataset-level endpoint effects for the three sampling protocols within experiment 7. "
                 "Each effect is paired with that dataset's own base result. The shared proportional-PD sampling policy "
                 "makes these within-experiment comparisons distinct from the balanced-PD main sweep. Missing cells are unavailable.",
                 {"Sampling effects": part}))
