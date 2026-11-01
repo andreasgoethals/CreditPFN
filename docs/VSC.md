@@ -49,10 +49,15 @@ Never relocate an installed environment.
 
 **Authorized recovery in progress, 01-11-2026:** all 213 old pending tasks were cancelled
 without interrupting running work. Cancellation is durably recorded under
-`experiment0/manifests/campaign_recovery/repair20261101/`. The replacement workflow edits
-and tests locally, then deploys through Git. Its bootstrap queues fresh CPU/ten-GPU runtime
-acceptance, all twelve correctness/68 capacity cases, independent inspection and native
-CUDA/container USR1/TERM checkpoint/restart checks. Research remains gated until all pass.
+`experiment0/manifests/campaign_recovery/repair20261101/`. After 1,311 local test passes,
+implementation `2c35988` was pushed, pulled into the unused canonical DATA checkout and
+verified with both clean library pins. That checkout is frozen again for its new consumers.
+Bootstrap `62517015` passed and durably admitted all 96 validation/controller tasks. Actual
+CPU, all ten runtime GPU cases, independent runtime acceptance and validation preparation
+have passed. Native CUDA/container USR1 and TERM checkpoint/restart equivalence also passed.
+The fresh twelve correctness/68 capacity cases and their inspector must still pass before
+controller `11763488` installs the source transition and admits the missing research work.
+No scientific resubmission is represented as complete merely because its controller is queued.
 
 The explicit source transition preserves original plans, passing evidence, scientific
 settings and checkpoint identities; it verifies unchanged training mathematics and exact
@@ -65,7 +70,7 @@ exclusive lock files. Final artifact audits/publication use a verified Mindwell 
 barrier followed by a native-Lustre wICE job. No new recurring monitor is created.
 
 Failed logs and the obsolete submission lock are retained in a hash-verified PROJECT archive,
-then removed from active output. Valid interrupted segments, recovery files, saved context
+and all 19 selected active copies are verified removed. Valid interrupted segments, recovery files, saved context
 cells and immutable scientific receipts remain protected. Deployment, gate and submission
 receipts, rather than this planned graph, establish which jobs actually ran.
 
