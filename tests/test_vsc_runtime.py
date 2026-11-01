@@ -177,8 +177,9 @@ def test_explicit_runtime_uses_container_branch_without_conda(tmp_path):
 
 
 @pytest.mark.parametrize("action,acceptance", [("submit", "1"), ("finish", "unset")])
+@pytest.mark.parametrize("cluster", ["mindwell", "wice"])
 def test_study_controller_bootstrap_only_bypasses_acceptance_to_submit_its_gates(
-        tmp_path, action, acceptance):
+        tmp_path, action, acceptance, cluster):
     from tests.test_benchmark_submission import bash_path
     repo = Path.cwd()
     scripts = tmp_path / "scripts/slurm"
@@ -188,18 +189,31 @@ def test_study_controller_bootstrap_only_bypasses_acceptance_to_submit_its_gates
     (scripts / "_activate_env.sh").write_text(
         'printf "MODE:%s\\n" "${CREDITPFN_RUNTIME_ACCEPTANCE-unset}"\n'
         'printf "INPUT_STAGE:%s\\n" "$CREDITPFN_USE_SCRATCH"\n'
-        'python() { printf "ARG:%s\\n" "$@"; }\n', encoding="utf-8", newline="\n")
+        'python() {\n'
+        '  if [[ "$*" == *src.utils.stage_inputs* ]]; then\n'
+        '    printf "STAGE:%s\\n" "$*" >&2\n'
+        '    [[ "$*" != *--resolve* ]] || printf "/verified/native/inputs\\n"\n'
+        '  else printf "ARG:%s\\n" "$@"; fi\n'
+        '}\n', encoding="utf-8", newline="\n")
     extra = ["--runtime-version", "recorded1", "--specification", "recorded environment.json"]
     env = dict(os.environ, SLURM_SUBMIT_DIR=tmp_path.as_posix(),
                VSC_DATA=tmp_path.as_posix(), CREDITPFN_OUTPUT_ROOT=tmp_path.as_posix(),
-               SLURM_JOB_ID="123", SLURM_RESTART_COUNT="0", CREDITPFN_RUNTIME_ACCEPTANCE="1")
+               SLURM_JOB_ID="123", SLURM_RESTART_COUNT="0", CREDITPFN_RUNTIME_ACCEPTANCE="1",
+               SLURM_CLUSTER_NAME=cluster, VSC_SCRATCH_GPFS1=(tmp_path/'gpfs').as_posix(),
+               VSC_SCRATCH_LUSTRE1=(tmp_path/'lustre').as_posix())
     result = subprocess.run([bash_path(), (scripts / "study_cpu.slurm").as_posix(),
                              action, "fixture", *extra], env=env,
                             capture_output=True, text=True, timeout=20)
     assert result.returncode == 0, result.stderr
     log = next((tmp_path / "output CreditPFN/experiment0/logs").glob("*.log")).read_text()
     assert f"MODE:{acceptance}\n" in log
-    assert f"INPUT_STAGE:{'0' if action == 'submit' else '1'}\n" in log
+    assert "INPUT_STAGE:0\n" in log
+    if action == 'finish':
+        native=tmp_path/('gpfs' if cluster == 'mindwell' else 'lustre')/'CreditPFN'
+        assert f'STAGE:-m src.utils.stage_inputs --destination {native.as_posix()} --write' in log
+        assert f'STAGE:-m src.utils.stage_inputs --resolve {native.as_posix()}/ACTIVE_INPUTS.json' in log
+    else:
+        assert not any(line.startswith('STAGE:') for line in log.splitlines())
     assert [line.removeprefix("ARG:") for line in log.splitlines() if line.startswith("ARG:")] == [
         "-m", "src.utils.study_workflow", action, "fixture", *extra]
 

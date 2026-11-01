@@ -160,4 +160,5 @@ def trial_identity(cfg, trial, *, split=None) -> dict:
         "code_sha256": code_identity(),
         "versions": environment_versions(),
     }
-    return {"sha256": digest_json(payload), "specification": payload}
+    from src.utils.source_transition import planned_identity
+    return planned_identity(cfg, payload)

@@ -47,6 +47,28 @@ Never relocate an installed environment.
 
 ### Current campaign state
 
+**Authorized recovery in progress, 01-11-2026:** all 213 old pending tasks were cancelled
+without interrupting running work. Cancellation is durably recorded under
+`experiment0/manifests/campaign_recovery/repair20261101/`. The replacement workflow edits
+and tests locally, then deploys through Git. Its bootstrap queues fresh CPU/ten-GPU runtime
+acceptance, all twelve correctness/68 capacity cases, independent inspection and native
+CUDA/container USR1/TERM checkpoint/restart checks. Research remains gated until all pass.
+
+The explicit source transition preserves original plans, passing evidence, scientific
+settings and checkpoint identities; it verifies unchanged training mathematics and exact
+trial inputs. A resumed checkpoint records its actual execution-source lineage separately.
+The fresh gate is validation-only, not another scientific campaign. Only missing training
+and context tasks are resubmitted; benchmark dependencies are rebuilt from the new jobs.
+Context tasks reuse their committed cells with eight-hour allocation margins. Controller
+warnings save admission progress and requeue; a kernel-held lease replaces orphan-prone
+exclusive lock files. Final artifact audits/publication use a verified Mindwell completion
+barrier followed by a native-Lustre wICE job. No new recurring monitor is created.
+
+Failed logs and the obsolete submission lock are retained in a hash-verified PROJECT archive,
+then removed from active output. Valid interrupted segments, recovery files, saved context
+cells and immutable scientific receipts remain protected. Deployment, gate and submission
+receipts, rather than this planned graph, establish which jobs actually ran.
+
 **Latest live verification: 01-11-2026, approximately 21:00 CET.** Extension training is
 89/128 complete: E5 10/48, E6 48/48, E8 16/16 and E9 15/16. The existing artifact auditor
 reports no problems for those 89 final checkpoints, each with 10,000 successful updates.

@@ -172,7 +172,8 @@ def read_plan(path):
     plan = json.loads(Path(path).read_text(encoding="utf-8"))
     if digest_json({k: v for k, v in plan.items() if k != "sha256"}) != plan["sha256"]:
         raise ValueError("Context plan checksum failed")
-    if plan["code"] != code_identity(stage="eval") or plan["versions"] != environment_versions(stage="eval"):
+    from src.utils.source_transition import compatible_code
+    if not compatible_code(plan["code"], code_identity(stage="eval"), stage='eval') or plan["versions"] != environment_versions(stage="eval"):
         raise ValueError("Context plan code/environment changed")
     return plan
 

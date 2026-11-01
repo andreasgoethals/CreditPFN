@@ -39,7 +39,15 @@ def check_shared_reference(payload):
 
 def check_size_evaluation(cfg, payload, eval_cfg=None):
     from src.train.size_studies import study, evaluation_protocol
-    if study(cfg) and payload.get("evaluation_protocol") != evaluation_protocol(cfg, eval_cfg):
+    from src.utils.source_transition import compatible_code
+    recorded = payload.get("evaluation_protocol")
+    current = evaluation_protocol(cfg, eval_cfg) if study(cfg) else None
+    equivalent = recorded == current
+    if not equivalent and recorded and current:
+        equivalent = (recorded.get('config') == current.get('config')
+                      and recorded.get('versions') == current.get('versions')
+                      and compatible_code(recorded.get('code_sha256'), current.get('code_sha256'), stage='eval'))
+    if study(cfg) and not equivalent:
         raise RuntimeError("Size-study benchmark protocol differs from its immutable plan; "
                            "restore the planned evaluation settings/code/environment")
 
@@ -82,7 +90,8 @@ def check_prepared(config: Path, *, stage: str = "train") -> dict:
     for key, spec in identities.items():
         if digest_json(spec) != key:
             raise RuntimeError("Prepared trial identity failed its checksum")
-        if stage == "train" and (spec["code_sha256"] != code or spec["versions"] != versions):
+        from src.utils.source_transition import compatible_code
+        if stage == "train" and (not compatible_code(spec["code_sha256"], code) or spec["versions"] != versions):
             raise RuntimeError("Code/environment differs from the prepared plan; prepare a fresh named phase")
         if spec["data_config"] != data_config:
             raise RuntimeError("Data settings differ from the prepared plan; prepare a fresh named phase")

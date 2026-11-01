@@ -2332,6 +2332,7 @@ def train_one_config(
         raise ValueError("Trajectory updates must lie between zero and the training budget")
 
     from src.train.recovery import load_recovery, save_recovery, TrainingInterrupted, stop_requested
+    from src.utils.source_transition import execution_record
     recovery_every = int(getattr(cfg.train, "recovery_every_updates", 0))
     recovery_path = Path(str(save_path) + ".resume.pt")
     resuming = recovery_every > 0 and recovery_path.is_file()
@@ -3178,6 +3179,7 @@ def train_one_config(
         "run_name":            str(cfg.run_name),
         "training_protocol_version": PROTOCOL_VERSION,
         "trial_identity": trial_identity,
+        "execution_source": execution_record(),
         "adaptation": getattr(model, "_creditpfn_freeze_info", {
             "frozen_modules": [], "trainable_parameter_names": [n for n, p in model.named_parameters() if p.requires_grad]}),
         "successful_updates": successful_updates,

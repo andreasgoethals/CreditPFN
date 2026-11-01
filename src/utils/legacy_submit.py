@@ -59,7 +59,7 @@ def _research_plan(identifier):
                       f"CREDITPFN_CONFIG={path},CREDITPFN_SPLIT_INDEX={split},CREDITPFN_USE_SCRATCH=1,"
                       "CREDITPFN_REQUIRE_STAGING=1,CREDITPFN_TRIALS_PER_TASK=1,CREDITPFN_EVAL_KIND=foundation,CREDITPFN_EVAL_FAMILY=tabpfn,")
             training.append(dict(key=token, needs=[], tasks=list(range(len(resolve_grid(cfg, single=False)))),
-                args=["--time=01:40:00", "--signal=B:USR1@600", "--requeue",
+                args=["--time=03:00:00", "--signal=B:USR1@600", "--requeue",
                       export + "CREDITPFN_SEGMENT_SECONDS=5400,CREDITPFN_AUTO_REQUEUE=1,CREDITPFN_MAX_REQUEUES=20",
                       f"scripts/slurm/train_{track}.slurm"]))
             benchmarks.append(dict(key=token + "_benchmark", needs=[token],
@@ -76,6 +76,7 @@ def submission_environment():
     Each child activates its own runtime and creates its own cache and log.
     """
     inherited_overrides = {"CREDITPFN_STOP_AFTER_UPDATES", "CREDITPFN_STOP_REQUESTED", "CREDITPFN_STOP_REQUEST_FILE",
+                           "CREDITPFN_RUNTIME_ACCEPTANCE", "CREDITPFN_LEGACY_RUNTIME_COMPARISON",
                            "CREDITPFN_EVAL_TASK_INDEX", "CREDITPFN_EVAL_FAMILY",
                            "CREDITPFN_OWNED_CACHE", "CREDITPFN_ACTIVE_LOG"}
     return {key: value for key, value in os.environ.items()
@@ -84,16 +85,20 @@ def submission_environment():
             and key not in inherited_overrides}
 
 
-def submit_plan(plan, destination, *, runner=subprocess.run, sleep=time.sleep, max_array_size=None):
+def submit_plan(plan, destination, *, runner=subprocess.run, sleep=time.sleep, max_array_size=None, cluster='mindwell'):
     """Resume confirmed submissions only; genuine prerequisites use afterok."""
+    if cluster not in ('mindwell', 'wice'):
+        raise ValueError('Unsupported submission cluster')
     state = json.loads(destination.read_text(encoding="utf-8")) if destination.exists() else {
-        "plan": plan, "accepted": [], "in_flight": None, "index": 0, "offset": 0}
+        "plan": plan, "accepted": [], "in_flight": None, "index": 0, "offset": 0, "cluster": cluster}
+    if state.get('cluster', 'mindwell') != cluster:
+        raise RuntimeError('Submission cluster differs from its durable receipt')
     if state["plan"] != plan or state["in_flight"] is not None:
         raise RuntimeError("Changed plan or uncertain submission: inspect its receipt and Slurm before retrying")
     if state["index"] == len(plan):
         return state
     if max_array_size is None:
-        limits = runner(["scontrol", "-M", "mindwell", "show", "config"], text=True,
+        limits = runner(["scontrol", "-M", cluster, "show", "config"], text=True,
                         capture_output=True, check=True, timeout=30)
         match = re.search(r"^\s*MaxArraySize\s*=\s*(\d+)", limits.stdout, re.M)
         if not match:
@@ -112,7 +117,7 @@ def submit_plan(plan, destination, *, runner=subprocess.run, sleep=time.sleep, m
             dependencies = [r["id"] for r in state["accepted"] if r["key"] in item["needs"]]
             if set(item["needs"]) - {r["key"] for r in state["accepted"]}:
                 raise ValueError("Submission prerequisite was not accepted")
-            command = ["sbatch", "--parsable", "--clusters=mindwell", "--account=lp_verbekelab"]
+            command = ["sbatch", "--parsable", f"--clusters={cluster}", "--account=lp_verbekelab"]
             if dependencies:
                 command += ["--dependency=afterok:" + ":".join(dependencies), "--kill-on-invalid-dep=yes"]
             selected = tasks[state["offset"]:state["offset"] + batch] if tasks is not None else None
@@ -124,7 +129,7 @@ def submit_plan(plan, destination, *, runner=subprocess.run, sleep=time.sleep, m
             result = runner(command, cwd=REPO_ROOT, env=environment, text=True,
                             capture_output=True, check=False, timeout=60)
             response = result.stdout.strip()
-            if result.returncode == 0 and re.fullmatch(r"[1-9]\d*(?:;mindwell)?", response):
+            if result.returncode == 0 and re.fullmatch(r"[1-9]\d*(?:;" + cluster + r")?", response):
                 job = dict(key=item["key"], tasks=selected, id=response.split(";")[0])
                 state["accepted"].append(job)
                 state["in_flight"] = None

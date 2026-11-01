@@ -2,6 +2,8 @@
 
 ## 01-11-2026
 
+- Add a source-bound recovery graph with fresh runtime/80-case/signal gates, exact planned-trial continuity, missing-work selection, native-Lustre final audits and verified failed-log retirement.
+- Prepare native inputs before resumed study controllers, prevent inherited acceptance bypasses and replace orphan-prone recovery locks with kernel-held leases.
 - Record the full VSC log/artifact audit, finite warning-job predictions, incomplete context cells and stopped submission continuation; remove the recurring monitor at the user's request.
 
 ## 30-10-2026

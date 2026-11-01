@@ -28,9 +28,17 @@ def fingerprint():
 
 
 def read_workflow(identifier, *, hashes=False):
-    data = json.loads((root(identifier) / "workflow.json").read_text(encoding="utf-8"))
+    marker = root(identifier) / 'workflow.json'
+    if not marker.exists():
+        marker = root(identifier) / 'validation-workflow.json'
+    data = json.loads(marker.read_text(encoding="utf-8"))
+    matches = data.get('fingerprint') == fingerprint()
+    if not matches:
+        from src.utils.source_transition import authorization
+        transition = authorization(identifier)
+        matches = bool(transition and transition['old_fingerprint'] == data.get('fingerprint'))
     if (data.get("kind") != "creditpfn_legacy" or data.get("id") != identifier
-            or data.get("prepared") is not True or data.get("fingerprint") != fingerprint()
+            or data.get("prepared") is not True or not matches
             or data.get("versions") != environment_versions(stage="eval")):
         raise RuntimeError("Legacy extension preparation is missing or stale; use a fresh ID")
     verify_bindings(data["files"])
