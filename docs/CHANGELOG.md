@@ -1,5 +1,9 @@
 # Changelog
 
+## 01-11-2026
+
+- Record the full VSC log/artifact audit, finite warning-job predictions, incomplete context cells and stopped submission continuation; remove the recurring monitor at the user's request.
+
 ## 30-10-2026
 
 - Request training recovery through a private cache marker across non-exec runtime wrappers; retain native signals and exact optimizer-boundary resume checks.

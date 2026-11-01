@@ -47,6 +47,30 @@ Never relocate an installed environment.
 
 ### Current campaign state
 
+**Latest live verification: 01-11-2026, approximately 21:00 CET.** Extension training is
+89/128 complete: E5 10/48, E6 48/48, E8 16/16 and E9 15/16. The existing artifact auditor
+reports no problems for those 89 final checkpoints, each with 10,000 successful updates.
+Thirty-nine training tasks await priority. Context evaluation is 240/250 complete; the
+ten timed-out v2.6 HackerEarth/Home Credit folds retain 55/58 cells each, leaving only
+30 of 10,370 cells. Resume their SQLite cells rather than deleting them.
+
+Submission is **stopped**, not automatically progressing: original controller `11757172`
+timed out, and wICE continuation `62483670` failed because its native scratch input pointer
+is absent. Its original admission receipt has 206 benchmark tasks (32 subsequently cancelled;
+174 queued), with 690 original-plan shards and the 32 replacements still to admit. Reconcile
+the orphaned submission lock, native input staging and terminal-job dependencies before resuming
+the same receipt. No final audit/publication/completion receipt exists. No CreditPFN GPU task
+was running in this snapshot; queued jobs show priority/dependencies, not holds. Scheduling
+estimates are provisional and presently extend several days.
+
+Independent read-only jobs `62515587` / `62515590` completed: all 526 current workflow logs
+were scanned, and all 138 saved cells in five numerical-warning jobs were checked. Their
+47,694 test and 38,196 validation predictions are finite and reproduce saved R²/RMSE. These
+checks do not replace the final full prediction/cohort audits. Both tier quotas remain below
+their limits. Evidence is under DATA `experiment0/manifests/study_v2/study20261030d/progress20261101/`.
+The user-requested recurring monitor is deleted. Frozen checkouts, recoverable outputs and
+failed-test evidence remain protected. The chronological records below describe earlier states.
+
 At the verified 30-10-2026 full audit, all **445 FP32 refresh tasks** completed: 320 benchmark
 shards and 125 context tasks. Independent audit `62474641` passed 459 benchmark comparisons,
 2,295 folds and 30,967,719 saved predictions, plus 5,550 context cells / 147,493,764 predictions.
@@ -111,6 +135,9 @@ Periodic checkpoints were preserved. Pending training allocations were increased
 without changing the 90-minute internal segments or any scientific settings. Nine running trainers
 were checkpointed through their verified native handlers and requeued with that margin. Recovery
 arrays `11759835` / `11759836` resume the five failed trials under the same frozen source and plans.
+The first automatic timer-based checkpoint/requeue under this margin is now verified: sampled
+v2.6 LGD logs saved updates 5,430 and 9,563; Slurm confirms a pending requeue with `Restarts=1`
+and exit 0. Actual loading in the next allocation remains pending.
 The separate `signal-recovery.submission.json` records their admission and the two cancelled
 benchmark arrays requiring repair. Reconcile supplemental recovery/benchmark jobs with final
 publication dependencies; submission is not completion. A wrapper-safe signal implementation and
