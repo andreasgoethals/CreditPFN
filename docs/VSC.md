@@ -47,6 +47,28 @@ Never relocate an installed environment.
 
 ### Current campaign state
 
+**Latest direct verification: 02-11-2026, approximately 08:35 CET.** All 80 fresh
+extension checks (12 correctness, 68 capacity) and independent inspection passed.
+The source transition is installed. Recovery `repair20261101` accepted all 39 missing
+training tasks, all 10 context tasks and 449/896 benchmark shards. Training is now
+104/128 complete: E5 25/48, E6 48/48, E8 16/16 and E9 15/16. Successful manifest entries
+record 10,000 updates and existing final checkpoints; final artifact/prediction audits
+remain required. Context remains 240/250 complete, with no new context or benchmark
+start logs and no extension benchmark result directories.
+
+Admission controller `11763488` stopped at 03:16:17 CET because Slurm database/cluster
+lookup failed. Six PD segments saved recovery state but their requeue requests were
+rejected. Gateway `squeue`/`sacct` queries also fail or time out, so current live job
+states cannot be confirmed. Do not interpret a failed query as an empty queue.
+The existing submission receipt is unambiguous (`in_flight=null`), with 447 benchmark
+shards still unsubmitted. Once Slurm access returns, reconcile those six tasks and
+their dependent benchmarks before resuming that receipt; do not rerun the successful
+80-case gate or completed science. Preserve the frozen DATA checkout and all recovery
+state. No new model/Python/CUDA failures were found in the new training logs.
+Detailed IDs, checkpoint progress and verification limits are in the dated agent memory.
+
+**Earlier recovery deployment, 01-11-2026:**
+
 **Authorized recovery in progress, 01-11-2026:** all 213 old pending tasks were cancelled
 without interrupting running work. Cancellation is durably recorded under
 `experiment0/manifests/campaign_recovery/repair20261101/`. After 1,311 local test passes,
@@ -74,7 +96,7 @@ and all 19 selected active copies are verified removed. Valid interrupted segmen
 cells and immutable scientific receipts remain protected. Deployment, gate and submission
 receipts, rather than this planned graph, establish which jobs actually ran.
 
-**Latest live verification: 01-11-2026, approximately 21:00 CET.** Extension training is
+**Earlier live verification: 01-11-2026, approximately 21:00 CET.** Extension training is
 89/128 complete: E5 10/48, E6 48/48, E8 16/16 and E9 15/16. The existing artifact auditor
 reports no problems for those 89 final checkpoints, each with 10,000 successful updates.
 Thirty-nine training tasks await priority. Context evaluation is 240/250 complete; the

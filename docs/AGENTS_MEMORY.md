@@ -1,5 +1,20 @@
 # Agents' memory — runs and dead ends
 
+## 02-11-2026
+
+- Direct VSC inspection around 08:20–08:35 CET verified all **80** fresh `gate20261101` receipts (12 correctness, 68 capacity), their unchanged independent-inspection bindings and the installed source transition. Canonical DATA remains frozen at `2c35988`; local/GitHub documentation is newer and must not be pulled while its consumers remain. No new jobs, source deployment, cleanup or recurring monitor was performed during this inspection.
+- Recovery `repair20261101` accepted all **39** missing training tasks, all **10** context tasks and **449/896** benchmark shards in 48 submissions. Its durable receipt has `in_flight=null`, `index=43`, `offset=1` for the 71-entry plan; **447** benchmark shards remain unsubmitted. No final barrier/audit/publication receipt exists.
+- Extension training advanced from 89 to **104/128** unique completed recipes: E5 **25/48** (21 LGD, 4 PD), E6 **48/48**, E8 **16/16**, E9 **15/16**. All 104 successful manifest entries record 10,000 updates and existing final checkpoint files. This metadata check is not a replacement for the final native artifact/prediction audits. Context completion remains **240/250**, and the remaining context tasks and extension benchmarks have no new start logs or benchmark result directories.
+- **Tried:** automatic research admission in controller `11763488` and segmented-training requeues.
+  **Result:** controller stopped at 03:16:17 CET with Slurm database/cluster lookup errors; six PD tasks later saved checkpoints but their requeue requests were rejected (`Unexpected message received`). Gateway accounting/queue queries still fail or time out, including a direct query without `-M`; current scheduler states cannot be established.
+  **Why:** observed Slurm service/communication failure, also seen inside the running controller, rather than a Python/model traceback. No new OOM, nonfinite loss/gradient or positive AMP/data-skip count was found in the newly written training logs.
+  **Instead:** preserve every receipt/checkpoint and do not duplicate uncertain live jobs. Once scheduler access returns, reconcile `11763624_0–2` (saved updates 6,018/6,047/6,041) and `11763626_0–2` (9,978/9,972/9,970), then resume the existing admission receipt and rebuild any dependencies invalidated by terminal tasks. All six recovery checkpoint files exist. No automatic admission restart is currently verified.
+
+| Run | Verified outcome | Scope |
+|---|---|---|
+| Mindwell `11763484` / `11763485` / `11763486`, fresh extension gate | All 12 correctness and 68 capacity cases passed; independent inspector passed and all 80 receipt digests still match | DATA `experiment0/extensions/gate20261101/`; original scientific plans and previous completed work preserved |
+| Mindwell `11763488`, recovery research admission | Source transition installed; 39 training, 10 context and 449 benchmark tasks accepted before Slurm service lookup failure at 03:16:17 CET | `repair20261101/research.submission.json`; 447 shards still unsubmitted, no ambiguous in-flight submission |
+
 ## 01-11-2026
 
 - **Deployed and frozen:** canonical DATA now runs `2c35988b94c1364c3ddf39b50c5ada6ae16b4aae`, verified equal to the pushed implementation after checking every queued checkout consumer was absent. Both read-only submodules match their pins and are clean. Actual training identity `53b1a8c8...`; evaluation identity `b66dfed9...`. Do not pull further source changes while the new graph consumes this checkout.

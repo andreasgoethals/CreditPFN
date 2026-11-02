@@ -1,5 +1,9 @@
 # Changelog
 
+## 02-11-2026
+
+- Record all 80 native gate passes, 104 completed extension trials and the Slurm service failure blocking admission/requeues; preserve recovery state and explicit scheduler uncertainty.
+
 ## 01-11-2026
 
 - Add a source-bound recovery graph with fresh runtime/80-case/signal gates, exact planned-trial continuity, missing-work selection, native-Lustre final audits and verified failed-log retirement.
