@@ -47,24 +47,29 @@ Never relocate an installed environment.
 
 ### Current campaign state
 
-**Latest direct verification: 02-11-2026, approximately 08:35 CET.** All 80 fresh
+**Latest direct verification: 02-11-2026, approximately 09:25 CET.** Slurm is responding.
+All 80 fresh
 extension checks (12 correctness, 68 capacity) and independent inspection passed.
 The source transition is installed. Recovery `repair20261101` accepted all 39 missing
 training tasks, all 10 context tasks and 449/896 benchmark shards. Training is now
-104/128 complete: E5 25/48, E6 48/48, E8 16/16 and E9 15/16. Successful manifest entries
-record 10,000 updates and existing final checkpoints; final artifact/prediction audits
-remain required. Context remains 240/250 complete, with no new context or benchmark
-start logs and no extension benchmark result directories.
+105/128 complete: E5 25/48, E6 48/48, E8 16/16 and E9 16/16. Native artifact audits found
+no problems in those 105 completed trials; full final prediction/cohort audits remain required.
+All ten remaining context tasks and five PD training tasks are running; twelve other training
+tasks and 449 benchmark shards wait on priority. No holds/invalid dependencies or new scientific
+log errors/warnings were found. Storage remains below byte/inode quotas.
 
 Admission controller `11763488` stopped at 03:16:17 CET because Slurm database/cluster
 lookup failed. Six PD segments saved recovery state but their requeue requests were
-rejected. Gateway `squeue`/`sacct` queries also fail or time out, so current live job
-states cannot be confirmed. Do not interpret a failed query as an empty queue.
-The existing submission receipt is unambiguous (`in_flight=null`), with 447 benchmark
-shards still unsubmitted. Once Slurm access returns, reconcile those six tasks and
-their dependent benchmarks before resuming that receipt; do not rerun the successful
-80-case gate or completed science. Preserve the frozen DATA checkout and all recovery
-state. No new model/Python/CUDA failures were found in the new training logs.
+rejected. Their purged IDs cannot be requeued. Source-isolated wICE controller **62518881**
+is now running from DATA `CreditPFN-admission-recovery` at `e9aeacd`, using scientific
+modules from frozen canonical `2c35988`. It audited final artifacts and selected exactly
+those six checkpoint-based replacements. Their admission is currently **0/6** because the
+actual site submitted-job ceiling refuses even one more task; it retries every 60 seconds.
+All-user Mindwell live task count is 500. After replacements are admitted, it resumes the
+existing 449/896 benchmark receipt, dynamically repairs live-task dependencies and queues
+the final audit/publication barrier. Both receipts have `in_flight=null`; 447 benchmark
+shards still await admission. Do not start a duplicate controller or rerun the successful
+80-case gate/completed science. Preserve both active checkouts and all recovery state.
 Detailed IDs, checkpoint progress and verification limits are in the dated agent memory.
 
 The submission-only `admission_resume.slurm` helper can run from a separate DATA Git
