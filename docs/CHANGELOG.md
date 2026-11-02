@@ -2,6 +2,7 @@
 
 ## 02-11-2026
 
+- Resume outage-interrupted admission with separate replacement receipts, artifact-backed live-task dependencies and a final barrier that includes replacement jobs; preserve the active scientific checkout.
 - Record all 80 native gate passes, 104 completed extension trials and the Slurm service failure blocking admission/requeues; preserve recovery state and explicit scheduler uncertainty.
 
 ## 01-11-2026

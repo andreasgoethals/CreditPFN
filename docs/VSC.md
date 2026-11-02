@@ -67,6 +67,18 @@ their dependent benchmarks before resuming that receipt; do not rerun the succes
 state. No new model/Python/CUDA failures were found in the new training logs.
 Detailed IDs, checkpoint progress and verification limits are in the dated agent memory.
 
+The submission-only `admission_resume.slurm` helper can run from a separate DATA Git
+checkout while science stays frozen. It executes the accepted runtime and imports scientific
+modules from the explicitly named frozen checkout. It audits final artifacts before selecting
+terminal incomplete tasks, keeps replacement IDs in a separate receipt and translates benchmark
+dependencies to live unfinished tasks immediately before each submission. Original plans,
+accepted entries and successful artifacts remain intact. Every actual translated command is
+journalled; the final Mindwell barrier includes replacement arrays before the existing wICE
+audit/publication handoff. The helper uses wICE CPU capacity so a full Mindwell submission
+quota cannot prevent the submission controller itself from starting. Real site admission ceilings
+still require waiting for slots; no running-task throttle is added. Its DATA helper checkout must
+remain until the helper has finished, then be retired after preserving its commit and records.
+
 **Earlier recovery deployment, 01-11-2026:**
 
 **Authorized recovery in progress, 01-11-2026:** all 213 old pending tasks were cancelled

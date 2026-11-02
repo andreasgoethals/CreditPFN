@@ -30,6 +30,7 @@ def verify_delta(repo, before):
         'src/utils/legacy_checks.py', 'src/utils/legacy_submit.py',
         'src/utils/source_transition.py', 'src/utils/campaign_recovery.py',
         'src/utils/signal_probe.py',
+        'src/utils/admission_recovery.py', 'scripts/slurm/admission_resume.slurm',
     }
     changed = _git(repo, 'diff', '--name-only', before, 'HEAD').splitlines()
     forbidden = [p for p in changed if p not in allowed and not p.startswith(('docs/', 'tests/'))]
