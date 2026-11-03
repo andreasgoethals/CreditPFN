@@ -47,6 +47,22 @@ Never relocate an installed environment.
 
 ### Current campaign state
 
+**Live postflight, 03-11-2026 10:51 CET:** scientific production is finished; do not resubmit
+training, context or benchmark arrays. Native finalizer `62528794`, helper `2c9ce92`, is running
+the strict original-source extension audit followed by original-source FP32 publication.
+No final completion receipt exists yet. The reader correction is explicitly recorded in
+`repair20261101/auditor-io-fidelity.json`, with every other numerical/cohort check unchanged.
+
+Cleanup `62529038` is already submitted with `afterok:62528794`. It independently checks the
+final/audit/publication hashes and absence of CreditPFN consumers, archives and verifies both
+temporary DATA checkouts including their ignored records, then retires them and the two failed
+operational finalizer logs. Receipt: `repair20261101/final-retirement.retry1.submission.json`;
+the completed cleanup ledger will be `final-retirement.json`. Until that ledger is complete,
+keep all three checkouts. Canonical `CreditPFN` stays frozen at `2c35988`; the helper stays at
+`2c9ce92`. Pull current GitHub main into canonical DATA only after these consumers are terminal;
+new computational work still needs its actual source-specific runtime acceptance. No monitor
+or additional scientific campaign was created.
+
 **03-11-2026 recovery update:** all 128 extension training trials, 250 context tasks
 and 896 benchmark shards have run; no CreditPFN tasks remained queued at the morning
 inspection. All 896 benchmark logs ended successfully. The final auditor `62524918`

@@ -2,6 +2,7 @@
 
 ## 03-11-2026
 
+- Record completed extension science, strict native prediction replay, running final publication and dependency-gated archival/retirement of the temporary DATA checkouts.
 - Restore lossless native FP32 in legacy TabPFN regression prediction readers so strict R² replay matches original arithmetic; preserve genuine FP64 and unchanged audit tolerances.
 - Pass the finalizer runtime explicitly and export the batch environment; refuse unaccepted fallback before touching results.
 - Preserve extension/debug scopes in legacy YAML output aliases; recover misplaced benchmark files with byte-verified, resumable relocation before original-source final audits.
