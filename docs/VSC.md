@@ -47,285 +47,62 @@ Never relocate an installed environment.
 
 ### Current campaign state
 
-**Publication milestone, 03-11-2026 11:29 CET:** `62530166` completed original-source FP32
-publication; all 26/26 directory moves are verified and `publication.json` is complete.
-The job continues with final extension checks/consolidation and inline retirement. Global
-completion and `final-retirement.json` were still absent at this inspection; all three DATA
-checkouts remain until those gates finish. No training or inference needs resubmission.
+**Verified 03-11-2026:** all approved scientific work has finished. Do not resubmit training,
+context or benchmark arrays. The recovery and global `complete.json` receipts pass. The
+original-source FP32 publication journal is complete, with all **26/26** moves verified.
 
-**Current recovery, 03-11-2026:** fresh frozen-source FP32 inspection `62529530` passed all
-459 comparisons / 2,295 folds / 30,967,719 predictions and 125 context tasks / 5,550 cells /
-147,493,764 predictions. Full PROJECT/native-cache integrity check `62529762` also passed
-all 236 files (4,117,585,215 bytes per tier). The one native CSV-parser crash has not recurred;
-its underlying cause remains unconfirmed and its evidence is preserved privately on PROJECT.
+| Completed evidence | Independent verification |
+|---|---|
+| v2/v2.6 extension | 128/128 training trials, each with 10,000 successful updates; 250/250 context tasks; 896/896 benchmark shards |
+| Extension benchmarks | 1,374 comparisons, 6,870 folds, 86,325,214 saved prediction rows |
+| Extension context | 10,370 cells, 260,528,562 saved prediction rows; complete fixed test sets |
+| Original FP32 refresh | 459 comparisons, 2,295 folds, 30,967,719 predictions; 125 context tasks, 5,550 cells, 147,493,764 predictions |
 
-Combined postflight `62530166` is now running: original-source publication, original-source
-global finalization, then verified archival/retirement in that same allocation. Its receipt is
-`repair20261101/output-finalize-launch.retry3b.submission.json`. Do not enqueue a separate
-CreditPFN cleanup job while publication runs: the frozen publisher deliberately refuses any
-other queued/running CreditPFN job. Final hashes and absence of other consumers are still
-required before retiring either temporary DATA checkout or the four failed operational logs.
-Publication/global completion/retirement must be verified from their actual journals; submission
-and successful diagnostics alone do not establish completion. After all source consumers finish,
-the canonical DATA checkout may pull current reviewed GitHub main and get any necessary fresh
-source-specific CPU/GPU acceptance. No scientific arrays need resubmission.
+The audits reproduce primary AUC/Brier/R²/RMSE and verify finite predictions, fixed fold
+membership and unchanged targets. Supplementary capped NLL is not an uncapped likelihood.
+The native pandas CSV-parser crash in `62528794` did not recur in fresh audit `62529530`;
+its cause remains unconfirmed and the private PROJECT core is retained. Integrity job
+`62529762` passed all 236 runtime files / 4,117,585,215 bytes on both durable and native tiers.
+These observations do not establish that every future execution is free of bugs.
 
-**Earlier postflight snapshots:**
+Scientific completion and cleanup are separate. `62530166` published and finalized science,
+then failed in checkout retirement because it guessed an absent failed-log filename. Its
+scientific completion receipts remain valid. The verified replacement cleanup ledger is
+`experiment0/manifests/storage_review/clean20261103/cleanup-complete.json`.
+It records removal of **two temporary DATA checkouts, 27 failed validation scopes and seven
+failed operational logs** after archival/hash checks. `CreditPFN-study-v2` and
+`CreditPFN-admission-recovery` are gone; only canonical DATA `CreditPFN` remains. The latter
+was safely pulled to reviewed `486bb9f` after all scientific source consumers finished.
+Both pinned libraries were verified unchanged and clean. Final report/source deployment is
+recorded in `collection/final20261103a/deployment.json`. Failed evidence and the frozen
+source archives remain outside active analysis under PROJECT `experiment0/archives/`.
+Historical IDs, recovery records and source-bound receipts have not been renamed.
 
-**Later native failure, 03-11-2026 10:53 CET:** the extension audit below passed, but `62528794`
-then failed because its frozen FP32-inspection subprocess segfaulted in pandas' CSV parser.
-Publication and global completion remain blocked. Retirement `62529038` was automatically
-cancelled before execution; **all three DATA checkouts remain required**. Native diagnostic
-`62529383` archived/verified the core on private PROJECT and removed its DATA copy; diagnostic
-`62529530` has passed nested package imports and is reinspecting the original frozen refresh
-with faulthandler. Do not rerun successful scientific arrays, install an optional package, retire
-the checkouts or claim the native failure resolved before this evidence is inspected.
+Mindwell cleanup `11767569` retired 7,883,435,706 bytes of owned obsolete GPFS staging/cache;
+wICE cleanup retired 4,117,635,701 bytes of obsolete Lustre staging. Neither native scratch
+tree retained scientific output. After every local file hash passed, `62537239` rehashed
+and retired all 15 temporary transfer packs / 24,416,715,902 bytes. Both owned native
+scratch roots are clear; `scratch-retirement.json` records the final collection cleanup.
+The accepted immutable PROJECT runtime, canonical input tables, all scientific checkpoints
+and the old DATA comparison/rollback environment are preserved. Other projects are untouched.
 
-**Live postflight, 03-11-2026:** scientific production is finished; do not resubmit
-training, context or benchmark arrays. Native finalizer `62528794`, helper `2c9ce92`, passed
-the strict original-source extension audit: 1,374 benchmark comparisons, 6,870 folds and
-86,325,214 saved prediction rows; 250 context tasks, 10,370 cells and 260,528,562 saved
-prediction rows. Primary scores, finiteness and complete fixed test membership/targets pass.
-It is now rechecking/publishing the original-source FP32 refresh; no final completion receipt
-exists yet. Supplementary capped NLL is not an uncapped likelihood estimate.
-The reader correction is explicitly recorded in
-`repair20261101/auditor-io-fidelity.json`, with every other numerical/cohort check unchanged.
+Collection `final20261103a` merges complementary DATA/PROJECT output using a per-file SHA-256
+manifest and independently packed groups. It excludes reusable caches, failure archives and
+notebook-generated figures/summaries; those reports must be regenerated locally from the
+collected science. It also includes canonical input tables for the corpus notebooks. Never
+replace current notebook source with a remote copy or overlay an unmarked old result layout.
+All 51,586 collected files / 29,702,831,134 bytes match locally, with no extra stale
+files in the active scientific tree. Collection SHA-256 is recorded in
+`local-hash-verification.json`. All 15 notebooks now execute successfully and produce 88 verified PDF/inline/caption identities;
+each complete final summary is in `All_Results.md`. Publication verification records source,
+notebook, PDF, caption and summary hashes. The owned local `.codex/collection-final20261103a`
+transfer/rollback folder remains because automatic approval review blocked its deletion; it is
+outside the active result tree. Native transfer staging has already been removed.
 
-Cleanup `62529038` is already submitted with `afterok:62528794`. It independently checks the
-final/audit/publication hashes and absence of CreditPFN consumers, archives and verifies both
-temporary DATA checkouts including their ignored records, then retires them and the two failed
-operational finalizer logs. Receipt: `repair20261101/final-retirement.retry1.submission.json`;
-the completed cleanup ledger will be `final-retirement.json`. Until that ledger is complete,
-keep all three checkouts. Canonical `CreditPFN` stays frozen at `2c35988`; the helper stays at
-`2c9ce92`. Pull current GitHub main into canonical DATA only after these consumers are terminal;
-new computational work still needs its actual source-specific runtime acceptance. No monitor
-or additional scientific campaign was created.
-
-**03-11-2026 recovery update:** all 128 extension training trials, 250 context tasks
-and 896 benchmark shards have run; no CreditPFN tasks remained queued at the morning
-inspection. All 896 benchmark logs ended successfully. The final auditor `62524918`
-correctly blocked publication because the generic YAML output alias omitted the extension
-directory: benchmark files are under each public experiment's `results/` instead of
-`extensions/study20261030d/results/`. Their unique run-name prefixes retain exact ownership.
-The repair uses a hash-verified, resumable relocation and then the original accepted
-evaluator; successful inference is not rerun. Numerical warnings include capped supplementary
-NLL and cast overflow; saved-prediction/primary-score/cohort checks must pass before publication.
-
-All 4,122 misplaced artifacts (1,560,706,877 bytes) are now hash-verified in their proper
-extension folders. Runtime-correct retry `62527967` then exposed an auditor-only R² dtype
-mismatch: seven folds differed after CSV promotion to FP64. Native verification `62528628`
-reproduced all 1,920 LGD folds with lossless dtype reconstruction and the unchanged strict
-checks. The isolated helper binds this reviewed reader separately and proves every other
-numeric/cohort-check function unchanged. Global final audits/publication are still gated.
-The earlier runtime-export failure `62527712` did not move any scientific files.
-
-Read-only Slurm scan `62526910` covered all 6,017 logs. Scoped cleanup `62527209` archived,
-verified and retired 29 confirmed failed logs; successful and recoverable evidence remains.
-
-There are three DATA checkouts for distinct consumers: canonical `CreditPFN` (`2c35988`)
-owns the accepted scientific campaign; `CreditPFN-study-v2` (`4bf4535`) independently audits
-and promotes the original FP32 refresh; `CreditPFN-admission-recovery` holds the isolated
-submission/repair helper. The two temporary checkouts can be retired after publication and
-their helper/evaluator consumers are terminal, preserving source provenance and unique ignored
-records first. Shared persistent scientific assets remain on PROJECT; these are source checkouts,
-not duplicate result/weight stores. Do not delete either temporary checkout before its last consumer.
-
-The `finalize_outputs.slurm` helper operates from the isolated checkout, imports scientific
-audits only from the frozen canonical source and renames only verified extension-owned benchmark
-artifacts on PROJECT. Its journal survives interruption and never overwrites a destination.
-The generic path-alias fix is tested locally and deployed through Git, not patched into an active evaluator.
-
-**Earlier snapshot:**
-
-**Latest direct verification: 02-11-2026, approximately 09:25 CET.** Slurm is responding.
-All 80 fresh
-extension checks (12 correctness, 68 capacity) and independent inspection passed.
-The source transition is installed. Recovery `repair20261101` accepted all 39 missing
-training tasks, all 10 context tasks and 449/896 benchmark shards. Training is now
-105/128 complete: E5 25/48, E6 48/48, E8 16/16 and E9 16/16. Native artifact audits found
-no problems in those 105 completed trials; full final prediction/cohort audits remain required.
-All ten remaining context tasks and five PD training tasks are running; twelve other training
-tasks and 449 benchmark shards wait on priority. No holds/invalid dependencies or new scientific
-log errors/warnings were found. Storage remains below byte/inode quotas.
-
-Admission controller `11763488` stopped at 03:16:17 CET because Slurm database/cluster
-lookup failed. Six PD segments saved recovery state but their requeue requests were
-rejected. Their purged IDs cannot be requeued. Source-isolated wICE controller **62518881**
-is now running from DATA `CreditPFN-admission-recovery` at `e9aeacd`, using scientific
-modules from frozen canonical `2c35988`. It audited final artifacts and selected exactly
-those six checkpoint-based replacements. Their admission is currently **0/6** because the
-actual site submitted-job ceiling refuses even one more task; it retries every 60 seconds.
-All-user Mindwell live task count is 500. After replacements are admitted, it resumes the
-existing 449/896 benchmark receipt, dynamically repairs live-task dependencies and queues
-the final audit/publication barrier. Both receipts have `in_flight=null`; 447 benchmark
-shards still await admission. Do not start a duplicate controller or rerun the successful
-80-case gate/completed science. Preserve both active checkouts and all recovery state.
-Detailed IDs, checkpoint progress and verification limits are in the dated agent memory.
-
-The submission-only `admission_resume.slurm` helper can run from a separate DATA Git
-checkout while science stays frozen. It executes the accepted runtime and imports scientific
-modules from the explicitly named frozen checkout. It audits final artifacts before selecting
-terminal incomplete tasks, keeps replacement IDs in a separate receipt and translates benchmark
-dependencies to live unfinished tasks immediately before each submission. Original plans,
-accepted entries and successful artifacts remain intact. Every actual translated command is
-journalled; the final Mindwell barrier includes replacement arrays before the existing wICE
-audit/publication handoff. The helper uses wICE CPU capacity so a full Mindwell submission
-quota cannot prevent the submission controller itself from starting. Real site admission ceilings
-still require waiting for slots; no running-task throttle is added. Its DATA helper checkout must
-remain until the helper has finished, then be retired after preserving its commit and records.
-
-**Earlier recovery deployment, 01-11-2026:**
-
-**Authorized recovery in progress, 01-11-2026:** all 213 old pending tasks were cancelled
-without interrupting running work. Cancellation is durably recorded under
-`experiment0/manifests/campaign_recovery/repair20261101/`. After 1,311 local test passes,
-implementation `2c35988` was pushed, pulled into the unused canonical DATA checkout and
-verified with both clean library pins. That checkout is frozen again for its new consumers.
-Bootstrap `62517015` passed and durably admitted all 96 validation/controller tasks. Actual
-CPU, all ten runtime GPU cases, independent runtime acceptance and validation preparation
-have passed. Native CUDA/container USR1 and TERM checkpoint/restart equivalence also passed.
-The fresh twelve correctness/68 capacity cases and their inspector must still pass before
-controller `11763488` installs the source transition and admits the missing research work.
-No scientific resubmission is represented as complete merely because its controller is queued.
-
-The explicit source transition preserves original plans, passing evidence, scientific
-settings and checkpoint identities; it verifies unchanged training mathematics and exact
-trial inputs. A resumed checkpoint records its actual execution-source lineage separately.
-The fresh gate is validation-only, not another scientific campaign. Only missing training
-and context tasks are resubmitted; benchmark dependencies are rebuilt from the new jobs.
-Context tasks reuse their committed cells with eight-hour allocation margins. Controller
-warnings save admission progress and requeue; a kernel-held lease replaces orphan-prone
-exclusive lock files. Final artifact audits/publication use a verified Mindwell completion
-barrier followed by a native-Lustre wICE job. No new recurring monitor is created.
-
-Failed logs and the obsolete submission lock are retained in a hash-verified PROJECT archive,
-and all 19 selected active copies are verified removed. Valid interrupted segments, recovery files, saved context
-cells and immutable scientific receipts remain protected. Deployment, gate and submission
-receipts, rather than this planned graph, establish which jobs actually ran.
-
-**Earlier live verification: 01-11-2026, approximately 21:00 CET.** Extension training is
-89/128 complete: E5 10/48, E6 48/48, E8 16/16 and E9 15/16. The existing artifact auditor
-reports no problems for those 89 final checkpoints, each with 10,000 successful updates.
-Thirty-nine training tasks await priority. Context evaluation is 240/250 complete; the
-ten timed-out v2.6 HackerEarth/Home Credit folds retain 55/58 cells each, leaving only
-30 of 10,370 cells. Resume their SQLite cells rather than deleting them.
-
-Submission is **stopped**, not automatically progressing: original controller `11757172`
-timed out, and wICE continuation `62483670` failed because its native scratch input pointer
-is absent. Its original admission receipt has 206 benchmark tasks (32 subsequently cancelled;
-174 queued), with 690 original-plan shards and the 32 replacements still to admit. Reconcile
-the orphaned submission lock, native input staging and terminal-job dependencies before resuming
-the same receipt. No final audit/publication/completion receipt exists. No CreditPFN GPU task
-was running in this snapshot; queued jobs show priority/dependencies, not holds. Scheduling
-estimates are provisional and presently extend several days.
-
-Independent read-only jobs `62515587` / `62515590` completed: all 526 current workflow logs
-were scanned, and all 138 saved cells in five numerical-warning jobs were checked. Their
-47,694 test and 38,196 validation predictions are finite and reproduce saved R²/RMSE. These
-checks do not replace the final full prediction/cohort audits. Both tier quotas remain below
-their limits. Evidence is under DATA `experiment0/manifests/study_v2/study20261030d/progress20261101/`.
-The user-requested recurring monitor is deleted. Frozen checkouts, recoverable outputs and
-failed-test evidence remain protected. The chronological records below describe earlier states.
-
-At the verified 30-10-2026 full audit, all **445 FP32 refresh tasks** completed: 320 benchmark
-shards and 125 context tasks. Independent audit `62474641` passed 459 benchmark comparisons,
-2,295 folds and 30,967,719 saved predictions, plus 5,550 context cells / 147,493,764 predictions.
-The audit verified unchanged benchmark cohorts/targets and complete fixed context-test rows.
-These results remain staged until the final publication gate; notebook results are still the prior download.
-
-The original extension gate failed: seven smoke cases passed; four DiagScale cases hit an obsolete
-v3-only guard; one LoRA LGD v2.6 case exited 139 without a Python traceback. Its capacity jobs and
-dependent controllers were cancelled, and no extension research was released. The guard correction
-retains strict projection validation; native fault traces are enabled for the fresh gate. A new source
-requires fresh runtime acceptance and all 80 extension checks, not reuse of passing old-source receipts.
-
-The first new-source recovery (`study20261030a`, bootstrap `11756161`) passed CPU checks but
-stopped its original-runtime GPU arms because container-submitted jobs inherited parent container
-markers. The submission boundary must remove those markers and parent cache/log ownership while
-retaining scientific settings. The arm check stays strict. Use a fresh recovery ID after this fix;
-the failed attempt does not authorize any extension research.
-
-The corrected source `a525906` passed the full local suite (1,265 tests, one existing skip),
-then fresh VSC CPU checks, all ten GPU cases and independent acceptance `11756349`.
-All eight original/container comparisons matched exactly; both full-shape FP32 capacity checks
-passed. Retry `study20261030b` passed all four context and four LoRA correctness cases. Its four
-DiagScale cases exposed an observation bug: the auditor counted inference-only monitor clones
-alongside the successfully optimized model. Capacity array `11756414`, inspector `11756415` and
-controller `11756416` were automatically cancelled; no research was released. The correction binds
-gradient checks to training optimizer creation, retaining exact parameter selection and all existing
-numerical checks. Repeat fresh source-bound acceptance and the complete 80-case extension gate
-before research. Never deploy while consumers remain.
-
-Retry `study20261030c` used source `fc924571`: **1,279 local tests passed** (one existing
-skip), fresh CPU and all ten runtime GPU checks passed, and independent acceptance `11756638`
-passed. All twelve extension correctness cases `11756713` passed, including the four corrected
-DiagScale audits. Capacity array `11756714` finished with 67 passes and one GPU-memory failure:
-task 55, TabPFN v2 E9 PD / 10,000 rows / partition 3. Inspector `11756715` and controller
-`11756716` were automatically cancelled; no research was released. Preserve this evidence.
-The local correction uses non-reentrant activation recomputation for the matched v2 E8/E9
-configs, including the shared anchor; rows, members, precision and the objective remain fixed.
-The pinned native layer option uses reentrant checkpointing, which failed a strict local BF16
-gradient comparison; it is not used. Native model forwards instead use PyTorch's explicit
-`use_reentrant=False` path with RNG preservation. Paired output/gradient/update/reload checks and the complete capacity gate must pass under a
-fresh source identity before research. The correction passed 57 focused and 1,289 full local tests
-(one existing skip); its native training-equivalence and full-capacity checks remain pending.
-
-Source `9c55d72` was pushed and deployed through Git after verifying there were no CreditPFN
-consumers; both library pins remain clean. Fresh workflow `study20261030d` bootstrap `11757088`
-completed in 56 seconds. Its durable receipt confirms CPU `11757089`, GPU `11757090`, independent
-acceptance `11757091` and extension launch `11757092`. CPU, all ten GPU runtime cases and independent
-acceptance passed. The launcher submitted prepare `11757168`, smoke `11757169`, capacity `11757170`,
-inspector `11757171` and gated research controller `11757172`. All 80 extension cases must pass
-before research; do not duplicate them. All twelve correctness and 68 capacity cases passed;
-independent inspection `11757171` binds all 80 passing receipts. The former 10,000-row v2 OOM
-case passed 32 full-size updates and native FP32/BF16 comparisons with exact output/gradient/update
-agreement and observed backward recomputation. At 16:53 CET controller `11757172` had accepted
-all 128 training trials, all 250 context tasks and 116 of 896 benchmark shards; five training tasks
-were running. Remaining submission proceeds automatically under actual site admission limits,
-without an artificial running throttle. Its completed FP32 refresh is still
-bound to `study20261029` and the frozen original evaluator.
-
-Production exposed a separate signal-transport issue: the immutable site wrapper does not forward
-the shell warning to the native trainer, so five E5 LGD v2 tasks exited 138 near 90 minutes.
-Periodic checkpoints were preserved. Pending training allocations were increased to three hours
-without changing the 90-minute internal segments or any scientific settings. Nine running trainers
-were checkpointed through their verified native handlers and requeued with that margin. Recovery
-arrays `11759835` / `11759836` resume the five failed trials under the same frozen source and plans.
-The first automatic timer-based checkpoint/requeue under this margin is now verified: sampled
-v2.6 LGD logs saved updates 5,430 and 9,563; Slurm confirms a pending requeue with `Restarts=1`
-and exit 0. Actual loading in the next allocation remains pending.
-The separate `signal-recovery.submission.json` records their admission and the two cancelled
-benchmark arrays requiring repair. Reconcile supplemental recovery/benchmark jobs with final
-publication dependencies; submission is not completion. A wrapper-safe signal implementation and
-actual E0 container warning/restart test remain required before final project completion. Do not
-update the active checkout to implement that fix. Keep failed logs and recovery files until verified
-recovery and compact archival; original submission receipts remain unchanged.
-
-The local permanent fix requests recovery through a unique marker in the job-owned cache, visible
-inside the container, and polls it only at optimizer boundaries. It restores the outer traps and
-removes only its own marker after the child exits. Child submissions do not inherit this control
-path. Native Python USR1 handling remains available. The non-exec-wrapper regressions and twelve
-real-loop exact-resume comparisons pass locally; the full suite passed 1,292 tests (one existing
-skip, two existing CPU-backend warnings) in 14m52s. Actual VSC warning/restart acceptance remains
-required before cutover. Implementation commit `8649f26` is validated and pushed; canonical DATA
-remains frozen at `9c55d72`. Do not pull the signal fix into that active checkout or reuse its old
-prepared/recovery identities under the new training identity.
-
-Controller `11757172` has a verified 31-10-2026 04:27:01 CET deadline. Guarded continuation
-`62483670` is queued on wICE, not before 04:35 CET, with a three-day CPU allowance. It verifies
-frozen source `9c55d72`, skips a confirmed final submission, and resumes the same tracked command
-only if the original controller timed out; cancellation/unknown states and ambiguous receipts fail
-closed. Its separate durable receipt is `study20261030d/submission-continuation.json` under the
-study manifests. Preserve this queued source consumer, and retire it explicitly if no longer needed.
-
-The frozen DATA checkout `CreditPFN-study-v2` at `4bf45351075b3722d85a366da22b8df5f2322f75`
-remains necessary to audit/publish the original `study20261029` refresh under its own source identity.
-Do not update it or rebind its receipts. The normal DATA checkout can be updated only after its
-own consumers are absent. Canonical DATA and local public-numbering code were synchronized on
-30-10-2026, with TFM `26156f3` and VSC Library `0ed4ffa` both verified clean at the parent Git
-pins. Each submission receipt records its actual source revision; a source change requires fresh
-runtime acceptance. Inspect submodule changes before future updates; both libraries are read-only
-from this project.
+The detailed historical failures and admission/recovery sequence are in
+[AGENTS_MEMORY.md](AGENTS_MEMORY.md). No recurring monitor is active. New computational work
+would still need acceptance for its actual source identity; completed accepted scientific
+work does not need repeating because report source or operating documentation changed.
 
 ## Public numbering and recorded campaign identities
 
@@ -370,20 +147,19 @@ while a saved E9 plan consumes it. Never apply the numbering permutation twice t
    repair locally, push and deploy again. Never patch remote source directly.
 5. Only passing independent gates release the already authorized research and final publication.
 
-The recovery workflow below queues the full sequence once from the sealed container, including
-CPU preparation, ten runtime GPU checks, independent runtime acceptance, extension preparation,
-12 correctness cases, 68 capacity cases, independent inspection, research and final audit/publication.
-Use a fresh ID after a source change. This recorded specification is preserved in canonical DATA:
+The completed recovery queued CPU preparation, ten runtime GPU checks, independent runtime
+acceptance, extension preparation, 12 correctness cases, 68 capacity cases, independent
+inspection, research and final audit/publication as one dependency graph. Its durable receipts
+are retained under `experiment0/manifests/campaign_recovery/repair20261101/` and
+`experiment0/manifests/study_v2/study20261030d/`. Do not resubmit this completed workflow.
 
-```bash
-CREDITPFN_RUNTIME_VERSION=env20261029f sbatch scripts/slurm/study_cpu.slurm submit study20261030c --runtime-version env20261029f --specification "$PWD/output CreditPFN/experiment0/manifests/runtime_builds/study20261029/checkout/runtime/env20261029f/environment.json" --refresh-id study20261029 --refresh-checkout /data/leuven/383/vsc38338/CreditPFN-study-v2
-```
-
-**Do not rerun this example if its durable submission receipt already exists.** Inspect the receipt
-and queue first. `--refresh-id` plus `--refresh-checkout` binds the original clean commit, preparation
-hash and runtime; it skips completed migration/FP32 computation. The old evaluator independently
-checks and publishes its own results from its frozen checkout. A partial publication resumes its
-journal and validates every retained file, rather than treating absent moved source files as missing work.
+The original refresh stayed bound to its original source and runtime through
+`--refresh-id` / `--refresh-checkout`; a completed refresh was independently inspected and
+published without repeating inference. That temporary evaluator checkout is now archived and
+retired. Historical recovery commands referring to it are not current launch commands. A future
+campaign needs a fresh ID, a deliberately selected source/runtime and explicit authorization.
+Partial publication is journaled and validates retained files rather than confusing moved source
+files with missing scientific work.
 
 Runtime checks cover packages, metrics, tensors/autograd and serialization; eight same-B200
 original-versus-container comparisons (four bases × PD/LGD, original and CPT weights); and two
@@ -431,7 +207,7 @@ are recorded in the research brief. Prior completed E6 trials are preserved; the
 
 ### Individual commands
 
-The whole-study controller above is the approved path for the remaining campaign. Standalone
+The whole-study controller was the approved path for the completed campaign. Standalone
 `run_experiment5.sh`, `run_experiment6.sh`, `run_experiment8.sh`, `run_experiment9.sh` and
 `run_experiment10.sh` now follow **public** numbers. `run_benchmark.sh experiment7`, for example,
 means sampling. E3/E4 reject separate benchmark submission because E1 supplies that evidence.
@@ -519,8 +295,8 @@ Keep compact failed-test evidence, source/runtime pins, migration checksums, sub
 publication journals. Historical pre-Git build helpers and failed-build records are already archived
 and hash-verified in canonical DATA `experiment0/manifests/runtime_builds/study20261029/`. Six obsolete
 runtime-build workspaces and three empty failed runtime directories were retired by `62471310`.
-After its final publication consumers finish, archive remaining provenance and remove the temporary
-`CreditPFN-study-v2` checkout and only verified obsolete task-owned staging. Remove one-off migration
-helpers after their recovery role ends; retain the layout reader and immutable migration journal.
+Both temporary DATA checkouts have now been archived, hash-verified and retired, as recorded
+in the current-state ledger above. One-off local collection helpers are retired after verification;
+retain the layout reader, immutable migration journals and collection hash manifests.
 The comparator environment stays until compatibility/rollback no longer needs it. Other projects,
 scientific output and recoverable checkpoints are outside this cleanup.

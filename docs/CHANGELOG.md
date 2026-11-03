@@ -2,6 +2,11 @@
 
 ## 03-11-2026
 
+- Regenerate and visually verify all 15 notebooks / 88 figures from the hash-verified final results, with complete captions and summaries.
+- Retry transient Windows snapshot-directory access denials briefly, preserving the previous pointer on persistent failure.
+- Fit long RQ training legends to measured label widths and wrap the factorial legend within A4 bounds; correct the exposure caption palette.
+- Verify final publication, archive and retire two temporary checkouts/failed validation scopes/owned scratch; collect both result tiers with per-file hashes.
+- Bind recovery-transition regressions to their reviewed historical commits instead of moving report HEAD, retaining strict production guards.
 - Redraw all figures at A4 widths (160/77 mm) with ordinal recipe colours and colour-blind-safe outcome colours; merge per-quantity/per-metric RQ figures into one figure per task (training: loss/credit/retention rows; results: credit, secondary and retention columns; one factorial; one context figure plus a table × context heatmap); drop duplicated schedule, seed-contrast, two-metric and all-pass validation figures.
 
 - Record fresh FP32 audit/runtime-integrity passes and submit publication, finalization and guarded checkout retirement in one native allocation.

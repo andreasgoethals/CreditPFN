@@ -19,9 +19,9 @@ The method authority is [RESEARCH_BRIEF.md](docs/RESEARCH_BRIEF.md); primary-sou
 | | 9 | Episode size on a fixed large-PD-table corpus |
 | RQ4: Does CPT change the need for target-table labels? | 10 | Nested context sizes; original/CPT performance and paired differences; complete fixed five-fold test sets |
 
-Experiment 0 contains correctness, recovery, capacity and runtime checks. Experiments 8–9 are PD-only. All other scientific studies cover PD and LGD. The original model coverage is TabPFN v2/v2.6/v3 and TabICLv2 in the shared factorial, seeds and sampling studies; the approved isolated extension fills v2/v2.6 coverage in the follow-ups. New results appear only after their actual VSC gates and audits pass.
+Experiment 0 contains correctness, recovery, capacity and runtime checks. Experiments 8–9 are PD-only. All other scientific studies cover PD and LGD. The original model coverage is TabPFN v2/v2.6/v3 and TabICLv2 in the shared factorial, seeds and sampling studies; the completed isolated extension fills v2/v2.6 coverage in the follow-ups. All extension gates, scientific work and final audits passed; the source-bound FP32 refresh is published. Current collection and report status is recorded in [VSC.md](docs/VSC.md#current-campaign-state).
 
-The **512 unique factorial training runs are stored once** and support experiments 1, 3 and 4. The original campaigns contain 768 unique completed training runs; the approved model extension adds 128, for 896 if all succeed. Reused controls are never counted as new runs. DiagScale and LoRA differ in several recipe settings: these results cannot identify an intrinsically superior adapter mechanism.
+The **512 unique factorial training runs are stored once** and support experiments 1, 3 and 4. The original campaigns contain 768 unique completed training runs; the completed model extension adds 128, for **896 unique training runs**. Reused controls are never counted as new runs. DiagScale and LoRA differ in several recipe settings: these results cannot identify an intrinsically superior adapter mechanism.
 
 ## Results and storage
 

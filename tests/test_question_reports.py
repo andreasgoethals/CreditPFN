@@ -77,6 +77,7 @@ def test_episode_contrast_uses_exact_shared_large_table_control():
 
 def test_compact_factorial_keeps_interaction_and_fixed_cohort():
     from tests.test_study_reorganization import factorial
+    rq.style.apply()
     frame = factorial()
     frame = pd.concat([frame, frame.assign(learning_rate=1e-5)], ignore_index=True)
     # Lose one cell for B at one rate: B must leave the whole curve.
@@ -86,7 +87,12 @@ def test_compact_factorial_keeps_interaction_and_fixed_cohort():
     assert set(cells.dataset) == {'A'} and len(cells) == 8
     interaction = page.tables['Anchoring simple effects and interaction']
     assert interaction[interaction.condition.eq('Interaction')].contrast.eq(3).all()
+    rq.style.finish_figure(page.figure)
     page.figure.canvas.draw()
+    renderer = page.figure.canvas.get_renderer()
+    legend = page.figure.legends[0].get_window_extent(renderer)
+    assert legend.x0 >= page.figure.bbox.x0 and legend.x1 <= page.figure.bbox.x1
+    assert legend.y1 <= min(ax.get_window_extent(renderer).y0 for ax in page.figure.axes)
     plt.close(page.figure)
 
 
@@ -103,6 +109,27 @@ def test_loss_curve_requires_every_planned_trial(monkeypatch):
     assert np.isnan(data['mean'].iloc[1])
     with pytest.raises(ValueError,match='counted twice'):
         rq.training_curves([(1,None,run),(1,None,run)],'loss')
+
+
+def test_model_specific_episode_labels_fit_the_publication_legend(monkeypatch):
+    rq.style.apply()
+    row = SimpleNamespace(learning_rate=3e-7)
+    looks = [rq.series(6, arm, row) for arm in ('All tables', 'Large tables')]
+    looks += [rq.series(7, arm, row) for arm in
+              ('2,048 rows', '10,000 rows', '11,000 rows', '26,000 rows')]
+    frame = pd.DataFrame([dict(base=base, track='pd', quantity='loss', x=x,
+        mean=.5, config=look['label'], **{k: look[k] for k in ('color','linestyle','order')})
+        for base in rq.sy.BASES for look in looks for x in (0, 10000)])
+    monkeypatch.setattr(rq, 'training_curves', lambda *a, **k: frame)
+    page, = rq.plot_training([], 'loss', title='Episode trajectories', name='episodes')
+    rq.style.finish_figure(page.figure)
+    page.figure.canvas.draw()
+    renderer = page.figure.canvas.get_renderer()
+    legend = page.figure.legends[0].get_window_extent(renderer)
+    assert legend.x0 >= page.figure.bbox.x0 and legend.x1 <= page.figure.bbox.x1
+    assert legend.y1 <= min(ax.get_window_extent(renderer).y0 for ax in page.figure.axes)
+    assert len(page.figure.legends[0].get_texts()) == len(looks)
+    plt.close(page.figure)
 
 
 def test_reused_trials_count_once_across_views():

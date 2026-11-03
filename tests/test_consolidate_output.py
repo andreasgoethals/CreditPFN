@@ -54,6 +54,50 @@ def test_missing_raw_history_cannot_replace_a_complete_snapshot(tmp_path, monkey
     assert (root / "consolidated/exp1/LATEST.json").read_bytes() == pointer
 
 
+def test_windows_snapshot_rename_recovers_without_losing_rows(tmp_path, monkeypatch):
+    from src.utils import consolidate_output as module
+    monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
+    write_manifest(tmp_path / "output CreditPFN/general/manifests")
+    rename, calls = Path.rename, []
+
+    def transient(path, target):
+        if path.name.startswith(".building-"):
+            calls.append(path)
+            if len(calls) < 3:
+                error = PermissionError("Transient Windows access denial")
+                error.winerror = 5
+                raise error
+        return rename(path, target)
+
+    monkeypatch.setattr(Path, "rename", transient)
+    monkeypatch.setattr(module.time, "sleep", lambda _: None)
+    report = consolidate("exp1", apply=True)
+    assert len(calls) == 3 and report["rows"]["attempts_pd"] == 3
+    assert load_consolidated("exp1", "trials_pd").status.tolist() == ["OK"]
+
+
+def test_persistent_windows_snapshot_denial_preserves_previous_pointer(tmp_path, monkeypatch):
+    from src.utils import consolidate_output as module
+    monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
+    root = tmp_path / "output CreditPFN/general"
+    write_manifest(root / "manifests")
+    consolidate("exp1", apply=True)
+    pointer = root / "consolidated/exp1/LATEST.json"
+    before = pointer.read_bytes()
+
+    def denied(path, target):
+        error = PermissionError("Persistent Windows access denial")
+        error.winerror = 5
+        raise error
+
+    monkeypatch.setattr(Path, "rename", denied)
+    monkeypatch.setattr(module.time, "sleep", lambda _: None)
+    with pytest.raises(PermissionError):
+        consolidate("exp1", apply=True)
+    assert pointer.read_bytes() == before
+    assert load_consolidated("exp1", "trials_pd").status.tolist() == ["OK"]
+
+
 def test_resolve_relocated_checkpoint_in_experiment_folder(tmp_path, monkeypatch):
     from src.utils.checkpoint_inventory import resolve_checkpoint
     storage = tmp_path / "CreditPFN"

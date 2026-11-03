@@ -12,6 +12,7 @@ import hashlib
 import json
 import os
 import re
+import time
 import uuid
 from functools import lru_cache
 from pathlib import Path
@@ -117,6 +118,21 @@ def latest_trials(attempts: pd.DataFrame) -> pd.DataFrame:
     return df.reset_index(drop=True)
 
 
+def _publish_directory(stage: Path, final: Path) -> None:
+    """Retry transient Windows sharing/access denials without changing publication order."""
+    for attempt in range(6):
+        try:
+            stage.rename(final)
+            return
+        except PermissionError as error:
+            # Native Linux errors are not retried. Never replace another snapshot,
+            # and leave the previous LATEST pointer untouched on persistent denial.
+            if (getattr(error, "winerror", None) not in (5, 32) or attempt == 5
+                    or not stage.is_dir() or final.exists()):
+                raise
+            time.sleep(.05 * 2 ** attempt)
+
+
 def consolidate(run: str, *, apply: bool = False, manifest_root: Path | None = None,
                 result_root: Path | None = None, destination: Path | None = None, training_root: Path | None = None) -> dict:
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]*", run) or ".." in run:
@@ -194,7 +210,7 @@ def consolidate(run: str, *, apply: bool = False, manifest_root: Path | None = N
     report["created_utc"] = stamp
     (stage / "inventory.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     final = parent / stamp
-    stage.rename(final)
+    _publish_directory(stage, final)
     pointer = parent / (".latest-" + uuid.uuid4().hex + ".json")
     pointer.write_text(json.dumps({"snapshot": stamp}), encoding="utf-8")
     os.replace(pointer, parent / "LATEST.json")

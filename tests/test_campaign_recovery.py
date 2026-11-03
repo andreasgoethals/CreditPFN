@@ -10,10 +10,30 @@ from src.utils import campaign_recovery as cr, source_transition as st
 from src.utils.experiment import digest_json
 
 
-def test_reviewed_transition_keeps_training_math_and_rejects_an_optimizer_change(monkeypatch):
+@pytest.mark.parametrize('reviewed', [
+    '2c35988b94c1364c3ddf39b50c5ada6ae16b4aae',
+    '2c9ce92830fe39c0b7b13aab8346aa95e5ed1031',
+])
+def test_reviewed_transition_keeps_training_math_and_rejects_an_optimizer_change(monkeypatch, tmp_path, reviewed):
     from src.utils.paths import REPO_ROOT
-    result = st.verify_delta(REPO_ROOT, '9c55d72fe64ef380d74ad57c7b3274d2f5458111')
+    # This proves the recorded deployment, not an evolving notebook/analysis HEAD.
+    # Keep the production allowlist strict and build the actual reviewed sources.
+    git = st._git
+    for name in ('src/train/loop.py', 'src/train/recovery.py',
+                 'src/eval/context_curve.py', 'src/utils/experiment.py',
+                 'src/utils/prepare_experiment.py', 'src/utils/legacy_checks.py',
+                 'src/utils/evaluation_evidence.py', 'src/utils/paths.py'):
+        path = tmp_path / name
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(git(REPO_ROOT, 'show', reviewed + ':' + name), encoding='utf-8')
+
+    def reviewed_git(repo, *args):
+        return git(REPO_ROOT, *(reviewed if arg == 'HEAD' else arg for arg in args))
+
+    monkeypatch.setattr(st, '_git', reviewed_git)
+    result = st.verify_delta(tmp_path, '9c55d72fe64ef380d74ad57c7b3274d2f5458111')
     assert result['before'].startswith('9c55d72')
+    assert result['after'] == reviewed
     original = Path.read_text
     def changed(path, *args, **kwargs):
         text = original(path, *args, **kwargs)
@@ -24,11 +44,13 @@ def test_reviewed_transition_keeps_training_math_and_rejects_an_optimizer_change
         return text
     monkeypatch.setattr(Path, 'read_text', changed)
     with pytest.raises(RuntimeError, match='Training mathematics'):
-        st.verify_delta(REPO_ROOT, result['before'])
+        st.verify_delta(tmp_path, result['before'])
 
 
-def test_transition_rejects_scientific_file_changes(monkeypatch, tmp_path):
-    monkeypatch.setattr(st, '_git', lambda *args: 'config/experiment5/pd.yaml')
+@pytest.mark.parametrize('changed', ['config/experiment5/pd.yaml', 'src/model/lora.py',
+                                   'src/visualize/style.py'])
+def test_transition_rejects_scientific_file_changes(monkeypatch, tmp_path, changed):
+    monkeypatch.setattr(st, '_git', lambda *args: changed)
     with pytest.raises(RuntimeError, match='Unreviewed source'):
         st.verify_delta(tmp_path, 'original')
 

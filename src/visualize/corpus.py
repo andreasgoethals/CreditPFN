@@ -280,7 +280,7 @@ def plot_exposure(data: pd.DataFrame) -> list[Page]:
                 "One sample and accumulation share one marker because both assign one update per table visit; full pass assigns one per disjoint chunk. "
                 "Dataset labels include row counts; the axis gives the total context-plus-query row cap per chunk. "
                 "Multipliers beside full-pass dots give full-pass step share divided by equal-table step share, not the ratio of total update counts. "
-                "Green denotes greater and red smaller share; these colors do not imply better or worse performance. "
+                "Blue and red multiplier labels denote greater and smaller shares, respectively; these colors do not imply better or worse performance. "
                 "Accumulation consumes all chunks whereas one sample consumes one; equal step shares therefore do not imply equal row exposure. "
                 "Actual training uses the partition's training tables, base-specific caps and may stop mid-traversal.",
                 {"Step shares and full-pass share ratios": page[["dataset_id", "rows", "chunks", "one_sample_step_share", "full_pass_step_share", "accumulate_step_share", "full_pass_share_ratio"]]}))

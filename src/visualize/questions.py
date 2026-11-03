@@ -167,7 +167,9 @@ def plot_training(studies, quantities=("loss", "credit", "retention"), *, title,
                 first = label
             if r == len(quantities) - 1:
                 ax.set_xlabel("Rows seen (millions)" if row_exposure else "Successful updates")
-    fig.legend(handles=_series_handles(data), loc="outside lower center", ncol=min(4, data.config.nunique()))
+    handles = _series_handles(data)
+    fig.legend(handles=handles, loc="outside lower center",
+               ncol=style._legend_columns(fig, [handle.get_label() for handle in handles]))
     what = ", ".join(QUANTITIES[q].lower() for q in quantities)
     return [cp.Page(name, fig, f"{title}. Rows show {what}; columns show models. " +
         ("Query loss is the native training objective, averaged in successful-update windows with one contribution per planned trial; "
@@ -452,7 +454,7 @@ def plot_factorial(grid, track, domain=None):
     fig.legend(handles=[Line2D([], [], color=style.color("frozen" if f else "full"), linestyle=style.ANCHOR_STYLES[l > 0],
                 marker=style.PANEL_MARKERS[int(f)], markersize=style.CURVE_MARKER_SIZE * 1.3,
                 label=("Backbone frozen" if f else "All parameters") + (", L2-SP λ 0.003" if l else ", no L2-SP"))
-                for f, l in FACTORIAL_CELLS], loc="outside lower center", ncol=4)
+                for f, l in FACTORIAL_CELLS], loc="outside lower center", ncol=2)
     first = parts[0][2]
     tables["All four paired cell values"] = first
     tables["Anchoring simple effects and interaction"] = rv.factorial_contrasts(first, 3)

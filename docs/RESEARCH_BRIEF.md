@@ -369,12 +369,24 @@ A4 article widths (160 mm full, 77 mm single column); the adjacent manuscript is
 by the notebook runner. Literature motivation and limits of these presentation choices are recorded
 in LITERATURE.md.
 
+## Completed extension and harmonized evidence
+
+As of **03-11-2026**, all 128 approved additional training trials, 250 additional context tasks
+and 896 benchmark shards are complete. The original-source FP32 refresh is published, and
+both global/recovery completion receipts pass. Independent extension audits verify 1,374
+benchmark comparisons / 6,870 folds and 250 context tasks / 10,370 cells, reproducing primary
+metrics with finite predictions and fixed complete test membership. These additions bring the
+study to **896 unique scientific training runs**; shared factorial views and reused episode
+controls remain single evidence units. The extension remains exploratory rather than a
+prospectively independent confirmation. The dated operating and collection status belongs in
+VSC.md and AGENTS_MEMORY.md. Historical snapshots below are explicitly pre-extension evidence.
+
 ## Original evidence before the approved extension and refresh
 
 As of **29-10-2026**, both complementary storage trees have been downloaded locally, including
 the completed TabICLv2 FP32 re-score of experiments 1 and 2. Original research training is
 complete: the shared factorial and E2/E7/E5/E8/E9/E6 contain 512/32/96/48/16/16/48 completed trials.
-The approved additional model coverage and remaining FP32 re-evaluations are separate pending work.
+At that historical snapshot, the additional model coverage and remaining FP32 re-evaluations had not yet completed; they are included in the completed extension described above.
 Their final benchmarks contain 4,047/627/1,083/627/297/462/627 model–table–partition comparisons,
 respectively: **7,770 comparisons and 38,850 successful outer-fold records**. Experiment 10 has
 250 completed inference tasks and 11,100 original/CPT context cells. Experiment 9 also reuses
