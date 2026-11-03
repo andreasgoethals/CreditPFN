@@ -79,3 +79,10 @@ def test_journal_cannot_redirect_or_duplicate_owned_files(tmp_path):
     changed[0]['source'] = str(tmp_path.parent / 'outside.csv')
     with pytest.raises(RuntimeError, match='source escaped'):
         validate_roster(changed, tmp_path, 'case1')
+
+
+def test_finalizer_requires_explicit_runtime_and_exports_before_activation():
+    script = (Path(__file__).resolve().parents[1] / 'scripts/slurm/finalize_outputs.slurm').read_text()
+    assert '#SBATCH --export=ALL' in script
+    assert 'export CREDITPFN_RUNTIME_VERSION="${3:?' in script
+    assert script.index('export CREDITPFN_RUNTIME_VERSION=') < script.index('source scripts/slurm/_activate_env.sh')

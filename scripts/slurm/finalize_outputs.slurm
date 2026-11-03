@@ -8,10 +8,12 @@
 #SBATCH --time=06:00:00
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
+#SBATCH --export=ALL
 set -euo pipefail
 helper="${SLURM_SUBMIT_DIR:?}/src/utils/repair_extension_outputs.py"
 science="${1:?frozen scientific checkout required}"
 recovery="${2:?recovery ID required}"
+export CREDITPFN_RUNTIME_VERSION="${3:?accepted PROJECT runtime version required}"
 cd "$science"
 export CREDITPFN_EXPERIMENT=experiment0 CREDITPFN_USE_SCRATCH=0 PYTHONUNBUFFERED=1
 unset CREDITPFN_CONFIG CREDITPFN_LEGACY_ID CREDITPFN_EVAL_REFRESH CREDITPFN_RUNTIME_ACCEPTANCE

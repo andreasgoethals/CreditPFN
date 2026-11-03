@@ -2,6 +2,7 @@
 
 ## 03-11-2026
 
+- Pass the finalizer runtime explicitly and export the batch environment; refuse unaccepted fallback before touching results.
 - Preserve extension/debug scopes in legacy YAML output aliases; recover misplaced benchmark files with byte-verified, resumable relocation before original-source final audits.
 
 ## 02-11-2026
