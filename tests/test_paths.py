@@ -23,6 +23,41 @@ from src.utils.paths import (
 from src.utils import paths as _paths_mod
 
 
+@pytest.mark.parametrize('campaign,public', [
+    ('experiment4', 'experiment10'), ('experiment5', 'experiment5'),
+    ('experiment6', 'experiment8'), ('experiment7', 'experiment9'), ('experiment8', 'experiment6')])
+@pytest.mark.parametrize('name', ['output', 'output CreditPFN'])
+def test_legacy_yaml_output_aliases_keep_extension_scope(monkeypatch, tmp_path, campaign, public, name):
+    import json
+    from src.utils.study_layout import manifest
+    personal = tmp_path / 'personal'
+    project = tmp_path / 'project' / 'CreditPFN'
+    root = personal / 'output CreditPFN'
+    root.mkdir(parents=True)
+    (root / 'STUDY_LAYOUT.json').write_text(json.dumps(manifest()))
+    monkeypatch.setenv('CREDITPFN_OUTPUT_ROOT', str(personal))
+    monkeypatch.setenv('CREDITPFN_STAGING_ROOT', str(project))
+    monkeypatch.setenv('CREDITPFN_EXPERIMENT', campaign)
+    monkeypatch.setenv('CREDITPFN_LEGACY_ID', 'case1')
+    expected = project / 'output CreditPFN' / public / 'extensions/case1/results'
+    assert resolve_staging_path(f'{name}/results') == expected
+    assert resolve_staging_path(f'{name}/{campaign}/results') == expected
+    assert _paths_mod.results_dir() == expected
+    assert resolve_output_path(f'{name}/logs') == root / public / 'extensions/case1/logs'
+    assert resolve_staging_path(f'{name}/{campaign}/extensions/case1/results') == expected
+    assert resolve_staging_path(expected) == expected
+
+
+def test_generic_lora_alias_does_not_repeat_explicit_scope(monkeypatch, tmp_path):
+    monkeypatch.setenv('CREDITPFN_OUTPUT_ROOT', str(tmp_path))
+    monkeypatch.setenv('CREDITPFN_EXPERIMENT', 'experiment0')
+    monkeypatch.setenv('CREDITPFN_LORA_WORKFLOW', 'case1')
+    monkeypatch.delenv('CREDITPFN_LEGACY_ID', raising=False)
+    expected = tmp_path / 'output CreditPFN/experiment0/lora/case1/logs'
+    assert resolve_output_path('output/logs') == expected
+    assert resolve_output_path('output/experiment0/lora/case1/logs') == expected
+
+
 @pytest.fixture(autouse=True)
 def _clear_autodetect_cache():
     """``_autodetect_data_root`` is ``@functools.cache``-d for production

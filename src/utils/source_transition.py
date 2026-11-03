@@ -31,6 +31,7 @@ def verify_delta(repo, before):
         'src/utils/source_transition.py', 'src/utils/campaign_recovery.py',
         'src/utils/signal_probe.py',
         'src/utils/admission_recovery.py', 'scripts/slurm/admission_resume.slurm',
+        'src/utils/paths.py', 'src/utils/repair_extension_outputs.py', 'scripts/slurm/finalize_outputs.slurm',
     }
     changed = _git(repo, 'diff', '--name-only', before, 'HEAD').splitlines()
     forbidden = [p for p in changed if p not in allowed and not p.startswith(('docs/', 'tests/'))]
@@ -61,6 +62,14 @@ def verify_delta(repo, before):
         new.body = [n for n in new.body if not isinstance(n, ast.FunctionDef) or n.name not in excluded]
         if ast.dump(old) != ast.dump(new):
             raise RuntimeError(f'Numerical/input logic changed in {name}')
+    # The reviewed placement repair is confined to aliases for output paths.
+    # Input/weight resolution, scope construction and every other helper stay exact.
+    old = ast.parse(_git(repo, 'show', before + ':src/utils/paths.py'))
+    new = ast.parse((Path(repo) / 'src/utils/paths.py').read_text(encoding='utf-8'))
+    for tree in (old, new):
+        tree.body = [node for node in tree.body if not isinstance(node, ast.FunctionDef) or node.name != '_output_alias']
+    if ast.dump(old) != ast.dump(new):
+        raise RuntimeError('Input/weight/path logic changed beyond output placement')
     original = _git(repo, 'show', before + ':src/utils/experiment.py')
     expected = original.replace('return {"sha256": digest_json(payload), "specification": payload}',
         'from src.utils.source_transition import planned_identity\n    return planned_identity(cfg, payload)')

@@ -47,6 +47,31 @@ Never relocate an installed environment.
 
 ### Current campaign state
 
+**03-11-2026 recovery update:** all 128 extension training trials, 250 context tasks
+and 896 benchmark shards have run; no CreditPFN tasks remained queued at the morning
+inspection. All 896 benchmark logs ended successfully. The final auditor `62524918`
+correctly blocked publication because the generic YAML output alias omitted the extension
+directory: benchmark files are under each public experiment's `results/` instead of
+`extensions/study20261030d/results/`. Their unique run-name prefixes retain exact ownership.
+The repair uses a hash-verified, resumable relocation and then the original accepted
+evaluator; successful inference is not rerun. Numerical warnings include capped supplementary
+NLL and cast overflow; saved-prediction/primary-score/cohort checks must pass before publication.
+
+There are three DATA checkouts for distinct consumers: canonical `CreditPFN` (`2c35988`)
+owns the accepted scientific campaign; `CreditPFN-study-v2` (`4bf4535`) independently audits
+and promotes the original FP32 refresh; `CreditPFN-admission-recovery` holds the isolated
+submission/repair helper. The two temporary checkouts can be retired after publication and
+their helper/evaluator consumers are terminal, preserving source provenance and unique ignored
+records first. Shared persistent scientific assets remain on PROJECT; these are source checkouts,
+not duplicate result/weight stores. Do not delete either temporary checkout before its last consumer.
+
+The `finalize_outputs.slurm` helper operates from the isolated checkout, imports scientific
+audits only from the frozen canonical source and renames only verified extension-owned benchmark
+artifacts on PROJECT. Its journal survives interruption and never overwrites a destination.
+The generic path-alias fix is tested locally and deployed through Git, not patched into an active evaluator.
+
+**Earlier snapshot:**
+
 **Latest direct verification: 02-11-2026, approximately 09:25 CET.** Slurm is responding.
 All 80 fresh
 extension checks (12 correctness, 68 capacity) and independent inspection passed.

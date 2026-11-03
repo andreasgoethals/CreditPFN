@@ -1,5 +1,9 @@
 # Changelog
 
+## 03-11-2026
+
+- Preserve extension/debug scopes in legacy YAML output aliases; recover misplaced benchmark files with byte-verified, resumable relocation before original-source final audits.
+
 ## 02-11-2026
 
 - Resume outage-interrupted admission with separate replacement receipts, artifact-backed live-task dependencies and a final barrier that includes replacement jobs; preserve the active scientific checkout.

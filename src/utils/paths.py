@@ -575,11 +575,15 @@ def _output_alias(p: str | os.PathLike) -> Path:
     if not path.is_absolute() and path.parts and path.parts[0] in ("output", "output CreditPFN"):
         tail = path.parts[1:]
         if tail and tail[0] not in (*EXPERIMENTS, "shared", "figures"):
-            tail = (experiment_group(), *tail)
+            # Generic YAML paths must use exactly the same extension/debug scope
+            # as results_dir(). Return now: its public payload is already mapped.
+            return Path(OUTPUT_DIR_NAME, _experiment_scope(), *tail)
         if tail and tail[0] in EXPERIMENTS:
             from src.utils.study_layout import payload
             root = _resolve(OUTPUT_DIR_NAME, env_var=OUTPUT_ROOT_ENV, vsc_default=_vsc_default_output_root())
-            tail = (*Path(payload(tail[0], root)).parts, *tail[1:])
+            explicit_scope = len(tail) > 1 and tail[1] in {"extensions", "lora"}
+            destination = Path(payload(tail[0], root)) if explicit_scope else _experiment_scope(tail[0])
+            tail = (*destination.parts, *tail[1:])
         return Path(OUTPUT_DIR_NAME, *tail)
     return path
 
