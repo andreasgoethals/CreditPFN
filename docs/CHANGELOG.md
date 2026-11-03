@@ -2,6 +2,9 @@
 
 ## 03-11-2026
 
+- Second campaign groundwork: archive the first study locally (`archive/study-2026-11/`), quarantine all VSC CreditPFN outputs/trained checkpoints, pin the local Python 3.13 environment to the accepted container lock (`config/runtime/`), and add `config/design.yaml` + `src/utils/design.py` (reference recipe, E1–E11 grid, declared deviations, generated configs).
+- Diagnose the v2.6 LGD anomaly: the released v2.6 regressor predicts a comb-shaped bucket density (upstream reproduces the high NLL); add upstream-parity tests, a density-roughness guard and an optional bucket-CRPS LGD objective.
+- Add the optional Muon arm (Muon on hidden matrices, AdamW-matched update RMS), L2-SP for DiagScale corrections, FP32 DiagScale multiplication under BF16, a TabPFN evaluation-precision switch, and new defaults (10k updates, 0.4 query fraction, v2.6 cap 10,000, proportional PD sampling).
 - Regenerate and visually verify all 15 notebooks / 88 figures from the hash-verified final results, with complete captions and summaries.
 - Retry transient Windows snapshot-directory access denials briefly, preserving the previous pointer on persistent failure.
 - Fit long RQ training legends to measured label widths and wrap the factorial legend within A4 bounds; correct the exposure caption palette.

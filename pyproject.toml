@@ -8,12 +8,17 @@
 #      pip install -e ".[dev]"          # + pytest and lint tooling
 #      pip install -e ".[dev,notebooks]" # + Jupyter/ipykernel for the notebooks
 #
-#  Upstream training APIs change. Validate and record the existing environment
-#  with compatibility smoke tests and VSC null controls. Do not upgrade a
-#  floating upstream branch during an immutable experiment campaign.
+#  The scientific stack is PINNED to the accepted VSC container (env20261029f,
+#  config/runtime/env20261029f.pip-lock.txt): local tests must exercise the exact
+#  upstream training and inference code the cluster runs. tests/test_environment_parity.py
+#  fails on drift. Local install (CPU torch wheel of the same release):
 #
-#  Supported Python versions: 3.11–3.13. Expanding this range requires
-#  validating the complete compiled stack and upstream training interfaces.
+#      py -3.13 -m venv .venv
+#      .venv\Scripts\python -m pip install --no-deps --extra-index-url https://download.pytorch.org/whl/cpu -r config/runtime/local-cpu.txt
+#      .venv\Scripts\python -m pip install --no-deps -e .
+#
+#  Python 3.13 matches the container (3.13.11). Changing any pin requires a new
+#  container, experiment-0 parity controls and a recorded runtime acceptance.
 # =============================================================================
 
 [build-system]
@@ -25,53 +30,35 @@ name = "creditpfn"
 version = "0.1.0"
 description = "Continued pretraining of TabPFN v2/v2.6/v3 and TabICLv2 on real credit-risk data — PD (classification) and LGD (regression)."
 readme = "README.md"
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.13,<3.14"
 license = { text = "MIT" }
 authors = [{ name = "Andreas Goethals", email = "andreas.goethals@kuleuven.be" }]
 keywords = ["tabpfn", "tabular", "foundation-models", "credit-risk", "continued-pretraining", "finetuning"]
 classifiers = [
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Intended Audience :: Science/Research",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 
-# Runtime compatibility ranges, not a reproducible environment lock. Prepared
-# plans record installed versions; upstream training APIs still require the
-# experiment-0 compatibility controls before a new environment is used.
+# Exact pins of the accepted container's scientific stack (see the header).
 dependencies = [
-    # Core deep-learning stack
-    "torch>=2.3,<3.0",            # torch.amp.GradScaler is exported starting in 2.3
-    # TabPFN — validate the installed training API before preparing a campaign.
-    "tabpfn>=2.2",
-    # The compatibility shim uses private MetaBatch/preprocessing APIs.
-    # The finetune extra supplies their optimizer/transformers dependencies;
-    # inference-only installations are insufficient. Revalidate API changes.
-    "tabicl[finetune]>=2.1.1,<3",
-    # Scientific / tabular stack
-    "numpy>=1.26,<3.0",
-    "pandas>=2.1,<3.0",
-    "scipy>=1.11,<2.0",            # spatial.distance, stats.spearmanr (eval metrics)
-    "scikit-learn>=1.4,<2.0",      # FeatureAgglomeration, OrdinalEncoder, KFold, metrics
-    "threadpoolctl>=3.1,<4.0",    # direct CPU-thread controls in training and evaluation
-    "psutil>=5.9,<8.0",           # process memory / CPU telemetry
-    # Baseline models for the eval benchmark
-    "xgboost>=2.0,<4.0",
-    "catboost>=1.2,<2.0",
-    "optuna>=3.6,<5.0",            # per-fold HPO (TPE) for the boosting baselines
-    # Configuration management (plain OmegaConf + Hydra-style CLI dot-overrides)
-    "omegaconf>=2.3,<3.0",
-    "pyyaml>=6.0,<7.0",           # omegaconf's YAML backend; no direct import in src/
-    # Checkpoint staging from the Hugging Face Hub (src/utils/stage_checkpoints.py)
-    "huggingface_hub>=0.24,<1.0",
-    # pandas dispatches prediction .to_parquet to pyarrow. The writer retains
-    # a gzipped-CSV fallback; record the actual format rather than assuming it.
-    "pyarrow>=15.0",
-    # Plotting (figure export in src/visualize/figures.py + the notebooks)
-    "matplotlib>=3.8,<4.0",
-    # LoRA adapter (training-time only; merged into base weights at save time)
-    "peft>=0.10,<1.0",
+    "torch==2.12.0",
+    "tabpfn @ git+https://github.com/PriorLabs/tabPFN.git@27923f45287a680622012acd51a7b29f8b94415a",
+    "tabicl==2.1.1",
+    "numpy==2.4.6",
+    "pandas==2.3.3",
+    "scipy==1.17.1",
+    "scikit-learn==1.6.1",
+    "threadpoolctl==3.6.0",
+    "psutil==7.2.2",
+    "xgboost==3.2.0",
+    "catboost==1.2.10",
+    "lightgbm==4.6.0",
+    "optuna==4.8.0",
+    "omegaconf==2.3.0",
+    "huggingface_hub==0.36.2",
+    "matplotlib==3.10.9",
+    "peft==0.19.1",
 ]
 
 [project.optional-dependencies]
@@ -101,7 +88,7 @@ include = ["src", "src.*"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py313"
 extend-exclude = [
     # Read-only submodule. Never lint, never format, never touch.
     "tfm-library", "vsc-library",

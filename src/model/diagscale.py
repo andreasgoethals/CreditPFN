@@ -28,9 +28,13 @@ class QueryScale(nn.Module):
     def forward(self, query, n):
         transformed = self.base(query, n) if self.base is not None else query
         multiplier = 1 + self.delta
-        # Match the two released implementations: TabPFN uses normal tensor
-        # promotion; TabICL explicitly casts its multiplier to the query dtype.
+        # TabPFN uses normal tensor promotion. The released TabICL code casts the
+        # multiplier to the query dtype; under BF16 that rounds 1 + delta to steps of
+        # 2**-7, erasing corrections below ~0.004. Multiply in FP32 and cast only the
+        # product, which is identical in FP32 and keeps small corrections in BF16.
         if self.cast_multiplier:
+            if transformed.dtype in (torch.bfloat16, torch.float16):
+                return (transformed.float() * multiplier.float()).to(transformed.dtype)
             multiplier = multiplier.to(transformed.dtype)
         return transformed * multiplier
 

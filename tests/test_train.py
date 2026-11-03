@@ -757,9 +757,8 @@ def test_classification_metric_log_loss_is_finite() -> None:
 def test_regression_metric_rmse_with_mock_criterion() -> None:
     """RMSE branch of regression_metric works with a stand-in criterion
     that exposes a ``.mean()`` method."""
-    from tabpfn.architectures.base.bar_distribution import (
-        FullSupportBarDistribution,
-    )
+    from src.train.tabpfn_compat import import_bar_distribution
+    FullSupportBarDistribution = import_bar_distribution().FullSupportBarDistribution
     borders = torch.linspace(-3, 3, 11)
     crit = FullSupportBarDistribution(borders=borders, ignore_nan_targets=True)
     n = 50

@@ -1,0 +1,143 @@
+# CreditPFN study design (second campaign, drafted 03-11-2026).
+#
+# One reference recipe; every experiment changes only the settings listed under
+# `deviations`. Anything not listed MUST equal the reference; tests/test_design.py
+# fails on undeclared differences. Runs = models x partitions x tasks x arms.
+# Items marked `status: proposed` still need Andreas's decision before launch.
+
+schema: 1
+models: [v2, v2.6, v3, tabicl-v2]
+partitions: 4              # whole-dataset groups, split_seed 1729; train on 3, evaluate on the 4th
+tasks: [pd, lgd]
+
+reference:
+  optimizer: adamw
+  learning_rate: 3.0e-7
+  weight_decay: 0.0
+  l2sp_lambda: 0.003
+  warmup_fraction: 0.10
+  min_lr_fraction: 0.05
+  grad_clip_norm: 1.0
+  trainable: all
+  successful_updates: 10000
+  episode_rows: {v2: 10000, v2.6: 10000, v3: 26000, tabicl-v2: 26000}
+  query_fraction: 0.40          # 60/40 context/query, as Real-TabPFN
+  pd_class_sampling: proportional   # rows drawn uniformly; LGD is always uniform
+  exposure: one_sample          # one sampled episode per table visit
+  corpus: all_training_tables
+  preprocessing_views: 2
+  training_precision: bf16
+  evaluation_precision: fp32    # proposed for all models; Experiment 0 checks capacity
+  seed: 42
+  monitor:
+    updates: [0, 50, 100, 150, 200, 250, every_250_to_budget]
+    split: single_context_query   # one fixed fold per table, not five-fold
+    rows_per_table: 2000
+    tables: [heldout_credit, own_training_tables, retention_panel]
+
+experiments:
+  E1:
+    slug: reference
+    rq: 1
+    question: Does CPT on credit tables transfer to unseen credit tables, and how does it develop?
+    tasks: [pd, lgd]
+    arms: [{}]
+  E2:
+    slug: seed
+    rq: 1
+    question: How much of the effect is training randomness?
+    tasks: [pd, lgd]
+    arms: [{seed: 43}]
+  E3:
+    slug: length
+    rq: 1
+    question: Does the longer Real-TabPFN budget change the outcome?
+    tasks: [pd, lgd]
+    arms: [{successful_updates: 20000}]
+  E4:
+    slug: update_size_anchoring
+    rq: 2
+    question: How do update size and anchoring strength trade transfer against forgetting?
+    tasks: [pd, lgd]
+    arms:
+      - {learning_rate: 1.0e-6}
+      - {learning_rate: 3.0e-6}
+      - {learning_rate: 1.0e-5}
+      - {learning_rate: 3.0e-6, l2sp_lambda: 0.0}
+      - {learning_rate: 3.0e-6, l2sp_lambda: 0.03}
+      - {learning_rate: 3.0e-6, l2sp_lambda: 0.3}
+      - {learning_rate: 1.0e-5, l2sp_lambda: 0.0}
+      - {learning_rate: 1.0e-5, l2sp_lambda: 0.03}
+      - {learning_rate: 1.0e-5, l2sp_lambda: 0.3}
+  E5:
+    slug: scope
+    rq: 2
+    question: Which parameters should change?
+    tasks: [pd, lgd]
+    arms:
+      - {trainable: frozen_backbone, learning_rate: 1.0e-6}
+      - {trainable: frozen_backbone, learning_rate: 1.0e-5}
+      - {trainable: frozen_backbone, learning_rate: 1.0e-4}
+      - {trainable: diagscale, learning_rate: 1.0e-4}
+      - {trainable: diagscale, learning_rate: 1.0e-3}
+      - {trainable: diagscale, learning_rate: 1.0e-2}
+      - {trainable: lora_qv_r16, learning_rate: 3.0e-6}
+      - {trainable: lora_qv_r16, learning_rate: 1.0e-5}
+      - {trainable: lora_qv_r16, learning_rate: 3.0e-5}
+  E6:
+    slug: class_sampling
+    rq: 3
+    question: Do class-balanced training episodes help PD transfer?
+    tasks: [pd]
+    arms: [{pd_class_sampling: balanced}]
+  E7:
+    slug: context_query_split
+    rq: 3
+    question: Does a larger context share (80/20) change transfer?
+    tasks: [pd, lgd]
+    arms: [{query_fraction: 0.20}]
+  E8:
+    slug: exposure
+    rq: 3
+    question: Does seeing every row (full passes, one update per chunk) help?
+    tasks: [pd, lgd]
+    arms: [{exposure: full_pass}]
+  E9:
+    slug: corpus
+    rq: 3
+    question: All training tables or only those above 10,000 rows?
+    tasks: [pd]
+    arms: [{corpus: tables_above_10000_rows}]
+  E10:
+    slug: episode_size
+    rq: 3
+    question: Do larger training episodes help, on the large-table corpus?
+    tasks: [pd]
+    shared_arm: E9          # the model-maximum arm is E9's large-table run
+    arms:
+      - {corpus: tables_above_10000_rows, episode_rows: 2048}
+      - {corpus: tables_above_10000_rows, episode_rows: 10000, models: [v3, tabicl-v2]}
+  E11:
+    slug: context
+    rq: 4
+    question: Does CPT help more when the target table has few labelled rows?
+    kind: inference
+    source: E1
+    outer_folds: 5
+    validation_fraction: 0.20
+    context_rows: [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 50000]
+    include_full_available: true
+    max_context_rows: {v2: 10000, v2.6: 50000, v3: 50000, tabicl-v2: 50000}
+
+optional:            # status: proposed; not part of the launch grid until approved
+  muon:
+    slug: optimizer_muon
+    rq: 2
+    question: Does Muon (orthogonalized updates on matrix weights) change CPT?
+    tasks: [pd, lgd]
+    arms: [{optimizer: muon_adamw, muon_learning_rate: 2.0e-4}]
+    note: One rate per model; AdamW keeps non-matrix parameters. Experiment 0 tests the mechanics only.
+  top_layers:
+    slug: scope_top_layers
+    rq: 2
+    arms: [{trainable: top_quarter_blocks, learning_rate: 1.0e-6}]

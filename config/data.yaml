@@ -20,7 +20,7 @@ finetuning:
     v2:      10000                        # 10k=79GB measured OK. 14k OOM'd on real data (exp0
     #                                       job 11527923): attention memory is QUADRATIC in rows,
     #                                       so 14k~=155GB+overhead, not the 111GB a linear guess gave.
-    v2.6:    11000                        # 10k=109GB; 11k confirmed OK by exp0 (~132GB); 26k OOM
+    v2.6:    10000                        # study cap (11k measured OK, 26k OOM); equal to v2 by design
     v3:      26000                        # 26k = 131 GB measured OK; 50k OOM
     tabicl:  26000                        # 26k = 27 GB; 50k dies on a kernel shape, not memory
     default: 10000                        # the most conservative real value, not the largest
@@ -28,8 +28,8 @@ finetuning:
     v3: null
     v2.6: null
     default: null
-  context_sampling: balanced              # fallback batch policy (context AND query); named phases override in train.context_sampling
-  query_fraction: 0.2                     # default only; the sweep sets this per trial
+  context_sampling: stratified            # fallback: proportional PD class sampling (LGD uniform); "balanced" is an E6 arm
+  query_fraction: 0.4                     # 60/40 context/query, the reference split
 
 sanitize:
   max_missing_rate: 0.9                   # drop a column above this fraction of missing cells

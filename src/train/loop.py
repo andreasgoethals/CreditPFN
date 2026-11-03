@@ -722,8 +722,8 @@ def _make_optimizer_and_scheduler(
 ) -> tuple[torch.optim.Optimizer, torch.optim.lr_scheduler.LambdaLR]:
     """AdamW (betas=(0.9, 0.999)) + linear-warmup → cosine-decay schedule.
 
-    Optimizer family and schedule type are hardcoded; only `weight_decay`
-    and `warmup_fraction` are exposed via cfg.
+    ``optimizer.name`` selects AdamW (default) or the one-factor Muon arm
+    (Muon on hidden matrices with AdamW-matched update RMS, AdamW elsewhere).
     """
     lr = float(cfg.optimizer.lr) if hasattr(cfg.optimizer, "lr") else None
     if lr is None:
@@ -734,11 +734,12 @@ def _make_optimizer_and_scheduler(
     from src.model.lora import is_lora, adapter_parameters as lora_parameters
     if is_lora(model):
         params = lora_parameters(model)
-    optim = torch.optim.AdamW(
-        params,
+    from src.train.optimization import make_optimizer
+    optim = make_optimizer(
+        model, list(params),
+        name=str(getattr(cfg.optimizer, "name", "adamw")),
         lr=lr,
         weight_decay=float(cfg.optimizer.weight_decay),
-        betas=(0.9, 0.999),
     )
     sched = make_warmup_cosine_schedule(
         optim,
@@ -1111,16 +1112,15 @@ def _classification_loss(
 
 
 def _regression_loss(
-    pred_logits: torch.Tensor, targets: torch.Tensor, *, criterion,
+    pred_logits: torch.Tensor, targets: torch.Tensor, *, criterion, objective: str = "bar_nll",
 ) -> torch.Tensor:
-    """Bar-distribution NLL on the z-normalised targets."""
+    """Regression CPT loss on the z-normalised targets (bar NLL by default)."""
     # ``FullSupportBarDistribution`` calls ``torch.searchsorted`` on ``y``.
     # A strided slice is non-contiguous and makes PyTorch allocate/copy it on
     # every call (and emit a once-per-process performance warning).
-    return criterion(
-        logits=pred_logits,
-        y=targets[:, :, 0].contiguous(),
-    ).mean()
+    from src.train.regression_objectives import regression_loss
+    return regression_loss(pred_logits, targets[:, :, 0].contiguous(), criterion=criterion,
+                           objective=objective)
 
 
 def _ensemble_step_loss(
@@ -1130,6 +1130,7 @@ def _ensemble_step_loss(
     *,
     criterion,
     activation_checkpointing: bool = False,
+    regression_objective: str = "bar_nll",
 ) -> torch.Tensor:
     """One training-step loss for the N-estimator preprocessed batch.
 
@@ -1222,10 +1223,12 @@ def _ensemble_step_loss(
     # criterion's `__call__(logits=..., y=...)` expects logits shape
     # (Q, batch, L) for `FullSupportBarDistribution.__call__`; pass with
     # the batch dim as B*E and Q on axis 0.
-    return criterion(
-        logits=logits_BQL.permute(1, 0, 2),     # (Q, B*E, L)
-        y=targets_BQ_reg.transpose(0, 1).contiguous(),  # (Q, B*E)
-    ).mean()
+    from src.train.regression_objectives import regression_loss
+    return regression_loss(
+        logits_BQL.permute(1, 0, 2),                     # (Q, B*E, L)
+        targets_BQ_reg.transpose(0, 1).contiguous(),     # (Q, B*E)
+        criterion=criterion, objective=regression_objective,
+    )
 
 
 def _classification_loss_BE_LQ(
@@ -1805,6 +1808,10 @@ def train_one_config(
         if use_lora or (l2sp_lambda is not None and float(l2sp_lambda) != 0):
             raise ValueError("Native LoRA cannot combine the frozen axis or L2-SP")
     family = model_family(base_checkpoint_config)
+    regression_objective = str(cfg.train.get("regression_objective", "bar_nll"))
+    from src.train.regression_objectives import OBJECTIVES
+    if regression_objective not in OBJECTIVES:
+        raise ValueError(f"Unknown train.regression_objective: {regression_objective!r}")
     activation_checkpointing = cfg.train.get("activation_checkpointing", False)
     if not isinstance(activation_checkpointing, bool) or (activation_checkpointing and family != "tabpfn"):
         raise ValueError("Activation checkpointing requires a boolean and a TabPFN model")
@@ -1853,9 +1860,10 @@ def train_one_config(
     if diagscale:
         from src.model.diagscale import inject
         from src.utils.experiment import file_digest
-        effective_l2sp = l2sp_lambda if l2sp_lambda is not None else cfg.optimizer.l2sp_lambda
-        if use_lora or lora_adapters_inserted or float(effective_l2sp) != 0:
-            raise ValueError("DiagScale requires frozen_backbone=false, no LoRA and L2-SP=0")
+        # L2-SP on DiagScale anchors the zero-initialised corrections at zero (the identity
+        # scaling), the exact analogue of anchoring full weights at their pretrained values.
+        if use_lora or lora_adapters_inserted:
+            raise ValueError("DiagScale requires frozen_backbone=false and no LoRA")
         # Injection validates the loaded architecture and every query projection.
         # A filename-based v3-only check would reject the validated v2/v2.6 maps.
         inject(model, family=family, base_path=base_checkpoint_config,
@@ -1901,9 +1909,12 @@ def train_one_config(
     l2sp_stage_names: dict[str, list[str]] = {}
     l2sp_stage_w0: dict[str, float] = {}
     if l2sp_lambda > 0.0 and l2sp_applicable:
+        # Anchor exactly the optimized tensors. DiagScale keeps TabICL backbone autograd
+        # flags for kernel parity but never steps them, so only its `.delta` corrections count.
         l2sp_anchor = {
             n: p.detach().clone()
-            for n, p in model.named_parameters() if p.requires_grad
+            for n, p in model.named_parameters()
+            if (n.endswith(".delta") if diagscale else p.requires_grad)
         }
         # ‖w0‖ over the anchored tensors, captured once. It turns the L2-SP
         # penalty into a HUMAN-READABLE drift figure: the penalty is
@@ -2724,6 +2735,7 @@ def train_one_config(
                     loss = _ensemble_step_loss(
                         model, batch, criterion=criterion,
                         activation_checkpointing=activation_checkpointing,
+                        regression_objective=regression_objective,
                     )
                 else:
                     pred_logits, y_target, _, _ = _forward(model, batch)
@@ -2735,6 +2747,7 @@ def train_one_config(
                     else:
                         loss = _regression_loss(
                             pred_logits, y_target, criterion=criterion,
+                            objective=regression_objective,
                         )
                 # L2-SP anchors trainable pretrained weights in both full and frozen modes.
                 # Added to the back-prop loss ONLY — `loss` stays the pure

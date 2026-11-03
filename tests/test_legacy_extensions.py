@@ -43,9 +43,17 @@ class TabPFNV2p6(nn.Module):
         return self.head(x)
 
 
+class TabPFNV2(TabPFNV2p6):
+    """tabpfn 8.x v2 layout (the cluster's runtime): separate q/k/v/out projections."""
+
+
 class PerFeatureTransformer(nn.Module):
+    """tabpfn 2.x packed-projection layout; only importable with the old PyPI package."""
+
     def __init__(self, layout="qkv"):
         super().__init__()
+        pytest.importorskip("tabpfn.architectures.base.attention.full_attention",
+                            reason="packed 2.x attention is absent from the pinned tabpfn 8.0.8")
         from tabpfn.architectures.base.attention.full_attention import MultiHeadAttention
         from tabpfn.architectures.base.config import ModelConfig
         self.transformer_encoder = nn.Module()
@@ -127,7 +135,7 @@ def test_training_entry_reaches_validated_legacy_diagscale(version, track, monke
     cfg.train.dataloader_workers = 0
     base = tmp_path / "base.ckpt"
     base.write_bytes(b"mock checkpoint; the native loader is replaced below")
-    model = PerFeatureTransformer() if version == "v2" else TabPFNV2p6()
+    model = TabPFNV2() if version == "v2" else TabPFNV2p6()
     monkeypatch.setattr(paths, "resolve_base_checkpoint", lambda _: base)
     monkeypatch.setattr(loop, "split_from_cfg", lambda *a, **kw: SimpleNamespace(
         train=[SimpleNamespace(dataset_id="synthetic", n_rows=32)], test=[], summary={}))
@@ -460,7 +468,7 @@ def test_report_selection_is_explicit_and_scoped(monkeypatch, tmp_path):
     configs = report.configs(selection)
     with design.scope("one", "experiment7"):
         arms = report.size_arms(7, configs, "v2.6")
-    assert list(arms) == ["2,048 rows", "8,192 rows", "11,000 rows"]
+    assert list(arms) == ["2,048 rows", "8,192 rows", "10,000 rows"]
     assert all(r.trials.status.eq("PENDING").all() for r in arms.values())
     assert sum(len(r.trials) for r in arms.values()) == 12
 

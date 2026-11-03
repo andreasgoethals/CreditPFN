@@ -164,7 +164,12 @@ anything is finished.
   a local commit alone is not deployed there. Do not change cluster files used by active jobs.
 - **No secrets, credentials, private dataset contents or large log excerpts** in any document —
   both dated logs included, since both are tracked.
-- **Check which environment you are in.** Locally `.venv/Scripts/python.exe`. Historical cluster
+- **Second campaign (from 03-11-2026).** The first study is archived (`archive/study-2026-11/`
+  locally, quarantine folders on VSC). `config/design.yaml` is the grid authority: one reference
+  recipe plus declared deviations, materialized by `src/utils/design.py`; never hand-edit a
+  generated config. Open decisions live in `docs/NEXT_STEPS.md`.
+- **Check which environment you are in.** Locally `.venv/Scripts/python.exe` (Python 3.13, pinned
+  to the accepted container lock in `config/runtime/`; `tests/test_environment_parity.py`). Historical cluster
   evidence uses the `CreditPFN` Conda environment, printed as `Active conda env:`; preserve it as
   a comparator/rollback while the accepted PROJECT-container campaign runs. New jobs print
   `Active sealed runtime:`. Runtime acceptance must

@@ -9,7 +9,7 @@ from torch.nn import functional as F
 from src.model import diagscale, lora
 from src.train import loop
 from src.utils import legacy_design, legacy_probe
-from tests.test_legacy_extensions import PerFeatureTransformer, TabPFNV2p6
+from tests.test_legacy_extensions import TabPFNV2, TabPFNV2p6
 
 
 @pytest.mark.parametrize("mode", ["diagscale", "lora"])
@@ -23,7 +23,7 @@ def test_training_probe_binds_optimizer_model(mode, version, fault, monkeypatch,
     from omegaconf import OmegaConf
     OmegaConf.save(cfg, path)
     adaptation = diagscale if mode == "diagscale" else lora
-    model = PerFeatureTransformer() if version == "v2" else TabPFNV2p6()
+    model = TabPFNV2() if version == "v2" else TabPFNV2p6()
     pristine = copy.deepcopy(model)
     observed = {}
 
@@ -72,7 +72,7 @@ def test_training_probe_rejects_incorrect_optimizer_selection(selection, monkeyp
     cfg = legacy_design.configurations("auditprobe")["e5_pd_v2"]
     config = tmp_path / "config.yaml"
     OmegaConf.save(cfg, config)
-    model = PerFeatureTransformer()
+    model = TabPFNV2()
 
     def wrong_optimizer(model, *args, **kwargs):
         parameters = diagscale.adapter_parameters(model)

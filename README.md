@@ -2,6 +2,23 @@
 
 A descriptive study of **domain adaptation by continued pretraining (CPT)** of tabular foundation models, using credit risk as the case study. PD is binary default classification; LGD is loss-given-default regression. The study asks when transfer helps, how the adaptation recipe changes that effect, and what is retained on non-credit tables. It does not assume CPT is uniformly successful or unsuccessful.
 
+## Status (03-11-2026): second campaign in preparation
+
+The first study (896 runs) is complete and **archived**: locally in `archive/study-2026-11/`
+(results, figures, executed notebooks; gitignored) and on VSC in quarantine folders awaiting
+deletion. A second campaign is being prepared from one **reference recipe plus declared
+deviations**, defined in [`config/design.yaml`](config/design.yaml) and materialized by
+`python -m src.utils.design --write <folder>`; `tests/test_design.py` fails on any undeclared
+difference. Open decisions and next steps: [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md).
+
+- **Environment:** local `.venv` (Python 3.13) is pinned to the accepted VSC container lock
+  (`config/runtime/`); `tests/test_environment_parity.py` checks the match.
+- **v2.6 LGD:** the released v2.6 regressor predicts a comb-shaped bucket density, so
+  bar-distribution NLL training mostly reshapes it; see `src/train/density_checks.py` and
+  `tests/test_upstream_parity.py`. The LGD objective for v2.6 is an open decision.
+
+The sections below describe the archived first study until the second campaign replaces them.
+
 The method authority is [RESEARCH_BRIEF.md](docs/RESEARCH_BRIEF.md); primary-source support is in [LITERATURE.md](docs/LITERATURE.md). Start the analysis with the [PD overview](notebooks/general/03_overview_pd.ipynb) or [LGD overview](notebooks/general/04_overview_lgd.ipynb). [RESULTS_GUIDE.md](docs/RESULTS_GUIDE.md) maps questions to the detailed notebooks.
 
 ## Four questions, ten analyses

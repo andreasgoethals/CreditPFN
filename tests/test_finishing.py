@@ -86,7 +86,8 @@ def test_density_score_uses_given_original_space_criterion_and_caps_legacy_value
     from src.model.tabpfn_models import _tabpfn_regression_neg_nll
     # A known non-unit-width histogram: widths [2, 4], masses [1/4, 3/4].
     # Log density is log mass minus log width, not classification log mass.
-    from tabpfn.model.bar_distribution import BarDistribution
+    from src.train.tabpfn_compat import import_bar_distribution
+    BarDistribution = import_bar_distribution().BarDistribution
     criterion = BarDistribution(torch.tensor([0., 2., 6.]))
     logits = torch.log(torch.tensor([[.25, .75], [.25, .75]]))
     targets = np.array([1., 3.])

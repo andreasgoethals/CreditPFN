@@ -32,6 +32,12 @@ OUTPUT_DIR_NAME = "output CreditPFN"
 EXPERIMENTS = ("general", "experiment0", "experiment1", "experiment2", "experiment3",
                "experiment4", "experiment5", "experiment6", "experiment7", "experiment8",
                "experiment9", "experiment10")
+#: Second-campaign output groups: the experiment slugs of config/design.yaml
+#: (tests/test_design.py keeps the two lists identical).
+CAMPAIGN2_GROUPS = ("reference", "seed", "length", "update_size_anchoring", "scope",
+                    "class_sampling", "context_query_split", "exposure", "corpus", "episode_size",
+                    "context", "optimizer_muon", "scope_top_layers")
+EXPERIMENTS = EXPERIMENTS + CAMPAIGN2_GROUPS
 
 
 def experiment_group(value: str | None = None) -> str:
@@ -42,6 +48,11 @@ def experiment_group(value: str | None = None) -> str:
 
 
 def group_for_run(run: str) -> str:
+    if str(run).startswith("cpt2_"):
+        # Generated names are cpt2_<slug>_a<arm>; the slug is the output group.
+        slug = str(run)[len("cpt2_"):].rsplit("_a", 1)[0]
+        if slug in CAMPAIGN2_GROUPS:
+            return slug
     for prefix, group in (("cpt_lora_debug", "experiment0"), ("cpt_lora", "experiment8"),
                           ("cpt_diagscale_debug", "experiment0"), ("cpt_large_debug", "experiment0"),
                           ("cpt_context", "experiment4"), ("cpt_diagscale", "experiment5"),

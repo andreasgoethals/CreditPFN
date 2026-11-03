@@ -41,6 +41,7 @@ device: "auto"                            # auto | cuda | cpu
 track: "pd"                               # pd = classifier, lgd = regressor
 
 optimizer:
+  name: adamw                             # adamw (reference) | muon_adamw (one-factor arm)
   weight_decay: 0.0                       # 0: L2-SP anchors to w0 instead of to the origin
   l2sp_lambda: 0.003                      # anchor strength when not swept (Garg 2025)
 
@@ -48,12 +49,12 @@ scheduler:
   warmup_fraction: 0.10                   # linear warmup, then cosine
   min_lr_fraction: 0.05                   # floor as a fraction of peak
 
-lora:                                     # OFF: frozen_backbone is a true freeze since 24-08
-  enabled: false                          # true = adapters inside the backbone instead
-  r: 8
-  alpha: 16
-  dropout: 0.1
-  target_modules: ["q_projection", "k_projection", "v_projection", "out_projection"]
+lora:                                     # native LoRA is selected by train.adaptation_mode: lora
+  enabled: false                          # legacy switch; must stay false
+  r: 16
+  alpha: 32
+  dropout: 0.0
+  target_modules: ["attention_qv"]
 
 train:
   deterministic: false                  # strict kernels only for the recovery control
@@ -63,7 +64,7 @@ train:
   resource_diagnostics: true
   resource_interval_seconds: 20
   epochs: 100                             # one epoch = one pass over the training corpus
-  target_total_steps: 20000               # null = epochs govern; else epochs are trimmed/extended
+  target_total_steps: 10000               # the reference budget; null = epochs govern
   max_epochs_for_step_budget: 6000        # rail on the above, so no arm runs away
   grad_clip_norm: 1.0
   amp: true

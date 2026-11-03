@@ -142,8 +142,26 @@ def _tabpfn_regression_neg_nll(tabpfn_model, X: np.ndarray, y: np.ndarray, *, ou
         return None
 
 
+#: Evaluation precision for every TabPFN estimator (original and CPT alike):
+#: "auto" = the package default (mixed precision on GPU); "float32" = full FP32, the
+#: second campaign's proposed policy so all four models are scored in the same precision.
+PRECISION_ENV = "CREDITPFN_TABPFN_PRECISION"
+
+
+def inference_precision():
+    import os
+    value = os.environ.get(PRECISION_ENV, "auto")
+    if value == "auto":
+        return "auto"
+    if value == "float32":
+        import torch
+        return torch.float32
+    raise ValueError(f"{PRECISION_ENV} must be 'auto' or 'float32', got {value!r}")
+
+
 def _make_tabpfn(task_type: str, model_path: str | Path, **extra):
     """Construct ``TabPFNClassifier`` or ``TabPFNRegressor`` from a path."""
+    extra.setdefault("inference_precision", inference_precision())
     if "_diagscale" in Path(model_path).stem:
         from src.model.diagscale import make_estimator
         return make_estimator(task_type, model_path, family="tabpfn", **extra)

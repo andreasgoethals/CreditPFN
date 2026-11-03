@@ -1,6 +1,6 @@
 # Isolated v2/v2.6 extension. Caps are operating limits, not matched budgets.
 versions: [v2, v2.6]
-training_rows: {v2: 10000, v2.6: 11000}
+training_rows: {v2: 10000, v2.6: 10000}
 context_rows: {v2: 10000, v2.6: 50000}
 target_updates: 6
 interrupt_after: 3

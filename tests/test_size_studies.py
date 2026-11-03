@@ -207,8 +207,11 @@ done
 
 
 def test_cleanup_preserves_a_shared_control_even_without_live_jobs(tmp_path, monkeypatch):
-    from src.utils import clean_run
+    from src.utils import clean_run, paths
+    # check_saved_consumers resolves plans through src.utils.paths; patch that root too, or
+    # the test silently reads whatever results happen to exist in the local output tree.
     monkeypatch.setattr(clean_run,'outputs_dir',lambda:tmp_path)
+    monkeypatch.setattr(paths,'outputs_dir',lambda:tmp_path)
     path=tmp_path/'experiment7/manifests/plans/pd.json'
     path.parent.mkdir(parents=True)
     path.write_text('{"shared_reference":{"run":"cpt_corpus_v1"}}')
