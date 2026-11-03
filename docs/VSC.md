@@ -47,6 +47,15 @@ Never relocate an installed environment.
 
 ### Current campaign state
 
+**Later native failure, 03-11-2026 10:53 CET:** the extension audit below passed, but `62528794`
+then failed because its frozen FP32-inspection subprocess segfaulted in pandas' CSV parser.
+Publication and global completion remain blocked. Retirement `62529038` was automatically
+cancelled before execution; **all three DATA checkouts remain required**. Native diagnostic
+`62529383` archived/verified the core on private PROJECT and removed its DATA copy; diagnostic
+`62529530` has passed nested package imports and is reinspecting the original frozen refresh
+with faulthandler. Do not rerun successful scientific arrays, install an optional package, retire
+the checkouts or claim the native failure resolved before this evidence is inspected.
+
 **Live postflight, 03-11-2026:** scientific production is finished; do not resubmit
 training, context or benchmark arrays. Native finalizer `62528794`, helper `2c9ce92`, passed
 the strict original-source extension audit: 1,374 benchmark comparisons, 6,870 folds and
