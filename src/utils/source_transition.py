@@ -32,6 +32,7 @@ def verify_delta(repo, before):
         'src/utils/signal_probe.py',
         'src/utils/admission_recovery.py', 'scripts/slurm/admission_resume.slurm',
         'src/utils/paths.py', 'src/utils/repair_extension_outputs.py', 'scripts/slurm/finalize_outputs.slurm',
+        'src/utils/evaluation_evidence.py',
     }
     changed = _git(repo, 'diff', '--name-only', before, 'HEAD').splitlines()
     forbidden = [p for p in changed if p not in allowed and not p.startswith(('docs/', 'tests/'))]
@@ -55,7 +56,8 @@ def verify_delta(repo, before):
     for name, excluded in [('src/eval/context_curve.py', {'read_plan'}),
                            ('src/utils/experiment.py', {'trial_identity'}),
                            ('src/utils/prepare_experiment.py', {'check_prepared', 'check_size_evaluation'}),
-                           ('src/utils/legacy_checks.py', {'read_workflow'})]:
+                           ('src/utils/legacy_checks.py', {'read_workflow'}),
+                           ('src/utils/evaluation_evidence.py', {'predictions'})]:
         old = ast.parse(_git(repo, 'show', before + ':' + name))
         new = ast.parse((Path(repo) / name).read_text(encoding='utf-8'))
         old.body = [n for n in old.body if not isinstance(n, ast.FunctionDef) or n.name not in excluded]

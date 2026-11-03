@@ -703,6 +703,13 @@ uncapped likelihood improved; the original logits needed to resolve that questio
 not exported. The paper can report the point/quantile deterioration without claiming a
 validated density-improvement mechanism.
 
+Prediction replay uses round-trip CSV parsing. Legacy TabPFN regression writers converted
+native arrays to Python scalars; the auditor reconstructs FP32 columns only when every
+stored value is preserved exactly and retains genuine FP64 columns. This reproduces the
+original metric arithmetic, particularly R² near zero, without changing observations or
+loosening validation tolerances. The November extension check reproduced all 1,920 LGD
+fold scores this way; full cohort/prediction publication gates remain separate.
+
 After this bounded check, write the paper around observed adaptation benefits, harms,
 context dependence and cost. Generic-data CPT, target-table fine-tuning, temporal
 evaluation, additional seeds and new hyperparameter grids remain outside this paper.

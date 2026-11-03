@@ -57,6 +57,17 @@ The repair uses a hash-verified, resumable relocation and then the original acce
 evaluator; successful inference is not rerun. Numerical warnings include capped supplementary
 NLL and cast overflow; saved-prediction/primary-score/cohort checks must pass before publication.
 
+All 4,122 misplaced artifacts (1,560,706,877 bytes) are now hash-verified in their proper
+extension folders. Runtime-correct retry `62527967` then exposed an auditor-only R² dtype
+mismatch: seven folds differed after CSV promotion to FP64. Native verification `62528628`
+reproduced all 1,920 LGD folds with lossless dtype reconstruction and the unchanged strict
+checks. The isolated helper binds this reviewed reader separately and proves every other
+numeric/cohort-check function unchanged. Global final audits/publication are still gated.
+The earlier runtime-export failure `62527712` did not move any scientific files.
+
+Read-only Slurm scan `62526910` covered all 6,017 logs. Scoped cleanup `62527209` archived,
+verified and retired 29 confirmed failed logs; successful and recoverable evidence remains.
+
 There are three DATA checkouts for distinct consumers: canonical `CreditPFN` (`2c35988`)
 owns the accepted scientific campaign; `CreditPFN-study-v2` (`4bf4535`) independently audits
 and promotes the original FP32 refresh; `CreditPFN-admission-recovery` holds the isolated

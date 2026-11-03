@@ -144,6 +144,25 @@ def run(checkout, recovery, apply=False):
         record['complete'] = True
         write_json(journal, record)
         print('Relocation verified. Starting original-source independent final audits/publication.', flush=True)
+        # Keep all accepted scientific code and all numeric/cohort checks. Only
+        # replace the legacy CSV decoder with the reviewed lossless dtype reader.
+        import ast
+        import importlib.util
+        from src.utils import evaluation_evidence as evidence
+        reader_file = Path(__file__).with_name('evaluation_evidence.py')
+        before = ast.parse(Path(evidence.__file__).read_text(encoding='utf-8'))
+        after = ast.parse(reader_file.read_text(encoding='utf-8'))
+        for tree in (before, after):
+            tree.body = [node for node in tree.body if not isinstance(node, ast.FunctionDef) or node.name != 'predictions']
+        if ast.dump(before) != ast.dump(after):
+            raise RuntimeError('Independent numeric/cohort checks changed beyond prediction decoding')
+        spec = importlib.util.spec_from_file_location('_verified_prediction_reader', reader_file)
+        reader = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(reader)
+        write_json(folder / 'auditor-io-fidelity.json', dict(scientific_source=actual,
+            original_reader_sha256=sha(Path(evidence.__file__)), corrected_reader_sha256=sha(reader_file),
+            unchanged_numeric_checks=True, lossless_float32_only=True))
+        evidence.predictions = reader.predictions
         cr.finish(recovery)
 
 

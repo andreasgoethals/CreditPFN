@@ -2,6 +2,11 @@
 
 ## 03-11-2026
 
+- **Tried:** runtime-correct finalizer retry `62527967`, helper `236b126`, accepted scientific source `2c35988`.
+  **Result:** all **4,122 benchmark artifacts / 1,560,706,877 bytes** were relocated and SHA-verified; final audit then stopped with `Saved predictions disagree with r2` at 10:02:09. No scores/predictions were edited, no inference was rerun, and publication stayed blocked.
+  **Why:** legacy prediction serialization converts native FP32 scalars to Python floats. CSV decoding then promotes them to FP64, changing sklearn's R² arithmetic near zero. Native diagnostic `62528310` found seven affected folds among 1,920 LGD folds; maximum FP64-vs-recorded R² difference was 2.4329e-7, and FP32 reconstruction reproduced each flagged R²/RMSE exactly.
+  **Instead:** losslessly reconstruct representable FP32 columns independently of metric values, preserve true FP64 columns, and leave all numeric/cohort checks and tolerances unchanged. Native verification `62528628` passed **1,920/1,920** strict LGD fold checks: all 384 prediction files have lossless FP32 predictions; 128 target columns restore to FP32 and 256 remain FP64. The isolated finalizer records an explicit I/O-reader correction and proves every other auditor function's AST unchanged before using the frozen accepted scientific evaluator. Local tests cover near-zero R², exact values, genuine FP64 and tampered predictions.
+  **Validation:** complete local suite partitioned across two independent processes (36 + 35 files): **571 + 773 = 1,344 passed**, one existing skip and two existing CPU warnings; elapsed partition times 4m03s/10m32s. No package installation, metric-tolerance change or modification to the frozen scientific checkout.
 - **Tried:** first output-finalization launch `62527712` after deployment of `e94fbd3` to the idle DATA helper checkout.
   **Result:** stopped before runtime activation/relocation with exit 2: `CREDITPFN_RUNTIME_VERSION must name an accepted PROJECT container`; no scientific files were moved and no relocation journal was created.
   **Why:** the new Slurm wrapper omitted its environment-export directive and relied on an inherited runtime variable, contrary to the Leuven submission contract.
