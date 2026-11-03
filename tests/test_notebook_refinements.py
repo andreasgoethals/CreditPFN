@@ -2,6 +2,7 @@
 from types import SimpleNamespace
 
 import matplotlib.pyplot as plt
+import matplotlib as mpl
 import numpy as np
 import pandas as pd
 import pytest
@@ -53,7 +54,7 @@ def test_long_adaptation_legends_fit_without_reducing_font_size():
     bounds = legend.get_window_extent(fig.canvas.get_renderer())
     assert legend._ncols == 2
     assert bounds.x0 >= fig.bbox.x0 and bounds.x1 <= fig.bbox.x1
-    assert all(text.get_fontsize() == 8 for text in legend.get_texts())
+    assert all(text.get_fontsize() == mpl.rcParams["legend.fontsize"] for text in legend.get_texts())
 
 
 @pytest.mark.parametrize("length,limit", [(17,12), (16,12), (25,12), (5,4), (17,20), (0,12)])

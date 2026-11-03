@@ -35,8 +35,8 @@ checks run through Slurm.
 
 GPFS PROJECT is not assumed to be allocated. Check current quotas before staging more assets.
 The output name is `output CreditPFN/` on both persistent tiers, a deliberate template deviation.
-The shared publication tree `figures/{rq1,rq2,rq3,rq4,experiment0,general}` and actual ICML figure
-widths are the other documented deviations.
+The shared publication tree `figures/{rq1,rq2,rq3,rq4,experiment0,general}` is the other documented
+deviation; figures use the template's A4 widths.
 
 `env20261029f` is the immutable PROJECT container rebuilt from the recorded environment:
 238 distribution versions and installed Git-source bytes matched at construction. Runtime acceptance

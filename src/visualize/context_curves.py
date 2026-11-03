@@ -177,72 +177,95 @@ def fixed_cohort(study, table, track, horizon):
     return part[part.dataset.isin(valid)].copy()
 
 
+TRACK_METRICS = {"pd": (("roc_auc", "AUC"), ("brier_score", "Brier score")),
+                 "lgd": (("r2", "R²"), ("rmse", "RMSE"))}
+GAIN_SCALE = {"roc_auc": 100., "brier_score": 100., "r2": 1., "rmse": 1.}
+GAIN_LABELS = {"roc_auc": "ΔAUC (pp)\nCPT − original", "brier_score": "Brier reduction (×100)\noriginal − CPT",
+               "r2": "ΔR²\nCPT − original", "rmse": "RMSE reduction\noriginal − CPT"}
+
+
+def _family_color(study, family):
+    return style.color(study.config.get("base_version", "v3") if family == "tabpfn" else "tabicl")
+
+
+def _family_label(study, family):
+    return "TabPFN " + study.config.get("base_version", "v3") if family == "tabpfn" else FAMILIES[family]
+
+
 def plot_context_curves(study, *, selected_track=None, horizons=None):
-    """Two metrics, absolute scores and paired effects in four readable panels."""
+    """Per task: columns are context horizons (fixed cohorts), rows are level and paired effects."""
     from matplotlib.lines import Line2D
     pages = []
-    for track, metrics in (("pd", (("roc_auc", "AUC"), ("brier_score", "Brier score"))),
-                           ("lgd", (("r2", "R²"), ("rmse", "RMSE")))):
+    for track, metrics in TRACK_METRICS.items():
         if selected_track is not None and track != selected_track:
             continue
+        columns = []
         for horizon in sorted({min(n, study.config["max_context_rows"]) for n in (COHORT_HORIZONS if horizons is None else horizons)}):
             pairs = {m: fixed_cohort(study, paired_tables(study, m), track, horizon) for m, _ in metrics}
-            available = [set(d.dataset) if not d.empty else set() for d in pairs.values()]
-            cohort = set.intersection(*available) if available else set()
-            if not cohort:
+            if any(d.empty for d in pairs.values()):
                 continue
-            n = len(cohort)
-            fig, axes = plt.subplots(2, 2, squeeze=False, figsize=style.figsize(style.WIDTH_FULL, style.DASHBOARD_RATIO), layout="constrained")
-            fig.suptitle(f"{track.upper()}: context up to {horizon:,} rows · {n} fixed table{'s' if n != 1 else ''}")
-            curves, values = [], []
-            for row, (metric, label) in enumerate(metrics):
+            cohort = set.intersection(*(set(d.dataset) for d in pairs.values()))
+            if cohort:
+                columns.append((horizon, cohort, {m: d[d.dataset.isin(cohort)] for m, d in pairs.items()}))
+        if not columns:
+            continue
+        (primary, primary_label), (secondary, _) = metrics
+        rows = [("level", primary), ("gain", primary), ("gain", secondary)]
+        fig, axes = plt.subplots(len(rows), len(columns), squeeze=False, sharex="col", layout="constrained",
+                                 figsize=style.rows_figsize(len(rows)))
+        fig.suptitle("Labelled target context: original versus CPT")
+        curves, values = [], []
+        for c, (horizon, cohort, pairs) in enumerate(columns):
+            for metric, data in pairs.items():
+                values.append(data.assign(horizon=int(horizon)))
+            for r, (kind, metric) in enumerate(rows):
+                ax = axes[r, c]
                 data = pairs[metric]
-                if data.empty:
-                    axes[row, 0].text(.5, .5, f"{label} unavailable", transform=axes[row, 0].transAxes, ha="center")
-                    axes[row, 1].set_visible(False)
-                    continue
-                data = data[data.dataset.isin(cohort)]
-                values.append(data)
                 for family in study.config["families"]:
                     part = data[data.family.eq(family)]
                     curve = part.groupby("context_rows")[["original", "adapted", "gain"]].mean()
-                    color = style.color(study.config.get("base_version", "v3") if family == "tabpfn" else "tabicl")
-                    for state, line in (("original", "--"), ("adapted", "-")):
-                        axes[row, 0].plot(curve.index, curve[state], color=color, linestyle=line, linewidth=style.THIN_LINE)
-                    for _, table in part.groupby("dataset"):
-                        table = table.sort_values("context_rows")
-                        axes[row, 1].plot(table.context_rows, table.gain, color=color,
-                            alpha=style.TABLE_CURVE_ALPHA, linewidth=style.TABLE_CURVE_LINE)
-                    axes[row, 1].plot(curve.index, curve.gain, color=color, linewidth=style.MEAN_CURVE_LINE)
-                    curves.append(curve.reset_index().assign(family=family, datasets=n, metric=metric))
-                axes[row, 0].set_ylabel(label)
-                axes[row, 1].set_ylabel(("Original − CPT " if metric in ("brier_score", "rmse") else "CPT − original ") + label)
-                axes[row, 1].axhline(0, color=style.color("reference"), linestyle=":")
-            axes[0, 0].set_title("Original and CPT performance")
-            axes[0, 1].set_title("Paired effect · positive favors CPT")
-            for ax in axes.flat:
-                ax.set_xscale("log"); ax.set_xlabel("Labeled context rows")
-            handles = [Line2D([], [], color=style.color(study.config.get("base_version", "v3") if f == "tabpfn" else "tabicl"),
-                label="TabPFN " + study.config.get("base_version", "v3") if f == "tabpfn" else FAMILIES[f]) for f in study.config["families"]]
-            handles += [Line2D([], [], color=style.color("reference"), linestyle="--", label="Original"),
-                        Line2D([], [], color=style.color("reference"), label="CPT"),
-                        Line2D([], [], color=style.color("annotation"), linewidth=style.TABLE_CURVE_LINE, label="Individual table effect"),
-                        Line2D([], [], color=style.color("mean"), linewidth=style.MEAN_CURVE_LINE, label="Equal-table mean effect")]
-            fig.legend(handles=handles, loc="outside lower center", ncol=3)
-            pages.append(cp.Page(f"context_{track}_through_{horizon}", fig,
-                f"{track.upper()}. Original and fixed-recipe CPT {metrics[0][1]} and {metrics[1][1]} (left), with their paired effects (right). "
-                f"The same {n} tables contribute at every displayed context size and to every displayed model. "
-                "Scores are averaged over five paired outer folds within table, then equally across tables. "
-                "Thin colored curves retain individual table effects; thick curves show their equal-table mean. "
-                "These curves are not uncertainty bands or repeated-context variance estimates. "
-                "Validation labels have a fixed additional budget; all outer-test rows are unchanged. "
-                "The horizon identifies the table cohort, so levels across different horizon panels need not agree. "
-                "The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training "
-                "partition excluded the table; positive differences favour CPT.",
-                {"Plotted means": pd.concat(curves, ignore_index=True), "Complete paired table values": pd.concat(values, ignore_index=True)},
-                {"measurement": "five_fold_context_benchmark", "metrics": [m for m, _ in metrics], "aggregation_unit": "table",
-                 "context_horizon": int(horizon), "fixed_tables": sorted(cohort),
-                 "additional_validation_fraction": float(study.config["inner_validation_fraction"])}))
+                    color = _family_color(study, family)
+                    if kind == "level":
+                        ax.plot(curve.index, curve.original, color=color, linestyle="--", linewidth=style.THIN_LINE * 1.2)
+                        ax.plot(curve.index, curve.adapted, color=color, linewidth=style.THIN_LINE * 1.2)
+                    else:
+                        for _, table in part.groupby("dataset"):
+                            table = table.sort_values("context_rows")
+                            ax.plot(table.context_rows, table.gain * GAIN_SCALE[metric], color=color,
+                                    alpha=style.TABLE_CURVE_ALPHA, linewidth=style.TABLE_CURVE_LINE)
+                        ax.plot(curve.index, curve.gain * GAIN_SCALE[metric], color=color, linewidth=style.MEAN_CURVE_LINE)
+                    if r == 0 or (kind == "gain" and metric != rows[r - 1][1]):
+                        curves.append(curve.reset_index().assign(family=family, datasets=len(cohort), metric=metric,
+                                                                 horizon=int(horizon)))
+                if kind == "gain":
+                    ax.axhline(0, color=style.color("reference"), linestyle=":", linewidth=style.THIN_LINE)
+                ax.set_xscale("log")
+                if r == 0:
+                    ax.set_title(f"Context ≤ {horizon:,} rows\n{len(cohort)} fixed table{'s' if len(cohort) != 1 else ''}")
+                if c == 0:
+                    ax.set_ylabel(primary_label if kind == "level" else GAIN_LABELS[metric])
+                if r == len(rows) - 1:
+                    ax.set_xlabel("Labelled context rows")
+        handles = [Line2D([], [], color=_family_color(study, f), linewidth=style.MEAN_CURVE_LINE, label=_family_label(study, f))
+                   for f in study.config["families"]]
+        handles += [Line2D([], [], color=style.color("annotation"), linestyle="--", label="Original (top row)"),
+                    Line2D([], [], color=style.color("annotation"), label="CPT (top row)"),
+                    Line2D([], [], color=style.color("annotation"), alpha=.6, linewidth=style.TABLE_CURVE_LINE, label="Single table"),
+                    Line2D([], [], color=style.color("mean"), linewidth=style.MEAN_CURVE_LINE, label="Equal-table mean")]
+        fig.legend(handles=handles, loc="outside lower center", ncol=3)
+        pages.append(cp.Page(f"context_{track}", fig,
+            f"Top: equal-table mean {primary_label} of the original model and the fixed-recipe CPT checkpoint as labelled context grows. "
+            "Middle and bottom: paired CPT effects for the primary and secondary metric; positive values favour CPT, "
+            "thin curves are individual tables and thick curves their equal-table mean. "
+            "Each column fixes one table cohort across every context size and both models, so levels need not agree between columns. "
+            "Scores average five paired outer folds within table before tables receive equal weight; curves are not uncertainty bands. "
+            "Validation labels use a separate fixed budget and all outer-test rows are unchanged. "
+            "The CPT checkpoint is the E1 reference recipe (full updates, LR 3×10⁻⁷, L2-SP 0.003) trained on a partition that excluded the table.",
+            {"Plotted means": pd.concat(curves, ignore_index=True), "Complete paired table values": pd.concat(values, ignore_index=True)},
+            {"measurement": "five_fold_context_benchmark", "metrics": [m for m, _ in metrics], "aggregation_unit": "table",
+             "context_horizons": [int(h) for h, _, _ in columns],
+             "fixed_tables": {str(int(h)): sorted(cohort) for h, cohort, _ in columns},
+             "additional_validation_fraction": float(study.config["inner_validation_fraction"])}))
     return pages
 
 
@@ -256,64 +279,80 @@ def plot_context_support(study):
     if data.empty:
         return []
     support = data.groupby(["track", "family", "context_rows"]).dataset.nunique().rename("tables").reset_index()
-    fig, axes = plt.subplots(1, 2, figsize=style.figsize(style.WIDTH_FULL), layout="constrained")
+    fig, axes = plt.subplots(1, 2, figsize=style.rows_figsize(1, row_height=1.6), layout="constrained")
+    fig.suptitle("Tables with all five paired folds")
     for ax, track in zip(axes, ("pd", "lgd")):
         group = support[support.track.eq(track)]
         if group.empty:
             ax.remove(); continue
         for index, (family, arm) in enumerate(group.groupby("family")):
-            ax.plot(arm.context_rows, arm.tables, label="TabPFN " + study.config.get("base_version", "v3") if family == "tabpfn" else FAMILIES[family],
-                    color=style.color(study.config.get("base_version", "v3") if family == "tabpfn" else "tabicl"),
-                    marker=style.PANEL_MARKERS[index], markersize=style.CURVE_MARKER_SIZE,
-                    linestyle=style.FACTOR_ARM_STYLES[index])
-        ax.set_title(track.upper()); ax.set_xscale("log"); ax.set_xlabel("Labeled context rows")
+            ax.plot(arm.context_rows, arm.tables, label=_family_label(study, family), color=_family_color(study, family),
+                    marker=style.PANEL_MARKERS[index], markersize=style.CURVE_MARKER_SIZE * 1.3,
+                    linestyle=style.FACTOR_ARM_STYLES[index], linewidth=style.THIN_LINE * 1.2)
+        ax.set_title(f"{track.upper()} credit tables"); ax.set_xscale("log"); ax.set_xlabel("Labelled context rows")
         ax.yaxis.set_major_locator(MaxNLocator(integer=True))
-        ax.set_ylabel("Tables with all five paired folds"); ax.legend()
+        ax.set_ylabel("Tables"); ax.legend()
     return [cp.Page("context_support", fig,
-        "Number of tables with finite original/CPT measurements in all five folds at each nominal context size. "
-        "Counts reflect both available table sizes and completed exports; they are not live scheduler status. "
-        "Performance panels separately fix the cohort over their full displayed range.", {"Paired support": support})]
+        "Number of held-out credit tables with finite original and CPT measurements in all five outer folds at each nominal context size. "
+        "Counts fall when the context budget exceeds a table's available training rows; lines coincide where both models have the same support. "
+        "Context-curve columns separately fix one cohort over their full displayed range.", {"Paired support": support})]
 
 
 def plot_table_curves(study):
-    """Named tables expose heterogeneous responses hidden by an equal-table mean."""
-    from matplotlib.lines import Line2D
+    """Every table × context size paired effect as a heatmap, one page per task."""
+    from matplotlib.colors import TwoSlopeNorm
     pages = []
-    for track, metrics in (("pd", (("roc_auc", "AUC"), ("brier_score", "Brier score"))),
-                           ("lgd", (("r2", "R²"), ("rmse", "RMSE")))):
+    for track, metrics in TRACK_METRICS.items():
         frames = [paired_tables(study, metric) for metric, _ in metrics]
         frames = [f[f.track.eq(track)] for f in frames if not f.empty]
+        frames = [f for f in frames if not f.empty]
         if not frames:
             continue
         data = pd.concat(frames, ignore_index=True)
-        datasets = sorted(data.dataset.unique())
-        for start in range(0, len(datasets), style.CONTEXT_TABLES_PER_PAGE):
-            selected = datasets[start:start + style.CONTEXT_TABLES_PER_PAGE]
-            fig, axes = plt.subplots(len(selected), 2, squeeze=False, layout="constrained",
-                figsize=style.figsize(style.WIDTH_FULL, style.CONTEXT_TABLE_PAGE_RATIO))
-            fig.suptitle(f"{track.upper()}: paired context effects by table")
-            for row, dataset in enumerate(selected):
-                for col, (metric, label) in enumerate(metrics):
-                    ax = axes[row, col]
-                    for family in study.config["families"]:
-                        part = data[data.dataset.eq(dataset) & data.metric.eq(metric) & data.family.eq(family)].sort_values("context_rows")
-                        color = style.color(study.config.get("base_version", "v3") if family == "tabpfn" else "tabicl")
-                        ax.plot(part.context_rows, part.gain, color=color, linewidth=style.THIN_LINE)
-                    ax.set_title(dataset)
-                    ax.set_ylabel("Δ" + label if metric in ("roc_auc", "r2") else ("Brier reduction" if metric == "brier_score" else "RMSE reduction"))
-                    ax.set_xscale("log"); ax.set_xlabel("Labeled context rows")
-                    ax.axhline(0, color=style.color("reference"), linestyle=":")
-            handles = [Line2D([], [], color=style.color(study.config.get("base_version", "v3") if f == "tabpfn" else "tabicl"),
-                label="TabPFN " + study.config.get("base_version", "v3") if f == "tabpfn" else FAMILIES[f]) for f in study.config["families"]]
-            fig.legend(handles=handles, loc="outside lower center", ncol=len(handles))
-            pages.append(cp.Page(f"context_{track}_tables_{start // style.CONTEXT_TABLES_PER_PAGE + 1:02d}", fig,
-                f"{track.upper()}. Context-size effects for individually named held-out credit tables. "
-                "Each line averages five paired outer-fold differences; positive values favor CPT. "
-                "AUC and R² use CPT minus original; Brier and RMSE use original minus CPT. "
-                "Every curve retains the same table, fold membership and complete test rows at all context sizes. "
-                "Each fold uses nested context subsets and an unchanged validation set. Model-specific native context caps apply. "
-                "The original and CPT absolute scores and every plotted difference are retained in the printed tables.",
-                {"Named-table absolute scores and effects": data[data.dataset.isin(selected)]}))
+        families = [f for f in study.config["families"] if data.family.eq(f).any()]
+        depth = data.groupby("dataset").context_rows.max().sort_values(ascending=False)
+        datasets = list(depth.index)
+        # Nominal sizes only: per-table available-pool endpoints stay in the printed tables.
+        data = data[data.context_rows.isin(study.config["context_rows"])]
+        sizes = np.array(sorted(data.context_rows.unique()), float)
+        edges = np.concatenate([[sizes[0] / np.sqrt(sizes[1] / sizes[0]) if len(sizes) > 1 else sizes[0] / 2],
+                                np.sqrt(sizes[:-1] * sizes[1:]),
+                                [sizes[-1] * np.sqrt(sizes[-1] / sizes[-2]) if len(sizes) > 1 else sizes[0] * 2]])
+        present = [(m, l) for m, l in metrics if data.metric.eq(m).any()]
+        height = style.FIGURE_BAND + len(present) * (len(datasets) * .105 + .35)
+        fig, axes = plt.subplots(len(present), len(families), squeeze=False, sharex=True, sharey=True,
+                                 layout="constrained", figsize=(style.WIDTH_FULL, min(height, style.MAX_HEIGHT)))
+        fig.suptitle("Paired CPT effect for every table and context size")
+        for r, (metric, label) in enumerate(present):
+            part = data[data.metric.eq(metric)]
+            scaled = part.gain * GAIN_SCALE[metric]
+            limit = float(np.nanquantile(np.abs(scaled), style.HEATMAP_COLOR_QUANTILE)) or 1.
+            norm = TwoSlopeNorm(0., -limit, limit)
+            for c, family in enumerate(families):
+                ax = axes[r, c]
+                cells = part[part.family.eq(family)].pivot(index="dataset", columns="context_rows", values="gain")
+                cells = cells.reindex(index=datasets, columns=sizes) * GAIN_SCALE[metric]
+                mesh = ax.pcolormesh(edges, np.arange(len(datasets) + 1), cells.to_numpy(float),
+                                     cmap=style.CMAP_DIVERGING, norm=norm, shading="flat", rasterized=True)
+                ax.set_facecolor(style.COLORS["untuned"] + "33")
+                ax.set_xscale("log"); ax.set_ylim(len(datasets), 0)
+                ax.set_yticks(np.arange(len(datasets)) + .5, datasets, fontsize=6.5)
+                ax.tick_params(axis="y", length=0); ax.grid(False)
+                if r == 0:
+                    ax.set_title(_family_label(study, family), color=_family_color(study, family), fontweight="bold")
+                if r == len(present) - 1:
+                    ax.set_xlabel("Labelled context rows")
+            bar = fig.colorbar(mesh, ax=list(axes[r]), shrink=.9, aspect=18, pad=.01, extend="both")
+            bar.set_label(GAIN_LABELS[metric], fontsize=7)
+            bar.ax.tick_params(labelsize=6.5)
+        pages.append(cp.Page(f"context_{track}_tables", fig,
+            "Paired CPT effect, averaged over five outer folds, for every held-out credit table (rows, ordered by available context) "
+            "and nominal context size (columns); blue favours CPT and red the original model. "
+            "Rows show the primary metric (top) and secondary metric (bottom). Colour limits are symmetric at the 95th percentile "
+            "of absolute effects per metric and extreme cells saturate; printed values are exact. "
+            "Grey cells exceed the table's available training rows. Each table keeps its fold membership, nested context subsets "
+            "and complete test rows at every size.",
+            {"Named-table absolute scores and effects": data}))
     return pages
 
 

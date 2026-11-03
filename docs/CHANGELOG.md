@@ -2,6 +2,8 @@
 
 ## 03-11-2026
 
+- Redraw all figures at A4 widths (160/77 mm) with ordinal recipe colours and colour-blind-safe outcome colours; merge per-quantity/per-metric RQ figures into one figure per task (training: loss/credit/retention rows; results: credit, secondary and retention columns; one factorial; one context figure plus a table × context heatmap); drop duplicated schedule, seed-contrast, two-metric and all-pass validation figures.
+
 - Record fresh FP32 audit/runtime-integrity passes and submit publication, finalization and guarded checkout retirement in one native allocation.
 - Record the passed extension audit and native pandas crash blocking FP32 publication; preserve the PROJECT core and cancelled cleanup dependencies.
 - Record completed extension science, strict native prediction replay, running final publication and dependency-gated archival/retirement of the temporary DATA checkouts.

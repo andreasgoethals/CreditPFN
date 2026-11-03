@@ -112,11 +112,12 @@ def test_context_all_metrics_keep_absolute_scores_and_paired_differences():
     study=context_fixture()
     study.cells["rmse"]=1-study.cells.r2
     pages=cc.plot_context_curves(study)
-    assert len(pages)==6
+    assert len(pages)==2
     for page in pages:
         data=page.tables["Complete paired table values"]
         assert data.metric.nunique()==2
-        assert data.groupby(["metric","family","context_rows"]).dataset.nunique().nunique()==1
+        for _,horizon in data.groupby("horizon"):
+            assert horizon.groupby(["metric","family","context_rows"]).dataset.nunique().nunique()==1
         for metric,g in data.groupby("metric"):
             sign=-1 if metric in ("brier_score","rmse") else 1
             assert np.allclose(g.gain, sign*(g.adapted-g.original))
@@ -126,7 +127,7 @@ def test_context_all_metrics_keep_absolute_scores_and_paired_differences():
     # One unavailable secondary cell removes that table from both metric averages.
     study.cells.loc[(study.cells.dataset=="Table 0") & (study.cells.state=="cpt"),"brier_score"]=np.nan
     page=cc.plot_context_curves(study)[0]
-    assert page.provenance["fixed_tables"]==["Table 1","Table 2"]
+    assert page.provenance["fixed_tables"]["128"]==["Table 1","Table 2"]
 
 
 def test_atomic_checkpoint_replacement_retries_only_transient_windows_errors(tmp_path, monkeypatch):
@@ -173,7 +174,7 @@ def test_missing_secondary_metric_does_not_create_inconsistent_context_panel():
     study=context_fixture()
     study.cells["rmse"]=1-study.cells.r2
     study.cells.loc[study.cells.track.eq("pd"),"brier_score"]=np.nan
-    assert all("context_pd_" not in page.name for page in cc.plot_context_curves(study))
+    assert all(page.name != "context_pd" for page in cc.plot_context_curves(study))
 
 
 def test_approach_rate_comparison_keeps_the_same_tables():

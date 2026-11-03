@@ -269,7 +269,7 @@ def write_captions(notebooks: tuple[str, ...], *, migrate: bool = True) -> Path:
         "These are the paper's captions: paste one straight under its figure. Pure description",
         "— what is plotted, on what axes, from how much data. No interpretation.",
         "",
-        "Figures are PDFs at the ICML paper widths (6.75 inches full, 3.25 inches single column); never rescale one",
+        "Figures are PDFs at the A4 paper widths (160 mm full, 77 mm single column); never rescale one",
         "in the document, because that rescales its text with it.",
         "",
     ]

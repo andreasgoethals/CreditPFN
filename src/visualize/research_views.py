@@ -68,7 +68,7 @@ def plot_secondary_effects(primary, secondary, track):
     fig.legend(handles=[Line2D([], [], marker="o", linestyle="", color=style.color("annotation"), label="Individual table"),
                         Line2D([], [], marker="D", linestyle="", color=style.color("reference"), label="Equal-table mean")],
                loc="outside lower center", ncol=2)
-    fig.suptitle(f"{track.upper()}: does the reference improve both metrics?")
+    fig.suptitle(f"{track.upper()}: reference recipe, primary against secondary metric per table")
     return [cp.Page("reference_two_metrics", fig,
         "The predefined full-update reference (peak LR 3e-7, L2-SP 0.003, seed 42) on held-out credit tables. "
         f"Horizontal values are {sy.UNITS[first]}; vertical values are {sy.UNITS[second]}. "

@@ -590,7 +590,7 @@ def plot_outcomes(data, track):
         tick.set_fontsize(style.GRID_FONT)
     handles = [Patch(color=style.OUTCOME_COLORS[k], label=k) for k in ("Improved", "Negligible", "Worse")]
     fig.legend(handles=handles, loc="outside lower center", ncol=3)
-    fig.suptitle(f"{track.upper()}: tables improved, unchanged or worse")
+    fig.suptitle(f"{track.upper()}: share of held-out tables improved, unchanged or worse")
     band = style.TIE_BAND[metric] * SCALE[metric]
     return [cp.Page("overview_outcomes", fig,
         f"For the predefined full/frozen reference and all prescribed follow-up arms, the share of held-out credit tables whose paired "

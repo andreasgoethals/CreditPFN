@@ -7,40 +7,24 @@ the order that notebook drew them. Caption text is passed to
 These are the paper's captions: paste one straight under its figure. Pure description
 — what is plotted, on what axes, from how much data. No interpretation.
 
-Figures are PDFs at the ICML paper widths (6.75 inches full, 3.25 inches single column); never rescale one
+Figures are PDFs at the A4 paper widths (160 mm full, 77 mm single column); never rescale one
 in the document, because that rescales its text with it.
 
 ## experiment0/01_null_controls
 
-**[experiment0__01_null_controls__01_pd_coverage_pd](experiment0/experiment0__01_null_controls__01_pd_coverage_pd.pdf)** — `pd_coverage_pd`
-
-PD. Recorded status of 8 planned PD trials by base model. PENDING denotes no manifest outcome and can include currently running or queued jobs. INTERRUPTED denotes saved progress, not a numerical failure. This figure does not query the scheduler.
-
-**[experiment0__01_null_controls__02_lgd_coverage_lgd](experiment0/experiment0__01_null_controls__02_lgd_coverage_lgd.pdf)** — `lgd_coverage_lgd`
-
-LGD. Recorded status of 8 planned LGD trials by base model. PENDING denotes no manifest outcome and can include currently running or queued jobs. INTERRUPTED denotes saved progress, not a numerical failure. This figure does not query the scheduler.
-
-**[experiment0__01_null_controls__03_null_audit_lgd](experiment0/experiment0__01_null_controls__03_null_audit_lgd.pdf)** — `null_audit_lgd`
-
-Recorded CPU audit checks on saved zero-learning-rate checkpoints: canonical model/inference-state equality, per-dataset monitoring parity and whole-audit outcome. Missing audit logs are not treated as successful checks.
-
-**[experiment0__01_null_controls__04_null_audit_pd](experiment0/experiment0__01_null_controls__04_null_audit_pd.pdf)** — `null_audit_pd`
-
-Recorded CPU audit checks on saved zero-learning-rate checkpoints: canonical model/inference-state equality, per-dataset monitoring parity and whole-audit outcome. Missing audit logs are not treated as successful checks.
-
-**[experiment0__01_null_controls__05_pd_null_monitor_pd](experiment0/experiment0__01_null_controls__05_pd_null_monitor_pd.pdf)** — `pd_null_monitor_pd`
+**[experiment0__01_null_controls__01_pd_null_monitor_pd](experiment0/experiment0__01_null_controls__01_pd_null_monitor_pd.pdf)** — `pd_null_monitor_pd`
 
 PD. Largest absolute change from update zero over recorded datasets, separately for training and held-out tables. Zero indicates unchanged monitoring scores. This check complements rather than replaces exact saved-state audits.
 
-**[experiment0__01_null_controls__06_pd_null_manifest_pd](experiment0/experiment0__01_null_controls__06_pd_null_manifest_pd.pdf)** — `pd_null_manifest_pd`
+**[experiment0__01_null_controls__02_pd_null_manifest_pd](experiment0/experiment0__01_null_controls__02_pd_null_manifest_pd.pdf)** — `pd_null_manifest_pd`
 
 PD. Change in the recorded held-out partition-mean monitor after zero-learning-rate updates. Each cell fixes base and adaptation. This aggregate check complements the exact saved-state and per-table prediction audits; an unchanged mean alone cannot establish either.
 
-**[experiment0__01_null_controls__07_lgd_null_monitor_lgd](experiment0/experiment0__01_null_controls__07_lgd_null_monitor_lgd.pdf)** — `lgd_null_monitor_lgd`
+**[experiment0__01_null_controls__03_lgd_null_monitor_lgd](experiment0/experiment0__01_null_controls__03_lgd_null_monitor_lgd.pdf)** — `lgd_null_monitor_lgd`
 
 LGD. Largest absolute change from update zero over recorded datasets, separately for training and held-out tables. Zero indicates unchanged monitoring scores. This check complements rather than replaces exact saved-state audits.
 
-**[experiment0__01_null_controls__08_lgd_null_manifest_lgd](experiment0/experiment0__01_null_controls__08_lgd_null_manifest_lgd.pdf)** — `lgd_null_manifest_lgd`
+**[experiment0__01_null_controls__04_lgd_null_manifest_lgd](experiment0/experiment0__01_null_controls__04_lgd_null_manifest_lgd.pdf)** — `lgd_null_manifest_lgd`
 
 LGD. Change in the recorded held-out partition-mean monitor after zero-learning-rate updates. Each cell fixes base and adaptation. This aggregate check complements the exact saved-state and per-table prediction audits; an unchanged mean alone cannot establish either.
 
@@ -224,121 +208,57 @@ LGD. Each point is one configuration: its equal-table mean paired change in R² 
 
 ## rq1/01_training
 
-**[rq1__01_training__01_pd_e1_loss](rq1/rq1__01_training__01_pd_e1_loss.pdf)** — `pd_e1_loss`
+**[rq1__01_training__01_pd_trajectories](rq1/rq1__01_training__01_pd_trajectories.pdf)** — `pd_trajectories`
 
-PD. E1 learning rates · query loss. Native query objectives are averaged in successful-update windows, giving each planned trial one contribution; missing trial support remains a gap. Native LGD objectives differ across architectures and are not compared numerically. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
+PD. Training trajectories by learning rate and seed. Rows show query loss, held-out credit, non-credit retention; columns show models. Query loss is the native training objective, averaged in successful-update windows with one contribution per planned trial; native LGD objectives differ across architectures and are compared only within a column. Monitor rows show changes from update zero on the fixed-context monitor, averaged over the same complete table and trial cohort at every milestone; they are training diagnostics, not five-fold benchmark results. Positive values favour CPT. The four training partitions contribute equally and shared controls appear once. Missing planned support is left as a gap. Equal update counts do not imply equal row exposure or compute.
 
-**[rq1__01_training__02_pd_e1_credit](rq1/rq1__01_training__02_pd_e1_credit.pdf)** — `pd_e1_credit`
+**[rq1__01_training__02_lgd_trajectories](rq1/rq1__01_training__02_lgd_trajectories.pdf)** — `lgd_trajectories`
 
-PD. E1 learning rates · held-out credit. Fixed-context held-out credit monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
+LGD. Training trajectories by learning rate and seed. Rows show query loss, held-out credit, non-credit retention; columns show models. Query loss is the native training objective, averaged in successful-update windows with one contribution per planned trial; native LGD objectives differ across architectures and are compared only within a column. Monitor rows show changes from update zero on the fixed-context monitor, averaged over the same complete table and trial cohort at every milestone; they are training diagnostics, not five-fold benchmark results. Positive values favour CPT. The four training partitions contribute equally and shared controls appear once. Missing planned support is left as a gap. Equal update counts do not imply equal row exposure or compute.
 
-**[rq1__01_training__03_pd_e1_retention](rq1/rq1__01_training__03_pd_e1_retention.pdf)** — `pd_e1_retention`
-
-PD. E1 learning rates · non-credit retention. Fixed-context non-credit retention monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
-
-**[rq1__01_training__04_lgd_e1_loss](rq1/rq1__01_training__04_lgd_e1_loss.pdf)** — `lgd_e1_loss`
-
-LGD. E1 learning rates · query loss. Native query objectives are averaged in successful-update windows, giving each planned trial one contribution; missing trial support remains a gap. Native LGD objectives differ across architectures and are not compared numerically. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
-
-**[rq1__01_training__05_lgd_e1_credit](rq1/rq1__01_training__05_lgd_e1_credit.pdf)** — `lgd_e1_credit`
-
-LGD. E1 learning rates · held-out credit. Fixed-context held-out credit monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
-
-**[rq1__01_training__06_lgd_e1_retention](rq1/rq1__01_training__06_lgd_e1_retention.pdf)** — `lgd_e1_retention`
-
-LGD. E1 learning rates · non-credit retention. Fixed-context non-credit retention monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
-
-**[rq1__01_training__07_pd_reference_seeds_credit](rq1/rq1__01_training__07_pd_reference_seeds_credit.pdf)** — `pd_reference_seeds_credit`
-
-PD. E1/E2 fixed reference · credit. Fixed-context held-out credit monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
-
-**[rq1__01_training__08_pd_reference_seeds_retention](rq1/rq1__01_training__08_pd_reference_seeds_retention.pdf)** — `pd_reference_seeds_retention`
-
-PD. E1/E2 fixed reference · retention. Fixed-context non-credit retention monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
-
-**[rq1__01_training__09_lgd_reference_seeds_credit](rq1/rq1__01_training__09_lgd_reference_seeds_credit.pdf)** — `lgd_reference_seeds_credit`
-
-LGD. E1/E2 fixed reference · credit. Fixed-context held-out credit monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
-
-**[rq1__01_training__10_lgd_reference_seeds_retention](rq1/rq1__01_training__10_lgd_reference_seeds_retention.pdf)** — `lgd_reference_seeds_retention`
-
-LGD. E1/E2 fixed reference · retention. Fixed-context non-credit retention monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
-
-**[rq1__01_training__11_shared_schedule_pd_lgd](rq1/rq1__01_training__11_shared_schedule_pd_lgd.pdf)** — `shared_schedule_pd_lgd`
+**[rq1__01_training__03_shared_schedule_pd_lgd](rq1/rq1__01_training__03_shared_schedule_pd_lgd.pdf)** — `shared_schedule_pd_lgd`
 
 Learning rates evaluated from the recorded campaign configuration using the training scheduler. Each distinct peak-rate schedule is drawn once, pooling tasks only when budget, warmup and decay floor agree. The rate for update u is the scheduler value before that update (index u minus one). The first update has zero learning rate and is omitted from the logarithmic axis, but retained in the table. These are configured schedules; measured epoch-end rates and their sampling intervals are reported separately.
 
 ## rq1/02_results
 
-**[rq1__02_results__01_pd_credit_roc_auc](rq1/rq1__02_results__01_pd_credit_roc_auc.pdf)** — `pd_credit_roc_auc`
+**[rq1__02_results__01_pd_effects](rq1/rq1__02_results__01_pd_effects.pdf)** — `pd_effects`
 
-PD. Transfer and training-seed sensitivity · held-out credit. Each CPT recipe is compared with its own original model; positive values favor CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Original scores, adapted scores and named-table effects are retained in the text summary.
+PD. Transfer and retention by learning rate and seed. Each CPT recipe is compared with its own original model; positive values favour CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Within a model and column, every displayed recipe uses the same tables; cohorts can differ between models and columns. Retention values first average the four training partitions. Horizontal axes are scaled per panel. Absent rows were not run for that model; they are not zero effects.
 
-**[rq1__02_results__02_pd_credit_brier_score](rq1/rq1__02_results__02_pd_credit_brier_score.pdf)** — `pd_credit_brier_score`
+**[rq1__02_results__02_lgd_effects](rq1/rq1__02_results__02_lgd_effects.pdf)** — `lgd_effects`
 
-PD. Transfer and training-seed sensitivity · held-out credit. Each CPT recipe is compared with its own original model; positive values favor CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Original scores, adapted scores and named-table effects are retained in the text summary.
+LGD. Transfer and retention by learning rate and seed. Each CPT recipe is compared with its own original model; positive values favour CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Within a model and column, every displayed recipe uses the same tables; cohorts can differ between models and columns. Retention values first average the four training partitions. Horizontal axes are scaled per panel. Absent rows were not run for that model; they are not zero effects.
 
-**[rq1__02_results__03_lgd_credit_r2](rq1/rq1__02_results__03_lgd_credit_r2.pdf)** — `lgd_credit_r2`
-
-LGD. Transfer and training-seed sensitivity · held-out credit. Each CPT recipe is compared with its own original model; positive values favor CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Original scores, adapted scores and named-table effects are retained in the text summary.
-
-**[rq1__02_results__04_lgd_credit_rmse](rq1/rq1__02_results__04_lgd_credit_rmse.pdf)** — `lgd_credit_rmse`
-
-LGD. Transfer and training-seed sensitivity · held-out credit. Each CPT recipe is compared with its own original model; positive values favor CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Original scores, adapted scores and named-table effects are retained in the text summary.
-
-**[rq1__02_results__05_pd_choices_roc_auc](rq1/rq1__02_results__05_pd_choices_roc_auc.pdf)** — `pd_choices_roc_auc`
-
-PD. Paired changes between planned choices. Paired differences between the named choices' CPT effects, on identical tables. Positive favors the alternative choice and can mean less degradation, rather than positive transfer. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Both choices' effects and their named-table differences are retained in the text summary.
-
-**[rq1__02_results__06_lgd_choices_r2](rq1/rq1__02_results__06_lgd_choices_r2.pdf)** — `lgd_choices_r2`
-
-LGD. Paired changes between planned choices. Paired differences between the named choices' CPT effects, on identical tables. Positive favors the alternative choice and can mean less degradation, rather than positive transfer. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Both choices' effects and their named-table differences are retained in the text summary.
-
-**[rq1__02_results__07_pd_retention_roc_auc](rq1/rq1__02_results__07_pd_retention_roc_auc.pdf)** — `pd_retention_roc_auc`
-
-PD. Transfer and training-seed sensitivity · non-credit retention. Each CPT recipe is compared with its own original model; positive values favor CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Original scores, adapted scores and named-table effects are retained in the text summary.
-
-**[rq1__02_results__08_lgd_retention_r2](rq1/rq1__02_results__08_lgd_retention_r2.pdf)** — `lgd_retention_r2`
-
-LGD. Transfer and training-seed sensitivity · non-credit retention. Each CPT recipe is compared with its own original model; positive values favor CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Original scores, adapted scores and named-table effects are retained in the text summary.
-
-**[rq1__02_results__09_pd_reference_two_metrics](rq1/rq1__02_results__09_pd_reference_two_metrics.pdf)** — `pd_reference_two_metrics`
-
-PD. The predefined full-update reference (peak LR 3e-7, L2-SP 0.003, seed 42) on held-out credit tables. Horizontal values are ΔAUC (percentage points); vertical values are Brier reduction (×100). Each colored point represents one table with five complete paired outer folds for both metrics; the diamond is their equal-table mean. Both directions are oriented so that positive favors CPT. Axis ranges differ by base to retain small effects. AUC measures ranking; Brier score measures probability error, so their changes need not agree.
-
-**[rq1__02_results__10_pd_reference_tables](rq1/rq1__02_results__10_pd_reference_tables.pdf)** — `pd_reference_tables`
+**[rq1__02_results__03_pd_reference_tables](rq1/rq1__02_results__03_pd_reference_tables.pdf)** — `pd_reference_tables`
 
 PD. Experiment 1, predefined reference recipe (all trainable weights updated, peak LR 3e-7, L2-SP λ 0.003, seed 42), final five-fold benchmark: paired change in AUC (percentage points) on every held-out credit table relative to the original model of the same base. Each axis label gives the equal-table mean and the number of tables improving by more than 0.1 pp. Filled markers: at least four of the five outer folds change in the direction of the table mean; open markers: the folds disagree. Tables are ordered by their mean effect across the four bases; horizontal axes differ between models. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight.
 
-**[rq1__02_results__11_pd_reference_uncertainty](rq1/rq1__02_results__11_pd_reference_uncertainty.pdf)** — `pd_reference_uncertainty`
+**[rq1__02_results__04_pd_reference_uncertainty](rq1/rq1__02_results__04_pd_reference_uncertainty.pdf)** — `pd_reference_uncertainty`
 
 PD. Mean paired benchmark effects of the predefined full-update CPT reference and 95% conditional table-bootstrap intervals. Positive effects favor CPT; RMSE is reported as fractional error reduction. Filled circles include all credit tables; open squares retain documented public sources. Each table contributes the mean of five paired outer folds. Source restriction is based on provenance, not scores. Intervals do not capture training-seed uncertainty or establish source independence.
 
-**[rq1__02_results__12_pd_calibration_overview](rq1/rq1__02_results__12_pd_calibration_overview.pdf)** — `pd_calibration_overview`
+**[rq1__02_results__05_pd_calibration_overview](rq1/rq1__02_results__05_pd_calibration_overview.pdf)** — `pd_calibration_overview`
 
 PD. Changes in the displayed outer-test probability-quality scores for the predefined full-update reference (LR 3e-7, L2-SP 0.003, one-sample training) relative to its untuned base. Positive reductions favor continued pretraining (CPT). Raw probabilities and validation-fitted Platt and isotonic calibration use a common dataset cohort within each base: all 9 scores require the same five completed, matched outer folds. Diamonds show equal-dataset means; horizontal lines span dataset quartiles, not confidence intervals. Log loss, when exported, is in nats; ECE depends on the binning scheme.
 
-**[rq1__02_results__13_pd_prediction_diagnostics](rq1/rq1__02_results__13_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
+**[rq1__02_results__06_pd_prediction_diagnostics](rq1/rq1__02_results__06_pd_prediction_diagnostics.pdf)** — `pd_prediction_diagnostics`
 
 PD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
-**[rq1__02_results__14_lgd_reference_two_metrics](rq1/rq1__02_results__14_lgd_reference_two_metrics.pdf)** — `lgd_reference_two_metrics`
-
-LGD. The predefined full-update reference (peak LR 3e-7, L2-SP 0.003, seed 42) on held-out credit tables. Horizontal values are ΔR²; vertical values are RMSE reduction (%). Each colored point represents one table with five complete paired outer folds for both metrics; the diamond is their equal-table mean. Both directions are oriented so that positive favors CPT. Axis ranges differ by base to retain small effects. R² and RMSE derive from squared error and are not independent confirmations; relative RMSE puts the size of error changes in context.
-
-**[rq1__02_results__15_lgd_reference_tables](rq1/rq1__02_results__15_lgd_reference_tables.pdf)** — `lgd_reference_tables`
+**[rq1__02_results__07_lgd_reference_tables](rq1/rq1__02_results__07_lgd_reference_tables.pdf)** — `lgd_reference_tables`
 
 LGD. Experiment 1, predefined reference recipe (all trainable weights updated, peak LR 3e-7, L2-SP λ 0.003, seed 42), final five-fold benchmark: paired change in R² on every held-out credit table relative to the original model of the same base. Each axis label gives the equal-table mean and the number of tables improving by more than 0.001 R². Filled markers: at least four of the five outer folds change in the direction of the table mean; open markers: the folds disagree. Tables are ordered by their mean effect across the four bases; horizontal axes differ between models. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight.
 
-**[rq1__02_results__16_lgd_reference_uncertainty](rq1/rq1__02_results__16_lgd_reference_uncertainty.pdf)** — `lgd_reference_uncertainty`
+**[rq1__02_results__08_lgd_reference_uncertainty](rq1/rq1__02_results__08_lgd_reference_uncertainty.pdf)** — `lgd_reference_uncertainty`
 
 LGD. Mean paired benchmark effects of the predefined full-update CPT reference and 95% conditional table-bootstrap intervals. Positive effects favor CPT; RMSE is reported as fractional error reduction. Filled circles include all credit tables; open squares retain documented public sources. Each table contributes the mean of five paired outer folds. Source restriction is based on provenance, not scores. Intervals do not capture training-seed uncertainty or establish source independence.
 
-**[rq1__02_results__17_lgd_prediction_diagnostics](rq1/rq1__02_results__17_lgd_prediction_diagnostics.pdf)** — `lgd_prediction_diagnostics`
+**[rq1__02_results__09_lgd_prediction_diagnostics](rq1/rq1__02_results__09_lgd_prediction_diagnostics.pdf)** — `lgd_prediction_diagnostics`
 
 LGD. Matched five-fold out-of-fold predictions on held-out credit tables. Circles show individual tables; their small vertical offsets follow table-name order and have no quantitative meaning. Black diamonds are equal-table means; segments are dataset interquartile ranges, not confidence intervals. Each label gives the number of tables. Mean error is predicted minus observed target, pooled over test rows within a table. The left panel measures reduction of its absolute value; the right measures reduction in squared error. These are empirical errors, not a theoretical bias–variance decomposition.
 
-**[rq1__02_results__18_lgd_v26_distribution_tradeoff](rq1/rq1__02_results__18_lgd_v26_distribution_tradeoff.pdf)** — `lgd_v26_distribution_tradeoff`
+**[rq1__02_results__10_lgd_v26_distribution_tradeoff](rq1/rq1__02_results__10_lgd_v26_distribution_tradeoff.pdf)** — `lgd_v26_distribution_tradeoff`
 
 LGD. TabPFN v2.6 before and after the predefined CPT recipe. Thin lines connect each credit table's five-fold means; the colored line is their equal-table mean. The dotted coverage line marks the nominal 90% level. Log scores use the historical per-row NLL replacement/clipping at ±100 nats; they are not uncapped likelihood estimates.
 
@@ -346,228 +266,96 @@ LGD. TabPFN v2.6 before and after the predefined CPT recipe. Thin lines connect 
 
 **[rq2__01_training__01_pd_factor_training](rq2/rq2__01_training__01_pd_factor_training.pdf)** — `pd_factor_training`
 
-PD. Matched changes in fixed-context credit and non-credit monitoring when adding L2-SP or freezing the backbone. Each curve is alternative minus reference after matching the remaining settings; recipes are averaged within table, then tables equally. Missing planned support stays missing. Original reference and alternative trajectories are retained numerically. Marginal effects share the same factorial; the final benchmark separately retains all four cells and their interaction.
+PD. Monitor change of the alternative choice minus its reference after matching the learning rate and the other factor, on held-out credit (top) and non-credit retention (bottom); positive values mean the alternative transfers or retains more. Recipes are averaged within table, then tables equally; missing planned support stays missing. Both factors come from the same 512-run factorial; its four cells and their interaction are reported with the final benchmark.
 
 **[rq2__01_training__02_lgd_factor_training](rq2/rq2__01_training__02_lgd_factor_training.pdf)** — `lgd_factor_training`
 
-LGD. Matched changes in fixed-context credit and non-credit monitoring when adding L2-SP or freezing the backbone. Each curve is alternative minus reference after matching the remaining settings; recipes are averaged within table, then tables equally. Missing planned support stays missing. Original reference and alternative trajectories are retained numerically. Marginal effects share the same factorial; the final benchmark separately retains all four cells and their interaction.
+LGD. Monitor change of the alternative choice minus its reference after matching the learning rate and the other factor, on held-out credit (top) and non-credit retention (bottom); positive values mean the alternative transfers or retains more. Recipes are averaged within table, then tables equally; missing planned support stays missing. Both factors come from the same 512-run factorial; its four cells and their interaction are reported with the final benchmark.
 
-**[rq2__01_training__03_pd_adapter_loss](rq2/rq2__01_training__03_pd_adapter_loss.pdf)** — `pd_adapter_loss`
+**[rq2__01_training__03_pd_adapter_trajectories](rq2/rq2__01_training__03_pd_adapter_trajectories.pdf)** — `pd_adapter_trajectories`
 
-PD. E5/E6 adapter recipes · loss. Native query objectives are averaged in successful-update windows, giving each planned trial one contribution; missing trial support remains a gap. Native LGD objectives differ across architectures and are not compared numerically. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
+PD. Adapter training trajectories by recipe. Rows show query loss, held-out credit, non-credit retention; columns show models. Query loss is the native training objective, averaged in successful-update windows with one contribution per planned trial; native LGD objectives differ across architectures and are compared only within a column. Monitor rows show changes from update zero on the fixed-context monitor, averaged over the same complete table and trial cohort at every milestone; they are training diagnostics, not five-fold benchmark results. Positive values favour CPT. The four training partitions contribute equally and shared controls appear once. Missing planned support is left as a gap. Equal update counts do not imply equal row exposure or compute.
 
-**[rq2__01_training__04_pd_adapter_credit](rq2/rq2__01_training__04_pd_adapter_credit.pdf)** — `pd_adapter_credit`
+**[rq2__01_training__04_lgd_adapter_trajectories](rq2/rq2__01_training__04_lgd_adapter_trajectories.pdf)** — `lgd_adapter_trajectories`
 
-PD. E5/E6 adapter recipes · credit. Fixed-context held-out credit monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
-
-**[rq2__01_training__05_pd_adapter_retention](rq2/rq2__01_training__05_pd_adapter_retention.pdf)** — `pd_adapter_retention`
-
-PD. E5/E6 adapter recipes · retention. Fixed-context non-credit retention monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
-
-**[rq2__01_training__06_lgd_adapter_loss](rq2/rq2__01_training__06_lgd_adapter_loss.pdf)** — `lgd_adapter_loss`
-
-LGD. E5/E6 adapter recipes · loss. Native query objectives are averaged in successful-update windows, giving each planned trial one contribution; missing trial support remains a gap. Native LGD objectives differ across architectures and are not compared numerically. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
-
-**[rq2__01_training__07_lgd_adapter_credit](rq2/rq2__01_training__07_lgd_adapter_credit.pdf)** — `lgd_adapter_credit`
-
-LGD. E5/E6 adapter recipes · credit. Fixed-context held-out credit monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
-
-**[rq2__01_training__08_lgd_adapter_retention](rq2/rq2__01_training__08_lgd_adapter_retention.pdf)** — `lgd_adapter_retention`
-
-LGD. E5/E6 adapter recipes · retention. Fixed-context non-credit retention monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
-
-**[rq2__01_training__09_shared_schedule_pd_lgd](rq2/rq2__01_training__09_shared_schedule_pd_lgd.pdf)** — `shared_schedule_pd_lgd`
-
-Learning rates evaluated from the recorded campaign configuration using the training scheduler. Each distinct peak-rate schedule is drawn once, pooling tasks only when budget, warmup and decay floor agree. The rate for update u is the scheduler value before that update (index u minus one). The first update has zero learning rate and is omitted from the logarithmic axis, but retained in the table. These are configured schedules; measured epoch-end rates and their sampling intervals are reported separately.
+LGD. Adapter training trajectories by recipe. Rows show query loss, held-out credit, non-credit retention; columns show models. Query loss is the native training objective, averaged in successful-update windows with one contribution per planned trial; native LGD objectives differ across architectures and are compared only within a column. Monitor rows show changes from update zero on the fixed-context monitor, averaged over the same complete table and trial cohort at every milestone; they are training diagnostics, not five-fold benchmark results. Positive values favour CPT. The four training partitions contribute equally and shared controls appear once. Missing planned support is left as a gap. Equal update counts do not imply equal row exposure or compute.
 
 ## rq2/02_results
 
-**[rq2__02_results__01_pd_factorial_credit_roc_auc](rq2/rq2__02_results__01_pd_factorial_credit_roc_auc.pdf)** — `pd_factorial_credit_roc_auc`
+**[rq2__02_results__01_pd_factorial](rq2/rq2__02_results__01_pd_factorial.pdf)** — `pd_factorial`
 
-PD. Complete full/frozen × unanchored/anchored factorial on held-out credit tables. All four cells and all learning rates use a fixed complete table cohort within each model. Positive values favor CPT relative to its original checkpoint. Five folds are averaged within table; retention first averages the four training partitions, then tables receive equal weight. The full and frozen anchoring effects, both freezing effects and their difference-in-differences interaction are retained in the summary. E1/E3/E4 reuse one 512-run campaign, not independent repetitions.
+PD. Equal-table mean CPT-minus-original effect of each cell of the full/frozen × unanchored/anchored factorial (E3 anchoring, E4 freezing) at every peak learning rate; positive values favour CPT. Within a model and row, all four cells and all learning rates use one complete table cohort. Five folds are averaged within table; retention first averages the four training partitions. Simple effects and the difference-in-differences interaction are retained in the text summary. E1, E3 and E4 reuse one 512-run campaign; they are not independent repetitions.
 
-**[rq2__02_results__02_pd_factorial_credit_brier_score](rq2/rq2__02_results__02_pd_factorial_credit_brier_score.pdf)** — `pd_factorial_credit_brier_score`
+**[rq2__02_results__02_lgd_factorial](rq2/rq2__02_results__02_lgd_factorial.pdf)** — `lgd_factorial`
 
-PD. Complete full/frozen × unanchored/anchored factorial on held-out credit tables. All four cells and all learning rates use a fixed complete table cohort within each model. Positive values favor CPT relative to its original checkpoint. Five folds are averaged within table; retention first averages the four training partitions, then tables receive equal weight. The full and frozen anchoring effects, both freezing effects and their difference-in-differences interaction are retained in the summary. E1/E3/E4 reuse one 512-run campaign, not independent repetitions.
+LGD. Equal-table mean CPT-minus-original effect of each cell of the full/frozen × unanchored/anchored factorial (E3 anchoring, E4 freezing) at every peak learning rate; positive values favour CPT. Within a model and row, all four cells and all learning rates use one complete table cohort. Five folds are averaged within table; retention first averages the four training partitions. Simple effects and the difference-in-differences interaction are retained in the text summary. E1, E3 and E4 reuse one 512-run campaign; they are not independent repetitions.
 
-**[rq2__02_results__03_pd_factorial_ood_roc_auc](rq2/rq2__02_results__03_pd_factorial_ood_roc_auc.pdf)** — `pd_factorial_ood_roc_auc`
+**[rq2__02_results__03_pd_effects](rq2/rq2__02_results__03_pd_effects.pdf)** — `pd_effects`
 
-PD. Complete full/frozen × unanchored/anchored factorial on non-credit retention tables. All four cells and all learning rates use a fixed complete table cohort within each model. Positive values favor CPT relative to its original checkpoint. Five folds are averaged within table; retention first averages the four training partitions, then tables receive equal weight. The full and frozen anchoring effects, both freezing effects and their difference-in-differences interaction are retained in the summary. E1/E3/E4 reuse one 512-run campaign, not independent repetitions.
+PD. Adapter recipes against the full-update reference. Each CPT recipe is compared with its own original model; positive values favour CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Within a model and column, every displayed recipe uses the same tables; cohorts can differ between models and columns. Retention values first average the four training partitions. Horizontal axes are scaled per panel. Absent rows were not run for that model; they are not zero effects. Models without at least two comparable recipes are omitted.
 
-**[rq2__02_results__04_pd_factorial_ood_brier_score](rq2/rq2__02_results__04_pd_factorial_ood_brier_score.pdf)** — `pd_factorial_ood_brier_score`
+**[rq2__02_results__04_lgd_effects](rq2/rq2__02_results__04_lgd_effects.pdf)** — `lgd_effects`
 
-PD. Complete full/frozen × unanchored/anchored factorial on non-credit retention tables. All four cells and all learning rates use a fixed complete table cohort within each model. Positive values favor CPT relative to its original checkpoint. Five folds are averaged within table; retention first averages the four training partitions, then tables receive equal weight. The full and frozen anchoring effects, both freezing effects and their difference-in-differences interaction are retained in the summary. E1/E3/E4 reuse one 512-run campaign, not independent repetitions.
-
-**[rq2__02_results__05_lgd_factorial_credit_r2](rq2/rq2__02_results__05_lgd_factorial_credit_r2.pdf)** — `lgd_factorial_credit_r2`
-
-LGD. Complete full/frozen × unanchored/anchored factorial on held-out credit tables. All four cells and all learning rates use a fixed complete table cohort within each model. Positive values favor CPT relative to its original checkpoint. Five folds are averaged within table; retention first averages the four training partitions, then tables receive equal weight. The full and frozen anchoring effects, both freezing effects and their difference-in-differences interaction are retained in the summary. E1/E3/E4 reuse one 512-run campaign, not independent repetitions.
-
-**[rq2__02_results__06_lgd_factorial_credit_rmse](rq2/rq2__02_results__06_lgd_factorial_credit_rmse.pdf)** — `lgd_factorial_credit_rmse`
-
-LGD. Complete full/frozen × unanchored/anchored factorial on held-out credit tables. All four cells and all learning rates use a fixed complete table cohort within each model. Positive values favor CPT relative to its original checkpoint. Five folds are averaged within table; retention first averages the four training partitions, then tables receive equal weight. The full and frozen anchoring effects, both freezing effects and their difference-in-differences interaction are retained in the summary. E1/E3/E4 reuse one 512-run campaign, not independent repetitions.
-
-**[rq2__02_results__07_lgd_factorial_ood_r2](rq2/rq2__02_results__07_lgd_factorial_ood_r2.pdf)** — `lgd_factorial_ood_r2`
-
-LGD. Complete full/frozen × unanchored/anchored factorial on non-credit retention tables. All four cells and all learning rates use a fixed complete table cohort within each model. Positive values favor CPT relative to its original checkpoint. Five folds are averaged within table; retention first averages the four training partitions, then tables receive equal weight. The full and frozen anchoring effects, both freezing effects and their difference-in-differences interaction are retained in the summary. E1/E3/E4 reuse one 512-run campaign, not independent repetitions.
-
-**[rq2__02_results__08_lgd_factorial_ood_rmse](rq2/rq2__02_results__08_lgd_factorial_ood_rmse.pdf)** — `lgd_factorial_ood_rmse`
-
-LGD. Complete full/frozen × unanchored/anchored factorial on non-credit retention tables. All four cells and all learning rates use a fixed complete table cohort within each model. Positive values favor CPT relative to its original checkpoint. Five folds are averaged within table; retention first averages the four training partitions, then tables receive equal weight. The full and frozen anchoring effects, both freezing effects and their difference-in-differences interaction are retained in the summary. E1/E3/E4 reuse one 512-run campaign, not independent repetitions.
-
-**[rq2__02_results__09_pd_adapter_credit_roc_auc](rq2/rq2__02_results__09_pd_adapter_credit_roc_auc.pdf)** — `pd_adapter_credit_roc_auc`
-
-PD. E5/E6 recipes and E1 reference · held-out credit. Each CPT recipe is compared with its own original model; positive values favor CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Bases without an available adapter comparison are omitted from this panel. Original scores, adapted scores and named-table effects are retained in the text summary.
-
-**[rq2__02_results__10_pd_adapter_credit_brier_score](rq2/rq2__02_results__10_pd_adapter_credit_brier_score.pdf)** — `pd_adapter_credit_brier_score`
-
-PD. E5/E6 recipes and E1 reference · held-out credit. Each CPT recipe is compared with its own original model; positive values favor CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Bases without an available adapter comparison are omitted from this panel. Original scores, adapted scores and named-table effects are retained in the text summary.
-
-**[rq2__02_results__11_lgd_adapter_credit_r2](rq2/rq2__02_results__11_lgd_adapter_credit_r2.pdf)** — `lgd_adapter_credit_r2`
-
-LGD. E5/E6 recipes and E1 reference · held-out credit. Each CPT recipe is compared with its own original model; positive values favor CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Bases without an available adapter comparison are omitted from this panel. Original scores, adapted scores and named-table effects are retained in the text summary.
-
-**[rq2__02_results__12_lgd_adapter_credit_rmse](rq2/rq2__02_results__12_lgd_adapter_credit_rmse.pdf)** — `lgd_adapter_credit_rmse`
-
-LGD. E5/E6 recipes and E1 reference · held-out credit. Each CPT recipe is compared with its own original model; positive values favor CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Bases without an available adapter comparison are omitted from this panel. Original scores, adapted scores and named-table effects are retained in the text summary.
-
-**[rq2__02_results__13_pd_retention_roc_auc](rq2/rq2__02_results__13_pd_retention_roc_auc.pdf)** — `pd_retention_roc_auc`
-
-PD. Restrictions on parameter updates · non-credit retention. Each CPT recipe is compared with its own original model; positive values favor CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Bases without an available adapter comparison are omitted from this panel. Original scores, adapted scores and named-table effects are retained in the text summary.
-
-**[rq2__02_results__14_lgd_retention_r2](rq2/rq2__02_results__14_lgd_retention_r2.pdf)** — `lgd_retention_r2`
-
-LGD. Restrictions on parameter updates · non-credit retention. Each CPT recipe is compared with its own original model; positive values favor CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Bases without an available adapter comparison are omitted from this panel. Original scores, adapted scores and named-table effects are retained in the text summary.
+LGD. Adapter recipes against the full-update reference. Each CPT recipe is compared with its own original model; positive values favour CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Within a model and column, every displayed recipe uses the same tables; cohorts can differ between models and columns. Retention values first average the four training partitions. Horizontal axes are scaled per panel. Absent rows were not run for that model; they are not zero effects. Models without at least two comparable recipes are omitted.
 
 ## rq3/01_training
 
-**[rq3__01_training__01_pd_sampling_credit](rq3/rq3__01_training__01_pd_sampling_credit.pdf)** — `pd_sampling_credit`
+**[rq3__01_training__01_pd_sampling_trajectories](rq3/rq3__01_training__01_pd_sampling_trajectories.pdf)** — `pd_sampling_trajectories`
 
-PD. E7 sampling · credit. Fixed-context held-out credit monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
+PD. Training trajectories by sampling policy. Rows show query loss, held-out credit, non-credit retention; columns show models. Query loss is the native training objective, averaged in successful-update windows with one contribution per planned trial; native LGD objectives differ across architectures and are compared only within a column. Monitor rows show changes from update zero on the fixed-context monitor, averaged over the same complete table and trial cohort at every milestone; they are training diagnostics, not five-fold benchmark results. Positive values favour CPT. The four training partitions contribute equally and shared controls appear once. Missing planned support is left as a gap. Equal update counts do not imply equal row exposure or compute.
 
-**[rq3__01_training__02_pd_sampling_retention](rq3/rq3__01_training__02_pd_sampling_retention.pdf)** — `pd_sampling_retention`
+**[rq3__01_training__02_pd_corpus_episode_trajectories](rq3/rq3__01_training__02_pd_corpus_episode_trajectories.pdf)** — `pd_corpus_episode_trajectories`
 
-PD. E7 sampling · retention. Fixed-context non-credit retention monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
+PD. Training trajectories by corpus and episode size. Rows show query loss, held-out credit, non-credit retention; columns show models. Query loss is the native training objective, averaged in successful-update windows with one contribution per planned trial; native LGD objectives differ across architectures and are compared only within a column. Monitor rows show changes from update zero on the fixed-context monitor, averaged over the same complete table and trial cohort at every milestone; they are training diagnostics, not five-fold benchmark results. Positive values favour CPT. The four training partitions contribute equally and shared controls appear once. Missing planned support is left as a gap. Equal update counts do not imply equal row exposure or compute.
 
-**[rq3__01_training__03_pd_corpus_episode_credit](rq3/rq3__01_training__03_pd_corpus_episode_credit.pdf)** — `pd_corpus_episode_credit`
+**[rq3__01_training__03_lgd_sampling_trajectories](rq3/rq3__01_training__03_lgd_sampling_trajectories.pdf)** — `lgd_sampling_trajectories`
 
-PD. E8/E9 corpus and episode size · credit. Fixed-context held-out credit monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
+LGD. Training trajectories by sampling policy. Rows show query loss, held-out credit, non-credit retention; columns show models. Query loss is the native training objective, averaged in successful-update windows with one contribution per planned trial; native LGD objectives differ across architectures and are compared only within a column. Monitor rows show changes from update zero on the fixed-context monitor, averaged over the same complete table and trial cohort at every milestone; they are training diagnostics, not five-fold benchmark results. Positive values favour CPT. The four training partitions contribute equally and shared controls appear once. Missing planned support is left as a gap. Equal update counts do not imply equal row exposure or compute.
 
-**[rq3__01_training__04_pd_corpus_episode_retention](rq3/rq3__01_training__04_pd_corpus_episode_retention.pdf)** — `pd_corpus_episode_retention`
+**[rq3__01_training__04_pd_sampling_exposure](rq3/rq3__01_training__04_pd_sampling_exposure.pdf)** — `pd_sampling_exposure`
 
-PD. E8/E9 corpus and episode size · retention. Fixed-context non-credit retention monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
+PD. Monitor changes per processed row exposure. Rows show held-out credit, non-credit retention; columns show models. Monitor rows show changes from update zero on the fixed-context monitor, averaged over the same complete table and trial cohort at every milestone; they are training diagnostics, not five-fold benchmark results. Positive values favour CPT. The four training partitions contribute equally and shared controls appear once. Missing planned support is left as a gap. Rows seen count repeated observations, on a logarithmic axis; equal updates do not imply equal rows or compute.
 
-**[rq3__01_training__05_lgd_sampling_credit](rq3/rq3__01_training__05_lgd_sampling_credit.pdf)** — `lgd_sampling_credit`
+**[rq3__01_training__05_lgd_sampling_exposure](rq3/rq3__01_training__05_lgd_sampling_exposure.pdf)** — `lgd_sampling_exposure`
 
-LGD. E7 sampling · credit. Fixed-context held-out credit monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
-
-**[rq3__01_training__06_lgd_sampling_retention](rq3/rq3__01_training__06_lgd_sampling_retention.pdf)** — `lgd_sampling_retention`
-
-LGD. E7 sampling · retention. Fixed-context non-credit retention monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
-
-**[rq3__01_training__07_pd_sampling_exposure](rq3/rq3__01_training__07_pd_sampling_exposure.pdf)** — `pd_sampling_exposure`
-
-PD. E7 credit monitoring per row exposure. Fixed-context held-out credit monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
-
-**[rq3__01_training__08_lgd_sampling_exposure](rq3/rq3__01_training__08_lgd_sampling_exposure.pdf)** — `lgd_sampling_exposure`
-
-LGD. E7 credit monitoring per row exposure. Fixed-context held-out credit monitor changes from update zero, averaged across the same complete table/trial cohort at each milestone; these are not five-fold final benchmark results. The four training partitions are represented, and shared controls appear once. Colors identify the stated recipes. Equal updates do not imply equal rows or compute; row exposure includes repeated observations. Adapter curves compare specified recipes, not isolated mechanisms.
-
-**[rq3__01_training__09_shared_schedule_pd_lgd](rq3/rq3__01_training__09_shared_schedule_pd_lgd.pdf)** — `shared_schedule_pd_lgd`
-
-Learning rates evaluated from the recorded campaign configuration using the training scheduler. Each distinct peak-rate schedule is drawn once, pooling tasks only when budget, warmup and decay floor agree. The rate for update u is the scheduler value before that update (index u minus one). The first update has zero learning rate and is omitted from the logarithmic axis, but retained in the table. These are configured schedules; measured epoch-end rates and their sampling intervals are reported separately.
+LGD. Monitor changes per processed row exposure. Rows show held-out credit, non-credit retention; columns show models. Monitor rows show changes from update zero on the fixed-context monitor, averaged over the same complete table and trial cohort at every milestone; they are training diagnostics, not five-fold benchmark results. Positive values favour CPT. The four training partitions contribute equally and shared controls appear once. Missing planned support is left as a gap. Rows seen count repeated observations, on a logarithmic axis; equal updates do not imply equal rows or compute.
 
 ## rq3/02_results
 
-**[rq3__02_results__01_pd_credit_roc_auc](rq3/rq3__02_results__01_pd_credit_roc_auc.pdf)** — `pd_credit_roc_auc`
+**[rq3__02_results__01_pd_effects](rq3/rq3__02_results__01_pd_effects.pdf)** — `pd_effects`
 
-PD. Training data and exposure · held-out credit. Each CPT recipe is compared with its own original model; positive values favor CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Original scores, adapted scores and named-table effects are retained in the text summary.
+PD. Transfer and retention by training-data choice. Each CPT recipe is compared with its own original model; positive values favour CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Within a model and column, every displayed recipe uses the same tables; cohorts can differ between models and columns. Retention values first average the four training partitions. Horizontal axes are scaled per panel. Absent rows were not run for that model; they are not zero effects.
 
-**[rq3__02_results__02_pd_credit_brier_score](rq3/rq3__02_results__02_pd_credit_brier_score.pdf)** — `pd_credit_brier_score`
+**[rq3__02_results__02_lgd_effects](rq3/rq3__02_results__02_lgd_effects.pdf)** — `lgd_effects`
 
-PD. Training data and exposure · held-out credit. Each CPT recipe is compared with its own original model; positive values favor CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Original scores, adapted scores and named-table effects are retained in the text summary.
+LGD. Transfer and retention by training-data choice. Each CPT recipe is compared with its own original model; positive values favour CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Within a model and column, every displayed recipe uses the same tables; cohorts can differ between models and columns. Retention values first average the four training partitions. Horizontal axes are scaled per panel. Absent rows were not run for that model; they are not zero effects.
 
-**[rq3__02_results__03_lgd_credit_r2](rq3/rq3__02_results__03_lgd_credit_r2.pdf)** — `lgd_credit_r2`
+**[rq3__02_results__03_pd_choices](rq3/rq3__02_results__03_pd_choices.pdf)** — `pd_choices`
 
-LGD. Training data and exposure · held-out credit. Each CPT recipe is compared with its own original model; positive values favor CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Original scores, adapted scores and named-table effects are retained in the text summary.
+PD. Paired differences between planned data choices. Each value is the difference between two recipes' CPT-minus-original effects on the same table and model; positive favours the recipe named first and can mean less degradation rather than positive transfer. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Within a model and column, every displayed recipe uses the same tables; cohorts can differ between models and columns. Retention values first average the four training partitions. Horizontal axes are scaled per panel. Absent rows were not run for that model; they are not zero effects.
 
-**[rq3__02_results__04_lgd_credit_rmse](rq3/rq3__02_results__04_lgd_credit_rmse.pdf)** — `lgd_credit_rmse`
+**[rq3__02_results__04_lgd_choices](rq3/rq3__02_results__04_lgd_choices.pdf)** — `lgd_choices`
 
-LGD. Training data and exposure · held-out credit. Each CPT recipe is compared with its own original model; positive values favor CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Original scores, adapted scores and named-table effects are retained in the text summary.
-
-**[rq3__02_results__05_pd_choices_roc_auc](rq3/rq3__02_results__05_pd_choices_roc_auc.pdf)** — `pd_choices_roc_auc`
-
-PD. Paired changes between planned choices. Paired differences between the named choices' CPT effects, on identical tables. Positive favors the alternative choice and can mean less degradation, rather than positive transfer. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Both choices' effects and their named-table differences are retained in the text summary.
-
-**[rq3__02_results__06_lgd_choices_r2](rq3/rq3__02_results__06_lgd_choices_r2.pdf)** — `lgd_choices_r2`
-
-LGD. Paired changes between planned choices. Paired differences between the named choices' CPT effects, on identical tables. Positive favors the alternative choice and can mean less degradation, rather than positive transfer. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Both choices' effects and their named-table differences are retained in the text summary.
-
-**[rq3__02_results__07_pd_retention_roc_auc](rq3/rq3__02_results__07_pd_retention_roc_auc.pdf)** — `pd_retention_roc_auc`
-
-PD. Training data and exposure · non-credit retention. Each CPT recipe is compared with its own original model; positive values favor CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Original scores, adapted scores and named-table effects are retained in the text summary.
-
-**[rq3__02_results__08_lgd_retention_r2](rq3/rq3__02_results__08_lgd_retention_r2.pdf)** — `lgd_retention_r2`
-
-LGD. Training data and exposure · non-credit retention. Each CPT recipe is compared with its own original model; positive values favor CPT. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Each model uses the same table cohort across all displayed arms; models can have different cohorts. Dots are individual tables, diamonds equal-table means and segments table interquartile ranges, not confidence intervals. Axes retain all finite values and can differ between models. Missing recipes are reported in coverage, not assigned zero. Original scores, adapted scores and named-table effects are retained in the text summary.
+LGD. Paired differences between planned data choices. Each value is the difference between two recipes' CPT-minus-original effects on the same table and model; positive favours the recipe named first and can mean less degradation rather than positive transfer. Each adapted model is paired with its own original checkpoint on the same split and outer fold; five folds are averaged within table and tables receive equal weight. Within a model and column, every displayed recipe uses the same tables; cohorts can differ between models and columns. Retention values first average the four training partitions. Horizontal axes are scaled per panel. Absent rows were not run for that model; they are not zero effects.
 
 ## rq4/01_context_curves
 
 **[rq4__01_context_curves__01_context_support](rq4/rq4__01_context_curves__01_context_support.pdf)** — `context_support`
 
-Number of tables with finite original/CPT measurements in all five folds at each nominal context size. Counts reflect both available table sizes and completed exports; they are not live scheduler status. Performance panels separately fix the cohort over their full displayed range.
+Number of held-out credit tables with finite original and CPT measurements in all five outer folds at each nominal context size. Counts fall when the context budget exceeds a table's available training rows; lines coincide where both models have the same support. Context-curve columns separately fix one cohort over their full displayed range.
 
-**[rq4__01_context_curves__02_context_pd_through_128](rq4/rq4__01_context_curves__02_context_pd_through_128.pdf)** — `context_pd_through_128`
+**[rq4__01_context_curves__02_context_pd](rq4/rq4__01_context_curves__02_context_pd.pdf)** — `context_pd`
 
-PD. Original and fixed-recipe CPT AUC and Brier score (left), with their paired effects (right). The same 17 tables contribute at every displayed context size and to every displayed model. Scores are averaged over five paired outer folds within table, then equally across tables. Thin colored curves retain individual table effects; thick curves show their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
+Top: equal-table mean AUC of the original model and the fixed-recipe CPT checkpoint as labelled context grows. Middle and bottom: paired CPT effects for the primary and secondary metric; positive values favour CPT, thin curves are individual tables and thick curves their equal-table mean. Each column fixes one table cohort across every context size and both models, so levels need not agree between columns. Scores average five paired outer folds within table before tables receive equal weight; curves are not uncertainty bands. Validation labels use a separate fixed budget and all outer-test rows are unchanged. The CPT checkpoint is the E1 reference recipe (full updates, LR 3×10⁻⁷, L2-SP 0.003) trained on a partition that excluded the table.
 
-**[rq4__01_context_curves__03_context_pd_through_2048](rq4/rq4__01_context_curves__03_context_pd_through_2048.pdf)** — `context_pd_through_2048`
+**[rq4__01_context_curves__03_context_lgd](rq4/rq4__01_context_curves__03_context_lgd.pdf)** — `context_lgd`
 
-PD. Original and fixed-recipe CPT AUC and Brier score (left), with their paired effects (right). The same 14 tables contribute at every displayed context size and to every displayed model. Scores are averaged over five paired outer folds within table, then equally across tables. Thin colored curves retain individual table effects; thick curves show their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
+Top: equal-table mean R² of the original model and the fixed-recipe CPT checkpoint as labelled context grows. Middle and bottom: paired CPT effects for the primary and secondary metric; positive values favour CPT, thin curves are individual tables and thick curves their equal-table mean. Each column fixes one table cohort across every context size and both models, so levels need not agree between columns. Scores average five paired outer folds within table before tables receive equal weight; curves are not uncertainty bands. Validation labels use a separate fixed budget and all outer-test rows are unchanged. The CPT checkpoint is the E1 reference recipe (full updates, LR 3×10⁻⁷, L2-SP 0.003) trained on a partition that excluded the table.
 
-**[rq4__01_context_curves__04_context_pd_through_50000](rq4/rq4__01_context_curves__04_context_pd_through_50000.pdf)** — `context_pd_through_50000`
+**[rq4__01_context_curves__04_context_pd_tables](rq4/rq4__01_context_curves__04_context_pd_tables.pdf)** — `context_pd_tables`
 
-PD. Original and fixed-recipe CPT AUC and Brier score (left), with their paired effects (right). The same 9 tables contribute at every displayed context size and to every displayed model. Scores are averaged over five paired outer folds within table, then equally across tables. Thin colored curves retain individual table effects; thick curves show their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
+Paired CPT effect, averaged over five outer folds, for every held-out credit table (rows, ordered by available context) and nominal context size (columns); blue favours CPT and red the original model. Rows show the primary metric (top) and secondary metric (bottom). Colour limits are symmetric at the 95th percentile of absolute effects per metric and extreme cells saturate; printed values are exact. Grey cells exceed the table's available training rows. Each table keeps its fold membership, nested context subsets and complete test rows at every size.
 
-**[rq4__01_context_curves__05_context_lgd_through_128](rq4/rq4__01_context_curves__05_context_lgd_through_128.pdf)** — `context_lgd_through_128`
+**[rq4__01_context_curves__05_context_lgd_tables](rq4/rq4__01_context_curves__05_context_lgd_tables.pdf)** — `context_lgd_tables`
 
-LGD. Original and fixed-recipe CPT R² and RMSE (left), with their paired effects (right). The same 8 tables contribute at every displayed context size and to every displayed model. Scores are averaged over five paired outer folds within table, then equally across tables. Thin colored curves retain individual table effects; thick curves show their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
-
-**[rq4__01_context_curves__06_context_lgd_through_2048](rq4/rq4__01_context_curves__06_context_lgd_through_2048.pdf)** — `context_lgd_through_2048`
-
-LGD. Original and fixed-recipe CPT R² and RMSE (left), with their paired effects (right). The same 4 tables contribute at every displayed context size and to every displayed model. Scores are averaged over five paired outer folds within table, then equally across tables. Thin colored curves retain individual table effects; thick curves show their equal-table mean. These curves are not uncertainty bands or repeated-context variance estimates. Validation labels have a fixed additional budget; all outer-test rows are unchanged. The horizon identifies the table cohort, so levels across different horizon panels need not agree. The CPT checkpoint is the experiment-1 reference recipe (full updates, LR 3e-7, L2-SP 0.003) whose training partition excluded the table; positive differences favour CPT.
-
-**[rq4__01_context_curves__07_context_pd_tables_01](rq4/rq4__01_context_curves__07_context_pd_tables_01.pdf)** — `context_pd_tables_01`
-
-PD. Context-size effects for individually named held-out credit tables. Each line averages five paired outer-fold differences; positive values favor CPT. AUC and R² use CPT minus original; Brier and RMSE use original minus CPT. Every curve retains the same table, fold membership and complete test rows at all context sizes. Each fold uses nested context subsets and an unchanged validation set. Model-specific native context caps apply. The original and CPT absolute scores and every plotted difference are retained in the printed tables.
-
-**[rq4__01_context_curves__08_context_pd_tables_02](rq4/rq4__01_context_curves__08_context_pd_tables_02.pdf)** — `context_pd_tables_02`
-
-PD. Context-size effects for individually named held-out credit tables. Each line averages five paired outer-fold differences; positive values favor CPT. AUC and R² use CPT minus original; Brier and RMSE use original minus CPT. Every curve retains the same table, fold membership and complete test rows at all context sizes. Each fold uses nested context subsets and an unchanged validation set. Model-specific native context caps apply. The original and CPT absolute scores and every plotted difference are retained in the printed tables.
-
-**[rq4__01_context_curves__09_context_pd_tables_03](rq4/rq4__01_context_curves__09_context_pd_tables_03.pdf)** — `context_pd_tables_03`
-
-PD. Context-size effects for individually named held-out credit tables. Each line averages five paired outer-fold differences; positive values favor CPT. AUC and R² use CPT minus original; Brier and RMSE use original minus CPT. Every curve retains the same table, fold membership and complete test rows at all context sizes. Each fold uses nested context subsets and an unchanged validation set. Model-specific native context caps apply. The original and CPT absolute scores and every plotted difference are retained in the printed tables.
-
-**[rq4__01_context_curves__10_context_pd_tables_04](rq4/rq4__01_context_curves__10_context_pd_tables_04.pdf)** — `context_pd_tables_04`
-
-PD. Context-size effects for individually named held-out credit tables. Each line averages five paired outer-fold differences; positive values favor CPT. AUC and R² use CPT minus original; Brier and RMSE use original minus CPT. Every curve retains the same table, fold membership and complete test rows at all context sizes. Each fold uses nested context subsets and an unchanged validation set. Model-specific native context caps apply. The original and CPT absolute scores and every plotted difference are retained in the printed tables.
-
-**[rq4__01_context_curves__11_context_pd_tables_05](rq4/rq4__01_context_curves__11_context_pd_tables_05.pdf)** — `context_pd_tables_05`
-
-PD. Context-size effects for individually named held-out credit tables. Each line averages five paired outer-fold differences; positive values favor CPT. AUC and R² use CPT minus original; Brier and RMSE use original minus CPT. Every curve retains the same table, fold membership and complete test rows at all context sizes. Each fold uses nested context subsets and an unchanged validation set. Model-specific native context caps apply. The original and CPT absolute scores and every plotted difference are retained in the printed tables.
-
-**[rq4__01_context_curves__12_context_pd_tables_06](rq4/rq4__01_context_curves__12_context_pd_tables_06.pdf)** — `context_pd_tables_06`
-
-PD. Context-size effects for individually named held-out credit tables. Each line averages five paired outer-fold differences; positive values favor CPT. AUC and R² use CPT minus original; Brier and RMSE use original minus CPT. Every curve retains the same table, fold membership and complete test rows at all context sizes. Each fold uses nested context subsets and an unchanged validation set. Model-specific native context caps apply. The original and CPT absolute scores and every plotted difference are retained in the printed tables.
-
-**[rq4__01_context_curves__13_context_lgd_tables_01](rq4/rq4__01_context_curves__13_context_lgd_tables_01.pdf)** — `context_lgd_tables_01`
-
-LGD. Context-size effects for individually named held-out credit tables. Each line averages five paired outer-fold differences; positive values favor CPT. AUC and R² use CPT minus original; Brier and RMSE use original minus CPT. Every curve retains the same table, fold membership and complete test rows at all context sizes. Each fold uses nested context subsets and an unchanged validation set. Model-specific native context caps apply. The original and CPT absolute scores and every plotted difference are retained in the printed tables.
-
-**[rq4__01_context_curves__14_context_lgd_tables_02](rq4/rq4__01_context_curves__14_context_lgd_tables_02.pdf)** — `context_lgd_tables_02`
-
-LGD. Context-size effects for individually named held-out credit tables. Each line averages five paired outer-fold differences; positive values favor CPT. AUC and R² use CPT minus original; Brier and RMSE use original minus CPT. Every curve retains the same table, fold membership and complete test rows at all context sizes. Each fold uses nested context subsets and an unchanged validation set. Model-specific native context caps apply. The original and CPT absolute scores and every plotted difference are retained in the printed tables.
-
-**[rq4__01_context_curves__15_context_lgd_tables_03](rq4/rq4__01_context_curves__15_context_lgd_tables_03.pdf)** — `context_lgd_tables_03`
-
-LGD. Context-size effects for individually named held-out credit tables. Each line averages five paired outer-fold differences; positive values favor CPT. AUC and R² use CPT minus original; Brier and RMSE use original minus CPT. Every curve retains the same table, fold membership and complete test rows at all context sizes. Each fold uses nested context subsets and an unchanged validation set. Model-specific native context caps apply. The original and CPT absolute scores and every plotted difference are retained in the printed tables.
+Paired CPT effect, averaged over five outer folds, for every held-out credit table (rows, ordered by available context) and nominal context size (columns); blue favours CPT and red the original model. Rows show the primary metric (top) and secondary metric (bottom). Colour limits are symmetric at the 95th percentile of absolute effects per metric and extreme cells saturate; printed values are exact. Grey cells exceed the table's available training rows. Each table keeps its fold membership, nested context subsets and complete test rows at every size.

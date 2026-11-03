@@ -365,7 +365,7 @@ folds are dependent; their standard deviation divided by the square root of five
 standard error. Primary methodological support remains in the literature notes.
 
 The final notebook text records every displayed table, plotted value and caption. Figures use the
-actual ICML dimensions rather than the generic A4 template; the adjacent manuscript is not rewritten
+A4 article widths (160 mm full, 77 mm single column); the adjacent manuscript is not rewritten
 by the notebook runner. Literature motivation and limits of these presentation choices are recorded
 in LITERATURE.md.
 

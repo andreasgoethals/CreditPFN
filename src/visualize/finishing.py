@@ -145,13 +145,17 @@ def plot_uncertainty(run):
     from src.visualize.paper_figures import effect_label
     metrics = list(dict.fromkeys(estimates.metric))
     import matplotlib.pyplot as plt
-    fig, axes = plt.subplots(1, len(metrics), figsize=style.figsize(style.WIDTH_FULL, style.SMALL_RATIO),
-                             squeeze=False, layout="constrained")
+    from matplotlib.lines import Line2D
+    from src.visualize import synthesis as sy
+    fig, axes = plt.subplots(1, len(metrics), figsize=style.rows_figsize(1, row_height=1.45),
+                             squeeze=False, sharey=True, layout="constrained")
     axes = axes[0]
-    fig.suptitle(f"{run.track.upper()}: reference CPT and table uncertainty")
+    fig.suptitle(f"{run.track.upper()}: reference recipe, 95% table-bootstrap intervals")
+    order = {b: i for i, b in enumerate(sy.BASES)}
     for ax, metric in zip(axes, metrics):
         part = estimates[estimates.metric.eq(metric)]
-        bases = sorted(part.base.unique())
+        scale = style.EFFECT_SCALE.get(metric, 1.)
+        bases = sorted(part.base.unique(), key=lambda b: order.get(b, len(order)))
         for i, base in enumerate(bases):
             for scenario, marker, offset in (
                 ("All credit tables", "o", -style.JITTER_WIDTH/2),
@@ -161,15 +165,21 @@ def plot_uncertainty(run):
                 if sub.empty:
                     continue
                 row = sub.iloc[0]
-                ax.plot([row.ci_low, row.ci_high], [i+offset]*2,
-                        color=style.color(base), linewidth=style.THIN_LINE)
-                ax.scatter([row["mean"]], [i+offset], marker=marker, s=style.POINT_SIZE,
-                           facecolor=style.color(base) if marker == "o" else "none",
-                           edgecolor=style.color(base), label=f"{scenario} (n={int(row.tables)})" if i == 0 else None)
-        ax.axvline(0, color=style.color("reference"), linestyle=":")
+                ax.plot([row.ci_low * scale, row.ci_high * scale], [i+offset]*2,
+                        color=style.color(base), linewidth=style.THIN_LINE * 1.2)
+                ax.scatter([row["mean"] * scale], [i+offset], marker=marker, s=style.POINT_SIZE,
+                           facecolor=style.color(base) if marker == "o" else "white",
+                           edgecolor=style.color(base), zorder=3)
+        ax.axvline(0, color=style.color("reference"), linestyle=":", linewidth=style.THIN_LINE)
         ax.set_yticks(range(len(bases)), [style.model_label(b) for b in bases])
-        ax.set_xlabel(effect_label(metric))
-    axes[0].legend(loc="best")
+        ax.set_ylim(len(bases) - .5, -.5); ax.grid(False)
+        ax.set_xlabel(style.EFFECT_LABELS.get(metric, effect_label(metric)))
+    counts = estimates.groupby("scenario").tables.max()
+    fig.legend(handles=[Line2D([], [], marker=m, linestyle="", markerfacecolor=f, markeredgecolor=style.color("annotation"),
+                               color=style.color("annotation"), label=f"{s} (n={int(counts.get(s, 0))} tables)")
+                        for s, m, f in (("All credit tables", "o", style.color("annotation")),
+                                        ("Documented public sources", "s", "white")) if s in counts],
+               loc="outside lower center", ncol=2)
     return [cp.Page("reference_uncertainty", fig,
         "Mean paired benchmark effects of the predefined full-update CPT reference and "
         "95% conditional table-bootstrap intervals. Positive effects favor CPT; RMSE is "

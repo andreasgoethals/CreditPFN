@@ -97,15 +97,18 @@ def test_numerical_policy_effects_pair_folds_and_expose_gain_reversal():
 
 def test_context_spaghetti_retains_each_table_in_the_fixed_cohort():
     study = context_fixture()
-    page = next(p for p in cc.plot_context_curves(study) if p.name == "context_pd_through_2048")
+    page = next(p for p in cc.plot_context_curves(study) if p.name == "context_pd")
     data = page.tables["Complete paired table values"]
-    assert data.dataset.nunique() == 2
+    assert data[data.horizon.eq(2048)].dataset.nunique() == 2
+    horizons = page.provenance["context_horizons"]
     for ax in page.figure.axes:
-        if "CPT − original" in ax.get_ylabel() or "Original − CPT" in ax.get_ylabel():
-            # Both models retain each individual table, their means, and one zero line.
-            assert len(ax.lines) == len(study.config['families']) * (data.dataset.nunique()+1) + 1
+        spec = ax.get_subplotspec()
+        if spec.rowspan.start > 0:
+            # Effect rows: both models retain each individual table, their means, and one zero line.
+            tables = data[data.horizon.eq(horizons[spec.colspan.start])].dataset.nunique()
+            assert len(ax.lines) == len(study.config['families']) * (tables + 1) + 1
     assert "not uncertainty bands" in page.caption
-    assert page.provenance["fixed_tables"] == ["Table 1", "Table 2"]
+    assert page.provenance["fixed_tables"]["2048"] == ["Table 1", "Table 2"]
 
 
 def test_log_loss_failure_cannot_change_the_calibration_comparison_cohort():

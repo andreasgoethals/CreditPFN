@@ -79,7 +79,7 @@ The runner prevents overlapping runs, regenerates each notebook's own publicatio
 - `output CreditPFN/figures/CAPTIONS.md`: paper-ready descriptions, ordered by notebook and figure occurrence.
 - `output CreditPFN/All_Results.md`: every notebook's complete final printed summary, in filesystem order.
 
-Every notebook ends with a section-ordered text summary containing all plotted values and displayed tables. Figures use shared styles and actual ICML widths. PDF files and raw metadata stay local; executed notebooks, captions and the combined summaries are tracked. Missing measurements are explicit, never fabricated. Training notebooks describe trajectories; result notebooks distinguish monitoring from final five-fold evaluation.
+Every notebook ends with a section-ordered text summary containing all plotted values and displayed tables. Figures use shared styles and A4 article widths. PDF files and raw metadata stay local; executed notebooks, captions and the combined summaries are tracked. Missing measurements are explicit, never fabricated. Training notebooks describe trajectories; result notebooks distinguish monitoring from final five-fold evaluation.
 
 For additional downloaded evidence, use the supported input options documented by:
 

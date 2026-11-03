@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from src.visualize import campaign as cp, prediction_diagnostics as pred
+from src.visualize import campaign as cp, prediction_diagnostics as pred, style
 from src.visualize.inputs import ArchivePath
 from src.visualize.reporting import page_text
 
@@ -172,7 +172,7 @@ def test_plot_is_compact_complete_and_has_no_unmeasured_variance(tmp_path, monke
     assert len(pages) == 1 and len(pages[0].figure.axes) == 2
     assert "original_mean_error" in page_text(pages[0])
     assert "not a theoretical bias" in pages[0].caption
-    assert pages[0].figure.get_figwidth() == pytest.approx(6.75)
+    assert pages[0].figure.get_figwidth() == pytest.approx(style.WIDTH_FULL)
     missing = coverage.assign(arm="Missing arm", status="unavailable")
     assert not pred.plot_diagnostics(result, "pd", coverage=pd.concat([coverage, missing]))
     assert not pred.plot_arms([result, pd.DataFrame()], [coverage], "pd")

@@ -1,6 +1,6 @@
 """Shared CreditPFN figure sizes, typography, colors and markers.
 
-Figures are drawn at their final ICML publication width. Notebooks call apply()
+Figures are drawn at their final A4 publication width. Notebooks call apply()
 and use these definitions rather than choosing their own sizes or colors.
 """
 
@@ -13,19 +13,19 @@ import matplotlib as mpl
 import numpy as np
 
 # ---------------------------------------------------------------------------
-# FIGURE SIZES — the user chose the original ICML US Letter geometry:
-# a 6.75-inch text block and a 0.25-inch column gap. The current arXiv
-# manuscript preserves these source widths instead of shrinking their fonts.
-# This deliberately replaces the generic template's 160-mm A4 text block.
+# FIGURE SIZES — A4 article geometry, chosen by the user on 03-11-2026: a 160-mm
+# text block and two 77-mm columns separated by 6 mm. This replaces the ICML
+# US Letter widths (6.75/3.25 inches) chosen on 30-09-2026.
 #
 # DRAW AT FINAL WIDTH, and never rescale a figure in the document. Rescaling carries the text with
 # it: 9pt squeezed to 70% arrives as 6.3pt, under the ~7pt floor where small print stops being
 # legible on paper. So the point sizes in `_RC` are the point sizes ON THE PRINTED PAGE.
 # ---------------------------------------------------------------------------
 
-WIDTH_FULL = 6.75
-WIDTH_HALF = 3.25
-WIDTH_THIRD = (WIDTH_FULL - 0.50) / 3
+_MM = 1 / 25.4
+WIDTH_FULL = round(160 * _MM, 3)
+WIDTH_HALF = round(77 * _MM, 3)
+WIDTH_THIRD = round((160 - 12) / 3 * _MM, 3)
 
 #: A full-height figure leaves no room for its caption
 #: and pushes every surrounding paragraph onto another page. Half a page is the practical ceiling,
@@ -81,7 +81,7 @@ def figsize(width: float = WIDTH_FULL, ratio: float = GOLDEN) -> tuple[float, fl
 _FONT_STACK = ["Source Sans 3", "Segoe UI", "Helvetica", "Arial", "DejaVu Sans"]
 
 _RC = {
-    # ICML full text width by default, so a figure saved without thinking about it is already the
+    # A4 full text width by default, so a figure saved without thinking about it is already the
     # right size for the page.
     "figure.figsize": figsize(),
     "figure.dpi": 110,
@@ -105,13 +105,13 @@ _RC = {
     # 7pt is the floor below which small print stops being legible on paper.
     "font.family": "sans-serif",
     "font.sans-serif": _FONT_STACK,
-    "font.size": 9,
-    "axes.titlesize": 10,
-    "axes.labelsize": 9,
-    "xtick.labelsize": 8,
-    "ytick.labelsize": 8,
-    "legend.fontsize": 8,
-    "figure.titlesize": 11,
+    "font.size": 8,
+    "axes.titlesize": 8.5,
+    "axes.labelsize": 8,
+    "xtick.labelsize": 7,
+    "ytick.labelsize": 7,
+    "legend.fontsize": 7.5,
+    "figure.titlesize": 9.5,
 }
 
 # ---------------------------------------------------------------------------
@@ -144,7 +144,15 @@ _PROJECT_RC: dict = {
     "lines.linewidth": 1.4,
     "lines.markersize": 3.0,
     "legend.frameon": False,
-    "legend.handlelength": 1.6,
+    "legend.handlelength": 1.8,
+    "legend.columnspacing": 1.4,
+    "axes.titlepad": 4,
+    "xtick.major.size": 2.5,
+    "ytick.major.size": 2.5,
+    "xtick.major.width": 0.6,
+    "ytick.major.width": 0.6,
+    "figure.constrained_layout.h_pad": 0.03,
+    "figure.constrained_layout.w_pad": 0.03,
     # NOTE: no `savefig.bbox` or font-type entries here on purpose — `_RC` above already
     # sets them, and its comment explains why "tight" is the wrong choice for a figure
     # drawn at a declared page width.
@@ -188,8 +196,8 @@ COLORS: dict[str, str] = {
     "reference":     "#000000",   # the y=0 / y=x rule a panel is read against
     "highlight":     "#D55E00",   # the one arm a figure is about
     "annotation":    "#888888",   # "no data" text, footnotes on an axis
-    "improvement":   "#16834B",
-    "deterioration": "#BC3535",
+    "improvement":   "#2166AC",
+    "deterioration": "#B2182B",
     "mean":          "#000000",
     "median":        "#CC79A7",
     "full":          "#0072B2",
@@ -200,11 +208,11 @@ COLORS: dict[str, str] = {
 
 #: Sequential and diverging maps, so a heatmap is not chosen per notebook either.
 CMAP_SEQUENTIAL = "viridis"
-CMAP_DIVERGING = "RdYlGn"        # positive effects indicate improvement
+CMAP_DIVERGING = "RdBu"          # blue: positive effects (improvement); red: deterioration
 TRAJECTORY_LR_COLORS = {3e-7: "#0072B2", 1e-6: "#E69F00", 1e-5: "#009E73", 3e-5: "#CC79A7"}
 TRAJECTORY_LINESTYLES = {0.0: "-", 0.003: "--"}
 
-# Bounded pages keep the 64-recipe sweep legible at its final ICML width.
+# Bounded pages keep the 64-recipe sweep legible at its final A4 width.
 PAGE_ROWS = 12
 SIMPLE_PAGE_ROWS = 20
 PAGE_COLUMNS = 8
@@ -240,6 +248,33 @@ SAMPLING_STYLES = {"one_sample": "-", "full_pass": "--", "accumulate": ":"}
 STATUS_COLORS = {"OK": "#009E73", "PENDING": "#CCCCCC", "FAIL": "#D55E00",
                  "DIVERGED": "#CC79A7", "INTERRUPTED": "#E69F00", "SKIP": "#56B4E9"}
 SEED_MARKERS = ("o", "s", "^")
+
+#: Ordinal settings get ordinal colour ramps (light/low to dark/high), so the order of a
+#: setting can be read from colour alone. Each family keeps its own hue: E1 full updates
+#: blue-to-purple, E5 DiagScale greens, E6 LoRA purples (dashed), E9 episode sizes oranges.
+LR_COLORS = {3e-7: "#0B3C68", 1e-6: "#3E7DB8", 1e-5: "#E08A2E", 3e-5: "#B02E2E"}
+DIAGSCALE_COLORS = {1e-4: "#8FCB8F", 1e-3: "#2E9B4E", 3e-2: "#00441B"}
+LORA_COLORS = {1e-5: "#C2A5CF", 1e-4: "#8C62AA", 1e-3: "#40004B"}
+EPISODE_COLORS = {"2,048 rows": "#F4A259", "8,192 rows": "#D1495B", "10,000 rows": "#6A1B3A",
+                  "11,000 rows": "#6A1B3A", "26,000 rows": "#6A1B3A"}
+#: Height of one panel row in multi-row figures, plus the fixed band for titles/legend.
+ROW_HEIGHT = 1.22
+FIGURE_BAND = 0.85
+FOREST_ROW = 0.13
+_SUPERSCRIPT = str.maketrans("-0123456789", "⁻⁰¹²³⁴⁵⁶⁷⁸⁹")
+
+
+def lr_text(value) -> str:
+    """Learning rate in journal notation: 3e-7 -> 3×10⁻⁷, 1e-4 -> 10⁻⁴."""
+    mantissa, exponent = f"{float(value):.0e}".split("e")
+    power = "10" + str(int(exponent)).translate(_SUPERSCRIPT)
+    return power if mantissa == "1" else f"{mantissa}×{power}"
+
+
+def rows_figsize(rows: int, width: float = WIDTH_FULL, *, row_height: float = ROW_HEIGHT,
+                 band: float = FIGURE_BAND) -> tuple[float, float]:
+    """A figure whose height follows its number of panel rows, clamped to `MAX_HEIGHT`."""
+    return (width, min(band + rows * row_height, MAX_HEIGHT))
 
 MODEL_LABELS = {"v2": "TabPFN v2", "v2.6": "TabPFN v2.6", "v3": "TabPFN v3", "tabicl-v2": "TabICLv2"}
 METRIC_LABELS = {"roc_auc": "AUC", "pr_auc": "PR-AUC", "brier_score": "Brier score",
@@ -353,7 +388,7 @@ EFFECT_LABELS = {"roc_auc": "ΔAUC (pp, + better)", "pr_auc": "ΔPR-AUC (pp, + b
                  "r2": "ΔR² (+ better)", "log_loss": "Log-loss reduction (nats, + better)",
                  "mae": "MAE reduction (+ better)", "f1": "ΔF1 (pp, + better)", "ece": "ECE reduction ×100 (+ better)"}
 #: Win/tie/loss bars: improvement, negligible change, deterioration.
-OUTCOME_COLORS = {"Improved": "#1A9850", "Negligible": "#BDBDBD", "Worse": "#D73027"}
+OUTCOME_COLORS = {"Improved": "#2166AC", "Negligible": "#D0D0D0", "Worse": "#B2182B"}
 #: Effects inside +/- this band count as negligible ("ties") in win/tie/loss summaries.
 #: A reporting convention for this study, stated in every caption that uses it.
 TIE_BAND = {"roc_auc": 0.001, "r2": 0.001, "rmse": 0.001, "brier_score": 0.0001}
@@ -437,7 +472,7 @@ def note(ax, text: str) -> None:
 
 
 #: Longest axes title that fits one line of a publication-width figure at `axes.titlesize`.
-MAX_TITLE = 52
+MAX_TITLE = 64
 
 #: Conservative title budget per inch at the configured full publication width.
 _TITLE_CHARS_PER_INCH = MAX_TITLE / WIDTH_FULL
@@ -539,8 +574,10 @@ def finish_figure(fig):
             legend.remove()
         if ax.get_title():
             panel_width = fig.get_figwidth() * ax.get_position().width
-            ax.set_title(textwrap.fill(model_label(ax.get_title()), max(20, int(panel_width * 11))),
-                         fontsize=ax.title.get_fontsize())
+            width = max(20, int(panel_width * 13))
+            # Wrap line by line: an explicit line break in a title is deliberate.
+            ax.set_title("\n".join(textwrap.fill(line, width) for line in model_label(ax.get_title()).splitlines()),
+                         fontsize=ax.title.get_fontsize(), color=ax.title.get_color(), fontweight=ax.title.get_fontweight())
     if handles:
         fig.legend(handles, labels, loc="outside lower center",
                    ncol=_legend_columns(fig, labels), frameon=False)

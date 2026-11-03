@@ -135,10 +135,13 @@ Newest first, dates `DD-MM-YYYY`.
   each notebook clears only its own files before drawing. Full reruns also retire figures
   from renamed notebooks. This shared publication tree deliberately overrides the template's per-notebook folders.
   The notebook displays each figure inline.
-- Use `style.figsize(style.WIDTH_FULL)` or `WIDTH_HALF`: every figure is drawn at the width it
-  will occupy in the **ICML paper** (6.75 inches full width, 3.25 inches single column), and never
-  rescaled afterwards. The user explicitly chose the actual ICML US Letter geometry over the
-  template's generic A4 dimensions on 30-09-2026.
+- Use `style.figsize(style.WIDTH_FULL)`, `WIDTH_HALF` or `style.rows_figsize`: every figure is drawn
+  at the width it will occupy in the **A4 paper** (160 mm full width, 77 mm single column), and never
+  rescaled afterwards. On 03-11-2026 the user replaced the ICML US Letter geometry chosen on
+  30-09-2026 with this A4 article geometry, matching the template.
+- Title, caption and legend complement each other: the title names what is compared, the caption
+  states how it was measured, the legend decodes every colour and line style. Merge panels that share
+  a quantity and comparison unit into one figure rather than repeating near-identical figures.
 - Captions are the **paper's** captions: pure description, ready to paste under the figure.
 - Bind `NotebookReport(..., sink=sink)` and display tables through `report.table`. The final
   summary must contain every plotted value and displayed table without truncation, not just

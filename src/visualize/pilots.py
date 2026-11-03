@@ -165,7 +165,8 @@ def plot_schedule(campaigns):
     if not schedules:
         return []
     tracks = [t for t in ("PD", "LGD") if any(r.track.upper() == t for r in campaigns)]
-    fig, (ax,) = cp._subplots("Applied learning-rate schedule: " + " + ".join(tracks))
+    fig, (ax,) = cp._subplots("Warm-up and cosine learning-rate schedules")
+    fig.set_size_inches(style.rows_figsize(1, row_height=1.6))
     tables = []
     for (target, warmup, floor, lr), owners in schedules.items():
         optimizer = torch.optim.SGD([torch.nn.Parameter(torch.zeros(()))], lr=lr)
@@ -179,15 +180,14 @@ def plot_schedule(campaigns):
             peak_lr=lr, tracks=" + ".join(owners), target=target,
             warmup_fraction=warmup, min_lr_fraction=floor))
         tables.append(table)
-        label = f"Peak LR {lr:.0e}"
+        label = f"Peak LR {style.lr_text(lr)}"
         if owners != tracks:
             label += " / " + " + ".join(owners)
         ax.plot(updates, np.where(rates > 0, rates, np.nan), label=label,
-                color=style.TRAJECTORY_LR_COLORS.get(lr,
-                    style.ADAPTER_LR_COLORS.get(lr, style.color(str(lr)))))
+                color=style.LR_COLORS.get(lr, style.ADAPTER_LR_COLORS.get(lr, style.color(str(lr)))))
     ax.set_yscale("log")
     ax.set_xlabel("Successful optimizer update")
-    ax.set_ylabel("Applied learning rate (log scale)")
+    ax.set_ylabel("Applied learning rate")
     ax.legend()
     return [cp.Page("shared_schedule_" + "_".join(t.lower() for t in tracks), fig,
         "Learning rates evaluated from the recorded campaign configuration using the training scheduler. "

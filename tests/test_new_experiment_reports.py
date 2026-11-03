@@ -178,7 +178,7 @@ def test_new_dense_figures_have_text_equivalents_and_publication_geometry(tmp_pa
         run = adapter_fixture(track)
         pages += ds.plot_optimization(run) + ds.plot_monitors(run) + ds.plot_resources(run) + ds.plot_benchmark(run)
         if track == 'pd': pages += ds.plot_benchmark(run,metric='brier_score')
-    assert len(pages) >= 14
+    assert len(pages) >= 13  # one context page per task, all horizons as columns
     for index,page in enumerate(pages):
         assert page.tables and page.caption and page_text(page)
         assert page.figure.get_figwidth() == style.WIDTH_FULL
