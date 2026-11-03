@@ -47,6 +47,25 @@ Never relocate an installed environment.
 
 ### Current campaign state
 
+**Current recovery, 03-11-2026:** fresh frozen-source FP32 inspection `62529530` passed all
+459 comparisons / 2,295 folds / 30,967,719 predictions and 125 context tasks / 5,550 cells /
+147,493,764 predictions. Full PROJECT/native-cache integrity check `62529762` also passed
+all 236 files (4,117,585,215 bytes per tier). The one native CSV-parser crash has not recurred;
+its underlying cause remains unconfirmed and its evidence is preserved privately on PROJECT.
+
+Combined postflight `62530166` is now running: original-source publication, original-source
+global finalization, then verified archival/retirement in that same allocation. Its receipt is
+`repair20261101/output-finalize-launch.retry3b.submission.json`. Do not enqueue a separate
+CreditPFN cleanup job while publication runs: the frozen publisher deliberately refuses any
+other queued/running CreditPFN job. Final hashes and absence of other consumers are still
+required before retiring either temporary DATA checkout or the four failed operational logs.
+Publication/global completion/retirement must be verified from their actual journals; submission
+and successful diagnostics alone do not establish completion. After all source consumers finish,
+the canonical DATA checkout may pull current reviewed GitHub main and get any necessary fresh
+source-specific CPU/GPU acceptance. No scientific arrays need resubmission.
+
+**Earlier postflight snapshots:**
+
 **Later native failure, 03-11-2026 10:53 CET:** the extension audit below passed, but `62528794`
 then failed because its frozen FP32-inspection subprocess segfaulted in pandas' CSV parser.
 Publication and global completion remain blocked. Retirement `62529038` was automatically

@@ -2,6 +2,7 @@
 
 ## 03-11-2026
 
+- Record fresh FP32 audit/runtime-integrity passes and submit publication, finalization and guarded checkout retirement in one native allocation.
 - Record the passed extension audit and native pandas crash blocking FP32 publication; preserve the PROJECT core and cancelled cleanup dependencies.
 - Record completed extension science, strict native prediction replay, running final publication and dependency-gated archival/retirement of the temporary DATA checkouts.
 - Restore lossless native FP32 in legacy TabPFN regression prediction readers so strict R² replay matches original arithmetic; preserve genuine FP64 and unchanged audit tolerances.
