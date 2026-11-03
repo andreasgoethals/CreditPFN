@@ -47,10 +47,14 @@ Never relocate an installed environment.
 
 ### Current campaign state
 
-**Live postflight, 03-11-2026 10:51 CET:** scientific production is finished; do not resubmit
-training, context or benchmark arrays. Native finalizer `62528794`, helper `2c9ce92`, is running
-the strict original-source extension audit followed by original-source FP32 publication.
-No final completion receipt exists yet. The reader correction is explicitly recorded in
+**Live postflight, 03-11-2026:** scientific production is finished; do not resubmit
+training, context or benchmark arrays. Native finalizer `62528794`, helper `2c9ce92`, passed
+the strict original-source extension audit: 1,374 benchmark comparisons, 6,870 folds and
+86,325,214 saved prediction rows; 250 context tasks, 10,370 cells and 260,528,562 saved
+prediction rows. Primary scores, finiteness and complete fixed test membership/targets pass.
+It is now rechecking/publishing the original-source FP32 refresh; no final completion receipt
+exists yet. Supplementary capped NLL is not an uncapped likelihood estimate.
+The reader correction is explicitly recorded in
 `repair20261101/auditor-io-fidelity.json`, with every other numerical/cohort check unchanged.
 
 Cleanup `62529038` is already submitted with `afterok:62528794`. It independently checks the
