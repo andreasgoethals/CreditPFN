@@ -47,6 +47,12 @@ Never relocate an installed environment.
 
 ### Current campaign state
 
+**Publication milestone, 03-11-2026 11:29 CET:** `62530166` completed original-source FP32
+publication; all 26/26 directory moves are verified and `publication.json` is complete.
+The job continues with final extension checks/consolidation and inline retirement. Global
+completion and `final-retirement.json` were still absent at this inspection; all three DATA
+checkouts remain until those gates finish. No training or inference needs resubmission.
+
 **Current recovery, 03-11-2026:** fresh frozen-source FP32 inspection `62529530` passed all
 459 comparisons / 2,295 folds / 30,967,719 predictions and 125 context tasks / 5,550 cells /
 147,493,764 predictions. Full PROJECT/native-cache integrity check `62529762` also passed
