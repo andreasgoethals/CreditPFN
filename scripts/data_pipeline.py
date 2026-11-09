@@ -9,11 +9,9 @@ Both stage modules are each callable on their own (``python -m
 src.data.<name>``); this script is the convenience wrapper that
 chains them and writes a single summary line per run to ``logs/``.
 
-There is **no `.npz` chunking stage**. The training pipeline reads
-sanitized CSVs directly and applies the per-epoch random subsample
-itself; the eval pipeline reads them too and applies K-fold CV.
-Removing chunking turned the per-dataset cache invalidation logic
-into dead code; that simplification lives in 2026-05-20's refactor.
+There is **no chunking stage**. The training pipeline reads sanitized
+CSVs directly and applies the per-epoch random subsample itself; the
+eval pipeline reads them too and applies K-fold CV.
 
 Public entry point
 ------------------
@@ -55,25 +53,27 @@ from __future__ import annotations
 
 import argparse
 import shutil
-import time
-from pathlib import Path
 
 # Ensure the repo root is importable when this file is executed as a
 # plain script (``python scripts/data_pipeline.py``) rather than as a
 # module (``python -m scripts.data_pipeline``).
 import sys as _sys
+import time
+from pathlib import Path
+
 _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO) not in _sys.path:
     _sys.path.insert(0, str(_REPO))
 
 from src.data import register, sanitize  # noqa: E402
 from src.data.preprocessing import DATASET_METADATA  # noqa: E402
-from src.utils.paths import (  # noqa: E402
-    apply_data_source_from_cfg, resolve_data_path, resolve_output_path,
-)
 from src.utils.config import dump_resolved  # noqa: E402
 from src.utils.logging_setup import resolve_run_log, setup_logging  # noqa: E402
-
+from src.utils.paths import (  # noqa: E402
+    apply_data_source_from_cfg,
+    resolve_data_path,
+    resolve_output_path,
+)
 
 # --------------------------------------------------------------------------- #
 # Helpers
@@ -126,12 +126,6 @@ def _filter_dataset_ids(datasets: list[str] | None) -> set[str] | None:
             f"Known IDs: {sorted(DATASET_METADATA.keys())}"
         )
     return set(datasets)
-
-
-def _count_files(folder: Path, pattern: str = "*") -> int:
-    if not folder.is_dir():
-        return 0
-    return sum(1 for _ in folder.glob(pattern))
 
 
 # --------------------------------------------------------------------------- #
@@ -201,6 +195,7 @@ def run(
         if selected is not None:
             # Restore.
             from types import MappingProxyType
+
             from src.data import preprocessing as _pp
             _pp._RAW_METADATA = {k: dict(v) for k, v in full_metadata.items()}
             _pp.DATASET_METADATA = MappingProxyType(

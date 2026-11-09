@@ -1,9 +1,37 @@
 # Literature — continued pretraining and adaptation behavior
 
-The current presentation uses four RQs and ten analyses, defined in [RESEARCH_BRIEF.md](RESEARCH_BRIEF.md#four-research-questions-and-ten-analyses--29-10-2026). Historical run/config paths retain their original IDs. L2-SP and freezing are separate analyses of the same complete factorial, with their interaction retained; DiagScale and LoRA remain specified-recipe evaluations. Reorganization adds no independent replication and does not retrospectively turn the theory-informed hypotheses into preregistration. The context analysis now exposes absolute scores, paired effects, both task metrics and fixed table/test cohorts.
+Primary-source support for the second campaign's methods, defined in
+[RESEARCH_BRIEF.md](RESEARCH_BRIEF.md) and [`config/design.yaml`](../config/design.yaml). Sections are
+dated. Sections before 04-11-2026 were written for the first study and keep its experiment
+numbers: experiment 1 (learning-rate grid), 2 (seed), 5 (DiagScale), 6 (LoRA), 7 (row exposure),
+8 (corpus composition), 9 (episode size) and 10 (context curves) correspond to the second
+campaign's E5, E2, E6, E6, E8, E9, E10 and E11 (numbers of 05-11-2026). Library references are read-only at the pin
+stated in each section.
 
-Library references below are read-only at TFM pin `26156f36eb7676e8d9050547817346db548b0e85`; no literature or upstream source was modified by this reorganization.
+## Second-campaign choices — 04-11-2026
 
+* **L2-SP** (Li, Grandvalet & Davoine 2018; Real-TabPFN, `tfm-library/papers/text/2025/07_Garg_et_al._Real_TabPFN_*`)
+  penalises distance from the pretrained weights. For adapters we apply it to the effective weight
+  change. For LoRA that is `||(alpha/r)BA||^2`. No paper found applies L2-SP to `BA` itself; the usual
+  practice, weight decay on the factors, is equivalent to a nuclear-norm penalty on the update
+  (Kim et al. 2025, arXiv 2502.09376; Jang et al. 2024, arXiv 2402.11867) and is non-zero at
+  initialisation. LaLoRA anchors LoRA parameters with a curvature-weighted penalty instead. Our
+  formulation is a direct translation, stated as our own.
+* **Partial fine-tuning** (Rubachev et al. 2025, `tfm-library/papers/text/2025/06_Rubachev_*`):
+  last-layer, LoRA and embedding/LayerNorm/head variants differ minimally from full fine-tuning on
+  TabPFNv2; rates are tuned per method on a validation split (5e-6 to 5e-4). CPT has no target labels,
+  so E6 compares scopes at matched rates instead; no top-layer scope is added.
+* **Target fine-tuning baseline (E4)** uses the libraries' own fine-tuners (`tabpfn.finetuning`,
+  `tabicl._finetune`) with early stopping. Learning rate 6.5e-5 (05-11-2026): Rubachev et al. tune
+  the rate per dataset over ten log-spaced values from 5e-6 to 5e-4. Their code dump's 49 tuned
+  configurations most often choose 2.3e-5 and 1.8e-4 (11 each; no rate wins more than 22%), and
+  subsamples of one dataset choose rates up to 20 times apart; the paper does not analyse whether the
+  best rate is predictable. E4 uses the geometric midpoint of the two most frequent winners, 6.5e-5,
+  which is also a point of their grid.
+* **Gradient clipping at norm 1** is the default of both upstream fine-tuners
+  (`tabpfn.finetuning` `grad_clip_value=1.0`, `tabicl._finetune` `grad_clip=1.0`); the Real-TabPFN
+  text does not state a clipping value.
+* **TabPFN-2.5** weights are non-commercial and gated (arXiv 2511.08667); not used.
 
 ## TabPFN v2/v2.6 extension review — 29-10-2026
 
@@ -62,7 +90,7 @@ PyTorch SDPA with FP16 versus FP32 tensors and no observed direct FA3 call; the 
 SDPA kernel is not identified. These are our measurements, not a claim made by the cited
 paper or source snapshot. The diagnostic records campaign packages TabICL 2.1.1 / PyTorch
 2.12.0 and the VSC TFM-library checkout `de324efcca55be392feb0c01830b3b6ce364587f`.
-See `RESEARCH_BRIEF.md` for the paired scores, selection limits and paper interpretation.
+The paired scores are in the first-study brief (Git history, commit `2c8ef18`).
 
 Related preprint evidence checked on 21-10-2026 at library pin
 `cbaff2f5fa0a6e910d7e7d1cd148437a3e0c217a`: Ning et al., *Test-Time Compute for
@@ -98,16 +126,16 @@ refined after inspecting results, so it is exploratory rather than a retroactive
 
 | Primary source at the current pin | Verified argument | Question addressed here |
 |---|---|---|
-| [Müller et al., Transformers Can Do Bayesian Inference](../tfm-library/papers/text/2021/12_Muller_et_al._Transformers_Can_Do_Bayesian_Inference.txt), Section 3, Insight 1 and Corollaries 1.1–1.2 | Expected prior-data NLL is cross-entropy to the prior's posterior predictive distribution, or KL plus a constant. Exact recovery additionally requires representability and optimization. | Reweighting training tasks toward credit can improve relevant predictive structure or discard useful structure. Experiment 1 measures transfer and retention over adaptation strength; a CPT checkpoint is not automatically an exact Bayesian posterior update. |
-| [Nagler, Statistical Foundations of Prior-Data Fitted Networks](../tfm-library/papers/text/2023/07_Nagler_Statistical_Foundations_of_Prior_Data_Fitted_Networks.txt), Sections 5–6 | A fixed PFN's repeated-context variation and its systematic deviation from the true conditional distribution are distinct. Theorem 5.2 assumes diminishing single-observation sensitivity; sufficient decay controls context variability. Vanishing variability does not itself imply vanishing bias. | Experiment 10 asks whether the *effect of CPT* changes with available labeled context. It does not directly measure context variance, because it uses one nested context sequence per outer fold. These asymptotic conditions have not been established for our modern checkpoints. |
-| [Garg et al., Real-TabPFN](../tfm-library/papers/text/2025/07_Garg_et_al._Real_TabPFN_Improving_Tabular_Foundation_Models_via_Continued_Pre_training_With_Real_World_Data.txt), Sections 3–5 and Appendix C | Real-table CPT improves the studied TabPFN-v2 setting; longer total context-plus-query episodes improve its ablation. Source comparisons change several corpus properties together. | Experiments 8 and 9 separate an eligibility-policy change from an episode-size change while retaining excluded target tables. They do not prove an independent causal effect of table size. |
+| [Müller et al., Transformers Can Do Bayesian Inference](../tfm-library/papers/text/2021/12_Muller_et_al._Transformers_Can_Do_Bayesian_Inference.txt), Section 3, Insight 1 and Corollaries 1.1–1.2 | Expected prior-data NLL is cross-entropy to the prior's posterior predictive distribution, or KL plus a constant. Exact recovery additionally requires representability and optimization. | Reweighting training tasks toward credit can improve relevant predictive structure or discard useful structure. E1 and E5 measure transfer and retention over adaptation strength; a CPT checkpoint is not automatically an exact Bayesian posterior update. |
+| [Nagler, Statistical Foundations of Prior-Data Fitted Networks](../tfm-library/papers/text/2023/07_Nagler_Statistical_Foundations_of_Prior_Data_Fitted_Networks.txt), Sections 5–6 | A fixed PFN's repeated-context variation and its systematic deviation from the true conditional distribution are distinct. Theorem 5.2 assumes diminishing single-observation sensitivity; sufficient decay controls context variability. Vanishing variability does not itself imply vanishing bias. | E13 asks whether the *effect of CPT* changes with available labeled context. It does not directly measure context variance, because it uses one nested context sequence per outer fold. These asymptotic conditions have not been established for our modern checkpoints. |
+| [Garg et al., Real-TabPFN](../tfm-library/papers/text/2025/07_Garg_et_al._Real_TabPFN_Improving_Tabular_Foundation_Models_via_Continued_Pre_training_With_Real_World_Data.txt), Sections 3–5 and Appendix C | Real-table CPT improves the studied TabPFN-v2 setting; longer total context-plus-query episodes improve its ablation. Source comparisons change several corpus properties together. | E11 and E12 separate a table-size policy change from an episode-size change while retaining excluded target tables. They do not prove an independent causal effect of table size. |
 | [Shaheen et al., Understanding the Surprising Generalization Properties of Tabular Foundation Models](../tfm-library/papers/text/2026/08_Shaheen_et_al._Understanding_the_Surprising_Generalization_Properties_of_Tabular_Foundation_Models.txt), Sections 2–4 and limitations | In its row-based architecture and real-data pretraining setting, task/feature structure matters and domain similarity is not sufficient to predict transfer. Retrieval-and-aggregation is a supported interpretation with stated scope, not a universal representation theorem. | Credit-domain matching and more rows need not dominate task diversity. This motivates interpreting corpus-policy effects rather than assuming large-only credit training must win. It is not direct evidence about CPT of TabPFN v3 or TabICLv2. |
-| [Ning et al., Test-Time Compute for Tabular Foundation Models](../tfm-library/papers/text/2026/10_Ning_et_al._Test_Time_Compute_for_Tabular_Foundation_Models_Mechanisms_Gains_and_Limits.txt), Sections 3–5 and adaptation appendix | Query-scaling adapters modify attention with few parameters; evaluated target-table adaptation uses validation-best selection and a base fallback. | Experiment 5 tests the mechanism in cross-table credit CPT with fixed endpoints. Its outcome is an extension of the question, not a reproduction of the target-table recipe. |
+| [Ning et al., Test-Time Compute for Tabular Foundation Models](../tfm-library/papers/text/2026/10_Ning_et_al._Test_Time_Compute_for_Tabular_Foundation_Models_Mechanisms_Gains_and_Limits.txt), Sections 3–5 and adaptation appendix | Query-scaling adapters modify attention with few parameters; evaluated target-table adaptation uses validation-best selection and a base fallback. | E6 tests the mechanism in cross-table credit CPT with fixed endpoints. Its outcome is an extension of the question, not a reproduction of the target-table recipe. |
 
 Parameter anchoring, fewer updated parameters and smaller learning rates can restrict departure
 from initialization. This motivates testing preservation versus useful specialization, but there is
-no theorem here that less parameter movement lowers prediction variance or improves AUC. Experiment 2
-checks a second *training* seed; experiment 7 changes exposure/update weighting at fixed successful
+no theorem here that less parameter movement lowers prediction variance or improves AUC. E2
+checks a second *training* seed; E10 changes row exposure at fixed successful
 updates. Neither substitutes for independently resampled inference contexts.
 The prior-NLL identity concerns probabilistic PFN objectives; it is not an identity for TabICLv2's
 regression pinball loss. Native objectives and evaluation functionals remain distinct in this study.
@@ -150,10 +178,9 @@ is one observed outcome, not a known conditional probability, per row. Therefore
   at its chosen bins, not recover the repeated-context bias–variance decomposition.
 
 The broad synthetic-mechanism and fixed-row-reservoir studies discussed during review are **not
-adopted experiments or prerequisites**. Prioritize complete paired credit-domain analysis of
-experiments 1, 2, 7, 10, 5, 8, 9. A later, separately approved context-resampling extension would be justified only
-if an unresolved CPT-versus-original difference calls for it; no additional training is needed for
-that check. The research brief specifies the saved-artifact contract and current analysis limits.
+adopted experiments or prerequisites**. A separately approved context-resampling extension would
+be justified only if an unresolved CPT-versus-original difference calls for it; no additional
+training is needed for that check.
 
 ## Closest evidence
 
@@ -196,7 +223,7 @@ Scope matters: the hash-matched v3 regressor metadata and upstream `_get_v2_conf
 
 TabICLv2 regression uses mean pinball loss across its 999 native quantiles, matching the [TabICL snapshot](../tfm-library/repositories/TabICL.txt) `_pinball_loss` and `_compute_batch_loss`; its paper describes the quantile formulation. Native losses provide a defensible controlled starting point, not proof of optimal credit AUC/F1/RMSE. NLL and pinball assess predictive distributions; neither directly minimizes point RMSE. Loss scales and the relative strength of the same L2-SP lambda differ across these objectives.
 
-**Learning-rate range.** The four-level main range extends from this conservative CPT reference through `3e-5`. Rubachev et al. study higher target-specific fine-tuning rates, including a search spanning roughly `5e-6` to `5e-4`; those rates are not automatically appropriate when preserving a transferable prior across unrelated tables. The upper CreditPFN level is a useful stress condition to examine, not a literature-established optimum. A short endpoint pilot checks numerical behavior before the large campaign.
+**Learning-rate range.** E5 extends from below this conservative CPT reference (`1e-7`) through `1e-5`. Rubachev et al. study higher target-specific fine-tuning rates, including a search spanning roughly `5e-6` to `5e-4`; those rates are not automatically appropriate when preserving a transferable prior across unrelated tables. The upper CreditPFN level is a useful stress condition to examine, not a literature-established optimum; Experiment 0 checks numerical behavior before the campaign.
 
 **Partial updates.** Rubachev's LayerNorm/head/embedding strategy includes trainable normalization affine parameters. CreditPFN freezes the selected stack completely and trains modules around it. This is a distinct ablation. Measure the fraction and names of trainable parameters, movement from initialization, time and memory; avoid applying a shared label to opposite freeze schemes in different families.
 
@@ -206,15 +233,11 @@ TabICLv2 regression uses mean pinball loss across its 999 native quantiles, matc
 
 No reviewed study establishes that 5k, 10k or 20k updates captures all relevant behavior for all four CreditPFN bases, both tasks and both adaptation modes. With no skipped steps, the selected 10k equal-table budget corresponds to roughly 769–833 visits per PD training table or 1,667 per LGD training table. This smaller corpus repeats tables much more often than a large corpus; row draws, losses, rates and anchoring still determine what those visits do.
 
-**CreditPFN's pilot-informed decision.** Review of the eight 20k full-update reference pilots supports extending the provisional 5k window to **10k**: credit effects and non-credit retention still change after 5k, including a classification retention mean crossing below its baseline. This is project evidence, not a conclusion from the cited literature. Ten thousand balances a wider descriptive window against compute; it does not establish saturation, and the preserved 20k pilots contain later changes too. One recipe/fold/seed per base/task cannot establish convergence of every main-grid recipe. The monitored fold is reused in the descriptive study; disclose this horizon selection rather than presenting it as independent validation. Historical measurements live in AGENTS_MEMORY.md, and the implemented protocol in RESEARCH_BRIEF.md.
+**CreditPFN's budget decision (project evidence, not literature).** First-study 20k-update pilots still changed after 5k, which set the 10k horizon; first-study held-out curves at 3e-7 were then flat by 2,500 updates. Ten thousand updates is a descriptive window, not evidence of saturation for every recipe, base and task. A point on a longer schedule is not equivalent to a fresh run whose cosine schedule ends there; keep the budget and milestones fixed across arms and do not select each recipe's best checkpoint. Measurements are in AGENTS_MEMORY.md, the protocol in RESEARCH_BRIEF.md.
 
-Following the loss corrections, the unaffected TabICL classification/regression and v2.6 regression trajectories still support observing beyond 5k. Keep 10k as a descriptive horizon, but do not use affected old TabPFN pilots to certify the corrected objectives' score curves. Short GPU validation of those changed paths remains required; retaining a common descriptive horizon is not a claim that every architecture has converged.
+**Sampling.** Equal table visitation prevents the largest table from owning most updates. Exhaustive partitioning with size-proportional updates and within-table gradient accumulation address different questions. Equal steps alone do not match data exposure or compute. For PD, the class-balanced draw (E8) changes both context and query prevalence; the reference uses proportional sampling, so the full-pass arm (E10) covers every row without changing class prevalence. Non-overlapping partitions are a controlled design choice here, not a literature-established improvement in predictive quality.
 
-A point on a 20k-schedule trajectory is not equivalent to a fresh run whose entire cosine schedule ends at 10k. Longer pilots diagnose whether appreciable late behavior exists; they do not isolate duration from schedule shape. Keep the chosen budget and milestones fixed in main, seed and sampling configs before preparing their plans, disclose the pilot decision, and do not select each recipe's best checkpoint for the main comparison.
-
-**Sampling.** Equal table visitation prevents the largest table from owning most updates. Exhaustive partitioning with size-proportional updates and within-table gradient accumulation address different questions. Equal steps alone do not match data exposure or compute. For PD, the existing class-balanced batch draw changes both context and query prevalence; hold it fixed in the main grid and its seed check. The separate pass-mode study uses proportional sampling in all three arms so exhaustive coverage is possible without changing class prevalence between those arms. Non-overlapping partitions are a controlled design choice here, not a literature-established improvement in predictive quality.
-
-**Seed and sampling controls.** Rechecked the primary Real-TabPFN recipe (single-table batches, uniform capped row draws and 60/40 context/query), Rubachev's fine-tuning analysis, and the TabICLv2 objectives at pin `81c749bdf17e88b5152f4dc7f2e49bd48e9cc8ba`. None establishes that two seeds quantify grid-wide robustness or that disjoint full passes dominate random sampling. Experiment 2 is a paired two-seed sensitivity check at one prespecified recipe. Experiment 7 deliberately changes both update weighting and exposure, so equal updates must be accompanied by row and compute measures. Its averaged chunk objective is not a joint all-row context and slightly unequal query counts are not exactly row weighted. The new six-update auxiliary controls verify execution, not those empirical research hypotheses.
+**Seed and sampling controls.** Rechecked the primary Real-TabPFN recipe (single-table batches, uniform capped row draws and 60/40 context/query), Rubachev's fine-tuning analysis, and the TabICLv2 objectives at pin `81c749bdf17e88b5152f4dc7f2e49bd48e9cc8ba`. None establishes that two seeds quantify grid-wide robustness or that disjoint full passes dominate random sampling. E2 is a paired two-seed sensitivity check at one prespecified recipe. E10 changes exposure at equal updates, so it must be accompanied by row and compute measures.
 
 **What the study can conclude.** A fixed descriptive grid can map behavior without claiming a winner. It must still show incomplete coverage and numerical failures, preserve paired base controls, and avoid treating dependent folds/seeds as independent datasets. A generalization claim about a selected recipe, no-forgetting claim, specifically domain-driven benefit, or temporal credit deployment needs corresponding additional evidence.
 
@@ -263,9 +286,9 @@ Before publication, refresh the closest-work search and verify the exact upstrea
 
 ## Fixed non-credit retention panel
 
-The TabPFN-Wide retention study and Real-TabPFN's evaluations motivate measuring the starting model and adapted model on the same external tables; neither prescribes CreditPFN's eight-table panel. We use a fixed non-credit subset of [TabArena-v0.1, OpenML study 457](https://www.openml.org/search?type=study&id=457), with exact dataset/version IDs in `config/retention.yaml`. The [TabArena primary paper and supplement](https://openreview.net/forum?id=jZqCqpCLdU) describe the benchmark's curated tasks. [TALENT's official repository](https://github.com/LAMDA-Tabular/TALENT) was also examined; its much broader collection is not necessary for the initial bounded retention panel.
+The TabPFN-Wide retention study and Real-TabPFN's evaluations motivate measuring the starting model and adapted model on the same external tables; neither prescribes CreditPFN's panel (19 binary and 12 regression tables). We use a fixed non-credit subset of [TabArena-v0.1, OpenML study 457](https://www.openml.org/search?type=study&id=457), with exact dataset/version IDs in `config/retention.yaml`. The [TabArena primary paper and supplement](https://openreview.net/forum?id=jZqCqpCLdU) describe the benchmark's curated tasks. [TALENT's official repository](https://github.com/LAMDA-Tabular/TALENT) was also examined; its much broader collection is not necessary for the initial bounded retention panel.
 
-The panel choice is a project design decision, not a literature-validated sufficient sample of all non-credit domains. We use our own five outer folds and fixed milestone subsets; this is not an official TabArena benchmark score. The two sklearn packaged datasets used for null/recovery controls provide a small inference/debugging check only. Base-checkpoint exposure remains unverified; paired changes are interpretable without claiming these are entirely new datasets to every base.
+The panel choice is a project design decision, not a literature-validated sufficient sample of all non-credit domains. We use our own five outer folds and fixed milestone subsets; this is not an official TabArena benchmark score. Base-checkpoint exposure remains unverified; paired changes are interpretable without claiming these are entirely new datasets to every base.
 
 
 ## October test-time-compute paper: relevance and limits
@@ -335,11 +358,6 @@ also apply to credit tables that share loan populations or releases.
 
 ### Implemented follow-ups and deliberate differences — 13-10-2026
 
-At the same `de324efcca55be392feb0c01830b3b6ce364587f` pin, experiment 10 is now the
-context-only curve; experiment 5 is DiagScale CPT; experiment 8 tests PD training-corpus
-eligibility at a fixed episode cap; experiment 9 tests episode size on the same large-table
-pool. The formerly numbered generic-data and prevalence proposals are excluded.
-
 The independent adapter implementation follows `DiagScale`, `inject_diagscale`,
 `sdpa_with_flattened_batch` and `finetune_tabicl` in the local TTC snapshot. It does not
 install or alter the authors' forks. Preserve query-scaling order, TabICL autograd parity,
@@ -367,15 +385,10 @@ then 10k with 400–60k rows. Learning rates change from 8e-4 to 1e-4 to 2e-5; t
 fraction changes from 30–90% to 80%. That staged recipe motivates studying episode size,
 but it does not isolate its effect or establish a credit-CPT optimum.
 
-Accordingly, experiment 8 changes only the eligibility policy within each fixed training
-complement, with an 8,192-row cap. It measures the combined policy effect, including changed
-table identities/diversity, exposure and revisit frequency. Experiment 9 keeps that large-table
-pool fixed and changes total rows to 2,048/8,192/26,000, preserving the 60/40 split and update
-schedule. It changes both context and query counts; equal updates do not match compute.
-These experiments test a conservative reference on modern bases, not a literal replication
-of Real-TabPFN's v2/20k-update/20k-row/cell-capped recipe. The matching 8,192-row control is
-shared by identity, reducing 48 previously proposed fresh trials to 32, at the deliberate
-cost of no longer estimating the full corpus-policy × episode-size interaction.
+In the second campaign, E11 compares small-only with count-matched large training tables, and
+E12 varies episode size (2,048 to 16,384 rows) within the pool of tables above 10,000 rows at
+equal updates (`config/design.yaml`). Equal updates do not match compute or rows seen; E12's
+row milestones and matched-context evaluation report those separately.
 
 
 ## LoRA follow-up: evidence and implementation boundaries — 24-10-2026

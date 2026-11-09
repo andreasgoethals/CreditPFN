@@ -51,8 +51,7 @@ def _trust_local_checkpoints():
     embedded in a finetuned checkpoint. TabPFN's internal loader calls
     ``torch.load(..., weights_only=None)`` (-> the new ``True`` default), so
     ``TabPFNClassifier(model_path=<our trained .ckpt>)`` raises
-    ``UnpicklingError`` and **every** trained-model eval row FAILs (observed
-    in the 2026-05-31 run: 875 PD + 600 LGD trained rows). The published
+    ``UnpicklingError`` and **every** trained-model eval row FAILs. The published
     base checkpoints store config as plain primitives and load fine, which
     is why only the *trained* checkpoints broke.
 
@@ -66,7 +65,7 @@ def _trust_local_checkpoints():
     orig_load = torch.load
 
     def _patched_load(*args, **kwargs):
-        if kwargs.get("weights_only", None) is not False:
+        if kwargs.get("weights_only") is not False:
             kwargs["weights_only"] = False
         return orig_load(*args, **kwargs)
 
@@ -123,8 +122,8 @@ def _tabpfn_regression_neg_nll(tabpfn_model, X: np.ndarray, y: np.ndarray, *, ou
         nll = crit(logits_t, y_t)
         # Clamp degenerate rows: a y that lands where the predicted density
         # underflows to 0 yields nll=+inf, and ONE such row makes the mean
-        # −inf and poisons every downstream aggregate (observed for the v2.6
-        # regressor on both LGD test sets, 2026-07-03 run). Cap per-row NLL
+        # −inf and poisons every downstream aggregate (seen with the v2.6 regressor
+        # on LGD test sets). Cap per-row NLL
         # at 100 (density 1e-44 — beyond any meaningful resolution) and log.
         n_bad = int((~torch.isfinite(nll)).sum().item())
         if n_bad:
@@ -142,15 +141,15 @@ def _tabpfn_regression_neg_nll(tabpfn_model, X: np.ndarray, y: np.ndarray, *, ou
         return None
 
 
-#: Evaluation precision for every TabPFN estimator (original and CPT alike):
-#: "auto" = the package default (mixed precision on GPU); "float32" = full FP32, the
-#: second campaign's proposed policy so all four models are scored in the same precision.
+#: Evaluation precision for every TabPFN estimator (original and CPT alike). Default "float32":
+#: every model, TabICL included, is scored in FP32. "auto" = the package default (mixed
+#: precision on GPU).
 PRECISION_ENV = "CREDITPFN_TABPFN_PRECISION"
 
 
 def inference_precision():
     import os
-    value = os.environ.get(PRECISION_ENV, "auto")
+    value = os.environ.get(PRECISION_ENV, "float32")
     if value == "auto":
         return "auto"
     if value == "float32":
@@ -183,8 +182,18 @@ def _regression_distribution(model, X, y, levels):
         output = model.predict(X, output_type="full", quantiles=list(levels))
     # TabPFN returns one array per quantile, including when n_rows == n_quantiles.
     quantiles = np.column_stack(output["quantiles"])
-    return {"mean": output["mean"], "quantiles": quantiles,
-            "neg_nll": _tabpfn_regression_neg_nll(model, X, y, output=output)}
+    result = {"mean": output["mean"], "quantiles": quantiles,
+              "neg_nll": _tabpfn_regression_neg_nll(model, X, y, output=output)}
+    # Exact CRPS (metrics.crps) needs the bucket probabilities and their borders in the
+    # original target space; both come from the same forward pass. Best effort: absent -> None.
+    try:
+        criterion, logits = output.get("criterion"), output.get("logits")
+        if criterion is not None and logits is not None:
+            result["bucket_probabilities"] = logits.float().softmax(-1).detach().cpu().numpy()
+            result["bucket_borders"] = criterion.borders.detach().float().cpu().numpy()
+    except Exception as exc:  # noqa: BLE001 - never fail evaluation for an optional metric
+        LOGGER.warning("crps: bucket distribution unavailable (%s: %s)", type(exc).__name__, exc)
+    return result
 
 
 # --------------------------------------------------------------------------- #

@@ -1,8 +1,8 @@
 """Recovery at optimizer boundaries and monitoring without altering training randomness."""
 from __future__ import annotations
 
-import random
 import os
+import random
 from contextlib import contextmanager
 from pathlib import Path
 

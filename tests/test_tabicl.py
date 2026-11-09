@@ -1,5 +1,5 @@
-"""Unit tests for the TabICLv2 model family (second continued-pretraining
-family, added 2026-08-04).
+"""Unit tests for the TabICLv2 model family (the second continued-pretraining
+family next to TabPFN).
 
 Coverage map
 ------------
@@ -29,7 +29,6 @@ import numpy as np
 import pandas as pd
 import pytest
 import torch
-
 
 # =========================================================================== #
 # Block 1 — family detection + guarded imports
@@ -63,7 +62,7 @@ def test_tabicl_smoke_test_imports() -> None:
 
 
 def test_missing_finetune_extra_names_the_extra_not_the_version() -> None:
-    """Regression test (2026-08-05): tabicl declares `transformers` only under
+    """Regression test: tabicl declares `transformers` only under
     its `finetune` extra, so a plain `pip install tabicl` yields a working
     INFERENCE install that fails only when importing the finetuning
     internals. Our first error message blamed the tabicl *version* and sent a
@@ -71,6 +70,7 @@ def test_missing_finetune_extra_names_the_extra_not_the_version() -> None:
     extra instead."""
     pytest.importorskip("tabicl")
     import sys
+
     from src.train.tabicl_compat import import_tabicl_finetune_data
 
     # Simulate "extra not installed": block transformers and evict the
@@ -103,6 +103,7 @@ def test_finetune_internals_have_expected_signature() -> None:
     training loop breaking at step 1 on the cluster."""
     pytest.importorskip("tabicl")
     import inspect
+
     from src.train.tabicl_compat import import_tabicl_finetune_data
     MetaBatch, build_meta_batch = import_tabicl_finetune_data()
     params = set(inspect.signature(build_meta_batch).parameters)
@@ -147,6 +148,7 @@ def _tiny_tabicl(*, regressor: bool):
     """Build a deliberately small TabICLv2 so model-level tests are fast on
     CPU. Only config keys the installed version accepts are passed."""
     import inspect
+
     from src.train.tabicl_compat import import_tabicl_core
     TabICL = import_tabicl_core()
     sig = inspect.signature(TabICL.__init__)
@@ -222,8 +224,8 @@ def test_freeze_backbone_leaves_only_icl_trainable(tmp_path: Path) -> None:
     )
     # `frozen_backbone` freezes the DEEP in-context transformer and adapts the interface
     # around it — 95.4 % of TabICLv2's parameters live in `icl_predictor`, mirroring TabPFN's
-    # `icl_blocks` at 96.6 %. Before 24-08-2026 this froze the front-end embedders instead,
-    # which is the opposite operation and made the two families' "frozen" arms incomparable.
+    # `icl_blocks` at 96.6 %. Freezing the front-end embedders instead would be the opposite
+    # operation and make the two families' "frozen" arms incomparable.
     # The shared rule (src/train/freeze.py) freezes the deepest repeated-block stack, which
     # for TabICLv2 is `icl_predictor.tf_icl` (12 blocks). The `decoder` HEAD and the label
     # encoder inside icl_predictor stay trainable, exactly as TabPFN's head does — freezing all
@@ -251,7 +253,7 @@ def test_freeze_backbone_leaves_only_icl_trainable(tmp_path: Path) -> None:
             freeze_modules=("no_such_module",),
         )
 
-    # REGRESSION (2026-08-06): the frozen stages must stay on the TRAINING
+    # REGRESSION: the frozen stages must stay on the TRAINING
     # forward path. TabICLv2 branches `if self.training: _train_forward else:
     # _inference_forward`, and the inference branch runs under no_grad and
     # writes CLS tokens into its input in place — which raised "A view was
@@ -300,7 +302,7 @@ def _synthetic_loaded(*, task_type: str, n: int = 240, d: int = 6):
 @pytest.mark.parametrize("task_type", ["classification", "regression"])
 def test_build_tabicl_step_batch_shapes_and_finiteness(task_type: str) -> None:
     pytest.importorskip("tabicl")
-    from src.train.dataloader import _build_tabicl_step_batch, TabICLTrainBatch
+    from src.train.dataloader import TabICLTrainBatch, _build_tabicl_step_batch
     loaded = _synthetic_loaded(task_type=task_type)
     batch = _build_tabicl_step_batch(
         loaded, n_total_target=200, query_fraction=0.20,
@@ -505,7 +507,7 @@ def test_build_baselines_creates_per_family_untuned_controls(tmp_path: Path) -> 
 
 
 def test_eval_wrapper_sanitizes_inf_and_dead_columns(tmp_path: Path) -> None:
-    """MEASURED upstream constraints (tabicl 2.1.1, 2026-08-04): its sklearn
+    """MEASURED upstream constraints (tabicl 2.1.1): its sklearn
     wrappers raise ValueError on ±inf and IndexError on an all-NaN column.
     Both are reachable from real credit folds, so the wrappers must absorb
     them without dropping columns (widths must match between fit/predict)."""
@@ -552,59 +554,9 @@ def test_sanitization_uses_training_columns_not_prediction_batch():
     np.testing.assert_equal(query, [[np.nan, 7.], [3., 8.]])
 
 
-def test_method_dirname_and_decoding_round_trip() -> None:
-    """`_method_dirname` (writer) and `_decode_method_dirname` (reader) must
-    agree — they are the on-disk contract between eval and the notebooks."""
-    from src.eval.benchmark import _method_dirname
-    from src.model.base import ModelHandle
-    from src.visualize.eval_viz import _decode_method_dirname
-
-    handle = ModelHandle(
-        name="tabicl-trained[…]", track="lgd", task_type="regression",
-        source="tabicl-trained", base_path="x",
-        extra={"base_checkpoint": "checkpoints/tabicl-regressor-v2-20260212.ckpt",
-               "learning_rate": 1e-5, "use_lora": True,
-               "epoch_pass_mode": "full_pass"},
-    )
-    dirname = _method_dirname(handle)
-    assert dirname == "tabicl-trained__tabicl-v2__lr1e-05__fullpass__iclhead"
-    meta = _decode_method_dirname(dirname)
-    assert meta["source"] == "tabicl-trained"
-    assert meta["base_short"] == "tabicl-v2"
-    assert meta["lr"] == pytest.approx(1e-5)
-    assert meta["use_lora"] is True
-    assert meta["full_pass"] is True
-
-    untuned = ModelHandle(
-        name="tabicl-untuned[…]", track="pd", task_type="classification",
-        source="tabicl-untuned",
-        base_path="checkpoints/tabicl-classifier-v2-20260212.ckpt",
-    )
-    d2 = _method_dirname(untuned)
-    assert d2 == "tabicl-untuned__tabicl-v2"
-    assert _decode_method_dirname(d2)["source"] == "tabicl-untuned"
-
-    # TabPFN dirnames must decode exactly as before this family was added.
-    tabpfn = ModelHandle(
-        name="tabpfn-trained[…]", track="pd", task_type="classification",
-        source="tabpfn-trained", base_path="x",
-        extra={"base_checkpoint": "checkpoints/tabpfn-v3-classifier-v3_default.ckpt",
-               "learning_rate": 3e-7, "use_lora": False,
-               "epoch_pass_mode": "one_sample"},
-    )
-    d3 = _method_dirname(tabpfn)
-    assert d3 == "tabpfn-trained__v3-default__lr3e-07"
-    m3 = _decode_method_dirname(d3)
-    assert (m3["source"], m3["base_short"], m3["use_lora"], m3["full_pass"]) == (
-        "tabpfn-trained", "v3-default", False, False)
-
-
 def test_row_cap_for_handle_is_symmetric_between_trained_and_untuned() -> None:
-    """Regression test (2026-08-04): the untuned branch used to strip a
-    dirname-style prefix off `handle.name`, which never matched, so every
-    untuned model silently fell through to the `default` cap while its
-    trained counterpart got the architecture cap — an un-paired comparison
-    on any dataset bigger than the default."""
+    """Original and trained handles of one architecture get the same row cap; otherwise
+    the comparison is un-paired on any dataset bigger than the default cap."""
     from src.eval.benchmark import resolve_max_rows_for_handle
     from src.model.base import ModelHandle
     caps = {"v3": 1_000_000, "v2.6": 50_000, "tabicl": 50_000, "default": 50_000}
@@ -701,9 +653,9 @@ def test_freeze_backbone_survives_repeated_steps(tmp_path: Path) -> None:
         loss.backward()
         opt.step()
         opt.zero_grad(set_to_none=True)
-        # The backbone must remain frozen AND on the train path throughout. Since
-        # 24-08-2026 the backbone is `icl_predictor` (the deep in-context transformer),
-        # matching what `frozen_backbone` freezes in TabPFN.
+        # The backbone must remain frozen AND on the train path throughout. The backbone is
+        # `icl_predictor` (the deep in-context transformer), matching what `frozen_backbone`
+        # freezes in TabPFN.
         assert trained.icl_predictor.tf_icl.training
         assert not any(p.requires_grad for p in trained.icl_predictor.tf_icl.parameters())
 
@@ -728,6 +680,7 @@ def test_train_one_config_end_to_end_tabicl(
     """
     pytest.importorskip("tabicl")
     from omegaconf import OmegaConf
+
     from src.train.loop import train_one_config
     from src.train.tabicl_model import save_finetuned_tabicl
     from src.utils.paths import resolve_staging_path
@@ -832,7 +785,7 @@ def test_training_grid_contains_both_families() -> None:
     # configs and train.yaml deliberately omits them. Merge one in, exactly as load_train_config does.
     cfg = OmegaConf.merge(
         OmegaConf.load(repo / "config" / "train.yaml"),
-        OmegaConf.load(repo / "config" / "experiment1" / "pd.yaml"),
+        OmegaConf.load(repo / "config" / "experiments" / "E01_reference" / "pd_a0.yaml"),
     )
     from src.train.tabicl_compat import model_family
     for key in ("classifier_base_paths", "regressor_base_paths"):
@@ -840,12 +793,10 @@ def test_training_grid_contains_both_families() -> None:
         fams = {model_family(b) for b in bases}
         assert fams == {"tabpfn", "tabicl"}, (key, bases)
         # The product is NOT plain: two rules shrink it, and both are deliberate.
-        #   * `adapter_families` restricts the `use_lora: true` arm to named families
-        #     (run-8: TabICLv2 only — LoRA on TabPFN was a measured no-op three times).
-        #   * `corpus.min_train_rows` was a swept axis in run-8 and is a SCALAR again from
-        #     run-9 (the dataset-split draw varies table sizes instead). Mirror
-        #     `resolve_grid`'s handling: a scalar is a one-value axis, a list is swept.
-        #   * `l2sp_lambdas` is an axis from run-9; null means "not swept".
+        #   * `adapter_families` restricts the `use_lora: true` arm to named families.
+        #   * `corpus.min_train_rows` mirrors `resolve_grid`: a scalar is a one-value axis,
+        #     a list is swept.
+        #   * `l2sp_lambdas`: null means "not swept".
         def _n(axis, default=1):
             raw = cfg.tunable.get(axis, None) if hasattr(cfg, "tunable") else None
             if raw is None:
@@ -886,3 +837,29 @@ def test_training_grid_contains_both_families() -> None:
         assert actual == expected, (key, actual, expected)
         # Every base must appear, so no family can be silently skipped.
         assert {b for b, *_ in resolve_grid(cfg_track, single=False)} == set(bases)
+
+
+def test_training_batch_mean_imputes_like_tabicl_inference() -> None:
+    """[10, missing, 30] must become [10, 20, 30] (TabICL's SimpleImputer), not [10, 0, 30]."""
+    pytest.importorskip("tabicl")
+    import src.train.dataloader as dl
+    captured = {}
+    from src.train import tabicl_compat
+    original = tabicl_compat.import_tabicl_finetune_data
+
+    def capture():
+        cls, build = original()
+        def spy(X, *a, **k):
+            captured["X"] = np.array(X, copy=True)
+            return build(X, *a, **k)
+        return cls, spy
+    import unittest.mock as mock
+    loaded = dl._LoadedDataset(dataset_id="m", X=pd.DataFrame({"a": [10.0, np.nan, 30.0] * 20,
+                                                                 "b": [np.nan] * 60}),
+                               y=np.tile([0, 1, 0], 20), cat_columns=(), task_type="classification")
+    with mock.patch.object(tabicl_compat, "import_tabicl_finetune_data", capture):
+        dl._build_tabicl_step_batch(loaded, n_total_target=60, query_fraction=0.25,
+                                    rng=np.random.default_rng(0), n_estimators=1, epoch_seed=0,
+                                    replica=0, preprocessing_seed=0, row_indices=np.arange(60))
+    X = captured["X"]
+    assert np.allclose(X[:, 0], np.tile([10.0, 20.0, 30.0], 20)) and np.all(X[:, 1] == 0)

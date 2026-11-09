@@ -3,17 +3,8 @@
 #  Shared sealed-runtime activator; Conda is an explicit acceptance comparator.
 # =============================================================================
 #
-#  Why this file exists
-#  --------------------
-#  The previous `export PATH="${VSC_DATA}/miniconda3/bin:${PATH}"; source
-#  activate CreditPFN` pattern was fragile: it assumed conda lives at exactly
-#  ${VSC_DATA}/miniconda3 and relied on the slurm shell having sourced
-#  ~/.bashrc. If either assumption broke the job would happily continue with
-#  the system Python and then explode at the first `import numpy`.
-#
-#  This script tries every install location we've seen in the wild and uses
-#  the real conda shell hook (which respects whatever the user actually
-#  installed). If none of them work it fails loud BEFORE the python invocation.
+#  Conda may live in several places and a Slurm shell need not source ~/.bashrc, so this
+#  script uses the real conda shell hook and fails loudly before any Python runs.
 #
 #  Usage
 #  -----
@@ -86,7 +77,7 @@ export WANDB_MODE="${WANDB_MODE:-disabled}"
 export WANDB_DIR="${_CACHE_ROOT}/wandb"
 
 # --------------------------------------------------------------------------
-# An active virtualenv SHADOWS conda and wins silently (2026-08-05).
+# An active virtualenv SHADOWS conda and wins silently.
 # `#!/bin/bash -l` sources ~/.bashrc; if that auto-activates a venv, its
 # bin/ sits ahead of the conda env's on PATH. `conda activate` then reports
 # success while `python` and `pip` still resolve to the VENV — so a package
@@ -145,25 +136,15 @@ else
 fi
 
 # --------------------------------------------------------------------------
-# Activate + VERIFY. `conda activate` can "succeed" on a broken or EMPTY env
-# (created without python, or whose install was interrupted) — the env's bin/
-# then contributes nothing to PATH and `python` silently falls through to
-# /bin/python (observed on the 2026-07-07 probe_row_cap job: "Active python:
-# /bin/python"). So after activating we verify the interpreter really belongs
-# to the env AND carries the project deps. Stop if the requested environment
-# is unusable: a fallback would change the prepared experiment.
+# Activate + VERIFY. `conda activate` can "succeed" on a broken or empty env, and
+# `python` then silently falls through to the system interpreter. Verify that the
+# interpreter belongs to the env and imports the project deps; a fallback would
+# change the prepared experiment.
 # --------------------------------------------------------------------------
 
 _prepend_conda_bin() {
-    # `conda activate` sets CONDA_PREFIX but does not always WIN the PATH race.
-    # On a Genius login node with a Python Lmod module loaded, `python` still
-    # resolved to /apps/leuven/.../Python/3.12.3/bin/python while CONDA_PREFIX
-    # correctly pointed at our env — so the health check below rejected a
-    # perfectly good env and the launcher aborted (observed 2026-08-05 from
-    # the old launcher; the same activation worked on a compute node, which
-    # has no such module loaded). Forcing the env's bin to the front makes the
-    # interpreter match CONDA_PREFIX. A duplicate PATH entry is harmless;
-    # `hash -r` clears bash's cached location for an already-resolved `python`.
+    # `conda activate` does not always win the PATH race against a loaded Lmod Python
+    # module; put the env's bin first so the interpreter matches CONDA_PREFIX.
     [[ -n "${CONDA_PREFIX:-}" && -x "${CONDA_PREFIX}/bin/python" ]] || return 0
     PATH="${CONDA_PREFIX}/bin:${PATH}"
     export PATH

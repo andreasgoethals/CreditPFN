@@ -41,7 +41,7 @@ device: "auto"                            # auto | cuda | cpu
 track: "pd"                               # pd = classifier, lgd = regressor
 
 optimizer:
-  name: adamw                             # adamw (reference) | muon_adamw (one-factor arm)
+  name: adamw
   weight_decay: 0.0                       # 0: L2-SP anchors to w0 instead of to the origin
   l2sp_lambda: 0.003                      # anchor strength when not swept (Garg 2025)
 
@@ -59,6 +59,7 @@ lora:                                     # native LoRA is selected by train.ada
 train:
   deterministic: false                  # strict kernels only for the recovery control
   max_rows_per_step: null                # optional lower debug cap; never raises measured caps
+  regression_objective: window_nll       # TabPFN LGD: NLL over a 5-bucket window (src/train/regression_objectives.py)
   retention_panel: research
   parameter_diagnostics: true
   resource_diagnostics: true
@@ -68,7 +69,10 @@ train:
   max_epochs_for_step_budget: 6000        # rail on the above, so no arm runs away
   grad_clip_norm: 1.0
   amp: true
-  amp_dtype: "auto"                       # BF16 where supported
+  amp_dtype: "auto"                       # TabPFN: BF16 where supported
+  tabicl_precision: fp16                  # TabICLv2: fp16 (+ GradScaler, upstream recipe) or fp32;
+  #   never BF16, which corrupted its forward in the first study. Experiment 0's GPU `precision`
+  #   check compares the update-zero loss with FP32; set fp32 if FP16 fails it.
   dataloader_workers: 0                   # 0 = serial (default). >0 parallelises the per-step
   #   TabPFN preprocessing across CPU workers so the GPU SMs don't idle waiting for it; loop.py
   #   forces the `spawn` context, which fixes the old fork deadlock. -1 = auto (allocated cores-1),

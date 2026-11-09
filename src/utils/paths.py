@@ -4,7 +4,7 @@ THE ONLY MODULE THAT BUILDS A PATH — everything else asks this one. A path ass
 site with `"output CreditPFN/" + name` is correct on a laptop and wrong on the cluster, and the failure
 shows up as a full quota or an empty results directory hours into a job.
 
-        project storage  /lustre1/project/stg_00211/<Project>/  big files, allocation-specific quotas
+        project storage  /gpfs1/project/prj_00013/<Project>/  big files (Mindwell-native GPFS since 04-11-2026)
     personal data    $VSC_DATA/<Project>/                   repo + output CreditPFN/, backed up, 75 GiB
     scratch          $VSC_SCRATCH/                          purged after 30 days of no ACCESS
 
@@ -16,7 +16,7 @@ Results and consolidated tables belong on project storage. Live
 logs and per-trial metadata stay on DATA until post-run consolidation; both bytes
 and inodes require monitoring. See docs/VSC.md.
 
-OFF-CLUSTER EVERY TIER COLLAPSES INTO THE REPO. Pretending `/lustre1` exists on a laptop would
+OFF-CLUSTER EVERY TIER COLLAPSES INTO THE REPO. Pretending `/gpfs1` exists on a laptop would
 mean two code paths, and the one that only runs on the cluster is the one that breaks.
 """
 
@@ -29,15 +29,11 @@ from pathlib import Path
 #: Per-project folder names; overrides always name the enclosing project root.
 PROJECT_NAME = "CreditPFN"
 OUTPUT_DIR_NAME = "output CreditPFN"
-EXPERIMENTS = ("general", "experiment0", "experiment1", "experiment2", "experiment3",
-               "experiment4", "experiment5", "experiment6", "experiment7", "experiment8",
-               "experiment9", "experiment10")
-#: Second-campaign output groups: the experiment slugs of config/design.yaml
+#: Second-campaign output groups, one per experiment slug in config/design.yaml
 #: (tests/test_design.py keeps the two lists identical).
-CAMPAIGN2_GROUPS = ("reference", "seed", "length", "update_size_anchoring", "scope",
-                    "class_sampling", "context_query_split", "exposure", "corpus", "episode_size",
-                    "context", "optimizer_muon", "scope_top_layers")
-EXPERIMENTS = EXPERIMENTS + CAMPAIGN2_GROUPS
+CAMPAIGN2_GROUPS = ("reference", "seed", "domain_control", "target_finetune", "update_size_anchoring", "scope",
+                    "class_sampling", "exposure", "table_size", "episode_size", "context", "transfer")
+EXPERIMENTS = ("general", "experiment0", *CAMPAIGN2_GROUPS)
 
 
 def experiment_group(value: str | None = None) -> str:
@@ -48,22 +44,14 @@ def experiment_group(value: str | None = None) -> str:
 
 
 def group_for_run(run: str) -> str:
-    if str(run).startswith("cpt2_"):
-        # Generated names are cpt2_<slug>_a<arm>; the slug is the output group.
-        slug = str(run)[len("cpt2_"):].rsplit("_a", 1)[0]
+    """Generated run names: cpt2e0_<pilot> (Experiment 0) and cpt2_<slug>_a<arm>[...]."""
+    run = str(run)
+    if run.startswith("cpt2e0_"):
+        return "experiment0"
+    if run.startswith("cpt2_"):
+        slug = run[len("cpt2_"):].rsplit("_a", 1)[0]
         if slug in CAMPAIGN2_GROUPS:
             return slug
-    for prefix, group in (("cpt_lora_debug", "experiment0"), ("cpt_lora", "experiment8"),
-                          ("cpt_diagscale_debug", "experiment0"), ("cpt_large_debug", "experiment0"),
-                          ("cpt_context", "experiment4"), ("cpt_diagscale", "experiment5"),
-                          ("cpt_large", "experiment6"), ("cpt_corpus", "experiment6"),
-                          ("cpt_episode", "experiment7"),
-                          ("cpt_null", "experiment0"), ("cpt_pilot", "experiment0"),
-                          ("cpt_budget", "experiment0"), ("cpt_recovery", "experiment0"),
-                          ("cpt_main", "experiment1"), ("cpt_seeds", "experiment2"),
-                          ("cpt_sampling", "experiment3")):
-        if str(run).startswith(prefix + "_"):
-            return group
     return "general"
 
 
@@ -72,24 +60,8 @@ def activate_experiment(cfg) -> str:
     group = getattr(getattr(cfg, "experiment", None), "output_group", None)
     group = experiment_group(group or group_for_run(str(getattr(cfg, "run_name", ""))))
     os.environ["CREDITPFN_EXPERIMENT"] = group
-    extension = getattr(getattr(cfg, "experiment", None), "extension_id", None)
-    if extension:
-        if not str(extension).isascii() or not str(extension).isalnum():
-            raise ValueError("Invalid legacy extension ID")
-        os.environ["CREDITPFN_LEGACY_ID"] = str(extension)
-    else:
-        os.environ.pop("CREDITPFN_LEGACY_ID", None)
     return group
 
-
-def notebook_parts(notebook: str) -> tuple[str, Path]:
-    path = Path(notebook)
-    if path.is_absolute() or ".." in path.parts:
-        raise ValueError("Notebook name must be a relative path without parent traversal")
-    first = path.parts[0]
-    if first == "00_general" or first in EXPERIMENTS:
-        return ("general" if first == "00_general" else first), Path(*path.parts[1:])
-    return "general", path
 
 #: `parents[2]` because this file is `<root>/src/utils/paths.py`. From __file__, not the working
 #: directory, so a script, a test and a notebook agree wherever they were launched from.
@@ -124,11 +96,6 @@ def staging_override() -> Path | None:
     return None
 
 
-def _use_staging() -> bool:
-    """Should big files go to project storage rather than into the repo?"""
-    return on_vsc() or staging_override() is not None
-
-
 # ---------------------------------------------------------------------------
 # The three roots.
 # ---------------------------------------------------------------------------
@@ -139,9 +106,11 @@ def staging_root() -> Path:
     override = staging_override()
     if override:
         return override
-    lustre = _env_path("VSC_PROJECT_LUSTRE1")
-    if lustre:
-        return lustre / "stg_00211"
+    # Mindwell-native GPFS project storage: every
+    # CreditPFN job runs on Mindwell, whose native filesystem is GPFS (vsc-library STORAGE.md).
+    gpfs = _env_path("VSC_PROJECT_GPFS1")
+    if gpfs:
+        return gpfs / "prj_00013"
     if on_vsc():
         return Path(DEFAULT_STAGING_ROOT)
     return REPO_ROOT
@@ -155,17 +124,6 @@ def data_root() -> Path:
 def scratch_root() -> Path:
     """Working scratch. Purged after 30 days without access — never a result."""
     return _env_path("VSC_SCRATCH") or REPO_ROOT
-
-
-def _under(root: Path, *parts: str) -> Path:
-    """Join under `root`, inserting the project name only when `root` is SHARED.
-
-    The shared tiers need a `<Project>/` component; the repo root already *is* the project, so
-    adding it there would give `<Project>/<Project>/output`.
-    """
-    if root == REPO_ROOT:
-        return root.joinpath(*parts)
-    return root.joinpath(PROJECT_NAME, *parts)
 
 
 # ---------------------------------------------------------------------------
@@ -183,7 +141,7 @@ def outputs_dir() -> Path:
 def results_dir(*parts: str, experiment: str | None = None) -> Path:
     """Fine-grained results: one row per prediction, per-fold scores, anything large.
 
-    Like compact tables, this uses project storage. Per-row predictions would
+    Uses project storage. Per-row predictions would
     fill $VSC_DATA's 75 GiB, and then every job that writes a log also fails.
     """
     # PROJECT LAYER: `resolve_staging_path` adds the same staging precedence plus the two
@@ -192,21 +150,7 @@ def results_dir(*parts: str, experiment: str | None = None) -> Path:
 
 
 def _experiment_scope(experiment: str | None = None) -> Path:
-    """Keep each LoRA debugging workflow separate from all earlier experiment-0 output."""
-    group = experiment_group(experiment)
-    from src.utils.study_layout import payload
-    destination = payload(group, outputs_dir())
-    extension = os.environ.get("CREDITPFN_LEGACY_ID", "")
-    if extension and group in {"experiment0", "experiment4", "experiment5", "experiment6", "experiment7", "experiment8"}:
-        if not extension.isascii() or not extension.isalnum():
-            raise ValueError("Invalid legacy extension ID")
-        return Path(destination, "extensions", extension)
-    workflow = os.environ.get("CREDITPFN_LORA_WORKFLOW", "")
-    if group == "experiment0" and workflow:
-        if not workflow.isascii() or not workflow.isalnum():
-            raise ValueError("Invalid LoRA workflow ID")
-        return Path(group, "lora", workflow)
-    return Path(destination)
+    return Path(experiment_group(experiment))
 
 
 def logs_dir(experiment: str | None = None) -> Path:
@@ -217,11 +161,6 @@ def logs_dir(experiment: str | None = None) -> Path:
 def manifests_dir(experiment: str | None = None) -> Path:
     """Per-run manifests: the small CSV/JSON record of what a run did."""
     return outputs_dir() / _experiment_scope(experiment) / "manifests"
-
-
-def consolidated_dir(experiment: str | None = None) -> Path:
-    """Immutable analysis snapshots: a few compressed files on project storage."""
-    return resolve_staging_path(OUTPUT_DIR_NAME) / _experiment_scope(experiment) / "consolidated"
 
 
 def training_dir(*parts: str, experiment: str | None = None) -> Path:
@@ -237,23 +176,6 @@ def training_work_dir() -> Path | None:
     if scratch is None:
         raise RuntimeError("Mindwell diagnostics require VSC_SCRATCH_GPFS1")
     return scratch / PROJECT_NAME / OUTPUT_DIR_NAME / _experiment_scope() / "training_work"
-
-
-def figures_dir(notebook: str | None = None) -> Path:
-    """`output CreditPFN/<experiment>/figures/`, or one notebook's own folder — a notebook clears its own before drawing
-    and must not be able to reach another's."""
-    group, name = notebook_parts(notebook) if notebook else ("general", Path())
-    return outputs_dir() / group / "figures" / name
-
-
-def captions_path() -> Path:
-    """The ONE shared captions file for every figure in the project."""
-    return figures_dir() / "CAPTIONS.md"
-
-
-def all_results_path() -> Path:
-    """Every notebook's printed text summary, concatenated in notebook order."""
-    return outputs_dir() / "general" / "All_Results.md"
 
 
 # ---------------------------------------------------------------------------
@@ -324,9 +246,9 @@ def describe() -> dict[str, str]:
 #      data preparation on wICE and training on Mindwell agree on the corpus.
 #   2. `paths.data_source` in config/data.yaml (staging | scratch | data), applied by
 #      `apply_data_source_from_cfg` at every entry point.
-#   3. A writability PROBE before any compute (`resolve_writable_staging_path`):
-#      staging was readable but not writable from Mindwell on 04-07-2026 and all 32
-#      PD trials died at their first checkpoint save.
+#   3. A writability PROBE before any compute (`resolve_writable_staging_path`): project
+#      storage can be readable but not writable from a compute node, which would otherwise
+#      surface only at the first checkpoint save.
 #
 # The four `resolve_*` functions are the form ~100 call sites use, because a config
 # file supplies the relative path (`cfg.paths.processed`, `cfg.checkpoint.trained_dir`).
@@ -353,7 +275,7 @@ STAGING_ROOT_ENV_GENERIC = "TABPFN_STAGING_ROOT"
 STAGING_ENV_VARS = ("CREDITPFN_PROJECT_ROOT", "VSC_PROJECT_ROOT", STAGING_ROOT_ENV, STAGING_ROOT_ENV_GENERIC)
 # Built-in default — CreditPFN's KU Leuven project staging allocation.
 # This is the BASE dir; the project's files live under <base>/CreditPFN.
-DEFAULT_STAGING_ROOT = "/lustre1/project/stg_00211"
+DEFAULT_STAGING_ROOT = "/gpfs1/project/prj_00013"
 
 # VSC's own environment variables — set automatically on every VSC
 # node by the user's login profile. We use them to compute sensible
@@ -373,8 +295,8 @@ def is_vsc_environment() -> bool:
 
 def _append_project(base: Path) -> Path:
     """Append the project subdir to a staging BASE path, unless it's
-    already there (so both ``/lustre1/project/stg_00211`` and
-    ``/lustre1/project/stg_00211/CreditPFN`` resolve to the same place)."""
+    already there (so both ``/gpfs1/project/prj_00013`` and
+    ``/gpfs1/project/prj_00013/CreditPFN`` resolve to the same place)."""
     return base if base.name == PROJECT_NAME else base / PROJECT_NAME
 
 
@@ -403,40 +325,13 @@ def _vsc_staging_root() -> Path | None:
     return _append_project(base) if base is not None else None
 
 
-def is_staging_available() -> bool:
-    """True iff a project staging root resolves AND exists on disk.
-
-    Used for sanity-check log lines; the resolvers themselves degrade
-    gracefully (fall back to the repo / output root) when staging is
-    absent, so callers never need to branch on this.
-    """
-    root = _vsc_staging_root()
-    if root is None:
-        return False
-    try:
-        return root.exists()
-    except (OSError, PermissionError):                                  # pragma: no cover
-        return False
-
-
 # --------------------------------------------------------------------------- #
 # Auto-detection of the data root
 # --------------------------------------------------------------------------- #
 #
-# Historically the VSC default was hardcoded as ``$VSC_SCRATCH/CreditPFN``.
-# In practice the raw datasets show up in any of three places depending
-# on how the user uploaded them:
-#
-#     1. $VSC_SCRATCH/CreditPFN/data/raw/   ← the documented layout
-#     2. $VSC_SCRATCH/data/raw/             ← straight-into-scratch, no project subdir
-#     3. $VSC_DATA/CreditPFN/data/raw/      ← they sat in the repo's own data/
-#                                            folder when the user cloned
-#
-# Rather than insist on (1) we probe all three at startup and pick the
-# first one that actually contains CSVs under data/raw/{pd,lgd}/. The
-# explicit env var ``CREDITPFN_DATA_ROOT`` always wins; this only kicks
-# in when the user hasn't set one. ``REPO_ROOT`` is deliberately NOT a
-# candidate — see the note on :func:`_candidate_data_roots`.
+# Raw datasets may sit in project storage, in scratch (with or without the project folder) or
+# in the repository's own data/ on DATA. Probe them in that order and pick the first that has
+# CSVs under data/raw/{pd,lgd}/; an explicit CREDITPFN_DATA_ROOT always wins.
 
 
 def _candidate_data_roots() -> list[Path]:
@@ -568,7 +463,7 @@ def resolve_data_path(p: str | os.PathLike) -> Path:
 
 
 def resolve_output_path(p: str | os.PathLike) -> Path:
-    """Resolve a *durable-output* path (logs, manifests, epoch snapshots).
+    """Resolve a *durable-output* path (logs, manifests).
 
     On VSC: ``$VSC_DATA/CreditPFN`` — NFS-backed, survives scratch purges.
     Or ``$CREDITPFN_OUTPUT_ROOT`` (explicit override).
@@ -581,20 +476,12 @@ def resolve_output_path(p: str | os.PathLike) -> Path:
 
 
 def _output_alias(p: str | os.PathLike) -> Path:
-    """Old relative configuration paths write to the current directory, never a second tree."""
+    """Relative `output CreditPFN/<sub>` config paths land in the active experiment's folder."""
     path = Path(p)
-    if not path.is_absolute() and path.parts and path.parts[0] in ("output", "output CreditPFN"):
+    if not path.is_absolute() and path.parts and path.parts[0] == OUTPUT_DIR_NAME:
         tail = path.parts[1:]
-        if tail and tail[0] not in (*EXPERIMENTS, "shared", "figures"):
-            # Generic YAML paths must use exactly the same extension/debug scope
-            # as results_dir(). Return now: its public payload is already mapped.
-            return Path(OUTPUT_DIR_NAME, _experiment_scope(), *tail)
-        if tail and tail[0] in EXPERIMENTS:
-            from src.utils.study_layout import payload
-            root = _resolve(OUTPUT_DIR_NAME, env_var=OUTPUT_ROOT_ENV, vsc_default=_vsc_default_output_root())
-            explicit_scope = len(tail) > 1 and tail[1] in {"extensions", "lora"}
-            destination = Path(payload(tail[0], root)) if explicit_scope else _experiment_scope(tail[0])
-            tail = (*destination.parts, *tail[1:])
+        if tail and tail[0] not in (*EXPERIMENTS, "figures"):
+            tail = (*_experiment_scope().parts, *tail)
         return Path(OUTPUT_DIR_NAME, *tail)
     return path
 
@@ -638,9 +525,9 @@ def resolve_base_checkpoint(p: str | os.PathLike) -> Path:
 def resolve_writable_staging_path(p: str | os.PathLike) -> Path:
     """Probe relative checkpoint directories before training, caching each result.
 
-    The named launcher sets CREDITPFN_REQUIRE_STAGING=1 and refuses DATA fallback.
-    Other callers may permit the historical output-root fallback explicitly by
-    leaving that guard unset. Absolute paths are caller-selected and returned as-is.
+    The named launcher sets CREDITPFN_REQUIRE_STAGING=1 and refuses a DATA fallback; other
+    callers may permit the output-root fallback by leaving it unset. Absolute paths are
+    returned as-is.
     """
     import logging
     logger = logging.getLogger(__name__)
@@ -783,7 +670,3 @@ def apply_data_source_from_cfg(cfg) -> Path:
     # so the explicit override wins on subsequent calls.
     _autodetect_data_root.cache_clear()
     return target
-
-
-# --------------------------------------------------------------------------- #
-# Template module contract (docs/TEMPLATE.md § Module contract)

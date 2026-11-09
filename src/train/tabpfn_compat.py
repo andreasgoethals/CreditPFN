@@ -1,19 +1,9 @@
 """Version-tolerant imports for TabPFN internals that moved between releases.
 
-WHY THIS EXISTS (run post-mortem, 2026-07-04)
----------------------------------------------
-The Jul-3 full run lost all 32 LGD training trials in 2–5 seconds each to::
-
-    No module named 'tabpfn.architectures.base'
-
-Root cause: our regressor code path imported
-``tabpfn.architectures.base.bar_distribution`` — the module path of the 2.x
-PyPI line — but the VSC env runs tabpfn **8.0.8** (installed from git main),
-where the module moved to ``tabpfn.architectures.shared.bar_distribution``
-(verified against the refreshed source dump, ``tfm-library/repositories/TabPFN .txt``:
-``FILE: src/tabpfn/architectures/shared/bar_distribution.py``). Classifiers
-never import the bar distribution, which is why every PD trial loaded fine on
-the exact same env while every LGD trial died before the debug banner.
+WHY THIS EXISTS: ``bar_distribution`` lives in ``tabpfn.architectures.base`` on the 2.x PyPI
+line but in ``tabpfn.architectures.shared`` in the pinned tabpfn 8.0.8 (source dump
+``tfm-library/repositories/TabPFN .txt``, ``FILE: src/tabpfn/architectures/shared/bar_distribution.py``).
+Only the regressor path imports it, so a wrong path fails every LGD trial and no PD trial.
 
 This module is the single place that knows the candidate paths. It also
 registers ``sys.modules`` aliases so that *pickled* objects inside older
@@ -91,15 +81,15 @@ def smoke_test(track: str) -> None:
     Exits with a clear one-line error on failure (caller: ``python -c
     "from src.train.tabpfn_compat import smoke_test; smoke_test('lgd')"``).
     """
-    import tabpfn                                                   # noqa: F401
-    from tabpfn import TabPFNClassifier, TabPFNRegressor            # noqa: F401
-    from tabpfn.model_loading import load_model_criterion_config    # noqa: F401
+    import tabpfn  # noqa: F401
+    from tabpfn import TabPFNClassifier, TabPFNRegressor  # noqa: F401
+    from tabpfn.model_loading import load_model_criterion_config  # noqa: F401
     # Ensemble preprocessor moved too: 8.x = preprocessing.ensemble (a
     # package); 2.x = flat tabpfn.preprocessing module. Accept either.
     try:
         from tabpfn.preprocessing.ensemble import TabPFNEnsemblePreprocessor  # noqa: F401
     except ModuleNotFoundError:
-        from tabpfn.preprocessing import EnsembleConfig              # noqa: F401
+        from tabpfn.preprocessing import EnsembleConfig  # noqa: F401
     if track == "lgd":
         mod = import_bar_distribution()
         assert hasattr(mod, "FullSupportBarDistribution")

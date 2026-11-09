@@ -1,6 +1,6 @@
 """Checks that a regression base model's bucket density suits bar-distribution NLL training.
 
-Diagnosed 03-11-2026: the released TabPFN v2.6 regressor predicts a "comb" over the 5,000
+The released TabPFN v2.6 regressor predicts a "comb" over the 5,000
 output buckets. Neighbouring bucket probabilities differ by orders of magnitude, so its
 means and quantiles look normal while the likelihood of the exact target bucket is close to
 random (initial NLL about 3 nats above v2/v3 on the same episode, also through upstream's own
@@ -13,7 +13,7 @@ from __future__ import annotations
 import torch
 
 #: Median absolute log-ratio between adjacent buckets, over buckets carrying the central
-#: 90% of predicted mass. Measured 03-11-2026 on three LGD tables (600 context rows):
+#: 90% of predicted mass. Measured on three LGD tables (600 context rows):
 #: v2 0.07-0.21, v3 0.40-1.61, v2.6 3.12-3.87. Experiment 0 records it for every table.
 ROUGHNESS_LIMIT = 2.5
 

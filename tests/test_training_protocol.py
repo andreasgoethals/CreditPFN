@@ -9,8 +9,8 @@ from torch.utils.data import DataLoader
 
 from src.train.corpus import DatasetRef
 from src.train.dataloader import ProcessedDatasetLoader, identity_collate
-from src.train.sampling import EpochSampler, partition_rows
 from src.train.optimization import step_mean_gradient
+from src.train.sampling import EpochSampler, partition_rows
 
 
 @pytest.mark.parametrize("members, queries, classes", [(1, 3, 2), (2, 17, 2), (4, 23, 5)])
@@ -118,12 +118,12 @@ def make_dataset(tmp_path):
         pd.DataFrame({"x": np.arange(n), "y": np.arange(n) % 2}).to_csv(path, index=False)
         refs.append(DatasetRef(f"synthetic{i}", "pd", "classification", "y", (), path, n))
     return ProcessedDatasetLoader(refs, max_rows_per_epoch=80, query_fraction=.4,
-                                  seed=11, pass_mode="accumulate")
+                                  seed=11, pass_mode="full_pass")
 
 
 def test_persistent_workers_get_new_epoch_and_match_serial(tmp_path):
     ds = make_dataset(tmp_path)
-    sampler = EpochSampler(ds, seed=11, accumulate=True)
+    sampler = EpochSampler(ds, seed=11)
     loader = DataLoader(ds, sampler=sampler, batch_size=1, collate_fn=identity_collate,
                         num_workers=1, multiprocessing_context="spawn", persistent_workers=True)
     first = None
@@ -145,23 +145,6 @@ def test_persistent_workers_get_new_epoch_and_match_serial(tmp_path):
     finally:
         if loader._iterator is not None:
             loader._iterator._shutdown_workers()
-
-
-def test_accumulation_updates_never_mix_datasets(tmp_path):
-    ds = make_dataset(tmp_path)
-    sampler = EpochSampler(ds, seed=4, accumulate=True)
-    for epoch in range(4):
-        sampler.set_epoch(epoch)
-        group = set()
-        updates = []
-        for (_, idx), end in zip(sampler, sampler.dataset_end_flags):
-            group.add(ds._plan[idx][0])
-            if end:
-                assert len(group) == 1
-                updates.extend(group)
-                group.clear()
-        assert sorted(updates) == [0, 1, 2]
-        assert sorted(sampler.order) == list(range(len(ds)))
 
 
 @pytest.mark.parametrize("microbatches", [1, 2, 7])
@@ -216,8 +199,8 @@ def test_partition_refuses_impossible_context_query_chunks(n, cap):
 
 
 @pytest.mark.parametrize("family", ["legacy", "tabpfn", "tabicl"])
-def test_all_builders_honor_disjoint_partitions_and_same_modes(tmp_path, monkeypatch, family):
-    from src.train import tabpfn_preprocessing, tabicl_compat
+def test_all_builders_honor_disjoint_partitions(tmp_path, monkeypatch, family):
+    from src.train import tabicl_compat, tabpfn_preprocessing
     n = 101
     path = tmp_path / 'rows.csv'
     pd.DataFrame({'row_id': np.arange(n), 'y': np.arange(n) % 5 == 0}).to_csv(path, index=False)
@@ -239,30 +222,25 @@ def test_all_builders_honor_disjoint_partitions_and_same_modes(tmp_path, monkeyp
     monkeypatch.setattr(tabpfn_preprocessing, 'clean_loaded_dataset', fake_clean)
     monkeypatch.setattr(tabpfn_preprocessing, 'build_ensemble_members', fake_ensemble)
     monkeypatch.setattr(tabicl_compat, 'import_tabicl_finetune_data', lambda: (None, fake_meta))
-    loaders = [ProcessedDatasetLoader([ref], max_rows_per_epoch=20, query_fraction=.4, seed=9,
-                pass_mode=mode, model_family='tabicl' if family == 'tabicl' else 'tabpfn',
+    loader = ProcessedDatasetLoader([ref], max_rows_per_epoch=20, query_fraction=.4, seed=9,
+                pass_mode='full_pass', model_family='tabicl' if family == 'tabicl' else 'tabpfn',
                 inference_config=object() if family == 'tabpfn' else None)
-               for mode in ('full_pass', 'accumulate')]
     epochs = []
     for epoch in (0, 1, 0):  # out-of-order requests must reproduce earlier partitions too
-        modes = []
-        for loader in loaders:
-            chunks = []
-            for idx in range(len(loader)):
-                batch = loader[(epoch, idx)]
-                if family == 'legacy':
-                    rows = torch.cat([batch.X_context, batch.X_query])[:, 0, 0].numpy()
-                elif family == 'tabicl':
-                    rows = batch.X[0, :, 0].numpy()
-                else:
-                    rows = batch
-                chunks.append(rows)
-            assert np.array_equal(np.sort(np.concatenate(chunks)), np.arange(n))
-            assert max(map(len, chunks)) <= 20
-            assert len(loader._row_partitions) == 1
-            modes.append(chunks)
-        assert all(np.array_equal(a, b) for a, b in zip(*modes))
-        epochs.append(modes[0])
+        chunks = []
+        for idx in range(len(loader)):
+            batch = loader[(epoch, idx)]
+            if family == 'legacy':
+                rows = torch.cat([batch.X_context, batch.X_query])[:, 0, 0].numpy()
+            elif family == 'tabicl':
+                rows = batch.X[0, :, 0].numpy()
+            else:
+                rows = batch
+            chunks.append(rows)
+        assert np.array_equal(np.sort(np.concatenate(chunks)), np.arange(n))
+        assert max(map(len, chunks)) <= 20
+        assert len(loader._row_partitions) == 1
+        epochs.append(chunks)
     assert all(np.array_equal(a, b) for a, b in zip(epochs[0], epochs[2]))
     assert any(set(a) != set(b) for a, b in zip(epochs[0], epochs[1]))
 
@@ -273,3 +251,14 @@ def test_full_pass_rejects_balancing_and_unknown_modes(tmp_path):
                    {'pass_mode': 'typo'}, {'context_sampling': 'typo'}):
         with pytest.raises(ValueError):
             ProcessedDatasetLoader(refs, max_rows_per_epoch=80, query_fraction=.4, **kwargs)
+
+
+def test_adamw_is_the_only_optimizer():
+    import torch
+
+    from src.train.optimization import make_optimizer
+    layer = torch.nn.Linear(2, 2)
+    assert isinstance(make_optimizer(layer, list(layer.parameters()), name="adamw", lr=1e-3, weight_decay=0.0),
+                      torch.optim.AdamW)
+    with pytest.raises(ValueError):
+        make_optimizer(layer, list(layer.parameters()), name="muon_adamw", lr=1e-3, weight_decay=0.0)

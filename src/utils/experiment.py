@@ -26,7 +26,7 @@ def apply_split_index(cfg, index: int | None):
             raise ValueError("split index exceeds training seeds × dataset folds")
         cfg.seed = int(seeds[repeat])
         cfg.corpus.fold = fold
-        # Unlike legacy random draws, this seed must not change between folds.
+        # Unlike random dataset draws, balanced folds need one split seed for every fold.
         if OmegaConf.select(cfg, "corpus.split_seed") is None:
             raise ValueError("Balanced folds require an explicit, fixed corpus.split_seed")
     else:
@@ -89,7 +89,10 @@ def code_identity(root: Path | None = None, *, stage: str = "train") -> str:
         # Training identity excludes plotting, audits, consolidation, evaluation
         # orchestration and submitters. Shared numerical metrics remain covered.
         folders = ("src/train",)
-        files = ("scripts/train_pipeline.py", "src/eval/metrics.py",
+        # The training monitor scores through the benchmark's encoder, wrappers and scorer, and
+        # the E3 control corpus is the generated twin panel.
+        files = ("scripts/train_pipeline.py", "src/eval/metrics.py", "src/eval/benchmark.py",
+                 "src/eval/dataset_loader.py", "src/data/control_matching.py", "config/domain_control.yaml",
                  "scripts/data_pipeline.py", "src/data/__init__.py", "src/data/preprocessing.py",
                  "src/data/register.py", "src/data/sanitize.py", "src/data/retention.py", "config/retention.yaml", "src/model/__init__.py",
                  "src/__init__.py", "src/eval/__init__.py", "src/utils/__init__.py",
@@ -97,13 +100,13 @@ def code_identity(root: Path | None = None, *, stage: str = "train") -> str:
                  "src/utils/experiment.py", "src/utils/prepare_experiment.py", "src/utils/atomic.py",
                  "src/utils/checkpoint_inventory.py", "src/utils/paths.py", "src/utils/config.py",
                  "src/utils/logging_setup.py", "src/utils/stage_inputs.py", "src/utils/cpu.py",
-                 "src/utils/training_files.py", "src/utils/study_layout.py", "config/study.yaml", "src/utils/job_cache.py",
+                 "src/utils/training_files.py", "src/utils/job_cache.py",
                  "scripts/slurm/_train_job.sh", "scripts/slurm/_run_train.sh",
                  "scripts/slurm/_activate_env.sh", "scripts/slurm/_activate_runtime.sh", "scripts/slurm/_job_log.sh",
                  "scripts/slurm/train_pd.slurm", "scripts/slurm/train_lgd.slurm")
     elif stage == "eval":
         folders = ("src/train", "src/data", "src/model", "src/eval", "src/utils")
-        files = ("scripts/eval_pipeline.py", "scripts/slurm/_activate_env.sh", "scripts/slurm/_activate_runtime.sh", "config/study.yaml")
+        files = ("scripts/eval_pipeline.py", "scripts/slurm/_activate_env.sh", "scripts/slurm/_activate_runtime.sh")
     else:
         raise ValueError(f"Unknown identity stage: {stage}")
     paths = {p for folder in folders for p in (root / folder).rglob("*.py")
@@ -132,6 +135,10 @@ def scientific_config(cfg) -> dict:
     result["corpus"].pop("n_splits", None)
     result["optimizer"] = dict(result.get("optimizer", {}))
     result["optimizer"].pop("lr", None)  # the effective LR is in the trial tuple
+    # Monitors run TabICL with the evaluation's inference options; they shape the trajectories.
+    options = (raw.get("evaluation") or {}).get("tabicl_inference_options")
+    if options is not None:
+        result["monitor_tabicl_inference_options"] = options
     return result
 
 
@@ -160,5 +167,4 @@ def trial_identity(cfg, trial, *, split=None) -> dict:
         "code_sha256": code_identity(),
         "versions": environment_versions(),
     }
-    from src.utils.source_transition import planned_identity
-    return planned_identity(cfg, payload)
+    return {"sha256": digest_json(payload), "specification": payload}

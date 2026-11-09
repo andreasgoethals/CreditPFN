@@ -29,7 +29,6 @@ matches what the upstream wrappers would do:
 
 from __future__ import annotations
 
-import json
 import logging
 from pathlib import Path
 from typing import Literal
@@ -44,7 +43,7 @@ LOGGER = logging.getLogger(__name__)
 def relax_attention_backend() -> str:
     """Steer PyTorch away from cuDNN's fused attention kernel.
 
-    MEASURED (probe j11521064 and j11523173): TabICLv2 trains at 26 000 rows using 27 GB of a
+    MEASURED (row-cap probes): TabICLv2 trains at 26 000 rows using 27 GB of a
     183 GB card, and at 40 000 rows it does not run out of memory — it raises
 
         Expected mha_graph.execute(...).is_good() to be true, but got false

@@ -1,6 +1,5 @@
 """Exercise device selection, measurement failures and the standalone GPU check."""
 import csv
-import json
 import math
 import subprocess
 from types import SimpleNamespace
@@ -159,20 +158,3 @@ def test_missing_tool_and_timeout_remain_explicit(tmp_path, monkeypatch, error):
     row = monitor.sample()
     assert row["gpu_status"] == type(error).__name__
     assert row["gpu_error"] and row["gpu_utilization_percent"] == ""
-
-
-@pytest.mark.parametrize("available,values,expected", [
-    (True, "12, 1, 200, 80, 40", 0),
-    (True, "N/A, N/A, N/A, N/A, N/A", 1),
-    (False, "", 1),
-])
-def test_gpu_check_uses_same_sampler_without_inputs_training_or_files(monkeypatch, capsys, available, values, expected):
-    from src.utils import preflight
-    fake_cuda(monkeypatch)
-    monkeypatch.setattr(telemetry.torch.cuda, "is_available", lambda: available)
-    monkeypatch.setattr(telemetry.subprocess, "run", lambda *a, **k: SimpleNamespace(stdout=values))
-    monkeypatch.setattr(preflight, "_resolved_roots", lambda: pytest.fail("GPU check must not read datasets"))
-    monkeypatch.setattr(telemetry.ResourceMonitor, "__enter__", lambda _: pytest.fail("No thread or CSV for this check"))
-    assert preflight.main(["--gpu-resources"]) == expected
-    row = json.loads(capsys.readouterr().out)
-    assert row["gpu_status"] == ("sampled" if expected == 0 else "unsupported" if available else "unavailable")

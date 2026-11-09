@@ -12,8 +12,7 @@ Tests that genuinely need TabPFN (loading the real checkpoint, running a
 forward pass) are guarded with ``pytest.importorskip("tabpfn")`` so the
 suite stays runnable in a stripped-down CI image.
 
-NOTE (2026-05-20 refactor): the data pipeline no longer produces ``.npz``
-chunks. Training reads sanitized CSVs directly. The fixtures here write
+Training reads sanitized CSVs directly. The fixtures here write
 synthetic sanitized CSVs (and a matching per-track manifest CSV) to a
 ``tmp_path`` and point ``CREDITPFN_DATA_ROOT``/``CREDITPFN_OUTPUT_ROOT``
 at it via monkeypatch.
@@ -42,20 +41,28 @@ import pytest
 import torch
 
 from src.train.corpus import (
-    DatasetRef, CorpusSplit,
-    _assign_buckets, build_dataset_pool, split_corpus, split_from_cfg,
+    DatasetRef,
+    _assign_buckets,
+    build_dataset_pool,
+    split_corpus,
 )
 from src.train.dataloader import (
-    ProcessedDatasetLoader, TabPFNBatch,
-    _build_step_batch, _load_processed_csv,
-    identity_collate, prepare_eval_chunk,
+    ProcessedDatasetLoader,
+    TabPFNBatch,
+    _load_processed_csv,
+    identity_collate,
+    prepare_eval_chunk,
 )
 from src.train.loop import (
-    _l2sp_penalty, _resolve_amp_dtype, descriptive_name, evaluate_on_split,
-    make_warmup_cosine_schedule, train_one_config,
+    _l2sp_penalty,
+    _resolve_amp_dtype,
+    descriptive_name,
+    make_warmup_cosine_schedule,
 )
 from src.train.metrics import (
-    classification_metric, improvement_direction, mean_ignore_nan,
+    classification_metric,
+    improvement_direction,
+    mean_ignore_nan,
     regression_metric,
 )
 from src.train.model import _infer_version
@@ -83,7 +90,7 @@ def _write_synthetic_processed(
 ) -> Path:
     """Write one sanitized CSV and append a row to the per-track manifest.
 
-    Mimics what the post-2026-05-20 data pipeline lands on disk:
+    Mimics what the data pipeline lands on disk:
     ``<data_root>/data/processed/{track}/<id>.sanitized.csv`` plus
     a per-track manifest row at
     ``<output_root>/output CreditPFN/general/manifests/manifest_{track}.csv``.
@@ -216,7 +223,7 @@ def test_split_corpus_no_leakage(synthetic_processed) -> None:
 
 def test_split_corpus_one_ref_per_dataset(synthetic_processed) -> None:
     """Each parent dataset contributes EXACTLY ONE DatasetRef
-    (no chunking — see the 2026-05-20 refactor)."""
+    (no chunking)."""
     split = split_corpus(
         track="pd",
         train_fraction=0.6, test_fraction=0.4,
@@ -399,7 +406,7 @@ def test_dataloader_regression_dtype(synthetic_processed) -> None:
 
 
 def test_dataloader_per_epoch_reshuffle(synthetic_processed) -> None:
-    """The whole point of the 2026-05-20 refactor: each epoch must
+    """Each epoch must
     draw a fresh random subsample from the larger datasets so the
     model eventually sees all the data.
 
@@ -469,7 +476,9 @@ def test_dataloader_workers_match_serial_and_dont_hang(synthetic_processed) -> N
     ``shuffle=False`` so the two runs visit indices in the same order and can be compared 1:1.
     """
     import pickle
+
     from torch.utils.data import DataLoader
+
     from src.train.loop import _dl_worker_init
 
     refs = build_dataset_pool("pd")
@@ -637,9 +646,8 @@ def test_descriptive_name_is_deterministic() -> None:
 
 def test_descriptive_name_tags_l2sp_lambda() -> None:
     """The swept L2-SP anchor must appear in the checkpoint name, so the two arms
-    (λ=0 vs λ=0.003) save to DISTINCT files instead of overwriting each other — the
-    22-09-2026 collision. ``None`` = not an axis = no tag, so legacy names stay
-    byte-identical."""
+    (λ=0 vs λ=0.003) save to DISTINCT files instead of overwriting each other.
+    ``None`` = not an axis = no tag."""
     base = dict(
         run_name="r", track="pd",
         base_path="checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt",
@@ -656,12 +664,13 @@ def test_descriptive_name_tags_l2sp_lambda() -> None:
 
 
 def test_run_and_save_plumb_swept_l2sp_lambda() -> None:
-    """Regression for the 22-09-2026 silent-λ bug. The swept value must be forwarded
+    """The swept L2-SP value must be forwarded
     (a) from ``run`` into ``train_one_config`` — omitting it trained every arm at the
     config default, so the {0, 0.003} sweep never varied λ — and (b) from
     ``train_one_config`` into the checkpoint's ``descriptive_name``, so the two arms
     don't collide on one filename."""
     import inspect
+
     import scripts.train_pipeline as tp
     import src.train.loop as loop_mod
     assert "l2sp_lambda=l2sp_lambda" in inspect.getsource(tp.run)
@@ -803,8 +812,7 @@ def test_infer_version_fails_loudly_on_bad_name() -> None:
 def test_save_finetuned_writes_provenance_sidecar(tmp_path: Path) -> None:
     """The .ckpt + .ckpt.provenance.json must both contain the HP /
     dataset / GPU / training-time record."""
-    import json
-    from src.train.model import save_finetuned, load_provenance
+    from src.train.model import load_provenance, save_finetuned
 
     class _Tiny(torch.nn.Module):
         def __init__(self):
@@ -870,11 +878,9 @@ def test_grid_full_cartesian_product() -> None:
     # Every entry is the 8-tuple (base, lr, use_lora, query_fraction, accumulate,
     # epoch_pass_mode, min_train_rows, l2sp_lambda); defaults when those axes are absent:
     # use_lora=False, qf=0.20, accumulate=1, pass="one_sample", min_train_rows=0, l2sp=None.
-    # min_train_rows joined the grid on 12-08-2026 and l2sp_lambda on 19-08-2026 — corpus
-    # composition and anchor strength are both swept variables now, so two trials can differ
-    # only in which datasets existed or in how hard they were held to the base weights.
-    # `None` for l2sp means "not swept, fall back to the config", which is what keeps every
-    # pre-run-9 trial name and results directory byte-identical.
+    # Corpus composition and anchor strength are grid axes, so two trials can differ only in
+    # which datasets existed or in how hard they were held to the base weights. `None` for
+    # l2sp means "not swept, fall back to the config".
     assert all(
         len(t) == 8 and t[2] is False and t[3] == 0.20 and t[4] == 1
         and t[5] == "one_sample" and t[6] == 0 and t[7] is None
@@ -926,6 +932,7 @@ def test_manifest_concurrent_first_writers_keep_every_row(tmp_path) -> None:
     open it with ``mode="w"``, silently discarding one completed trial.
     """
     import csv
+
     import scripts.train_pipeline as tp
 
     path = tmp_path / "training.csv"
@@ -964,13 +971,12 @@ def test_manifest_concurrent_first_writers_keep_every_row(tmp_path) -> None:
 @pytest.mark.parametrize("diverged", [False, True])
 def test_existing_fingerprinted_outcome_preserves_exit_status(tmp_path, monkeypatch, diverged):
     """Revisiting a terminal failure must neither retrain nor report success."""
-    import json
     import scripts.train_pipeline as pipeline
     import src.train.loop as loop
     import src.utils.experiment as experiment
     from src.train.sampling import PROTOCOL_VERSION
 
-    cfg = pipeline.load_train_config(config_path="config/experiment1/pd.yaml")
+    cfg = pipeline.load_train_config(config_path="config/experiments/E01_reference/pd_a0.yaml")
     cfg.experiment.require_plan = False
     identity = {"sha256": "verified-test-trial"}
     checkpoint = tmp_path / "weights/pd/existing.ckpt"
@@ -1066,6 +1072,7 @@ def test_train_one_config_end_to_end_mocked(
         is populated.
     """
     from omegaconf import OmegaConf
+
     import src.train.loop as loop_mod
 
     n_feat = 4
@@ -1235,13 +1242,14 @@ def test_non_finite_loss_is_skipped_and_loop_continues(
 ) -> None:
     """A step whose loss is non-finite must be SKIPPED, counted, and the loop must finish.
 
-    Regression for the 26-08-2026 v2 OOM: the skip path used to `continue` without releasing
-    the forward graph, so the activations lingered into the next step and ~doubled peak memory.
+    A skip path that `continue`s without releasing the forward graph lets the activations
+    linger into the next step and ~doubles peak memory.
     On CPU we can't observe the OOM, but we CAN pin that the skip path runs without a
     NameError from the reference-release, that the step is counted as skipped, and that
     training still completes with a finite final loss.
     """
     from omegaconf import OmegaConf
+
     import src.train.loop as loop_mod
 
     n_feat = 4
@@ -1312,13 +1320,13 @@ def test_load_tabpfn_for_training_frozen_backbone_executes(tmp_path, monkeypatch
 
     A NameError there (``_infer_version(ckpt_path)`` — the local is ``ckpt``, and ``version``
     is already in scope) slipped past everything: the end-to-end tests monkeypatch the whole
-    loader away, exp0 pinned ``frozen_backbone=[false]``, and ruff (whose F821 flags it) was not
-    installed in the venv. It then failed all 168 frozen TabPFN trials of exp1_pd (29-08-2026,
-    j11538779/796/797…). This test executes the REAL loader body — only the heavy
+    loader away and no linter ran, and it failed every frozen TabPFN trial. This test executes
+    the REAL loader body — only the heavy
     ``load_model_criterion_config`` is stubbed — so the frozen path is actually exercised: the
     detected backbone stack must end up frozen and the head trainable, with no exception.
     """
     import tabpfn.base as _tb
+
     from src.train.model import load_tabpfn_for_training
 
     class _Stand(torch.nn.Module):
@@ -1354,15 +1362,14 @@ def test_load_tabpfn_for_training_frozen_backbone_executes(tmp_path, monkeypatch
 def test_all_batch_types_carry_ctx_pos_rate_through_to() -> None:
     """`ctx_pos=` in the epoch line reads batch.ctx_pos_rate AFTER the device
     move, so every batch type must propagate it through `.to()`. A dropped
-    field silently reverts to the NaN default and the metric vanishes — which
-    is exactly how it broke the first time (08-08-2026).
+    field silently reverts to the NaN default and the metric vanishes.
 
     It must also be measured from the CANONICAL labels: both families
     class-permute per ensemble member, and counting `y > 0` post-permutation
     reported 74.7% on 25%-positive data.
     """
-    import numpy as np
     import torch
+
     from src.train.dataloader import TabPFNBatch
 
     b = TabPFNBatch(
@@ -1397,50 +1404,19 @@ def test_all_batch_types_carry_ctx_pos_rate_through_to() -> None:
     assert tb.to("cpu").ctx_pos_rate == 0.07
 
 
-def test_trial_name_parser_handles_every_name_the_pipeline_writes() -> None:
-    """REGRESSION (12-08-2026). `parse_trial_name` used `Path(name).stem`, which strips
-    from the LAST dot — and the base stem contains one. Every v2.6 trial name was
-    truncated mid-name, failed the regex, and was labelled "?" in every training figure:
-    half the grid silently mislabelled and merged into a single colour. The regex also
-    knew nothing about `_iclhead` (TabICLv2's rendering of the adapter axis) or the
-    `_min<rows>` corpus arm added for run-8.
-    """
-    from src.visualize.training_viz import parse_trial_name
-
-    cases = {
-        "creditpfn_pd_tabpfn-v2.6-classifier-v2.6_default_lr1e-06_seed42_qf20_acc1_fullpass":
-            ("v2.6-classifier-v2.6", 1e-06, False, 0),
-        "creditpfn_pd_tabpfn-v2.6-classifier-v2.6_default_lr1e-06_seed42_qf20_acc1_fullpass_lora":
-            ("v2.6-classifier-v2.6", 1e-06, True, 0),
-        "creditpfn_pd_tabicl-classifier-v2-20260212_lr3e-07_seed42_qf40_acc1_fullpass_iclhead":
-            ("tabicl-classifier-v2-20260212", 3e-07, True, 0),
-        "creditpfn_pd_tabicl-classifier-v2-20260212_lr3e-07_seed42_qf40_acc1_fullpass_min5000_iclhead":
-            ("tabicl-classifier-v2-20260212", 3e-07, True, 5000),
-        "creditpfn_lgd_tabpfn-v3-regressor-v3_default_lr3e-07_seed42_qf40_acc1_fullpass":
-            ("v3-regressor-v3", 3e-07, False, 0),
-    }
-    for name, (base, lr, lora, min_rows) in cases.items():
-        t = parse_trial_name(name)
-        assert t is not None, f"unparsed: {name}"
-        assert (t.base_short, t.lr, t.lora, t.min_train_rows) == (base, lr, lora, min_rows), name
-    # And with the extensions the pipeline actually writes.
-    for ext in (".csv", ".ckpt"):
-        assert parse_trial_name(list(cases)[0] + ext) is not None
-
-
 def test_flat_loss_with_growing_drift_is_not_divergence() -> None:
-    """REGRESSION (run-8 + 08-09-2026). `loss_const` aborted slow-but-healthy trials: a low-LR /
-    L2-SP / accumulate trial holds its per-epoch loss inside the 1e-4 window while its weights keep
-    moving. The guard requires flat loss AND flat *weight drift* — and must read the PER-EPOCH
-    drift, because the monitor-only per-stage drift is absent from the 5-epoch window ~14 of every
-    19 epochs, which silently degraded the guard to a loss-only rule and killed EVERY accumulate +
-    L2-SP trial in exp1 (100% of that arm, `loss_const`).
+    """`loss_const` must not abort slow-but-healthy trials: a low-LR / L2-SP trial can hold its
+    per-epoch loss inside the 1e-4 window while its weights keep moving. The guard requires flat
+    loss AND flat *weight drift* — and must read the PER-EPOCH drift, because the monitor-only
+    per-stage drift is mostly absent from the 5-epoch window, which would silently degrade the
+    guard to a loss-only rule.
 
     Exercises the REAL `_divergence_reason`, not a replica — the earlier replica assumed a
     per-epoch drift signal that production only produced on monitor epochs, which is exactly how
     the bug hid.
     """
     import math
+
     from src.train.loop import EpochRecord, _divergence_reason
 
     def rec(loss: float, drift: float) -> EpochRecord:
@@ -1452,7 +1428,7 @@ def test_flat_loss_with_growing_drift_is_not_divergence() -> None:
     def reason(records, metrics=good):
         return _divergence_reason(records, metrics, 5, "roc_auc", 1)
 
-    # THE exp1 bug: flat loss (0.4624), drift tiny but demonstrably GROWING (0.073%→0.076%).
+    # Flat loss (0.4624), drift tiny but demonstrably GROWING (0.073%→0.076%).
     moving = [rec(0.4624, d) for d in (7.3e-4, 7.3e-4, 7.4e-4, 7.5e-4, 7.6e-4)]
     assert reason(moving) is None, "a slow-but-moving trial must not be aborted"
 
@@ -1473,9 +1449,8 @@ def test_flat_loss_with_growing_drift_is_not_divergence() -> None:
 
 
 def test_loss_const_gated_to_early_budget() -> None:
-    """11-09-2026. A flat loss is DEATH early in the run but CONVERGENCE near the step budget.
-    The 08-09 fix stopped the epoch-5 false-aborts, but a low-LR v2.6 accumulate trial still
-    plateaus ~epoch 330 (~90 % of the 5000-step budget) and tripped `loss_const` right before
+    """A flat loss is DEATH early in the run but CONVERGENCE near the step budget: a low-LR
+    trial can plateau at ~90 % of its budget and must not trip `loss_const` right before
     finishing. Gate loss_const to the first `min_progress` of the budget: a converged trial then
     trains to completion, while a dead-from-start trial (trips at ~1-2 % of the budget) is still
     caught, and auc_random stays a real collapse at any phase.

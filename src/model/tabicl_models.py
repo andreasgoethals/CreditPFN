@@ -48,9 +48,8 @@ def _sanitize(X: np.ndarray, *, dead_cols: np.ndarray | None = None,
               ) -> tuple[np.ndarray, np.ndarray]:
     """Make a feature matrix safe for TabICLv2's sklearn wrappers.
 
-    Two upstream input constraints that TabPFN does NOT have (both
-    MEASURED on tabicl 2.1.1, 2026-08-04, and both reachable from real
-    credit data):
+    Two upstream input constraints that TabPFN does NOT have (both measured on
+    tabicl 2.1.1 and both reachable from real credit data):
 
     1. ``±inf`` raises ``ValueError`` from sklearn's ``check_array``
        inside their preprocessing pipeline. TabPFN clips inf natively.

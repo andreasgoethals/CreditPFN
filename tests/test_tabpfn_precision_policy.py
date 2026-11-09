@@ -7,6 +7,9 @@ from src.model import tabpfn_models as tm
 
 def test_default_keeps_the_package_policy(monkeypatch):
     monkeypatch.delenv(tm.PRECISION_ENV, raising=False)
+    import torch
+    assert tm.inference_precision() is torch.float32
+    monkeypatch.setenv(tm.PRECISION_ENV, "auto")
     assert tm.inference_precision() == "auto"
 
 

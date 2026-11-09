@@ -1,82 +1,48 @@
 # CreditPFN
 
-A descriptive study of **domain adaptation by continued pretraining (CPT)** of tabular foundation models, using credit risk as the case study. PD is binary default classification; LGD is loss-given-default regression. The study asks when transfer helps, how the adaptation recipe changes that effect, and what is retained on non-credit tables. It does not assume CPT is uniformly successful or unsuccessful.
+A descriptive study of **domain adaptation by continued pretraining (CPT)** of tabular foundation
+models, with credit risk as the domain. PD is binary default classification; LGD is
+loss-given-default regression. Four base models: TabPFN v2, v2.6 and v3, and TabICLv2. The study
+asks whether CPT on real credit datasets improves predictions on *unseen* credit datasets, how the
+adaptation recipe changes that, what is forgotten on non-credit tables, and when and why it works.
 
-## Status (03-11-2026): second campaign in preparation
+## Status (04-11-2026): second campaign, before Experiment 0
 
-The first study (896 runs) is complete and **archived**: locally in `archive/study-2026-11/`
-(results, figures, executed notebooks; gitignored) and on VSC in quarantine folders awaiting
-deletion. A second campaign is being prepared from one **reference recipe plus declared
-deviations**, defined in [`config/design.yaml`](config/design.yaml) and materialized by
-`python -m src.utils.design --write <folder>`; `tests/test_design.py` fails on any undeclared
-difference. Open decisions and next steps: [docs/NEXT_STEPS.md](docs/NEXT_STEPS.md).
+The first study (896 runs) is complete and archived locally in `archive/study-2026-11.zip`
+(gitignored; `archive/study-2026-09.zip` holds the September run). Its main lessons: the reference
+learning rate 3e-7 was the best tested (PD +0.0009 AUC on held-out credit tables, mostly from
+TabPFN v2), LGD got slightly worse for every model, and curves were flat by 2,500 updates.
 
-- **Environment:** local `.venv` (Python 3.13) is pinned to the accepted VSC container lock
-  (`config/runtime/`); `tests/test_environment_parity.py` checks the match.
-- **v2.6 LGD:** the released v2.6 regressor predicts a comb-shaped bucket density, so
-  bar-distribution NLL training mostly reshapes it; see `src/train/density_checks.py` and
-  `tests/test_upstream_parity.py`. The LGD objective for v2.6 is an open decision.
+The second campaign is defined in [`config/design.yaml`](config/design.yaml): one reference recipe
+plus declared deviations, materialized into `config/experiments/E<NN>_<slug>/` and
+`config/experiments/E00_pilots/` by `src/utils/design.py` (tests fail on any undeclared difference or stale generated config). The
+method authority is [RESEARCH_BRIEF.md](docs/RESEARCH_BRIEF.md); operations are in [VSC.md](docs/VSC.md).
 
-The sections below describe the archived first study until the second campaign replaces them.
+## Four questions, twelve experiments
 
-The method authority is [RESEARCH_BRIEF.md](docs/RESEARCH_BRIEF.md); primary-source support is in [LITERATURE.md](docs/LITERATURE.md). Start the analysis with the [PD overview](notebooks/general/03_overview_pd.ipynb) or [LGD overview](notebooks/general/04_overview_lgd.ipynb). [RESULTS_GUIDE.md](docs/RESULTS_GUIDE.md) maps questions to the detailed notebooks.
+| RQ | Experiments |
+|---|---|
+| RQ1 Transfer: does CPT help on unseen credit tables, how does it develop, how much is randomness, is it domain-specific, is it worth it versus target fine-tuning? | E1 reference · E2 seeds · E3 matched non-credit domain control · E4 CPT vs per-table fine-tuning |
+| RQ2 Weight change: update size, anchoring and trainable scope versus forgetting | E5 learning rate × L2-SP · E6 frozen / DiagScale / LoRA |
+| RQ3 Training data: which tables, how much of each, episode size, class balance | E7 balanced PD sampling · E8 full pass · E9 small vs large tables · E10 episode size |
+| RQ4 When and why: which target tables gain, what they share, which sources help, context scarcity | E11 labelled-context curves · E12 single-source transfer matrix · per-table analysis |
 
-## Four questions, ten analyses
+712 standard training runs plus 100 short single-source runs; E1 is the shared control of E2,
+E3 and E5–E10. Every model is evaluated in FP32 on complete five-fold test sets; forgetting is measured
+on 19 binary and 12 regression TabArena tables; baselines are CatBoost and logistic/linear
+regression. TabPFN LGD trains with a 5-bucket window NLL (robust to the v2.6 regressor's
+comb-shaped density); LoRA and DiagScale use L2-SP on their effective weight change.
 
-| Question | Experiment | Contrast |
-|---|---|---|
-| RQ1: When does CPT help, and how stable is it? | 1 | Learning rate and training progress, with full updates and L2-SP 0.003 |
-| | 2 | A second training seed at the predefined reference |
-| RQ2: How do restrictions on updates change transfer? | 3 | L2-SP at both full and frozen update scopes, including their interaction |
-| | 4 | Backbone freezing at both L2-SP levels, including their interaction |
-| | 5 | The specified DiagScale recipe at three learning rates |
-| | 6 | The specified native query/value LoRA recipe at three learning rates |
-| RQ3: How do data and exposure affect adaptation? | 7 | One sample, full pass and accumulation at equal successful updates |
-| | 8 | All versus large PD training tables, fixed episode size |
-| | 9 | Episode size on a fixed large-PD-table corpus |
-| RQ4: Does CPT change the need for target-table labels? | 10 | Nested context sizes; original/CPT performance and paired differences; complete fixed five-fold test sets |
+## Storage and workflow
 
-Experiment 0 contains correctness, recovery, capacity and runtime checks. Experiments 8–9 are PD-only. All other scientific studies cover PD and LGD. The original model coverage is TabPFN v2/v2.6/v3 and TabICLv2 in the shared factorial, seeds and sampling studies; the completed isolated extension fills v2/v2.6 coverage in the follow-ups. All extension gates, scientific work and final audits passed; the source-bound FP32 refresh is published. Current collection and report status is recorded in [VSC.md](docs/VSC.md#current-campaign-state).
+The Git checkout and compact logs/manifests live on VSC **DATA**; datasets, checkpoints,
+predictions, detailed results and the sealed container live on the Mindwell-native GPFS
+**PROJECT** `/gpfs1/project/prj_00013/CreditPFN`. The required output name is `output CreditPFN/`
+on both tiers. Edit and test locally, commit and push, then `git pull --ff-only` on DATA and
+verify the commit. Container jobs require a runtime acceptance for the current code identity.
+Authentication is manual (`step ssh login --context VSC`, run by Andreas).
 
-The **512 unique factorial training runs are stored once** and support experiments 1, 3 and 4. The original campaigns contain 768 unique completed training runs; the completed model extension adds 128, for **896 unique training runs**. Reused controls are never counted as new runs. DiagScale and LoRA differ in several recipe settings: these results cannot identify an intrinsically superior adapter mechanism.
-
-## Results and storage
-
-The same public result layout is used locally and on both VSC storage tiers:
-
-```text
-output CreditPFN/
-  experiment0/                 validation and operational evidence
-  shared/main_grid/            one factorial payload for E1, E3 and E4
-  experiment1,3,4/STUDY.json   analysis pointers to that shared payload
-  experiment2,5,...,10/        each remaining experiment's own results
-  figures/                     rq1-rq4, experiment0 and general publication figures
-  All_Results.md               complete notebook summaries
-  STUDY_LAYOUT.json            verified layout and source identities
-```
-
-`config/study.yaml` is read by the implementation and defines the ten analyses and their shared controls. Config folders and Slurm launcher names follow public experiment numbers; E3/E4 reuse the E1 factorial. Embedded campaign IDs and checkpoint paths retain their recorded identities for reproducibility. Additional model runs use isolated `extensions/<ID>/` scopes within the relevant experiment. Training, results, consolidated snapshots and compact manifests retain distinct subdirectories. The [operational identity mapping](docs/VSC.md#recorded-campaign-identities) preserves reproducible commands and checkpoint references.
-
-On VSC, the actual Git checkout and compact logs/manifests live on **DATA**. Canonical datasets, checkpoints, predictions, consolidated results and the immutable versioned container live on **PROJECT**. Native cluster scratch is temporary working storage. The required output name remains `output CreditPFN/` on both tiers. [VSC.md](docs/VSC.md) owns exact paths, deployment, gates, submission, collection and cleanup.
-
-## Development and cluster workflow
-
-Edit and test locally, commit and push, then use `git pull --ff-only` in a clean DATA checkout and verify the deployed commit. Never replace files used by active or recoverable jobs; use a separate DATA checkout when necessary. Untracked source uploads and direct remote source patches are not deployments.
-
-Computational jobs must explicitly select an accepted PROJECT container with `CREDITPFN_RUNTIME_VERSION`; they refuse silent fallback to the old DATA environment. The preserved original environment is used only by an explicit compatibility-comparison arm. The Slurm submission bootstrap can queue a fresh acceptance graph from the sealed container itself, without project dependencies installed on a login node.
-
-Authentication uses the existing Windows SSH agent. When its certificate is missing or expired, Andreas manually runs `step ssh login --context VSC` and approves KU Leuven Authenticator. Agents reuse that access; they do not initiate authentication, install a second agent or create renewal reminders. Direct inspections use the tested stdin-script transport in [TEMPLATE.md](docs/TEMPLATE.md#vsc-access-windows-and-agents).
-
-The approved migration workflow gates actual work in this order: recorded container build → CPU and same-GPU compatibility/capacity checks → two-tier hash-verified output migration → independent FP32 re-evaluation and the extension's experiment-0 checks → extension research → independent prediction/cohort audits and publication. Independent arrays have no artificial running-task throttle; actual Slurm admission limits and scientific dependencies still apply. Submission is not success. Preserve the old environment until acceptance and rollback requirements are satisfied.
-
-## Local notebooks and tests
-
-The 15 notebooks are organized by question rather than by individual experiment:
-`rq1/` combines E1/E2, `rq2/` E3–E6, `rq3/` E7–E9, and `rq4/` E10.
-RQ1–RQ3 each have `01_training` and `02_results`; RQ4 has `01_context_curves`.
-`experiment0/` retains four validation notebooks and `general/` the two corpus notebooks
-and PD/LGD overviews. This deliberate template deviation changes presentation folders only;
-scientific output uses the public experiment layout above.
+## Local tests and notebooks
 
 From this repository in Windows PowerShell:
 
@@ -84,28 +50,22 @@ From this repository in Windows PowerShell:
 .\.venv\Scripts\python.exe -m pytest -q
 ```
 
-Run every notebook in parallel, with live progress:
-
 ```powershell
 .\.venv\Scripts\python.exe -m src.utils.run_notebooks --workers 2
 ```
 
-The runner prevents overlapping runs, regenerates each notebook's own publication output, retires renamed notebooks' figures, embeds the figures in the executed notebooks and produces:
-
-- `output CreditPFN/figures/<notebook group>/`: publication-width PDFs and ownership metadata, grouped as `rq1`–`rq4`, `experiment0` and `general`.
-- `output CreditPFN/figures/CAPTIONS.md`: paper-ready descriptions, ordered by notebook and figure occurrence.
-- `output CreditPFN/All_Results.md`: every notebook's complete final printed summary, in filesystem order.
-
-Every notebook ends with a section-ordered text summary containing all plotted values and displayed tables. Figures use shared styles and A4 article widths. PDF files and raw metadata stay local; executed notebooks, captions and the combined summaries are tracked. Missing measurements are explicit, never fabricated. Training notebooks describe trajectories; result notebooks distinguish monitoring from final five-fold evaluation.
-
-For additional downloaded evidence, use the supported input options documented by:
-
-```powershell
-.\.venv\Scripts\python.exe -m src.utils.run_notebooks --help
-```
+The local `.venv` matches the cluster container's exact pins (`config/runtime/`,
+`tests/test_environment_parity.py`). Notebooks live in `notebooks/{rq1,rq2,rq3,rq4,experiment0,general}`,
+contain no functions or classes, call `src/` only and end with a complete text summary. Figures are
+A4-width PDFs in `output CreditPFN/figures/<group>/`; `output CreditPFN/All_Results.md` collects
+the summaries.
 
 ## Repository boundaries
 
-Reusable implementation lives in `src/`; scientific entry points are `scripts/{data,train,eval,context}_pipeline.py` and `scripts/probe_row_cap.py`. Slurm wrappers live in `scripts/slurm/`; notebook code is thin and defines no functions/classes. The standard benchmark dispatcher is reused by the independently audited re-evaluation controller.
-
-`tfm-library/` and `vsc-library/` are pinned read-only references. Never lint, format or test them. Never commit datasets, checkpoints, credentials or raw private rows. Record substantive changes and cluster outcomes in [CHANGELOG.md](docs/CHANGELOG.md) and [AGENTS_MEMORY.md](docs/AGENTS_MEMORY.md). The inherited template is [docs/TEMPLATE.md](docs/TEMPLATE.md); the shared figure tree, output directory name and ICML widths are deliberate project-specific choices.
+Reusable code lives in `src/`; entry points are `scripts/{data,train,eval}_pipeline.py` and
+`scripts/probe_row_cap.py`, submitted through `scripts/slurm/`. `tfm-library/` and `vsc-library/`
+are pinned read-only references. Never commit datasets, checkpoints, credentials or raw private
+rows. Substantive changes go in [CHANGELOG.md](docs/CHANGELOG.md), cluster runs and dead ends in
+[AGENTS_MEMORY.md](docs/AGENTS_MEMORY.md). The inherited template is
+[docs/TEMPLATE.md](docs/TEMPLATE.md); the shared figure tree and the output directory name are
+deliberate project-specific choices.

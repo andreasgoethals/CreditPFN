@@ -1,5 +1,58 @@
 # Changelog
 
+## 09-11-2026
+
+- Notebook figures redesigned: one figure per scientific question for RQ1–RQ4 (`src/visualize/results2.py`; per-table effects with seed noise, transfer vs retention, metric profile, CatBoost position, E3/E4, E5 dose response and trade-off, data arms, matched context, cost, context curves, properties, E12 matrix), drawn only when evidence exists and tested on synthetic frames; general notebooks cut from 26 to 7 figures.
+- Review fixes: fold coverage checked against the credit registry (E3, E9 now prepare); zero-LR parity over all monitor points; DiagScale recovery comparison; E10 matched-context arrays (offset indices, wrapper kind); endpoint reports read the metric CSVs, OK rows only, and require all five folds.
+- E4 is paired within each task (each start also scored without fine-tuning on the same rows); TabICL fine-tuned inference pinned to FP32; evaluation tasks store predictions and refuse stale results by identity; CPT checkpoints must match the prepared plan.
+- Experiment 0 fails on any divergence, audits the reference benchmarks and baselines, checks E10 matched-context scoring and an unanchored full-weight pilot (`l2sp0`); capacity uses the benchmark's scoring path and largest test fold; `submit E<n>` requires a passing Experiment 0; failed launches are recorded as uncertain and never resubmitted automatically.
+- TabICL CPT batches mean-impute like TabICL's inference (no zero fill); training identity covers the monitor's code and TabICL options; walltime estimates use the real monitor schedule; missing row milestones are flagged.
+- Wording: E11 is context scarcity, E9 compares selected corpora, E12 is monitor-based, CRPS tails approximated; runbook receipt path and E10 resubmission corrected.
+- Removed 26 stale files and `docs/RESULTS_GUIDE.md` that Google Drive had restored after their deletion.
+
+## 05-11-2026
+
+- Grid revised: Muon (old E7), the 80/20 split (old E9) and the λ 0.3 arms dropped; E2 adds seed 44 (three reference seeds); experiments renumbered E1–E12 (712 runs + 100 single-source); Muon code removed.
+- E3 domain control for PD and LGD: one matched non-credit twin per credit table (optimal assignment on rows, features and categorical features, then subsampled to its shape), per partition the twins of its training tables (`src/data/control_matching.py`, `config/control_pool.yaml`, generated `config/domain_control.yaml`).
+- Retention/control preparation retries transient OpenML errors with backoff; twins capped at 30 million cells and prepared without the 64-column cap before type-matched selection.
+- E4 fine-tuning learning rate 6.5e-5, the geometric midpoint of Rubachev et al.'s two most frequent tuned rates.
+- Fix: TabICLv2 trains under FP16 + GradScaler (upstream recipe, `train.tabicl_precision`), never BF16; BF16 corrupted its forward in the first study.
+- Fix: the training monitor uses the benchmark's encoder, wrappers and scorer (`benchmark.score_fitted`); every TabICL monitor gets the evaluation's inference options.
+- Fix: classical HPO runs exactly 50 seeded trials without a wall-clock timeout (reproducible); classical jobs get a 12-hour walltime.
+- Experiment 0: GPU `precision` check (FP32 vs training precision at update zero), `lr1e8` dose-response and `noclip` pilots; the audit flags collapsed runs and tolerates a bounded number of FP16 scaler skips.
+- LGD metrics add prediction mean, std and std ratio; the monitor records NLL, CRPS and bias for LGD.
+- `loop.batch_loss` and `loop.training_row_cap` factored out of the training loop for reuse.
+- Domain comparison notebook split into PD and LGD parts with dispersion and feature/target permutation tests.
+- E14 single-source configs train only (no five-fold evaluation).
+
+## 04-11-2026
+
+- E3 domain control: CPT on the four large non-credit binary TabArena tables (`domain_control` panel), scored on the same held-out credit tables; experiments renumbered E1–E14 by RQ.
+- Generated configs moved to `config/experiments/E<NN>_<slug>/` (Experiment 0: `E00_pilots/`); code addresses experiments by slug.
+- Per-experiment launcher (`campaign_cpu.slurm submit E<n>`) sized against Mindwell's 500-job limit and resumable; E12 matched-context evaluation (`episode_context` tasks).
+- Experiment 0 runs the real E4/E13 task runner in quick mode on the reference pilot; E14 single-table CPT at lr 1e-6.
+- Credit vs non-credit table comparison (`src/data/domain_comparison.py`, `notebooks/general/03_domain_comparison`).
+- Repository cleanup: removed the first-study layout (`config/study.yaml`, `study_layout`, `clean_run`, `consolidate_output`, `publication_cleanup`, `size_studies`, the `accumulate` pass mode, legacy figure migration, `STUDY_LAYOUT.json`/extension/LoRA-workflow routing) and seven old report modules plus `visualize/inputs.py`; output routing knows only `general`, `experiment0` and the design slugs; control-cache sharing now spans the second-campaign groups; notebooks renumbered to E1–E14; stale comments, tests and `docs/RESULTS_GUIDE.md` removed.
+- Final second-campaign grid (`config/design.yaml`, 13 experiments in 4 RQs, 776 runs + 100 single-source): E3 CPT vs target fine-tuning, E4 adds lr 1e-7, E5 two rates per scope, E6 Muon, E10 small vs count-matched large tables, E11 doubling episode sizes, E13 transfer matrix; length arm dropped (first-study curves flat by 2,500 updates).
+- TabPFN LGD trains with a 5-bucket window NLL (`window_nll`), robust to the v2.6 regressor's comb density.
+- L2-SP for LoRA and DiagScale on the effective weight change (`src/train/l2sp.py`); LoRA now keeps λ 0.003.
+- Monitor uses the training's 2 preprocessing views and 10,000-row tables, plus processed-row milestones (`rows_milestone` trajectory rows).
+- Corpus policies `small_only`, `large_matched` and `single_source`; `src/eval/target_finetune.py` wraps the upstream TabPFN/TabICL fine-tuners.
+- New metrics: PD calibration slope/intercept/in-the-large and bias; LGD bias, normalised RMSE, NLL and CRPS (exact from TabPFN buckets).
+- FP32 is the default TabPFN evaluation precision; baselines are CatBoost and logistic/linear regression.
+- Retention panel: all 19 binary and 12 regression TabArena tables below 50,000 rows without credit overlap; feature cap applied.
+- PROJECT storage moved to Mindwell GPFS `/gpfs1/project/prj_00013/CreditPFN` (SHA-256 verified) and the Lustre copy deleted; all jobs on Mindwell.
+- VSC-library fixes: no `--mem` with `--cpus-per-task`, evaluation `afterok`, capped requeues with `--clusters`, scratch copies without old timestamps.
+- Experiment 0 rebuilt (`experiment0` in the design, `pilot_checks.py`, `campaign_cpu.slurm`, `pilot_gpu.slurm`); runtime acceptance compares environments on the original checkpoints.
+- Privacy fix: removed a private table name pushed in `2c8ef18` (tests/configs now reference tables by registry index).
+- Fix: one naming rule (`loop.naming_mode`) for checkpoint, CSV and audit names; LoRA/DiagScale/frozen pilots were otherwise unfindable by the audit and resume.
+- `src/eval/campaign_tasks.py` + `campaign_eval_gpu.slurm`: E12 context curves and E3 target fine-tuning, 500 tasks each, CPT checkpoint always from the table's held-out partition.
+- RQ4 helpers: corpus similarity in property space and per-table seed-noise check (E1 vs E2).
+- Local `.venv` rebuilt on Python 3.13.11 (the container's exact release, winget per-user install); parity test now checks the patch version. Monitor rows are capped per model (TabPFN v2 context ≤ 10,000). Tests restore `os.environ` after each test (an entry point leaked the data root and silently skipped real-data tests).
+- Retired the first-study standalone benchmark launchers (`run_benchmark.sh`, `_study_map.sh`, `_benchmark_dispatch.sh`, `benchmark_*.slurm`, `reset_family_benchmark`); evaluation runs through `run_experiment.sh STAGES=eval`.
+- New notebooks for the second campaign; research brief, VSC runbook, README and AGENTS.md rewritten; `docs/NEXT_STEPS.md` removed.
+- Removed first-study machinery (legacy/LoRA/follow-up gates, experiment-0 workflow, recovery/refresh/repair tools, preflight, cluster report, source transition, their launchers, `config/experiment1`–`10`, old experiment-0 configs, `context_pipeline.py`, eleven old report modules) and their tests; `context_curve.py` keeps only the helpers `campaign_tasks.py` uses.
+
 ## 03-11-2026
 
 - Second campaign groundwork: archive the first study locally (`archive/study-2026-11/`), quarantine all VSC CreditPFN outputs/trained checkpoints, pin the local Python 3.13 environment to the accepted container lock (`config/runtime/`), and add `config/design.yaml` + `src/utils/design.py` (reference recipe, E1–E11 grid, declared deviations, generated configs).

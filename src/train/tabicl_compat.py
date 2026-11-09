@@ -7,7 +7,7 @@ prepared plan records the actual installed package version.
 Filenames containing 'tabicl' select this family. Frozen-backbone adaptation
 uses src.train.freeze, which freezes the largest repeated transformer stack
 and leaves all other modules trainable. It is not the upstream stage-3 freeze
-or head-only training. Old _iclhead filenames remain readable as historical data.
+or head-only training.
 """
 
 from __future__ import annotations
@@ -59,8 +59,7 @@ def import_tabicl_finetune_data():
     except ModuleNotFoundError as exc:                          # pragma: no cover
         # Distinguish "optional extra not installed" (by far the likeliest
         # cause, and the one a version check will NOT reveal) from "upstream
-        # moved the symbol". The first message we shipped blamed the version
-        # and sent a real debugging session down the wrong path (2026-08-05).
+        # moved the symbol".
         missing = getattr(exc, "name", "") or str(exc)
         if "tabicl" not in missing:
             raise ImportError(

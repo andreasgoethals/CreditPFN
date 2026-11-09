@@ -1,22 +1,21 @@
-"""Publication paths, independent of the frozen cluster training-path contract."""
+"""Publication paths: output CreditPFN/figures/<group>/, one folder per notebook group."""
 from pathlib import Path
 
-from src.utils.paths import notebook_parts as legacy_notebook_parts, outputs_dir, EXPERIMENTS
+from src.utils.paths import outputs_dir
 
-RQ_GROUPS = ("rq1", "rq2", "rq3", "rq4")
-PUBLICATION_GROUPS = (*EXPERIMENTS, *RQ_GROUPS)
+PUBLICATION_GROUPS = ("general", "experiment0", "rq1", "rq2", "rq3", "rq4")
 
 
 def notebook_parts(notebook: str) -> tuple[str, Path]:
-    """RQ publication groups do not change historical scientific path routing."""
+    """Split `<group>/<name>` into its publication group and the notebook name."""
     path = Path(notebook)
     if path.is_absolute() or ".." in path.parts or not path.parts:
         raise ValueError("Notebook name must be a relative path without parent traversal")
-    if path.parts[0] in RQ_GROUPS:
+    if path.parts[0] in PUBLICATION_GROUPS:
         if len(path.parts) < 2:
-            raise ValueError("RQ notebook name needs a filename")
+            raise ValueError("Notebook name needs a filename after its group")
         return path.parts[0], Path(*path.parts[1:])
-    return legacy_notebook_parts(notebook)
+    return "general", path
 
 
 def figures_dir() -> Path:

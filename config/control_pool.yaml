@@ -1,0 +1,118 @@
+# Candidate non-credit tables for the matched domain control (E3). Source: the curated OpenML
+# suites TabArena-v0.1 (study 457), OpenML-CC18 (99), OpenML-CTR23 (353), the AutoML Benchmark
+# (271 classification, 269 regression) and the Grinsztajn et al. benchmark (334-337); metadata
+# (rows, features, categorical features) from OpenML's dataset qualities, retrieved 05-11-2026.
+# Kept: active, binary (pd) or regression (lgd), at least 500 rows. Removed: every credit, banking,
+# insurance and other finance table; tables of the `research` retention panel and other versions of
+# them (the control must not train on the forgetting panel); the synthetic `madelon`; and the
+# car-auction risk table `kick`. Duplicate versions across suites: one kept (TabArena, then CTR23,
+# then CC18, then AMLB, then Grinsztajn), except Higgs: the AMLB file (42769) failed OpenML's own
+# checksum on 05-11-2026, so the Grinsztajn version (44129) is used. The AMLB `albert` (41147) is
+# excluded: OpenML's feature-metadata endpoint for it timed out repeatedly (500/504) on 05-11-2026,
+# so it cannot be prepared. `src/data/control_matching.py` selects the twins.
+candidates:
+  - {track: lgd, data_id: 531, name: boston, rows: 506, features: 13, categorical: 2}
+  - {track: lgd, data_id: 44962, name: forest_fires, rows: 517, features: 12, categorical: 0}
+  - {track: lgd, data_id: 546, name: sensory, rows: 576, features: 11, categorical: 11}
+  - {track: lgd, data_id: 44967, name: student_performance_por, rows: 649, features: 30, categorical: 17}
+  - {track: lgd, data_id: 44960, name: energy_efficiency, rows: 768, features: 8, categorical: 0}
+  - {track: lgd, data_id: 44994, name: cars, rows: 804, features: 17, categorical: 0}
+  - {track: lgd, data_id: 44965, name: geographical_origin_of_music, rows: 1059, features: 116, categorical: 0}
+  - {track: lgd, data_id: 44966, name: solar_flare, rows: 1066, features: 10, categorical: 8}
+  - {track: lgd, data_id: 43071, name: MIP-2016-regression, rows: 1090, features: 144, categorical: 1}
+  - {track: lgd, data_id: 44987, name: socmob, rows: 1156, features: 5, categorical: 4}
+  - {track: lgd, data_id: 41021, name: Moneyball, rows: 1232, features: 14, categorical: 6}
+  - {track: lgd, data_id: 42563, name: house_prices_nominal, rows: 1460, features: 79, categorical: 43}
+  - {track: lgd, data_id: 42730, name: us_crime, rows: 1994, features: 126, categorical: 0}
+  - {track: lgd, data_id: 44958, name: auction_verification, rows: 2043, features: 7, categorical: 2}
+  - {track: lgd, data_id: 550, name: quake, rows: 2178, features: 3, categorical: 0}
+  - {track: lgd, data_id: 45402, name: space_ga, rows: 3107, features: 6, categorical: 0}
+  - {track: lgd, data_id: 44055, name: analcatdata_supreme, rows: 4052, features: 7, categorical: 5}
+  - {track: lgd, data_id: 44956, name: abalone, rows: 4177, features: 8, categorical: 1}
+  - {track: lgd, data_id: 42570, name: Mercedes_Benz_Greener_Manufacturing, rows: 4209, features: 376, categorical: 8}
+  - {track: lgd, data_id: 41980, name: SAT11-HAND-runtime-regression, rows: 4440, features: 116, categorical: 1}
+  - {track: lgd, data_id: 42727, name: colleges, rows: 7063, features: 44, categorical: 12}
+  - {track: lgd, data_id: 44132, name: cpu_act, rows: 8192, features: 21, categorical: 0}
+  - {track: lgd, data_id: 44978, name: cpu_activity, rows: 8192, features: 21, categorical: 0}
+  - {track: lgd, data_id: 44980, name: kin8nm, rows: 8192, features: 8, categorical: 0}
+  - {track: lgd, data_id: 44981, name: pumadyn32nh, rows: 8192, features: 32, categorical: 0}
+  - {track: lgd, data_id: 44056, name: visualizing_soil, rows: 8641, features: 4, categorical: 1}
+  - {track: lgd, data_id: 422, name: topo_2_1, rows: 8885, features: 266, categorical: 0}
+  - {track: lgd, data_id: 416, name: yprop_4_1, rows: 8885, features: 251, categorical: 0}
+  - {track: lgd, data_id: 44973, name: grid_stability, rows: 10000, features: 12, categorical: 0}
+  - {track: lgd, data_id: 44145, name: sulfur, rows: 10081, features: 6, categorical: 0}
+  - {track: lgd, data_id: 44990, name: brazilian_houses, rows: 10692, features: 9, categorical: 4}
+  - {track: lgd, data_id: 44969, name: naval_propulsion_plant, rows: 11934, features: 14, categorical: 0}
+  - {track: lgd, data_id: 44137, name: Ailerons, rows: 13750, features: 33, categorical: 0}
+  - {track: lgd, data_id: 201, name: pol, rows: 15000, features: 48, categorical: 0}
+  - {track: lgd, data_id: 216, name: elevators, rows: 16599, features: 18, categorical: 0}
+  - {track: lgd, data_id: 44063, name: Bike_Sharing_Demand, rows: 17379, features: 11, categorical: 5}
+  - {track: lgd, data_id: 45012, name: fifa, rows: 19178, features: 28, categorical: 1}
+  - {track: lgd, data_id: 42731, name: house_sales, rows: 21613, features: 21, categorical: 1}
+  - {track: lgd, data_id: 44989, name: kings_county, rows: 21613, features: 21, categorical: 4}
+  - {track: lgd, data_id: 574, name: house_16H, rows: 22784, features: 16, categorical: 0}
+  - {track: lgd, data_id: 44992, name: fps_benchmark, rows: 24624, features: 43, categorical: 13}
+  - {track: lgd, data_id: 44984, name: cps88wages, rows: 28155, features: 6, categorical: 4}
+  - {track: lgd, data_id: 42724, name: OnlineNewsPopularity, rows: 39644, features: 59, categorical: 0}
+  - {track: lgd, data_id: 44976, name: sarcos, rows: 48933, features: 21, categorical: 0}
+  - {track: lgd, data_id: 45043, name: seattlecrime6, rows: 52031, features: 4, categorical: 2}
+  - {track: lgd, data_id: 46923, name: diamonds, rows: 53940, features: 9, categorical: 3}
+  - {track: lgd, data_id: 44974, name: video_transcoding, rows: 68784, features: 18, categorical: 2}
+  - {track: lgd, data_id: 44975, name: wave_energy, rows: 72000, features: 48, categorical: 0}
+  - {track: lgd, data_id: 44146, name: medical_charges, rows: 163065, features: 3, categorical: 0}
+  - {track: lgd, data_id: 41540, name: black_friday, rows: 166821, features: 9, categorical: 4}
+  - {track: lgd, data_id: 44069, name: SGEMM_GPU_kernel_performance, rows: 241600, features: 9, categorical: 6}
+  - {track: lgd, data_id: 44068, name: particulate-matter-ukair-2017, rows: 394299, features: 6, categorical: 3}
+  - {track: lgd, data_id: 42705, name: Yolanda, rows: 400000, features: 100, categorical: 0}
+  - {track: lgd, data_id: 42729, name: nyc-taxi-green-dec-2016, rows: 581835, features: 18, categorical: 9}
+  - {track: lgd, data_id: 4549, name: Buzzinsocialmedia_Twitter, rows: 583250, features: 77, categorical: 0}
+  - {track: lgd, data_id: 45034, name: delays_zurich_transport, rows: 5465575, features: 8, categorical: 0}
+  - {track: lgd, data_id: 42728, name: Airlines_DepDelay_10M, rows: 10000000, features: 9, categorical: 3}
+  - {track: pd, data_id: 23381, name: dresses-sales, rows: 500, features: 12, categorical: 11}
+  - {track: pd, data_id: 40994, name: climate-model-simulation-crashes, rows: 540, features: 20, categorical: 0}
+  - {track: pd, data_id: 6332, name: cylinder-bands, rows: 540, features: 39, categorical: 21}
+  - {track: pd, data_id: 1510, name: wdbc, rows: 569, features: 30, categorical: 0}
+  - {track: pd, data_id: 1480, name: ilpd, rows: 583, features: 10, categorical: 1}
+  - {track: pd, data_id: 15, name: breast-w, rows: 699, features: 9, categorical: 0}
+  - {track: pd, data_id: 50, name: tic-tac-toe, rows: 958, features: 9, categorical: 9}
+  - {track: pd, data_id: 1050, name: pc3, rows: 1563, features: 37, categorical: 0}
+  - {track: pd, data_id: 1067, name: kc1, rows: 2109, features: 21, categorical: 0}
+  - {track: pd, data_id: 1487, name: ozone-level-8hr, rows: 2534, features: 72, categorical: 0}
+  - {track: pd, data_id: 41143, name: jasmine, rows: 2984, features: 144, categorical: 136}
+  - {track: pd, data_id: 41144, name: madeline, rows: 3140, features: 259, categorical: 0}
+  - {track: pd, data_id: 41158, name: gina, rows: 3153, features: 970, categorical: 0}
+  - {track: pd, data_id: 3, name: kr-vs-kp, rows: 3196, features: 36, categorical: 36}
+  - {track: pd, data_id: 40978, name: Internet-Advertisements, rows: 3279, features: 1558, categorical: 1555}
+  - {track: pd, data_id: 38, name: sick, rows: 3772, features: 29, categorical: 22}
+  - {track: pd, data_id: 41156, name: ada, rows: 4147, features: 48, categorical: 0}
+  - {track: pd, data_id: 44, name: spambase, rows: 4601, features: 57, categorical: 0}
+  - {track: pd, data_id: 40983, name: wilt, rows: 4839, features: 5, categorical: 0}
+  - {track: pd, data_id: 45039, name: compas-two-years, rows: 4966, features: 11, categorical: 8}
+  - {track: pd, data_id: 40900, name: Satellite, rows: 5100, features: 36, categorical: 0}
+  - {track: pd, data_id: 41146, name: sylvine, rows: 5124, features: 20, categorical: 0}
+  - {track: pd, data_id: 1489, name: phoneme, rows: 5404, features: 5, categorical: 0}
+  - {track: pd, data_id: 41142, name: christine, rows: 5418, features: 1636, categorical: 37}
+  - {track: pd, data_id: 41145, name: philippine, rows: 5832, features: 308, categorical: 0}
+  - {track: pd, data_id: 44130, name: eye_movements, rows: 7608, features: 20, categorical: 0}
+  - {track: pd, data_id: 44122, name: pol, rows: 10082, features: 26, categorical: 0}
+  - {track: pd, data_id: 4534, name: PhishingWebsites, rows: 11055, features: 30, categorical: 30}
+  - {track: pd, data_id: 44125, name: MagicTelescope, rows: 13376, features: 10, categorical: 0}
+  - {track: pd, data_id: 44123, name: house_16H, rows: 13488, features: 16, categorical: 0}
+  - {track: pd, data_id: 41159, name: guillermo, rows: 20000, features: 4296, categorical: 0}
+  - {track: pd, data_id: 41161, name: riccardo, rows: 20000, features: 4296, categorical: 0}
+  - {track: pd, data_id: 1486, name: nomao, rows: 34465, features: 118, categorical: 29}
+  - {track: pd, data_id: 42733, name: Click_prediction_small, rows: 39948, features: 11, categorical: 6}
+  - {track: pd, data_id: 151, name: electricity, rows: 45312, features: 8, categorical: 1}
+  - {track: pd, data_id: 1590, name: adult, rows: 48842, features: 14, categorical: 8}
+  - {track: pd, data_id: 46939, name: kddcup09_appetency, rows: 50000, features: 212, categorical: 38}
+  - {track: pd, data_id: 43072, name: KDDCup09-Upselling, rows: 50000, features: 14891, categorical: 189}
+  - {track: pd, data_id: 45021, name: jannis, rows: 57580, features: 54, categorical: 0}
+  - {track: pd, data_id: 46922, name: Diabetes130US, rows: 71518, features: 47, categorical: 39}
+  - {track: pd, data_id: 46908, name: APSFailure, rows: 76000, features: 170, categorical: 0}
+  - {track: pd, data_id: 45038, name: road-safety, rows: 111762, features: 32, categorical: 3}
+  - {track: pd, data_id: 46920, name: customer_satisfaction_in_airline, rows: 129880, features: 21, categorical: 16}
+  - {track: pd, data_id: 41150, name: MiniBooNE, rows: 130064, features: 50, categorical: 0}
+  - {track: pd, data_id: 1169, name: airlines, rows: 539383, features: 7, categorical: 4}
+  - {track: pd, data_id: 44121, name: covertype, rows: 566602, features: 10, categorical: 0}
+  - {track: pd, data_id: 44129, name: Higgs, rows: 940160, features: 24, categorical: 0}
+  - {track: pd, data_id: 42732, name: sf-police-incidents, rows: 2215023, features: 8, categorical: 5}

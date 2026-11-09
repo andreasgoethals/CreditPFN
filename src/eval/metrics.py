@@ -1,8 +1,9 @@
 """Shared monitoring and held-out scoring metrics; no benchmark orchestration."""
 from __future__ import annotations
 
-import numpy as np
 import json
+
+import numpy as np
 
 
 def calibration_bins(p: np.ndarray, y: np.ndarray, n_bins: int = 10) -> str:
@@ -12,6 +13,196 @@ def calibration_bins(p: np.ndarray, y: np.ndarray, n_bins: int = 10) -> str:
         "probability_sum": float(np.asarray(p)[index == b].sum()),
         "positive_count": int((np.asarray(y)[index == b] == 1).sum())}
         for b in range(n_bins)], separators=(",", ":"))
+
+
+#: Probabilities are clipped to this range before taking log-odds for the
+#: logistic-recalibration diagnostics (calibration slope / intercept / in-the-large).
+CALIBRATION_LOGIT_CLIP = 1e-6
+
+
+def _logit(p: np.ndarray) -> np.ndarray:
+    p = np.clip(np.asarray(p, dtype=np.float64), CALIBRATION_LOGIT_CLIP, 1 - CALIBRATION_LOGIT_CLIP)
+    return np.log(p) - np.log1p(-p)
+
+
+def _logistic_irls(
+    design: np.ndarray, y: np.ndarray, offset: np.ndarray, start: np.ndarray,
+    *, max_iter: int = 100, tol: float = 1e-10,
+) -> np.ndarray | None:
+    """Unpenalized maximum-likelihood logistic regression by damped Newton (IRLS).
+
+    Maximises Σ y·η − log(1 + e^η) with η = offset + design @ β. Returns None when
+    the fit does not converge or the estimate diverges (complete separation,
+    a constant predictor, a one-class target), so callers record NaN rather than
+    an arbitrary large number.
+    """
+    y = np.asarray(y, dtype=np.float64)
+
+    def loglik(beta):
+        eta = offset + design @ beta
+        return float(np.sum(y * eta - np.logaddexp(0.0, eta)))
+
+    beta = np.asarray(start, dtype=np.float64).copy()
+    current = loglik(beta)
+    for _ in range(max_iter):
+        eta = offset + design @ beta
+        mu = 0.5 * (1.0 + np.tanh(0.5 * eta))           # overflow-free sigmoid
+        weight = mu * (1.0 - mu)
+        gradient = design.T @ (y - mu)
+        hessian = design.T @ (design * weight[:, None])
+        try:
+            step = np.linalg.solve(hessian, gradient)
+        except np.linalg.LinAlgError:
+            return None
+        if not np.isfinite(step).all():
+            return None
+        scale = 1.0
+        while scale > 1e-8:                               # step halving keeps ascent monotone
+            candidate = beta + scale * step
+            value = loglik(candidate)
+            if np.isfinite(value) and value >= current - 1e-12:
+                break
+            scale *= 0.5
+        else:
+            return None
+        beta, current = candidate, value
+        if np.max(np.abs(scale * step)) < tol * (1.0 + np.max(np.abs(beta))):
+            # A slowly drifting estimate under separation also takes tiny steps;
+            # treat an implausibly large coefficient as divergence.
+            return beta if np.max(np.abs(beta)) < 1e3 else None
+    return None
+
+
+def logistic_recalibration(p: np.ndarray, y: np.ndarray) -> dict[str, float]:
+    """Logistic-recalibration diagnostics for binary probabilities (Cox 1958).
+
+    With z = logit(clip(p, 1e-6, 1 − 1e-6)) and y ∈ {0, 1}, by unpenalized
+    maximum likelihood:
+
+    * ``calibration_slope`` = b and ``calibration_intercept`` = a from the joint fit
+      logit P(y = 1) = a + b·z. A perfectly calibrated model has b = 1, a = 0;
+      b < 1 indicates over-confident (too extreme) predictions, b > 1 under-confident.
+    * ``calibration_in_the_large`` = a from logit P(y = 1) = a + 1·z (slope fixed at
+      one; z enters as an offset). a > 0 means risk is under-predicted on average,
+      a < 0 over-predicted. Note the joint-fit intercept is NOT this quantity
+      unless b = 1.
+
+    Every value is NaN for a one-class target, and the slope/intercept are NaN
+    when z is constant or the outcome is completely separated by z (the MLE then
+    does not exist).
+    """
+    out = {"calibration_slope": float("nan"), "calibration_intercept": float("nan"),
+           "calibration_in_the_large": float("nan")}
+    y = (np.asarray(y).reshape(-1) == 1).astype(np.float64)
+    z = _logit(np.asarray(p).reshape(-1))
+    if y.size == 0 or y.min() == y.max() or not np.isfinite(z).all():
+        return out
+    ones = np.ones((y.size, 1))
+    joint = _logistic_irls(np.column_stack([ones[:, 0], z]), y, np.zeros_like(z),
+                           np.array([0.0, 1.0]))
+    if joint is not None:
+        out["calibration_intercept"], out["calibration_slope"] = float(joint[0]), float(joint[1])
+    citl = _logistic_irls(ones, y, z, np.array([0.0]))
+    if citl is not None:
+        out["calibration_in_the_large"] = float(citl[0])
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# Continuous ranked probability score (regression)
+# --------------------------------------------------------------------------- #
+
+#: Dense uniform midpoint grid τ_i = (i − ½)/m, m = 100, for the quantile-based CRPS
+#: approximation. The midpoint rule makes the approximation exact for a point mass.
+CRPS_QUANTILE_GRID_SIZE = 100
+CRPS_QUANTILE_LEVELS: tuple[float, ...] = tuple(
+    (i + 0.5) / CRPS_QUANTILE_GRID_SIZE for i in range(CRPS_QUANTILE_GRID_SIZE))
+#: Fewer midpoint levels than this are too sparse to call a CRPS estimate.
+CRPS_MIN_QUANTILE_LEVELS = 19
+
+
+def _segment_squared_integral(width, f0, f1, h):
+    """∫ (F(x) − h)² dx over a segment where F is linear from f0 to f1 and h is constant."""
+    a, b = f0 - h, f1 - h
+    return width * (a * a + a * b + b * b) / 3.0
+
+
+def crps_piecewise_uniform(
+    probabilities: np.ndarray, borders: np.ndarray, y: np.ndarray, *, chunk_rows: int = 512,
+) -> np.ndarray:
+    """Exact per-row CRPS of a histogram (piecewise-uniform) predictive distribution.
+
+    ``probabilities`` has shape (n, K) with rows summing to one; ``borders`` has
+    shape (K + 1,) (shared) or (n, K + 1), strictly non-decreasing. Bucket k carries
+    mass p_k spread uniformly over [b_k, b_{k+1}], so the CDF F is piecewise linear and
+
+        CRPS(F, y) = ∫ (F(x) − 1{x ≥ y})² dx
+
+    is a sum of closed-form segment integrals (the bucket containing y is split at y),
+    plus |y − b_0| when y < b_0 and |y − b_K| when y > b_K. Zero-width buckets are
+    treated as point masses at their border.
+
+    Approximation note: TabPFN's ``FullSupportBarDistribution`` uses half-normal tails
+    in its two outermost buckets; this function treats every bucket, including the
+    outer two, as uniform between its borders, so for TabPFN it is exact for the
+    histogram approximation of the bar distribution, not for its half-normal tails.
+    """
+    probabilities = np.asarray(probabilities, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64).reshape(-1)
+    borders = np.asarray(borders, dtype=np.float64)
+    n, k = probabilities.shape
+    if y.size != n:
+        raise ValueError("CRPS: probabilities and targets differ in length")
+    if borders.ndim == 1:
+        borders = np.broadcast_to(borders, (n, k + 1))
+    if borders.shape != (n, k + 1):
+        raise ValueError("CRPS: borders must have one more entry than buckets")
+    if (not np.isfinite(probabilities).all() or not np.isfinite(borders).all()
+            or (probabilities < 0).any() or (np.diff(borders, axis=1) < 0).any()):
+        raise ValueError("CRPS: invalid bucket probabilities or borders")
+    probabilities = probabilities / probabilities.sum(axis=1, keepdims=True)
+
+    result = np.empty(n)
+    for start in range(0, n, chunk_rows):
+        rows = slice(start, start + chunk_rows)
+        p, b, t = probabilities[rows], borders[rows], y[rows, None]
+        lo, hi = b[:, :-1], b[:, 1:]
+        width = hi - lo
+        cdf_lo = np.concatenate([np.zeros((p.shape[0], 1)), np.cumsum(p, axis=1)[:, :-1]], axis=1)
+        cdf_hi = cdf_lo + p
+        split = np.clip(t, lo, hi)                            # y clamped into each bucket
+        with np.errstate(invalid="ignore", divide="ignore"):
+            cdf_split = np.where(width > 0, cdf_lo + p * (split - lo) / width, cdf_lo)
+        below = _segment_squared_integral(split - lo, cdf_lo, cdf_split, 0.0)
+        above = _segment_squared_integral(hi - split, cdf_split, cdf_hi, 1.0)
+        outside = np.maximum(b[:, 0] - t[:, 0], 0.0) + np.maximum(t[:, 0] - b[:, -1], 0.0)
+        result[rows] = (below + above).sum(axis=1) + outside
+    return result
+
+
+def crps_from_quantiles(quantiles: np.ndarray, levels, y: np.ndarray) -> np.ndarray:
+    """Per-row CRPS approximation from predicted quantiles on a uniform midpoint grid.
+
+    Uses CRPS(F, y) = 2 ∫₀¹ ρ_τ(y − F⁻¹(τ)) dτ, with ρ_τ the pinball loss, evaluated by
+    the midpoint rule: 2 × mean_i ρ_{τ_i}(y − q_i) over τ_i = (i − ½)/m. Requires the
+    levels to be exactly such a grid with m ≥ ``CRPS_MIN_QUANTILE_LEVELS``.
+    """
+    levels = np.asarray(levels, dtype=np.float64)
+    if not is_uniform_midpoint_grid(levels):
+        raise ValueError("CRPS from quantiles needs a dense uniform midpoint grid")
+    q = np.asarray(quantiles, dtype=np.float64)
+    y = np.asarray(y, dtype=np.float64).reshape(-1)
+    if q.shape != (y.size, levels.size) or not np.isfinite(q).all():
+        raise ValueError("Invalid quantile matrix for CRPS")
+    residual = y[:, None] - q
+    return 2.0 * np.maximum(levels * residual, (levels - 1.0) * residual).mean(axis=1)
+
+
+def is_uniform_midpoint_grid(levels) -> bool:
+    levels = np.asarray(levels, dtype=np.float64).reshape(-1)
+    m = levels.size
+    return bool(m >= CRPS_MIN_QUANTILE_LEVELS
+                and np.allclose(levels, (np.arange(m) + 0.5) / m, rtol=0, atol=1e-9))
 
 
 def _best_f1_threshold(
@@ -114,10 +305,18 @@ def _classification_metrics(
     for those four columns.
     """
     from sklearn.metrics import (
-        roc_auc_score, log_loss, average_precision_score,
-        f1_score, accuracy_score, precision_score, recall_score,
-        brier_score_loss, matthews_corrcoef, balanced_accuracy_score,
-        cohen_kappa_score, confusion_matrix,
+        accuracy_score,
+        average_precision_score,
+        balanced_accuracy_score,
+        brier_score_loss,
+        cohen_kappa_score,
+        confusion_matrix,
+        f1_score,
+        log_loss,
+        matthews_corrcoef,
+        precision_score,
+        recall_score,
+        roc_auc_score,
     )
     out: dict[str, float] = {}
     K = proba_test.shape[1]
@@ -129,7 +328,15 @@ def _classification_metrics(
             prediction_mean=float(p.mean()), prediction_std=float(p.std()),
             prediction_entropy=float(-(p * np.log(p) + (1-p) * np.log1p(-p)).mean()),
             target_prevalence=float(np.mean(np.asarray(y_test) == 1)),
-            calibration_bins=calibration_bins(proba_test[:, 1], y_test))
+            calibration_bins=calibration_bins(proba_test[:, 1], y_test),
+            # Calibration-in-the-large on the probability scale: mean(p) − mean(y),
+            # with the unclipped probabilities. Positive = risk over-predicted.
+            bias=float(np.mean(np.asarray(proba_test[:, 1], dtype=np.float64))
+                       - np.mean(np.asarray(y_test) == 1)),
+            **logistic_recalibration(proba_test[:, 1], y_test))
+    else:
+        out.update(bias=float("nan"), calibration_slope=float("nan"),
+                   calibration_intercept=float("nan"), calibration_in_the_large=float("nan"))
 
     # Threshold-free metrics on test fold.
     try:
@@ -197,7 +404,8 @@ def _classification_metrics(
     # never replacing them, so every row carries the before/after pair and the
     # ablation is a column subtraction rather than a second run.
     if K == 2:
-        from sklearn.metrics import brier_score_loss, log_loss as _ll
+        from sklearn.metrics import brier_score_loss
+        from sklearn.metrics import log_loss as _ll
         for method in ("platt", "isotonic"):
             out[f"optimal_threshold_{method}"] = float("nan")
             out[f"calibration_bins_{method}"] = "[]"
@@ -298,8 +506,38 @@ def _regression_metrics(
     pred_test: np.ndarray, y_test: np.ndarray,
     *, neg_nll: float | None, quantiles: np.ndarray | None = None,
     quantile_levels: tuple[float, ...] = (),
+    bucket_probabilities: np.ndarray | None = None,
+    bucket_borders: np.ndarray | None = None,
+    crps_quantiles: np.ndarray | None = None,
+    crps_quantile_levels: tuple[float, ...] = CRPS_QUANTILE_LEVELS,
 ) -> dict[str, float]:
     """Full regression-metric block.
+
+    Sign convention of the density columns. ``neg_nll`` is the name the
+    campaign has always used for the mean LOG-LIKELIHOOD of the targets
+    under the predictive density, i.e. −NLL (higher = better; per-row NLL
+    is clamped to [−100, 100] nats in ``src.model.tabpfn_models``). The
+    name is kept for downstream compatibility. ``nll`` = −``neg_nll`` is
+    the same quantity with the conventional sign (lower = better).
+
+    Additional calibration / scale-free / probabilistic columns:
+
+    * ``bias``  — mean(prediction) − mean(y). Positive = LGD over-predicted.
+    * ``nrmse`` — RMSE / std(y) with the population std (ddof = 0), so it is
+      comparable across tables with different target scales; nrmse² = 1 − R².
+      NaN when y is constant.
+    * ``crps`` / ``crps_method`` — mean continuous ranked probability score
+      (lower = better, in target units; equals MAE for a point forecast).
+      Methods, in order of preference:
+        - ``bar_distribution_piecewise_uniform``: exact for a histogram density,
+          from ``bucket_probabilities`` (n, K) and ``bucket_borders`` (K + 1,)
+          — see :func:`crps_piecewise_uniform`;
+        - ``quantile_midpoint_grid_<m>``: 2 × mean pinball loss over a dense
+          uniform midpoint grid (``crps_quantiles`` at ``crps_quantile_levels``,
+          or ``quantiles`` when ``quantile_levels`` itself is such a grid) —
+          see :func:`crps_from_quantiles`;
+        - ``none``: no predictive distribution; ``crps`` is NaN. The sparse
+          nine-level reporting grid is deliberately not used for CRPS.
 
     On top of RMSE / MAE / R² / neg-NLL we emit:
 
@@ -316,8 +554,11 @@ def _regression_metrics(
       nonlinearities. NaN under the same degenerate cases.
     """
     from sklearn.metrics import (
-        mean_squared_error, mean_absolute_error, r2_score,
-        median_absolute_error, explained_variance_score,
+        explained_variance_score,
+        mean_absolute_error,
+        mean_squared_error,
+        median_absolute_error,
+        r2_score,
     )
     out: dict[str, float] = {
         "rmse":               float(np.sqrt(mean_squared_error(y_test, pred_test))),
@@ -326,7 +567,30 @@ def _regression_metrics(
         "r2":                 float(r2_score(y_test, pred_test)),
         "explained_variance": float(explained_variance_score(y_test, pred_test)),
         "neg_nll":            float("nan") if neg_nll is None else float(neg_nll),
+        "nll":                float("nan") if neg_nll is None else -float(neg_nll),
     }
+    y_arr = np.asarray(y_test, dtype=np.float64).reshape(-1)
+    pred_arr = np.asarray(pred_test, dtype=np.float64).reshape(-1)
+    out["bias"] = float(pred_arr.mean() - y_arr.mean())
+    # Spread of the predictions relative to the targets: a collapsed regressor predicts
+    # nearly one value (prediction_std -> 0, std_ratio -> 0) while its RMSE can stay plausible.
+    out["prediction_mean"] = float(pred_arr.mean())
+    out["prediction_std"] = float(pred_arr.std())
+    y_std = float(y_arr.std())
+    out["prediction_std_ratio"] = out["prediction_std"] / y_std if y_std > 0 else float("nan")
+    out["nrmse"] = out["rmse"] / y_std if y_std > 0 else float("nan")
+
+    out["crps"], out["crps_method"] = float("nan"), "none"
+    if bucket_probabilities is not None and bucket_borders is not None:
+        out["crps"] = float(crps_piecewise_uniform(bucket_probabilities, bucket_borders, y_arr).mean())
+        out["crps_method"] = "bar_distribution_piecewise_uniform"
+    else:
+        dense = ((crps_quantiles, crps_quantile_levels) if crps_quantiles is not None
+                 else (quantiles, quantile_levels) if quantiles is not None
+                 and is_uniform_midpoint_grid(quantile_levels) else None)
+        if dense is not None:
+            out["crps"] = float(crps_from_quantiles(dense[0], dense[1], y_arr).mean())
+            out["crps_method"] = f"quantile_midpoint_grid_{len(dense[1])}"
 
     # MAPE — undefined where any target is zero; we emit NaN rather
     # than +inf so the column aggregates cleanly across folds.

@@ -9,7 +9,7 @@ NO VALIDATION BUCKET. The current study describes a prespecified grid
 and update horizon. A post-hoc winner does not have an unbiased test
 estimate; see docs/RESEARCH_BRIEF.md for the reporting contract.
 
-NO `.npz` CACHE. As of 2026-05-20 the data pipeline stops at
+NO `.npz` CACHE. The data pipeline stops at
 ``data/processed/{track}/<id>.sanitized.csv``. The training pipeline
 loads those CSVs directly and applies the per-epoch random subsample
 itself (see :mod:`src.train.dataloader`).
@@ -39,10 +39,10 @@ Public surface
 from __future__ import annotations
 
 import logging
-from functools import lru_cache
+from collections.abc import Sequence
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
-from typing import Sequence
 
 import numpy as np
 import pandas as pd
@@ -61,7 +61,7 @@ LOGGER = logging.getLogger(__name__)
 class DatasetRef:
     """One processed dataset on disk; the atomic unit consumed by the loop.
 
-    Replaces the old `ChunkRef`. The pass mode determines whether a
+    The pass mode determines whether a
     parent contributes one sampled batch or a complete set of partitions.
     """
     dataset_id: str
@@ -97,8 +97,8 @@ class CorpusSplit:
 
 
 #: Processed-CSV filename. The DIRECTORY comes from `src/utils/paths.py`, the one module
-#: allowed to know which storage tier it lives on. The dataset pool no longer reads a manifest
-#: file (26-08-2026) — see `build_dataset_pool`.
+#: allowed to know which storage tier it lives on. The dataset pool reads no manifest file —
+#: see `build_dataset_pool`.
 _PROCESSED_NAME = "{dataset_id}.sanitized.csv"
 
 
@@ -131,10 +131,8 @@ def build_dataset_pool(track: str) -> list[DatasetRef]:
     CSV, exactly as :func:`src.data.register.infer_categorical_numerical` computes them for the
     manifest.
 
-    This is deliberate (26-08-2026): the registry used to live in ``output CreditPFN/manifests/`` and had
-    to be rebuilt from raw (slow) or copied across whenever ``output CreditPFN/`` was wiped for a clean run.
-    Now nothing under ``output CreditPFN/`` is required to START a run — that folder holds only results the
-    code produces. A dataset with no processed CSV is skipped silently; the pipeline's
+    Deliberately so: nothing under ``output CreditPFN/`` is required to START a run — that folder
+    holds only results the code produces. A dataset with no processed CSV is skipped silently; the pipeline's
     ``_ensure_processed`` hook materialises missing CSVs before training.
     """
     if track not in ("pd", "lgd"):
@@ -238,7 +236,7 @@ def _assign_random_split(
 ) -> dict[str, str]:
     """Draw `n_test` datasets at random as the test set; the rest train.
 
-    Retained for historical configurations. Unlike K-fold, random draws do not
+    Selected by ``corpus.n_test_datasets``. Unlike K-fold, random draws do not
     guarantee that every dataset is tested or has equal evaluation coverage.
     """
     order = sorted(dataset_ids)
@@ -470,45 +468,108 @@ def split_from_cfg(cfg, *, track: str | None = None,
 
     ``min_train_rows`` overrides the value read from ``cfg.corpus`` — training passes the
     per-trial swept value here. This is THE single split path: ``train_one_config`` and the eval
-    pipeline both call it, so they cannot disagree on the held-out datasets (they did until
-    26-08-2026, when training called ``split_corpus`` directly and dropped ``n_test_datasets`` /
-    ``split_seed`` / ``n_folds`` / ``fold`` — every split then trained on the same seed-42 draw
-    while eval scored a different one).
+    pipeline both call it, so they cannot disagree on the held-out datasets.
     """
     track = track or cfg.track
     corpus = cfg.corpus
+    single = corpus.get("single_source", None)
+    if single is not None:
+        return single_source_split(track, int(single))
     split = split_corpus(
         track=track,
         require_complete_registry=bool(corpus.get("require_complete_registry", False)),
-        # Optional since run-9: a config that sets `n_test_datasets` or `n_folds` never uses
-        # the fractions, and requiring them forces dead knobs into every experiment file.
+        # Optional: a config that sets `n_test_datasets` or `n_folds` never uses the fractions.
         train_fraction=float(corpus.get("train_fraction", 0.70)),
         test_fraction=float(corpus.get("test_fraction", 0.30)),
         train_dataset_ids=resolve_ids_for_track(
             corpus.get("train_dataset_ids", None), track),
         test_dataset_ids=resolve_ids_for_track(
             corpus.get("test_dataset_ids", None), track),
-        # SPLIT SEED, not the training seed. One seed used to drive both the dataset
-        # partition and weight initialisation, so changing the split also changed the init
-        # and the two effects were confounded. Defaults to cfg.seed so old runs reproduce.
-        # `or` would be wrong here: split_seed=0 is a LEGITIMATE value (it is split 0
-        # of n_splits, set by src.utils.experiment.apply_split_index) and `0 or 42` is 42 in
-        # Python. That silently made split 0 draw the same datasets as a no-split run,
-        # collapsing an 8-split campaign to 7 distinct draws with nothing in the output
-        # to show it. Test for None explicitly.
+        # SPLIT SEED, not the training seed: one seed for both the dataset partition and
+        # weight initialisation would confound the two effects. Defaults to cfg.seed.
+        # `or` would be wrong here: split_seed=0 is a LEGITIMATE value and `0 or 42` is 42.
         seed=int(cfg.seed if corpus.get("split_seed", None) is None
                  else corpus.get("split_seed")),
         n_folds=corpus.get("n_folds", None),
         n_test_datasets=corpus.get("n_test_datasets", None),
         fold=int(corpus.get("fold", 0) or 0),
-        # A LIST here means "swept" (config/train.yaml since run-8). Outside a single trial
+        # A LIST here means "swept". Outside a single trial
         # there is no one value, so this wrapper applies NO filter when reading from cfg — its
         # roster/task-planner callers only use the TEST split, and the filter is train-side.
         # `train_one_config` passes its trial's own value via the `min_train_rows` argument.
         min_train_rows=(int(min_train_rows) if min_train_rows is not None
                         else _scalar_min_rows(corpus.get("min_train_rows", 0))),
     )
-    from src.train.size_studies import validate_split
-    validate_split(cfg, split, int(min_train_rows) if min_train_rows is not None
-                   else _scalar_min_rows(corpus.get("min_train_rows", 0)))
-    return split
+    source = corpus.get("train_source", None)
+    if source is not None:
+        return training_source_split(split, str(source), track)
+    return apply_size_policy(split, corpus.get("train_size_policy", None),
+                             threshold=int(corpus.get("size_threshold", SIZE_THRESHOLD)),
+                             seed=int(corpus.get("split_seed", cfg.seed) or 0) * 1000
+                             + int(corpus.get("fold", 0) or 0))
+
+
+#: Tables with more rows than this are "large" (E9 table size, E10 episode size).
+SIZE_THRESHOLD = 10000
+SIZE_POLICIES = ("small_only", "large_matched")
+
+
+def apply_size_policy(split: CorpusSplit, policy, *, threshold: int = SIZE_THRESHOLD,
+                      seed: int = 0) -> CorpusSplit:
+    """Training-side table-size policy; the held-out tables are never changed.
+
+    ``small_only`` keeps training tables with at most ``threshold`` rows. ``large_matched``
+    keeps the same NUMBER of training tables, drawn without replacement (fixed seed per
+    partition) from those above ``threshold``, so the two arms differ in table size only.
+    """
+    if policy is None:
+        return split
+    if policy not in SIZE_POLICIES:
+        raise ValueError(f"Unknown corpus.train_size_policy {policy!r}; expected {SIZE_POLICIES}")
+    small = [r for r in split.train if r.n_rows <= threshold]
+    large = sorted((r for r in split.train if r.n_rows > threshold), key=lambda r: r.dataset_id)
+    if not small:
+        raise ValueError("The size policy needs at least one small training table")
+    if policy == "small_only":
+        train = small
+    else:
+        if len(large) < len(small):
+            raise ValueError("Too few large training tables to match the small-table count")
+        import numpy as np
+        chosen = np.random.default_rng(seed).choice(len(large), size=len(small), replace=False)
+        train = [large[i] for i in sorted(chosen)]
+    return CorpusSplit(train=train, test=list(split.test))
+
+
+TRAIN_SOURCES = ("domain_control",)
+
+
+def training_source_split(split: CorpusSplit, source: str, track: str) -> CorpusSplit:
+    """Domain control (E3): replace each credit training table by its matched non-credit twin.
+
+    The partition trains on the twins of exactly its own credit training tables (same number of
+    tables, matched rows and features; ``src.data.control_matching``). The held-out credit
+    tables are unchanged, so the control is evaluated exactly like the reference.
+    """
+    if source not in TRAIN_SOURCES:
+        raise ValueError(f"Unknown corpus.train_source {source!r}; expected {TRAIN_SOURCES}")
+    from src.data.retention import load_refs, panel_config
+    twin_of = {item["id"]: item["match"]["twin"] for item in panel_config(source) if item["track"] == track}
+    refs = {twin_of[r.dataset_id]: r for r in load_refs(source, track)}
+    wanted = [r.dataset_id.split(".")[0] for r in split.train]
+    missing = sorted(set(wanted) - set(refs))
+    if missing:
+        raise ValueError(f"No {source} twin for credit tables {missing}")
+    train = [refs[number] for number in wanted]
+    if {r.dataset_id for r in train} & {r.dataset_id for r in split.test}:
+        raise ValueError("A control training table is also a held-out table")
+    return CorpusSplit(train=train, test=list(split.test))
+
+
+def single_source_split(track: str, index: int) -> CorpusSplit:
+    """Single-source CPT (transfer matrix): train on the ``index``-th table (sorted by id) of
+    the track, evaluate on every other table. Indexes keep private names out of configs."""
+    pool = sorted(build_dataset_pool(track), key=lambda r: r.dataset_id)
+    if not 0 <= index < len(pool):
+        raise ValueError(f"single_source index {index} outside 0..{len(pool) - 1}")
+    return CorpusSplit(train=[pool[index]], test=[r for i, r in enumerate(pool) if i != index])

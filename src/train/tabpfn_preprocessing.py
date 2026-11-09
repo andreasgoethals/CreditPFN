@@ -3,9 +3,8 @@
 This module wires TabPFN's official preprocessor
 (:class:`TabPFNEnsemblePreprocessor`) into our per-step training data
 preparation. **Without this, training-time inputs do not match the
-distribution the model was pretrained on, which is the root cause of the
-calibration-collapse failure mode we observed on 2026-05-27** (audit in
-chat 2026-05-27; cross-referenced against ``tfm-library/repositories/TabPFN .txt`` by symbol name).
+distribution the model was pretrained on, which collapses calibration during training**
+(cross-referenced against ``tfm-library/repositories/TabPFN .txt`` by symbol name).
 
 Why a separate module
 ---------------------
@@ -67,8 +66,9 @@ Reference citations
 from __future__ import annotations
 
 import logging
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -113,9 +113,8 @@ class _CleanedDataset:
     the configs ONCE per dataset chunk and stores them on the
     ``DatasetConfig``. Per-step `__getitem__` reuses these — only the
     train/test SPLIT and per-step preprocessor RNG seed change.
-    Re-rolling the EnsembleConfigs every step (our pre-2026-05-27
-    behaviour) adds unnecessary gradient variance and deviates from
-    the published methodology. Fixed by moving generation here.
+    Re-rolling the EnsembleConfigs every step would add unnecessary gradient
+    variance and deviate from the published methodology.
     """
     X_clean: np.ndarray            # (n_total, n_features) float64, NaN-preserving
     y: np.ndarray                  # original (un-encoded) targets
@@ -171,7 +170,7 @@ def _clean_one_dataset(
     # that fire inside `clean_data`'s `fix_dtypes` when checking whether
     # a float-with-NaN column can be safely cast to int. Cosmetic — does
     # not affect the result (the cast is wrapped in an `if` that
-    # gracefully falls through). Filed as P4 in chat 2026-05-28.
+    # gracefully falls through).
     import warnings as _warnings
     _warnings.filterwarnings(
         "ignore",
@@ -390,7 +389,7 @@ class TabPFNEnsembleBatch:
     # that read 74.7 %. This is the number that verifies `context_sampling`.
     ctx_pos_rate: float = float("nan")
 
-    def to(self, device: str) -> "TabPFNEnsembleBatch":
+    def to(self, device: str) -> TabPFNEnsembleBatch:
         new_members = [
             _PerEstimatorView(
                 X_context=m.X_context.to(device, non_blocking=True),
@@ -470,11 +469,11 @@ def build_ensemble_members(
     # here. Importing them here would just shadow the function-local
     # scope unnecessarily.
     from tabpfn.preprocessing import FeatureSubsamplingMethod
-    from tabpfn.preprocessing.ensemble import TabPFNEnsemblePreprocessor
     from tabpfn.preprocessing.datamodel import FeatureModality
+    from tabpfn.preprocessing.ensemble import TabPFNEnsemblePreprocessor
 
     # ---- 0) translate task-type vocabulary --------------------------- #
-    # **VOCAB GAP — fixed 2026-05-27.** Our codebase uses
+    # **VOCAB GAP.** Our codebase uses
     # ``"classification"`` / ``"regression"`` everywhere (matches
     # sklearn conventions, our YAML files, and `DatasetRef.task_type`).
     # TabPFN's API uses the shorter ``"classifier"`` / ``"regressor"``
@@ -527,8 +526,7 @@ def build_ensemble_members(
     # detail: when `train_std < 1e-8` we use 1e-8 (with a warning),
     # NOT a tiny epsilon like 1e-20. Adding 1e-20 to a near-zero std
     # produces z-scores of ~1e+20, which immediately overflow fp16
-    # gradients (one of the diagnosed causes of the 2026-05-27 inf
-    # grad_norm spikes — see chat).
+    # gradients (infinite grad_norm spikes).
     import warnings as _warnings
     znorm_mean: float | None = None
     znorm_std:  float | None = None

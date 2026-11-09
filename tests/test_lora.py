@@ -259,7 +259,7 @@ def test_actual_tabicl_packed_keys_unchanged_and_cache_predictions_match():
 
 
 def test_recovery_preserves_unmerged_factors_optimizer_and_exact_next_update(tmp_path: Path):
-    from src.train.recovery import save_recovery, load_recovery
+    from src.train.recovery import load_recovery, save_recovery
     model = _v3()
     _inject_v3(model, rank=2)
     x, y = torch.randn(2, 5, 8), torch.randn(2, 5, 2)
@@ -289,6 +289,7 @@ def test_recovery_preserves_unmerged_factors_optimizer_and_exact_next_update(tmp
 
 def test_production_optimizer_selects_only_lora_parameters():
     from omegaconf import OmegaConf
+
     from src.train.loop import _make_optimizer_and_scheduler
     from src.train.optimization import step_mean_gradient
     model = _v3()
@@ -308,7 +309,7 @@ def test_production_optimizer_selects_only_lora_parameters():
 
 
 def test_actual_tabicl_production_saver_native_reload_and_live_state(tmp_path):
-    from src.train.tabicl_model import save_finetuned_tabicl, load_tabicl_for_training
+    from src.train.tabicl_model import load_tabicl_for_training, save_finetuned_tabicl
     model = _tiny_tabicl()
     lora.inject(model, family="tabicl", rank=2, alpha=4)
     with torch.no_grad():
@@ -332,4 +333,3 @@ def test_actual_tabicl_production_saver_native_reload_and_live_state(tmp_path):
         torch.testing.assert_close(loaded(x, y), model(x, y), rtol=1e-5, atol=1e-6)
     model(x, y).square().mean().backward()
     assert any(p.grad is not None and torch.count_nonzero(p.grad) for p in lora.adapter_parameters(model))
-

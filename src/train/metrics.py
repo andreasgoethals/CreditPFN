@@ -69,7 +69,7 @@ def classification_metric(
     to NaN if the chunk's query split has only one class (which would
     make ROC-AUC undefined) — the caller filters NaNs before averaging.
     """
-    from sklearn.metrics import roc_auc_score, log_loss
+    from sklearn.metrics import log_loss, roc_auc_score
 
     logits_np = _flatten_logits(logits)               # (n_query, K)
     targets_np = _flatten_targets(targets).astype(np.int64)
@@ -158,10 +158,7 @@ def regression_metric(
             # (the z-normalised tensor passed in by `src.train.loop._forward`)
             # live in the internal z-normalised space when the caller
             # supplies znorm. We must undo the transform on BOTH so the
-            # metric comes out in raw target units. Reported as a bug by
-            # Codex on 2026-05-21 — previously only `preds` got inverted,
-            # which left the per-epoch LGD RMSE comparing raw against
-            # z-normalised values.
+            # metric comes out in raw target units.
             if znorm_mean is not None and znorm_std is not None:
                 preds = preds * znorm_std + znorm_mean
             preds_np = preds.detach().cpu().numpy()

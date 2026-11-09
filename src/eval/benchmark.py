@@ -54,19 +54,24 @@ import os
 import re
 import time
 import traceback
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Iterable, Literal
+from typing import Literal
 
 import numpy as np
 import pandas as pd
 
 from src.eval.dataset_loader import (
-    ProcessedDataset, encode_for_model, load_processed_dataset, subsample,
+    ProcessedDataset,
+    encode_for_model,
+    load_processed_dataset,
+    subsample,
 )
 from src.eval.metrics import (
-    _best_f1_threshold, _binary_ece, _posthoc_calibrated,
-    _classification_metrics, _regression_metrics,
+    CRPS_QUANTILE_LEVELS,
+    _classification_metrics,
+    _regression_metrics,
 )
 from src.model.base import ModelHandle
 from src.model.tabpfn_models import TabPFNTrained
@@ -156,6 +161,12 @@ class EvalRow:
     false_positive: float = float("nan")
     false_negative: float = float("nan")
     true_positive: float = float("nan")
+    # Logistic recalibration (src.eval.metrics.logistic_recalibration) and
+    # mean(p) − mean(y); `bias` is mean(pred) − mean(y) for regression rows.
+    calibration_slope: float = float("nan")
+    calibration_intercept: float = float("nan")
+    calibration_in_the_large: float = float("nan")
+    bias: float = float("nan")
     calibration_bins: str = "[]"
     calibration_bins_platt: str = "[]"
     calibration_bins_isotonic: str = "[]"
@@ -178,7 +189,11 @@ class EvalRow:
     explained_variance:  float = float("nan")
     pearson_r:           float = float("nan")
     spearman_r:          float = float("nan")
-    neg_nll:             float = float("nan")    # TabPFN-* only
+    neg_nll:             float = float("nan")    # TabPFN-* only; mean log-likelihood (= −NLL, higher better)
+    nll:                 float = float("nan")    # −neg_nll (lower better)
+    nrmse:               float = float("nan")    # RMSE / population std(y)
+    crps:                float = float("nan")    # see src.eval.metrics._regression_metrics
+    crps_method:         str = ""
     mean_pinball_loss: float = float("nan")
     quantile_crossing_fraction: float = float("nan")
     interval_coverage_80: float = float("nan")
@@ -267,9 +282,7 @@ def load_trained_handles(
         if prov.get("diverged") or resolved in seen_checkpoints:
             continue
         seen_checkpoints.add(resolved)
-        # ``use_lora`` column is present on manifests produced after the
-        # LoRA tuneable was added; older manifests don't have it. Default
-        # missing → False so the eval still runs against legacy manifests.
+        # A manifest without a ``use_lora`` column describes no LoRA trial.
         use_lora_raw = row.get("use_lora", False)
         if isinstance(use_lora_raw, str):
             use_lora_val = use_lora_raw.strip().lower() in ("true", "1", "yes")
@@ -282,18 +295,14 @@ def load_trained_handles(
             "learning_rate":       float(row["learning_rate"]),
             "use_lora":            use_lora_val,
             "seed":                int(row["seed"]),
-            # Keeps full_pass vs one_sample checkpoints in separate result
-            # dirs (legacy manifests lack the column → "one_sample").
+            # Exposure, corpus-size and anchor arms each get their own results directory
+            # (see _method_dirname); otherwise distinct arms would share and average scores.
             "epoch_pass_mode":     str(row.get("epoch_pass_mode", "one_sample")),
-            # Same reason, for the corpus-size arm (swept since run-8). Legacy
-            # manifests lack the column → 0, which produces the old dirname.
             "min_train_rows":      int(row.get("min_train_rows", 0) or 0),
-            # Swept from run-9. The manifest has always written this column; it just was
-            # never read, so the two anchor arms would have collided in one results dir.
             "l2sp_lambda":         row.get("l2sp_lambda", None),
         }
-        # Saved effective values are authoritative after the historical L2-SP
-        # collision and after SKIP records with incomplete HP columns.
+        # The checkpoint's saved effective values are authoritative, also for SKIP
+        # records with incomplete hyperparameter columns.
         hp = prov.get("hyperparameters", {})
         for key in ("l2sp_lambda", "min_train_rows", "epoch_pass_mode", "learning_rate"):
             if key in hp:
@@ -519,8 +528,7 @@ def _method_dirname(handle: ModelHandle) -> str:
     extra = handle.extra or {}
     short = _short_base_tag(extra.get("base_checkpoint"))
     lr = extra.get("learning_rate")
-    # Modern provenance names the adaptation explicitly. Old records retain their
-    # historical directory suffixes so archived evaluations remain discoverable.
+    # Provenance names the adaptation explicitly; `use_lora` covers manifests without it.
     if extra.get("adaptation_mode") == "diagscale":
         lora_tag = "__diagscale"
     elif extra.get("adaptation_mode") == "lora":
@@ -534,20 +542,18 @@ def _method_dirname(handle: ModelHandle) -> str:
         lora_tag = ""
     # full_pass checkpoints get a distinct dir so they don't collide with
     # the one_sample variant of the same (base, lr, lora).
-    fp_tag = {"full_pass": "__fullpass", "accumulate": "__accumulate"}.get(
+    fp_tag = {"full_pass": "__fullpass"}.get(
         extra.get("epoch_pass_mode"), "")
-    # Corpus-size arm (swept since run-8). Two trials that trained on different corpora
-    # are different experiments and must not share a results directory — sharing one
-    # would make their scores indistinguishable AND make skip-existing treat the second
-    # arm as already scored. Absent / 0 reproduces the pre-run-8 dirname exactly.
+    # Corpus-size arm. Two trials that trained on different corpora must not share a
+    # results directory: their scores would be indistinguishable AND skip-existing would
+    # treat the second arm as already scored. Absent / 0 adds no tag.
     try:
         min_rows = int(extra.get("min_train_rows", 0) or 0)
     except (TypeError, ValueError):
         min_rows = 0
     rows_tag = f"__min{min_rows}" if min_rows else ""
-    # Anchor strength, swept from run-9. Without this tag the lambda=0 and lambda=0.003
-    # arms of one (base, lr) pair would share a results directory and silently average,
-    # which is exactly what happened to the corpus arm in run-8.
+    # Anchor strength. Without this tag the arms of one (base, lr) pair with different
+    # L2-SP lambdas would share a results directory and silently average.
     l2 = extra.get("l2sp_lambda", None)
     l2_tag = "" if l2 is None or l2 != l2 else f"__l2sp{float(l2):g}"
     if lr is not None:
@@ -584,8 +590,7 @@ def _output_path_for(
 # contains an OK row for **every fold** of that dataset (so partial-failure
 # pairs — where, say, 1/5 folds succeeded — are NOT skipped on rerun and
 # the missing folds get retried). The required fold count is taken from
-# the caller's `n_folds_required`; when None, any single OK row counts
-# (legacy behaviour, used only by the test suite).
+# the caller's `n_folds_required`; when None, any single OK row counts.
 
 
 def find_existing_results(
@@ -760,7 +765,7 @@ def _write_csv(rows: list[EvalRow], path: Path) -> None:
     # read a half-written file (header but only some fold rows) and wrongly
     # conclude the pair is incomplete -> duplicate re-scoring. Writing to a
     # unique temp file and os.replace()-ing it in means readers only ever
-    # see a complete file. (Bug fixed 2026-06-23.)
+    # see a complete file.
     tmp = path.with_name(f"{path.name}.tmp.{os.getpid()}")
     try:
         with tmp.open("w", newline="", encoding="utf-8") as fh:
@@ -878,47 +883,9 @@ def _bench_model_on_dataset(
             model.fit(X_tr_arr, y_tr, cat_idx,
                       X_val=X_va_arr, y_val=y_va)
             fit_seconds = time.monotonic() - t0
-            if ds.task_type == "classification":
-                proba_va = np.asarray(model.predict_proba(X_va_arr))
-                proba_te = np.asarray(model.predict_proba(X_te_arr))
-                # Wrappers return columns in encoded-label order. Missing
-                # columns do not reveal which labels they represent; padding
-                # them could silently score the opposite class as positive.
-                classes = np.unique(y_tr)
-                K_total = len(classes)
-                if K_total < 2 or not np.array_equal(classes, np.arange(K_total)):
-                    raise ValueError("Training labels cannot establish probability column order")
-                for probabilities, n_rows in ((proba_va, len(y_va)), (proba_te, len(y_te))):
-                    if probabilities.shape != (n_rows, K_total):
-                        raise ValueError("Unexpected probability matrix shape for training classes")
-                    if (not np.isfinite(probabilities).all() or (probabilities < 0).any()
-                            or (probabilities > 1).any()):
-                        raise ValueError("Invalid class probability values")
-                pred_te = proba_te[:, 1] if K_total == 2 else proba_te.argmax(axis=1)
-                metrics = _classification_metrics(
-                    proba_test=proba_te, y_test=y_te,
-                    proba_val=proba_va,  y_val=y_va,
-                    n_classes_seen=K_total,
-                )
-            else:
-                distribution_fn = getattr(model, "predict_distribution", None)
-                if callable(distribution_fn):
-                    # Both foundation families expose point and requested quantile
-                    # outputs in one ensemble forward. TabPFN also reuses its logits
-                    # for density scoring. An incompatible API fails this fold visibly.
-                    output = distribution_fn(X_te_arr, y_te, PRED_QUANTILE_LEVELS)
-                    pred_te = np.asarray(output["mean"]).reshape(-1)
-                    quantiles = np.asarray(output["quantiles"])
-                    neg_nll = output.get("neg_nll")
-                else:
-                    pred_te = np.asarray(model.predict(X_te_arr)).reshape(-1)
-                    nll_fn = getattr(model, "neg_log_likelihood", None)
-                    neg_nll = nll_fn(X_te_arr, y_te) if callable(nll_fn) else None
-                    quantiles = _predict_quantiles(model, X_te_arr)
-                metrics = _regression_metrics(
-                    pred_test=pred_te, y_test=y_te, neg_nll=neg_nll,
-                    quantiles=quantiles, quantile_levels=PRED_QUANTILE_LEVELS,
-                )
+            metrics, pred_te, quantiles = score_fitted(
+                model, ds.task_type, y_tr=y_tr, X_va=X_va_arr, y_va=y_va,
+                X_te=X_te_arr, y_te=y_te)
         except Exception as exc:                              # noqa: BLE001
             status = "FAIL"
             error = f"{type(exc).__name__}: {exc}"
@@ -969,8 +936,7 @@ def _bench_model_on_dataset(
             # hits its per-architecture cap (cfg.max_rows_per_model), the
             # earlier `_subsample_train` call shrinks X_tr_df / X_va_df —
             # `sub_tr` / `sub_va` are the pre-cap index arrays and would
-            # over-state the training-context size. Reported by Codex
-            # on 2026-05-21.
+            # over-state the training-context size.
             n_train_rows=int(len(X_tr_df)),
             n_val_rows=int(len(X_va_df)),
             n_test_rows=int(len(te_idx)),
@@ -1029,13 +995,8 @@ def resolve_max_rows_for_handle(
 
     # Most-specific to least-specific key lookup. Both -trained and
     # -untuned handles resolve through _short_base_tag so the SAME key is
-    # produced for the same base generation. (Bug fixed 2026-08-04: the
-    # untuned branch previously stripped a "tabpfn-untuned__" prefix from
-    # handle.name, but untuned names use brackets — the strip never
-    # matched, every untuned model fell through to the "default" cap, and
-    # untuned-v3 was evaluated with 50k-row folds while trained-v3 got
-    # 1M. Asymmetric caps silently un-pair the headline comparison on
-    # datasets larger than the default cap.)
+    # produced for the same base generation: asymmetric caps would silently un-pair the
+    # original-versus-CPT comparison on datasets larger than the default cap.
     if handle.source.endswith("-trained"):
         base_short = _short_base_tag((handle.extra or {}).get("base_checkpoint"))
     else:
@@ -1064,7 +1025,7 @@ def _subsample_train(
 
     The test partition is NEVER touched by this function — the user
     contract is "use the same training data of each fold to make
-    predictions on the entirety of the test set" (chat 2026-05-20).
+    predictions on the entirety of the test set".
     """
     if max_rows is None or len(X_df) <= max_rows:
         return X_df, y
@@ -1251,3 +1212,58 @@ def run_benchmark(
                     len(rows_by_model[handle.name]), out_path, model_elapsed)
 
     return rows
+
+
+def score_fitted(model, task_type: str, *, y_tr, X_va, y_va, X_te, y_te):
+    """Score one fitted model wrapper on validation and test rows.
+
+    Shared by the five-fold benchmark and the training monitor, so both measure
+    exactly the same quantities from the same wrapper outputs. Returns
+    ``(metrics, pred_te, quantiles)``; ``quantiles`` is None for classification.
+    """
+    quantiles = None
+    if task_type == "classification":
+        proba_va = np.asarray(model.predict_proba(X_va))
+        proba_te = np.asarray(model.predict_proba(X_te))
+        # Wrappers return columns in encoded-label order. Missing columns do not
+        # reveal which labels they represent; padding them could silently score
+        # the opposite class as positive.
+        classes = np.unique(y_tr)
+        K_total = len(classes)
+        if K_total < 2 or not np.array_equal(classes, np.arange(K_total)):
+            raise ValueError("Training labels cannot establish probability column order")
+        for probabilities, n_rows in ((proba_va, len(y_va)), (proba_te, len(y_te))):
+            if probabilities.shape != (n_rows, K_total):
+                raise ValueError("Unexpected probability matrix shape for training classes")
+            if (not np.isfinite(probabilities).all() or (probabilities < 0).any()
+                    or (probabilities > 1).any()):
+                raise ValueError("Invalid class probability values")
+        pred_te = proba_te[:, 1] if K_total == 2 else proba_te.argmax(axis=1)
+        metrics = _classification_metrics(
+            proba_test=proba_te, y_test=y_te, proba_val=proba_va, y_val=y_va,
+            n_classes_seen=K_total)
+        return metrics, pred_te, quantiles
+    distribution_fn = getattr(model, "predict_distribution", None)
+    if callable(distribution_fn):
+        # Both foundation families expose point and requested quantile outputs in
+        # one ensemble forward. TabPFN also reuses its logits for density scoring.
+        # The dense CRPS grid rides along; only the reporting grid is stored.
+        output = distribution_fn(X_te, y_te, PRED_QUANTILE_LEVELS + CRPS_QUANTILE_LEVELS)
+        pred_te = np.asarray(output["mean"]).reshape(-1)
+        all_quantiles = np.asarray(output["quantiles"])
+        quantiles = all_quantiles[:, :len(PRED_QUANTILE_LEVELS)]
+        crps_quantiles = all_quantiles[:, len(PRED_QUANTILE_LEVELS):]
+        neg_nll = output.get("neg_nll")
+    else:
+        pred_te = np.asarray(model.predict(X_te)).reshape(-1)
+        nll_fn = getattr(model, "neg_log_likelihood", None)
+        neg_nll = nll_fn(X_te, y_te) if callable(nll_fn) else None
+        quantiles = _predict_quantiles(model, X_te)
+        crps_quantiles = output = None
+    metrics = _regression_metrics(
+        pred_test=pred_te, y_test=y_te, neg_nll=neg_nll,
+        quantiles=quantiles, quantile_levels=PRED_QUANTILE_LEVELS,
+        crps_quantiles=crps_quantiles,
+        bucket_probabilities=(output or {}).get("bucket_probabilities"),
+        bucket_borders=(output or {}).get("bucket_borders"))
+    return metrics, pred_te, quantiles

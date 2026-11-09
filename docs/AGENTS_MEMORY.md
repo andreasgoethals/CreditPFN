@@ -1,5 +1,29 @@
 # Agents' memory — runs and dead ends
 
+## 09-11-2026
+
+- **Tried:** relying on the working tree after deleting first-study files. **Result:** Google Drive restored 26 deleted files (old Slurm scripts, `clean_run`, `consolidate_output`, `test_finishing`, ...) and `docs/RESULTS_GUIDE.md`, with their old dates; `test_finishing` would have broken the suite. **Why:** the repository lives in a Drive-synced folder that re-syncs deletions. **Instead:** before committing, check `git diff --cached --diff-filter=D` for files present again; keep the repository and `.venv` out of Drive sync.
+- External review (Codex, 05-11): 18 findings checked; all P1 items were real except that E12's train-only design was deliberate (its description was wrong). Dry preparation of all generated configs is now part of the tests for the modified corpora (E3, E9).
+
+## 05-11-2026
+
+- **First-study TabICL CPT was numerically broken (BF16).** Archive: TabICL PD training loss started at 1.2 nats with gradient norms 300–800 and every update clipped, against 0.46–0.49 nats for all TabPFN versions. Locally, the update-zero training loss equals upstream inference in FP32 (Thomas, 4 views: 0.54 vs 0.59), but under BF16 autocast it rises to 0.86–1.33 depending on the table; the error starts in `col_embedder.tf_col.blocks.2`. Upstream fine-tunes TabICL with FP16 + GradScaler on CUDA. First-study TabICL CPT numbers should not be interpreted.
+- **Tried:** CPU autocast as a proxy for CUDA FP16. **Result:** FP16 matched FP32 on one episode (0.548 vs 0.545) but not another (0.674 vs 0.529). **Why:** upstream disables autocast inside its rotary embeddings for CUDA only, so CPU autocast runs ops that CUDA keeps in FP32. **Instead:** Experiment 0's GPU `precision` check decides; `train.tabicl_precision: fp32` is the fallback.
+- **Tried:** preparing the matched E3 twins from OpenML. **Result:** the AMLB Higgs (42769) file failed its MD5 twice, `albert` (41147) feature metadata timed out (500/504) repeatedly, KDDCup09-Upselling is a 1.8 GB ARFF, and preparation aborted on the first transient 504. **Why:** OpenML serves large tables as ARFF only and its API is intermittently overloaded. **Instead:** Grinsztajn Higgs (44129), albert excluded, a 30-million-cell bound on twins, and per-download retries (30/60/120/240 s); all 25 twins then prepared locally in about 4 minutes.
+- **Classical baselines were not reproducible:** HPO timeouts truncated tuning (logreg 12–50 of 50 trials, XGBoost 8–50), so scores depended on node speed. Timeouts removed.
+- Checked and not bugs: `n_train_rows` is the capped context (v2 10,000, v2.6 50,000); CatBoost's 50,000-row cap is tuning-only; TabICL LGD has no NLL by design (quantile head; CRPS instead).
+
+## 04-11-2026
+
+- **First-study lessons used for the design** (archive, final five-fold, credit tables): at 3e-7 PD AUC +0.0009 (v2 +0.0048, v3 +0.0004, v2.6 0.0000, TabICL −0.0016) and +0.0018 on the non-credit panel; LGD R² −0.028 on credit and −0.022 on non-credit tables (v2.6 dominant, v3 also worse). Higher rates hurt (PD 1e-5 −0.0065 with L2-SP 0.003, −0.0147 without). Monitor curves at 3e-7 were flat by 2,500 updates. Frozen backbone never helped.
+- **Suspected training-signal mismatch (first study):** at lr 1e-5 PD AUC on the run's *own training tables* fell (−0.004 with L2-SP, −0.017 without) while the loss fell. Training used 10,000–26,000-row episodes with 2 views, the monitor ≤2,000 rows with 4 views. Monitor now uses 2 views and 10,000 rows; Experiment 0 adds a single-table sanity check.
+- **Reporting bug (first study):** LGD RMSE on non-credit tables was averaged in raw target units; aggregate with R²/normalised RMSE.
+- **Tried:** runtime acceptance with first-study CPT checkpoints. **Result:** impossible; the quarantine was deleted at 08:05 (by Andreas). **Why:** acceptance sampled experiment-1 CPT weights. **Instead:** acceptance compares container vs Conda on the original checkpoints; trained-weight loading is tested by the pilots.
+- **Tried:** sealing with the recorded environment specification. **Result:** the file was in the deleted DATA output. **Why:** it lived under `output CreditPFN/experiment0/manifests/runtime_builds/`. **Instead:** `runtime_container record` from the Conda comparator regenerated `environment.json` byte-identically (SHA-256 `c9ce4607…`, job `11769223`).
+- **Storage move `11769309`:** 347 files and 228 symlinks copied Lustre → GPFS `prj_00013/CreditPFN`, SHA-256 verified, Lustre `CreditPFN` deleted (raw-data folders needed `chmod u+w` first).
+- **Tried:** upstream TabICL fine-tuner on credit tables. **Result:** rejects NaN (`EnsembleGenerator`). **Instead:** median imputation fitted on the fine-tuning rows only.
+- Same-source audit: the two similarly named LGD tables share 1 of ~300 raw columns; no regrouping needed.
+
 ## 03-11-2026
 
 - **v2.6 LGD anomaly diagnosed (not a CreditPFN bug).** With the cluster's exact tabpfn 8.0.8 (local `.venv313`), CreditPFN's update-zero training NLL equals upstream `TabPFNRegressor`'s own predictive NLL within ~0.02 nats for v2/v3 on three LGD tables, and the classifier CE equals upstream log loss for v2/v2.6/v3. The released v2.6 regressor alone scores 2.5-5.2 nats (v3 -0.8 to +0.4) because its 5,000-bucket density is a comb: adjacent bucket probabilities differ by ~1,000x (roughness 3.1-3.9 vs v2 0.07-0.21, v3 0.40-1.61) while means/quantiles stay normal. Bar-NLL CPT therefore mainly smooths the comb, which moved point predictions (about -0.05 R2 on train/test/non-credit monitors at every LR). Not caused by `'none'` target transforms or the 10 polynomial features (bisected). Guards: `tests/test_upstream_parity.py`, `src/train/density_checks.py`. Choice of LGD objective for v2.6 (bar NLL, bucket CRPS, or exclusion) is open.

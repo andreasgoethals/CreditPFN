@@ -55,7 +55,7 @@ Keep scientific recipe changes subject to explicit agreement; a push is not perm
 ### VSC access, storage and campaign changes
 
 Follow the current [template access and storage policy](docs/TEMPLATE.md#vsc-access-windows-and-agents)
-and [CreditPFN migration status](docs/VSC.md#access-storage-policy-and-migration-status).
+and the CreditPFN runbook [docs/VSC.md](docs/VSC.md) (access, storage, runtime, deployment).
 Authentication is manual: Andreas runs `step ssh login --context VSC` in Windows PowerShell
 and approves KU Leuven Authenticator. Reuse the existing Windows SSH agent and native Windows
 OpenSSH. Check certificate validity when access is needed; request that command only if the
@@ -81,11 +81,10 @@ scratch. Do not move an installed environment: recreate it from recorded specifi
 container and validate before cutover. Match intensive I/O to the compute filesystem, stage only
 the required working set, publish recovery state durably, and never blanket-delete scratch.
 
-The old Conda-on-DATA runtime is retained as a comparator/rollback; the accepted PROJECT container
-`env20261029f` now serves the approved migration campaign. The old environment and throttled launchers
-are not defaults for a new campaign. Computational activation requires `CREDITPFN_RUNTIME_VERSION`;
-only the explicit compatibility-comparison arm may select the old environment. Read the migration
-status before deployment. Preserve source, runtime,
+The old Conda-on-DATA runtime is retained only as the runtime-acceptance comparator; the sealed
+PROJECT container `env20261029f` serves the campaign. Computational activation requires
+`CREDITPFN_RUNTIME_VERSION`; only the explicit comparison arm may select the old environment.
+Preserve source, runtime,
 inputs, receipts and recovery state used by active, queued or resumable jobs. Explain and obtain
 agreement for migration, installations, cleanup or new workloads before executing them. Future
 launchers submit independent work without artificial running caps; real validation and data
@@ -118,16 +117,16 @@ Newest first, dates `DD-MM-YYYY`.
 
 - A notebook contains **no `def` and no `class`** — logic goes in `src/` — and its **last code
   cell prints a text summary**, section by section, in the notebook's own section order.
-- Public notebooks use four RQs and ten analyses: E1 learning rate/progress, E2 seeds,
-  E3 L2-SP, E4 freezing, E5 DiagScale, E6 LoRA, E7 sampling, E8 corpus composition,
-  E9 episode size, E10 target context. E0 owns validation; corpus/overview notebooks use
-  `general/`. Notebook folders are `rq1/`–`rq4/`, `experiment0/` and `general/`: one combined
-  training notebook and one combined results notebook per RQ1–RQ3, and an evaluation-only
-  context notebook for RQ4. Combine experiments in a figure when their quantities and
-  comparison units agree; retain explicit recipe differences and individual-table evidence.
-  `config/study.yaml` maps immutable recorded campaign/checkpoint IDs
-  to the public layout. E1/E3/E4 reuse the same 512-run factorial stored once in
-  `shared/main_grid`; never count those analyses as independent runs or drop the interaction.
+- Notebooks follow the four RQs and twelve experiments of `config/design.yaml`:
+  RQ1 E1 reference, E2 seeds, E3 matched non-credit domain control, E4 CPT vs target
+  fine-tuning; RQ2 E5 update size × L2-SP, E6 trainable scope; RQ3 E7 class sampling, E8 full
+  pass, E9 small vs large tables, E10 episode size; RQ4 E11 context scarcity (context curves),
+  E12 single-source transfer matrix and the per-table analysis.
+  Experiment 0 owns validation (`experiment0/`); corpus notebooks use `general/`. Folders are
+  `rq1/`–`rq3/` (one `01_training` and one `02_results` notebook each), `rq4/`, `experiment0/`
+  and `general/`. E1 is the shared control of E2, E3 and E5–E10: never count it twice. Combine
+  experiments in a figure when their quantities and comparison units agree; retain
+  individual-table evidence.
 - **Never pick a colour or a size.** `src/visualize/style.py` owns both, so every notebook here
   looks the same. Add a new one there, once, not in the notebook.
 - Save through `src/visualize/figures.FigureSaver`: **PDF only**, all in
@@ -135,7 +134,7 @@ Newest first, dates `DD-MM-YYYY`.
   each notebook clears only its own files before drawing. Full reruns also retire figures
   from renamed notebooks. This shared publication tree deliberately overrides the template's per-notebook folders.
   The notebook displays each figure inline.
-- Use `style.figsize(style.WIDTH_FULL)`, `WIDTH_HALF` or `style.rows_figsize`: every figure is drawn
+- Use `style.figsize(style.WIDTH_FULL)` or `style.figsize(style.WIDTH_HALF)`: every figure is drawn
   at the width it will occupy in the **A4 paper** (160 mm full width, 77 mm single column), and never
   rescaled afterwards. On 03-11-2026 the user replaced the ICML US Letter geometry chosen on
   30-09-2026 with this A4 article geometry, matching the template.
@@ -145,7 +144,7 @@ Newest first, dates `DD-MM-YYYY`.
 - Captions are the **paper's** captions: pure description, ready to paste under the figure.
 - Bind `NotebookReport(..., sink=sink)` and display tables through `report.table`. The final
   summary must contain every plotted value and displayed table without truncation, not just
-  aggregate conclusions. Read supplied DATA/project folders or ZIPs through `src/visualize/inputs.py`.
+  aggregate conclusions.
 
 ## 8. Say you are done only when it runs
 
@@ -164,10 +163,14 @@ anything is finished.
   a local commit alone is not deployed there. Do not change cluster files used by active jobs.
 - **No secrets, credentials, private dataset contents or large log excerpts** in any document —
   both dated logs included, since both are tracked.
-- **Second campaign (from 03-11-2026).** The first study is archived (`archive/study-2026-11/`
-  locally, quarantine folders on VSC). `config/design.yaml` is the grid authority: one reference
-  recipe plus declared deviations, materialized by `src/utils/design.py`; never hand-edit a
-  generated config. Open decisions live in `docs/NEXT_STEPS.md`.
+- **Second campaign (from 03-11-2026).** The first study is archived locally in
+  `archive/study-2026-11.zip` (verified pack, `PACK_MANIFEST.json` inside); its VSC outputs were
+  deleted and no code serves it any more.
+  `config/design.yaml` is the grid authority: one reference recipe plus declared deviations,
+  materialized by `src/utils/design.py` into `config/experiments/E00_pilots/` (Experiment 0) and
+  `config/experiments/E<NN>_<slug>/` (E1–E12). Never hand-edit a generated config;
+  `tests/test_design.py` fails on undeclared differences or stale files. Raise open decisions
+  with Andreas in chat, not in planning documents.
 - **Check which environment you are in.** Locally `.venv/Scripts/python.exe` (Python 3.13, pinned
   to the accepted container lock in `config/runtime/`; `tests/test_environment_parity.py`). Historical cluster
   evidence uses the `CreditPFN` Conda environment, printed as `Active conda env:`; preserve it as
@@ -175,28 +178,40 @@ anything is finished.
   `Active sealed runtime:`. Runtime acceptance must
   record the SIF digest, actual interpreter and package versions. An active virtualenv can
   silently shadow Conda (`AGENTS_MEMORY.md`, 05-08-2026); never infer the interpreter from a prompt.
-- **Output directory:** `output CreditPFN/<experiment>/` is the user's required name on both storage tiers, a deliberate deviation from the template's generic `output/`. Preserve the space and experiment layer; quote shell paths. Use `src/utils/paths.py`. Detailed training diagnostics and results go to project storage; logs/small manifests to DATA. Weights retain `checkpoints/trained/<recorded campaign>/`. Config directories and launcher names use public numbers; embedded `output_group` and internal `CREDITPFN_EXPERIMENT` are recorded campaign IDs, mapped by the YAML authority. Never infer an output owner from a public config folder number.
+- **Output directory:** `output CreditPFN/<group>/` is the user's required name on both storage
+  tiers, a deliberate deviation from the template's generic `output/`. Preserve the space and the
+  group layer; quote shell paths. Groups are `general`, `experiment0` and the experiment slugs of
+  `config/design.yaml` (`paths.CAMPAIGN2_GROUPS`), set by each generated config's
+  `experiment.output_group`. Always build paths through `src/utils/paths.py`. Training
+  diagnostics and results go to project storage, logs and small manifests to DATA; trained
+  weights to `checkpoints/trained/<group>/`.
 - **Keep cluster debugging on VSC.** Read Downloads in place when asked; do not copy its files
   into the repository. The user downloads the completed campaign at the final analysis stage.
   Local notebook stdout stays in the executed `.ipynb`, with its final summary in
   `output CreditPFN/All_Results.md`; no duplicate notebook logs or locks. Caption metadata remains in
   `output CreditPFN/figures/<notebook group>/_metadata/`. Give VSC commands in ordinary messages, one command per code block.
 - Publication paths live in `src/visualize/paths.py`, using the output root from
-  `src/utils/paths.py`. Its legacy figure helpers remain for migration: changing that
-  runtime-fingerprinted file during active training would invalidate prepared plans.
+  `src/utils/paths.py`.
 - Training notebooks cover trajectories, optimizer and resource diagnostics; result notebooks
   cover endpoint comparisons and final benchmarks, explicitly distinguishing monitor outcomes
   from five-fold evaluation. RQ1–RQ3 combine their respective experiments by phase; RQ4 is evaluation only.
-- Public experiment 6 (recorded checkpoint campaign 8) uses `train.adaptation_mode: lora`, not the legacy frozen/PEFT switch.
-  Its gate is `CREDITPFN_LORA_GATE`; debugging output belongs to `experiment0/lora/<ID>/`
-  on both tiers. Preserve old experiment-0 receipts and never substitute follow-up gates.
+- LoRA uses `train.adaptation_mode: lora` (native query/value adapters). Adapter scopes (LoRA,
+  DiagScale) apply L2-SP to the effective weight change (`src/train/l2sp.py`); never weight decay
+  on LoRA factors. TabPFN LGD trains with the 5-bucket window NLL (`regression_objectives.py`).
+- **Storage:** PROJECT is the Mindwell-native GPFS project `/gpfs1/project/prj_00013/CreditPFN`
+  (moved from Lustre on 04-11-2026); all jobs run on Mindwell. `prj_00013` also holds other
+  projects of Andreas: never touch anything outside `CreditPFN/`.
 - **Where the knowledge lives.** `docs/RESEARCH_BRIEF.md` is the self-contained research brief and
   method authority: descriptive goals, partitions, sampling, adaptation and limitations.
   `docs/VSC.md` owns operations, storage, checkpoint formats and measured caps (do not raise one
   without a new probe). `docs/LITERATURE.md` records primary-source support and differences.
   Historical measurements and expensive dead ends stay in `docs/AGENTS_MEMORY.md`.
-- **The experiments are `scripts/{data,train,eval,context}_pipeline.py` and `probe_row_cap.py`**, submitted
-  through `scripts/slurm/`. Everything else is a utility under `src/utils/`, run with `python -m`.
+- **Entry points:** `scripts/{data,train,eval}_pipeline.py` and `scripts/probe_row_cap.py`,
+  submitted through `scripts/slurm/`: `campaign_cpu.slurm` (Experiment 0 controller, per-experiment
+  submission, summary), `pilot_gpu.slurm`, `run_experiment.sh` (train/eval chains over `train_pd`/`train_lgd`
+  and `eval_pd`/`eval_lgd`/`eval_classical`), `campaign_eval_gpu.slurm` (E4 fine-tuning and E11
+  context curves via `src/eval/campaign_tasks.py`), `runtime_{build,cpu,gpu}.slurm`, `data.slurm`
+  and `probe_row_cap.slurm`. Everything else is a utility under `src/utils/`, run with `python -m`.
 
 ## Shared VSC Library
 

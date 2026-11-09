@@ -15,9 +15,38 @@ import numpy as np
 
 from src.utils.atomic import write_json
 from src.utils.experiment import code_identity, digest_json, environment_versions, file_digest
-from src.utils.paths import outputs_dir, resolve_staging_path, OUTPUT_DIR_NAME
+from src.utils.paths import OUTPUT_DIR_NAME, outputs_dir, resolve_staging_path
 
 CASES = [(track, model) for track in ("pd", "lgd") for model in ("v2", "v2.6", "v3", "tabicl")]
+#: Compared states: acceptance compares the two environments on the original checkpoints;
+#: trained-weight loading is exercised by the Experiment 0 pilots inside the accepted container.
+STATES = ("base",)
+#: Partition-0 held-out tables of the second campaign's reference recipe.
+REFERENCE_CONFIG = {"pd": "config/experiments/E00_pilots/reference_pd.yaml",
+                    "lgd": "config/experiments/E00_pilots/reference_lgd.yaml"}
+
+
+#: Fixed evaluation policy for the acceptance cases.
+POLICY = {"max_context_rows": 50000, "inference_views": {"tabpfn": 32, "tabicl": 8},
+          "context_seed": 271828, "query_batch_rows": 4096, "split_seed": 99, "outer_folds": 5,
+          "inner_validation_fraction": 0.20}
+
+
+def policy():
+    import copy
+    return copy.deepcopy(POLICY)
+
+
+def base_case(track, model):
+    """Original checkpoint and partition-0 held-out tables, never selected by any score."""
+    from src.train.config import load_train_config
+    from src.train.corpus import split_from_cfg
+    from src.utils.design import BASES
+    from src.utils.experiment import apply_split_index
+    from src.utils.paths import resolve_base_checkpoint
+    cfg = apply_split_index(load_train_config(config_path=REFERENCE_CONFIG[track]), 0)
+    path = resolve_base_checkpoint(BASES[track]["tabicl-v2" if model == "tabicl" else model])
+    return dict(base=str(path), base_sha256=file_digest(path)), split_from_cfg(cfg).test
 
 
 def identifier(value):
@@ -44,7 +73,8 @@ def identity():
 
 def sample(version, task, arm):
     import torch
-    from src.eval.context_curve import policy, reference_checkpoint, fold_indices, score_cell
+
+    from src.eval.context_curve import fold_indices, score_cell
     from src.eval.dataset_loader import load_processed_dataset
     if task not in range(len(CASES)) or arm not in ("original", "container"):
         raise ValueError("Unknown runtime check")
@@ -57,14 +87,14 @@ def sample(version, task, arm):
     family="tabicl" if model=="tabicl" else "tabpfn"
     cfg=policy()
     cfg.update(base_version=model, tabicl_inference_options=dict(use_amp=False,use_fa3=False))
-    pair, refs=reference_checkpoint(track,family,0,cfg)
+    pair, refs=base_case(track,model)
     # Deterministic smallest held-out table reduces setup; never selects by score.
     ref=min(refs, key=lambda r:(r.n_rows,r.dataset_id))
     data=load_processed_dataset(track,ref.dataset_id)
     order,val,test=fold_indices(data.y,data.task_type,0,cfg)
     order,val,test=order[:128],val[:64],test[:128]
     arrays={}; rows=[]
-    for state in ("base","cpt"):
+    for state in STATES:
         torch.manual_seed(42); np.random.seed(42)
         metrics,blob=score_cell(data,order,val,test,pair[state],family,cfg)
         with np.load(io.BytesIO(blob),allow_pickle=False) as saved:
@@ -100,7 +130,7 @@ def compare_task(version, task):
     if not np.array_equal(arrays[0]["target"],arrays[1]["target"]):
         raise RuntimeError("Runtime target rows changed")
     differences={}
-    for state in ("base","cpt"):
+    for state in STATES:
         a,b=arrays[0][state],arrays[1][state]
         if a.shape!=b.shape or not np.isfinite(a).all() or not np.isfinite(b).all() or not np.allclose(a,b,atol=1e-6,rtol=1e-5):
             raise RuntimeError(f"Container changed {state} predictions beyond declared tolerance")
@@ -114,7 +144,8 @@ def compare_task(version, task):
 
 def cpu(version, specification):
     import torch
-    from sklearn.metrics import roc_auc_score, brier_score_loss, r2_score, mean_squared_error
+    from sklearn.metrics import brier_score_loss, mean_squared_error, r2_score, roc_auc_score
+
     from src.utils.runtime_container import compare
     compare(specification)
     x=torch.tensor([1.,2.,3.],requires_grad=True)
@@ -134,13 +165,14 @@ def capacity(version, track):
     """Exercise the unchanged production context/query shape under explicit TabICL FP32."""
     import pandas as pd
     import torch
-    from src.eval.context_curve import policy,reference_checkpoint,score_cell
+
+    from src.eval.context_curve import score_cell
     from src.eval.dataset_loader import ProcessedDataset
     from src.train.corpus import build_dataset_pool
     if track not in ("pd","lgd") or not torch.cuda.is_available():
         raise RuntimeError("FP32 capacity validation needs a real GPU and known track")
     cfg=policy();cfg["tabicl_inference_options"]={"use_amp":False,"use_fa3":False}
-    pair,_=reference_checkpoint(track,"tabicl",0,cfg)
+    pair,_=base_case(track,"tabicl")
     cap,query=cfg["max_context_rows"],cfg["query_batch_rows"]
     features=max([64]+[len(pd.read_csv(r.processed_csv,nrows=0).columns)-1 for r in build_dataset_pool(track)])
     rng=np.random.default_rng(518)
@@ -149,7 +181,7 @@ def capacity(version, track):
     data=ProcessedDataset(pd.DataFrame(x),y,[],"classification" if track=="pd" else "regression","synthetic_fp32",track)
     context,validation,test=np.arange(cap),np.arange(cap,cap+query),np.arange(cap+query,len(x))
     cells=[]
-    for state in ("base","cpt"):
+    for state in STATES:
         torch.cuda.reset_peak_memory_stats()
         metrics,blob=score_cell(data,context,validation,test,pair[state],"tabicl",cfg)
         with np.load(io.BytesIO(blob),allow_pickle=False) as saved:

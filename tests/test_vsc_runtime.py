@@ -1,12 +1,12 @@
 """Operational regressions, using fake Slurm allocations and temporary storage."""
 import json
 import os
-from pathlib import Path
+import shlex
 import shutil
 import subprocess
 import sys
+from pathlib import Path
 from types import SimpleNamespace as NS
-import shlex
 
 import numpy as np
 import pytest
@@ -36,11 +36,35 @@ def test_batch_headers_follow_leuven_submission_requirements():
             assert int(opts["--cpus-per-task"]) <= cores, path
             if "--mem" in opts:  # Omission uses the verified partition memory per allocated CPU.
                 assert int(opts["--mem"].removesuffix("G")) * 1024 <= memory, path
+        # All compute runs on Mindwell; vsc-library guides/SLURM.md: memory follows the
+        # per-core default, so --mem is not combined with --cpus-per-task. data.slurm keeps
+        # its documented, measured 64 GB margin.
+        assert opts["--clusters"] == "mindwell", path
+        assert opts["--partition"] in ("batch_graniterapids", "gpu_b200"), path
+        if path.name != "data.slurm":
+            assert not ("--mem" in opts and "--cpus-per-task" in opts), path
+
+
+def test_every_requeue_names_its_cluster_and_is_bounded():
+    for path in Path("scripts/slurm").glob("*"):
+        text = path.read_text(encoding="utf-8")
+        for line in text.splitlines():
+            if "scontrol" in line and "requeue" in line:
+                assert '--clusters="${SLURM_CLUSTER_NAME:?}"' in line, (path, line)
+        if "scontrol" in text and "requeue" in text:
+            assert "CREDITPFN_MAX_REQUEUES:-20" in text, path
+
+
+def test_evaluation_waits_for_successful_training():
+    text = Path("scripts/slurm/run_experiment.sh").read_text(encoding="utf-8")
+    assert 'DEP=(--dependency="afterok:${DEP_JOBS[$k]}" --kill-on-invalid-dep=yes)' in text
+    assert "dependency=\"afterany" not in text
+    assert "${EVAL_DEST:-wice" not in text
 
 
 @pytest.mark.parametrize("requested,expected", [(None, 2), (-1, 2), (0, 2), (9, 2), (1, 1)])
 def test_boosting_threads_obey_the_task_allocation(monkeypatch, requested, expected):
-    from src.model.boosting import XGBoostModel, CatBoostModel
+    from src.model.boosting import CatBoostModel, XGBoostModel
     monkeypatch.setenv("SLURM_CPUS_PER_TASK", "2")
     for cls, key in ((XGBoostModel, "n_jobs"), (CatBoostModel, "thread_count")):
         params = {} if requested is None else {key: requested}
@@ -64,9 +88,10 @@ def test_catboost_pool_and_prediction_do_not_default_back_to_all_cores(monkeypat
 
 
 def test_training_native_pools_leave_room_for_workers(monkeypatch):
-    from src.utils.cpu import configure_training_threads
     import torch
-    from threadpoolctl import threadpool_limits, threadpool_info
+    from threadpoolctl import threadpool_info, threadpool_limits
+
+    from src.utils.cpu import configure_training_threads
     monkeypatch.setenv("SLURM_CPUS_PER_TASK", "2")
     previous = torch.get_num_threads()
     try:
@@ -139,7 +164,7 @@ printf '%s\\n' "$OMP_NUM_THREADS" "$MKL_NUM_THREADS" "$OPENBLAS_NUM_THREADS" "$C
 ])
 def test_runtime_activation_fails_before_creating_caches_for_ambiguous_selection(
         tmp_path, version, comparison, message):
-    from tests.test_benchmark_submission import bash_path
+    from tests.test_eval_control_sharing import bash_path
     activator = Path("scripts/slurm/_activate_env.sh").resolve()
     cache = tmp_path / "cache"
     env = dict(os.environ, CREDITPFN_RUNTIME_VERSION=version,
@@ -154,7 +179,7 @@ def test_runtime_activation_fails_before_creating_caches_for_ambiguous_selection
 
 
 def test_explicit_runtime_uses_container_branch_without_conda(tmp_path):
-    from tests.test_benchmark_submission import bash_path
+    from tests.test_eval_control_sharing import bash_path
     activator = Path("scripts/slurm/_activate_env.sh").resolve()
     scripts = tmp_path / "scripts/slurm"
     scripts.mkdir(parents=True)
@@ -176,48 +201,6 @@ def test_explicit_runtime_uses_container_branch_without_conda(tmp_path):
     assert "UNEXPECTED_CONDA" not in result.stderr
 
 
-@pytest.mark.parametrize("action,acceptance", [("submit", "1"), ("finish", "unset")])
-@pytest.mark.parametrize("cluster", ["mindwell", "wice"])
-def test_study_controller_bootstrap_only_bypasses_acceptance_to_submit_its_gates(
-        tmp_path, action, acceptance, cluster):
-    from tests.test_benchmark_submission import bash_path
-    repo = Path.cwd()
-    scripts = tmp_path / "scripts/slurm"
-    scripts.mkdir(parents=True)
-    for name in ("study_cpu.slurm", "_job_log.sh"):
-        shutil.copyfile(repo / "scripts/slurm" / name, scripts / name)
-    (scripts / "_activate_env.sh").write_text(
-        'printf "MODE:%s\\n" "${CREDITPFN_RUNTIME_ACCEPTANCE-unset}"\n'
-        'printf "INPUT_STAGE:%s\\n" "$CREDITPFN_USE_SCRATCH"\n'
-        'python() {\n'
-        '  if [[ "$*" == *src.utils.stage_inputs* ]]; then\n'
-        '    printf "STAGE:%s\\n" "$*" >&2\n'
-        '    [[ "$*" != *--resolve* ]] || printf "/verified/native/inputs\\n"\n'
-        '  else printf "ARG:%s\\n" "$@"; fi\n'
-        '}\n', encoding="utf-8", newline="\n")
-    extra = ["--runtime-version", "recorded1", "--specification", "recorded environment.json"]
-    env = dict(os.environ, SLURM_SUBMIT_DIR=tmp_path.as_posix(),
-               VSC_DATA=tmp_path.as_posix(), CREDITPFN_OUTPUT_ROOT=tmp_path.as_posix(),
-               SLURM_JOB_ID="123", SLURM_RESTART_COUNT="0", CREDITPFN_RUNTIME_ACCEPTANCE="1",
-               SLURM_CLUSTER_NAME=cluster, VSC_SCRATCH_GPFS1=(tmp_path/'gpfs').as_posix(),
-               VSC_SCRATCH_LUSTRE1=(tmp_path/'lustre').as_posix())
-    result = subprocess.run([bash_path(), (scripts / "study_cpu.slurm").as_posix(),
-                             action, "fixture", *extra], env=env,
-                            capture_output=True, text=True, timeout=20)
-    assert result.returncode == 0, result.stderr
-    log = next((tmp_path / "output CreditPFN/experiment0/logs").glob("*.log")).read_text()
-    assert f"MODE:{acceptance}\n" in log
-    assert "INPUT_STAGE:0\n" in log
-    if action == 'finish':
-        native=tmp_path/('gpfs' if cluster == 'mindwell' else 'lustre')/'CreditPFN'
-        assert f'STAGE:-m src.utils.stage_inputs --destination {native.as_posix()} --write' in log
-        assert f'STAGE:-m src.utils.stage_inputs --resolve {native.as_posix()}/ACTIVE_INPUTS.json' in log
-    else:
-        assert not any(line.startswith('STAGE:') for line in log.splitlines())
-    assert [line.removeprefix("ARG:") for line in log.splitlines() if line.startswith("ARG:")] == [
-        "-m", "src.utils.study_workflow", action, "fixture", *extra]
-
-
 def test_diagnostics_use_gpfs_and_publish_even_on_graceful_interruption(tmp_path, monkeypatch):
     from src.utils.training_files import TrainingFiles
     monkeypatch.setenv("SLURM_CLUSTER_NAME", "mindwell")
@@ -226,14 +209,13 @@ def test_diagnostics_use_gpfs_and_publish_even_on_graceful_interruption(tmp_path
     destination.mkdir(parents=True)
     (destination / "trial.resources.csv").write_text("old sample\n")
     files = TrainingFiles(destination, "trial")
-    with pytest.raises(RuntimeError, match="interrupted"):
-        with files:
-            (files.directory / "trial.csv").write_text("complete epoch\n")
-            with (files.directory / "trial.resources.csv").open("a") as stream:
-                stream.write("new sample\n")
-            assert not (destination / "trial.csv").exists()
-            assert files.directory.is_relative_to(tmp_path / "gpfs")
-            raise RuntimeError("interrupted")
+    with pytest.raises(RuntimeError, match="interrupted"), files:
+        (files.directory / "trial.csv").write_text("complete epoch\n")
+        with (files.directory / "trial.resources.csv").open("a") as stream:
+            stream.write("new sample\n")
+        assert not (destination / "trial.csv").exists()
+        assert files.directory.is_relative_to(tmp_path / "gpfs")
+        raise RuntimeError("interrupted")
     assert (destination / "trial.csv").read_text() == "complete epoch\n"
     assert (destination / "trial.resources.csv").read_text() == "old sample\nnew sample\n"
     assert not files.directory.exists()
@@ -250,9 +232,8 @@ def test_failed_publication_keeps_working_diagnostics_and_previous_file(tmp_path
     def fail(*args):
         raise OSError("synthetic publication failure")
     monkeypatch.setattr(module.os, "replace", fail)
-    with pytest.raises(OSError, match="publication failure"):
-        with files:
-            (files.directory / "trial.csv").write_text("new\n")
+    with pytest.raises(OSError, match="publication failure"), files:
+        (files.directory / "trial.csv").write_text("new\n")
     assert (files.directory / "trial.csv").read_text() == "new\n"
     assert (destination / "trial.csv").read_text() == "previous\n"
     assert not list(destination.glob("*.tmp"))
@@ -291,7 +272,7 @@ def test_queue_timeout_stops_launcher_before_any_submission(tmp_path):
     script = '''python() {
     if [[ "$1" != - ]]; then echo 'UNEXPECTED_SUBMISSION' >&2; return 31; fi
     cat >/dev/null
-    printf '%s\\n' pd cpt_null_synthetic 1 2 4 False 'base.ckpt one_sample'
+    printf '%s\\n' pd cpt2e0_synthetic 1 2 4 False 'base.ckpt one_sample'
 }
 timeout() {
     [[ "$1 $2 $3" == '--kill-after=5s 45s squeue' ]] || return 32

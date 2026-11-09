@@ -130,7 +130,7 @@ class XGBoostModel:
             import optuna
         except ImportError as exc:
             raise RuntimeError("Optuna is required for requested XGBoost tuning") from exc
-        from sklearn.metrics import roc_auc_score, mean_squared_error
+        from sklearn.metrics import mean_squared_error, roc_auc_score
 
         # Fall back to an internal split only if the caller supplied no
         # val set (e.g. someone using the wrapper outside the eval loop).
@@ -158,7 +158,7 @@ class XGBoostModel:
             seed=self._random_state,
         )
 
-        def objective(trial: "optuna.Trial") -> float:
+        def objective(trial: optuna.Trial) -> float:
             params = dict(self._params)
             params.update({
                 "n_estimators":      trial.suggest_int("n_estimators", 100, 600),
@@ -308,7 +308,7 @@ class CatBoostModel:
             import optuna
         except ImportError as exc:
             raise RuntimeError("Optuna is required for requested CatBoost tuning") from exc
-        from sklearn.metrics import roc_auc_score, mean_squared_error
+        from sklearn.metrics import mean_squared_error, roc_auc_score
 
         if X_val is None or y_val is None:
             from sklearn.model_selection import train_test_split
@@ -334,7 +334,7 @@ class CatBoostModel:
             seed=self._random_state,
         )
 
-        def objective(trial: "optuna.Trial") -> float:
+        def objective(trial: optuna.Trial) -> float:
             params = dict(self._params)
             params.update({
                 "iterations":     trial.suggest_int("iterations", 200, 1000),

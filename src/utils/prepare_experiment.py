@@ -9,9 +9,14 @@ from pathlib import Path
 from omegaconf import OmegaConf
 
 from src.utils.experiment import (
-    apply_split_index, code_identity, digest_json, environment_versions, scientific_config, trial_identity,
+    apply_split_index,
+    code_identity,
+    digest_json,
+    environment_versions,
+    scientific_config,
+    trial_identity,
 )
-from src.utils.paths import manifests_dir, activate_experiment, group_for_run
+from src.utils.paths import activate_experiment, group_for_run, manifests_dir
 
 
 def plan_path(run_name: str, track: str) -> Path:
@@ -26,32 +31,6 @@ def read_plan(path: Path) -> dict:
     return payload
 
 
-def check_shared_reference(payload):
-    """An episode study must retain the exact planned anchor, never a later replacement."""
-    link = payload.get("shared_reference")
-    if link is None:
-        return
-    from src.train.size_studies import match_reference
-    reference = read_plan(plan_path(link["run"], link["track"]))
-    if reference["sha256"] != link["sha256"] or match_reference(payload, reference) != link["trials"]:
-        raise RuntimeError("Shared experiment-6 reference changed; restore the original plan")
-
-
-def check_size_evaluation(cfg, payload, eval_cfg=None):
-    from src.train.size_studies import study, evaluation_protocol
-    from src.utils.source_transition import compatible_code
-    recorded = payload.get("evaluation_protocol")
-    current = evaluation_protocol(cfg, eval_cfg) if study(cfg) else None
-    equivalent = recorded == current
-    if not equivalent and recorded and current:
-        equivalent = (recorded.get('config') == current.get('config')
-                      and recorded.get('versions') == current.get('versions')
-                      and compatible_code(recorded.get('code_sha256'), current.get('code_sha256'), stage='eval'))
-    if study(cfg) and not equivalent:
-        raise RuntimeError("Size-study benchmark protocol differs from its immutable plan; "
-                           "restore the planned evaluation settings/code/environment")
-
-
 def check_prepared(config: Path, *, stage: str = "train") -> dict:
     """Cheap submission gate: no CSV/weight reads, jobs, or output writes.
 
@@ -61,18 +40,7 @@ def check_prepared(config: Path, *, stage: str = "train") -> dict:
     from src.train.config import load_train_config
     cfg = load_train_config(config_path=str(config))
     activate_experiment(cfg)
-    if OmegaConf.select(cfg, 'experiment.legacy_gate', default=False):
-        from src.utils.legacy_checks import require_gate
-        require_gate(str(cfg.experiment.extension_id))
-    if OmegaConf.select(cfg, 'experiment.lora_gate', default=False):
-        from src.utils.lora_checks import require_gate
-        require_gate()
-    if OmegaConf.select(cfg, 'experiment.followup_gate', default=False):
-        from src.utils.followup_checks import require_gate
-        require_gate()
     payload = read_plan(plan_path(str(cfg.run_name), str(cfg.track)))
-    check_shared_reference(payload)
-    check_size_evaluation(cfg, payload)
     def training_settings(config):
         raw = OmegaConf.to_container(config, resolve=True)
         return {"scientific": scientific_config(config), "run_name": raw["run_name"],
@@ -90,8 +58,7 @@ def check_prepared(config: Path, *, stage: str = "train") -> dict:
     for key, spec in identities.items():
         if digest_json(spec) != key:
             raise RuntimeError("Prepared trial identity failed its checksum")
-        from src.utils.source_transition import compatible_code
-        if stage == "train" and (not compatible_code(spec["code_sha256"], code) or spec["versions"] != versions):
+        if stage == "train" and (spec["code_sha256"] != code or spec["versions"] != versions):
             raise RuntimeError("Code/environment differs from the prepared plan; prepare a fresh named phase")
         if spec["data_config"] != data_config:
             raise RuntimeError("Data settings differ from the prepared plan; prepare a fresh named phase")
@@ -100,22 +67,11 @@ def check_prepared(config: Path, *, stage: str = "train") -> dict:
 
 
 def assert_prepared(cfg, trial_index: int, identity: dict) -> None:
-    if OmegaConf.select(cfg, 'experiment.legacy_gate', default=False):
-        from src.utils.legacy_checks import require_gate
-        require_gate(str(cfg.experiment.extension_id))
-    if OmegaConf.select(cfg, 'experiment.lora_gate', default=False):
-        from src.utils.lora_checks import require_gate
-        require_gate()
-    if OmegaConf.select(cfg, 'experiment.followup_gate', default=False):
-        from src.utils.followup_checks import require_gate
-        require_gate()
     path = plan_path(str(cfg.run_name), str(cfg.track))
     if not path.is_file():
         raise RuntimeError("Prepare this experiment first: python -m src.utils.prepare_experiment "
                            "--config <experiment.yaml> --write")
     payload = read_plan(path)
-    check_shared_reference(payload)
-    check_size_evaluation(cfg, payload)
     expected = payload["trials"].get(f"{cfg.run_name}/{trial_index}")
     if expected != identity["sha256"]:
         raise RuntimeError("The prepared plan differs from this trial. Recheck code, data, environment "
@@ -124,14 +80,12 @@ def assert_prepared(cfg, trial_index: int, identity: dict) -> None:
 
 def prepare(config: Path, *, write: bool = False, check: bool = False) -> dict:
     from src.train.config import load_train_config, resolve_grid
-    from src.train.corpus import split_from_cfg, _scalar_min_rows
+    from src.train.corpus import _scalar_min_rows, split_from_cfg
     if write and check:
         raise ValueError("Choose write or check, not both")
     cfg = load_train_config(config_path=str(config))
     activate_experiment(cfg)
     grid = resolve_grid(cfg, single=False)
-    from src.train.size_studies import study, validate_config, arm_inventory, match_reference, REFERENCE_CONFIG
-    validate_config(cfg)
     n_splits = int(cfg.corpus.n_splits)
     folds = int(cfg.corpus.n_folds or 0)
     seeds = list(OmegaConf.select(cfg, "experiment.training_seeds", default=[cfg.seed]))
@@ -139,9 +93,6 @@ def prepare(config: Path, *, write: bool = False, check: bool = False) -> dict:
         raise ValueError("n_splits exceeds dataset folds × training seeds")
     payload = {"schema_version": 1, "run": str(cfg.run_name), "config": OmegaConf.to_container(cfg, resolve=True),
                "trials": {}, "partitions": [], "identities": {}}
-    if study(cfg) and (write or check):
-        from src.train.size_studies import evaluation_protocol
-        payload["evaluation_protocol"] = evaluation_protocol(cfg)
     for index in range(n_splits):
         current = apply_split_index(OmegaConf.create(OmegaConf.to_container(cfg)), index)
         split = split_from_cfg(current)
@@ -156,9 +107,6 @@ def prepare(config: Path, *, write: bool = False, check: bool = False) -> dict:
         payload["partitions"].append({"index": index, "training_seed": int(current.seed),
             "partition_seed": int(current.corpus.split_seed), "fold": int(current.corpus.fold),
             "train": [r.dataset_id for r in split.train], "test": [r.dataset_id for r in split.test]})
-        if study(cfg):
-            payload["partitions"][-1]["corpus_arms"] = [
-                arm_inventory(current, splits_by_min_rows[m], m) for m in sorted({int(t[6]) for t in grid})]
         if write or check:
             for i, trial in enumerate(grid):
                 min_rows = int(trial[6])
@@ -171,25 +119,16 @@ def prepare(config: Path, *, write: bool = False, check: bool = False) -> dict:
             if len(group) != folds:
                 raise ValueError("A complete phase cannot end halfway through a dataset partition")
             tests = [d for p in group for d in p["test"]]
-            # Filtering the training corpus must not remove held-out datasets
-            # from the fold-coverage universe.
-            unfiltered = split_from_cfg(current, min_train_rows=0)
-            universe = {r.dataset_id for r in unfiltered.train + unfiltered.test}
+            # The held-out folds partition the track's credit registry, whatever the training
+            # corpus is (size policies filter it; the E3 control replaces it with twins).
+            from src.train.corpus import build_dataset_pool
+            universe = {r.dataset_id for r in build_dataset_pool(str(current.track))}
             if len(tests) != len(set(tests)) or set(tests) != universe:
                 raise ValueError("Dataset folds must cover every dataset exactly once per training seed")
-    if study(cfg) == "episode_size" and cfg.experiment.output_group == "experiment7" and (write or check):
-        reference_cfg = load_train_config(config_path=str(OmegaConf.select(
-            cfg, "experiment.reference_config", default=REFERENCE_CONFIG)))
-        reference = read_plan(plan_path(str(reference_cfg.run_name), str(reference_cfg.track)))
-        payload["shared_reference"] = {"run": str(reference_cfg.run_name), "track": "pd",
-            "sha256": reference["sha256"], "trials": match_reference(payload, reference)}
     report = {"run": str(cfg.run_name), "track": str(cfg.track), "trials_per_partition": len(grid),
               "partitions": n_splits, "training_trials": len(grid) * n_splits,
               "training_seeds": seeds, "dataset_folds": folds,
               "test_counts": [len(p["test"]) for p in payload["partitions"]], "written": write}
-    if study(cfg):
-        report["corpus_arms"] = [{"partition": p["index"], **{k: v for k, v in arm.items() if k != "tables"}}
-                                 for p in payload["partitions"] for arm in p["corpus_arms"]]
     from src.utils.paths import resolve_base_checkpoint
     bases = [resolve_base_checkpoint(trial[0]) for trial in grid]
     if all(p.is_file() for p in bases):
@@ -219,28 +158,8 @@ def main(argv=None) -> int:
     mode = parser.add_mutually_exclusive_group()
     mode.add_argument("--write", action="store_true")
     mode.add_argument("--check", action="store_true", help="verify the entire plan including input hashes; write nothing")
-    parser.add_argument("--profile-workers", type=int, nargs="+")
     args = parser.parse_args(argv)
-    if args.profile_workers:
-        if not args.write:
-            parser.error("--profile-workers creates named pilot configs and requires --write")
-        from src.train.config import load_train_config
-        reports = []
-        for workers in args.profile_workers:
-            if workers < 0:
-                raise ValueError("Worker profiles require explicit nonnegative worker counts")
-            cfg = load_train_config(config_path=str(args.config))
-            activate_experiment(cfg)
-            cfg.run_name = f"{cfg.run_name}_w{workers}"
-            cfg.train.dataloader_workers = workers
-            folder = manifests_dir() / "pilot_configs"
-            folder.mkdir(parents=True, exist_ok=True)
-            path = folder / f"{cfg.run_name}_{cfg.track}.yaml"
-            OmegaConf.save(cfg, path)
-            reports.append(dict(prepare(path, write=args.write), config=str(path)))
-        print(json.dumps(reports, indent=2))
-    else:
-        print(json.dumps(prepare(args.config, write=args.write, check=args.check), indent=2))
+    print(json.dumps(prepare(args.config, write=args.write, check=args.check), indent=2))
     return 0
 
 

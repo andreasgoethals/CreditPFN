@@ -5,9 +5,9 @@ import argparse
 import getpass
 import json
 import os
-from pathlib import Path
 import re
 import shutil
+from pathlib import Path
 
 MARKER = '.creditpfn-job-cache.json'
 

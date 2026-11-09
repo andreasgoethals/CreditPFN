@@ -1,17 +1,14 @@
-"""Cross-experiment control reuse leaves numerical identities and donor bytes intact."""
+"""Cross-experiment reuse of original-model controls leaves identities and donor bytes intact."""
 import gzip
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
-from types import SimpleNamespace
+from pathlib import Path
 
 import pytest
-from omegaconf import OmegaConf
 
 from src.eval import cache
-from src.eval.config import load_eval_configs
 
 
 def bash_path():
@@ -41,10 +38,10 @@ def share(target):
 def test_published_control_shared_without_copy_or_overwrite(tmp_path):
     root = tmp_path/"output CreditPFN"
     key = "a"*64
-    donor = root/"experiment1/evaluation_cache"/(key+".json.gz")
+    donor = root/"reference/evaluation_cache"/(key+".json.gz")
     artifact(donor, key)
     original = donor.read_bytes()
-    target = root/"experiment2/evaluation_cache"
+    target = root/"seed/evaluation_cache"
     result = share(target)
     assert result.returncode == 0, result.stderr
     linked = target/donor.name
@@ -66,12 +63,12 @@ def test_published_control_shared_without_copy_or_overwrite(tmp_path):
 
 def test_incomplete_wrong_key_and_unpublished_controls_are_not_accepted(tmp_path):
     root = tmp_path/"output CreditPFN"
-    donor = root/"experiment1/evaluation_cache"
+    donor = root/"reference/evaluation_cache"
     artifact(donor/("b"*64+".json.gz"), "b"*64, fold_count=4)
     artifact(donor/("c"*64+".json.gz"), "d"*64)
     artifact(donor/".pending.json.gz", "e"*64)
     artifact(root/"experiment0/evaluation_cache"/("f"*64+".json.gz"), "f"*64)
-    target = root/"experiment3/evaluation_cache"
+    target = root/"exposure/evaluation_cache"
     assert share(target).returncode == 0
     for key in ("b"*64, "c"*64, "e"*64, "f"*64):
         assert cache.load(target.parent/"results", key, n_folds=5) is None
@@ -82,42 +79,3 @@ def test_nonresearch_cache_is_untouched(tmp_path):
     target = tmp_path/"output CreditPFN/experiment0/evaluation_cache"
     assert share(target).returncode == 0
     assert not target.exists()
-
-
-def test_migrated_shared_grid_controls_are_reused_only_by_compatible_campaigns(tmp_path):
-    from src.utils.study_layout import manifest
-    root = tmp_path / "output CreditPFN"
-    root.mkdir()
-    (root / "STUDY_LAYOUT.json").write_text(json.dumps(manifest()))
-    key = "a" * 64
-    donor = root / "shared/main_grid/evaluation_cache" / (key + ".json.gz")
-    artifact(donor, key)
-    for group in ("experiment2", "experiment7"):
-        target = root / group / "evaluation_cache"
-        result = share(target)
-        assert result.returncode == 0, result.stderr
-        assert os.path.samefile(donor, target / donor.name)
-    target = root / "experiment3/evaluation_cache"
-    assert share(target).returncode == 0 and not target.exists()
-
-
-@pytest.mark.parametrize("track", ["pd", "lgd"])
-@pytest.mark.parametrize("source", ["tabpfn-untuned", "tabicl-untuned", "baseline"])
-def test_research_phase_configs_share_only_identical_evaluation_controls(monkeypatch, track, source):
-    monkeypatch.setattr(cache, "file_digest", lambda path: "fixed-input-bytes")
-    monkeypatch.setattr(cache, "code_identity", lambda **kwargs: "same-numerical-code")
-    monkeypatch.setattr(cache, "environment_versions", lambda **kwargs: {"test": "same-environment"})
-    handle = SimpleNamespace(source=source, name=source, base_path=None)
-    configs = [load_eval_configs([], [], config_path=f"config/experiment{experiment}/{track}.yaml")[0]
-               for experiment in (1, 2, 7)]
-    keys = [cache.evaluation_key(handle, "test", track=track, config=OmegaConf.to_container(cfg, resolve=True))
-            for cfg in configs]
-    if source == "tabicl-untuned":
-        # Experiments 1-2 score TabICLv2 in FP32 without FA3; experiment 3 keeps the automatic policy.
-        assert keys[0] == keys[1] != keys[2]
-        keys = keys[:2]
-    assert len(set(keys)) == 1
-    configs[-1].seed += 1
-    changed = cache.evaluation_key(handle, "test", track=track,
-                                   config=OmegaConf.to_container(configs[-1], resolve=True))
-    assert changed != keys[0]

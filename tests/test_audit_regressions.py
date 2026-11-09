@@ -8,7 +8,7 @@ import pytest
 
 
 def test_eval_resume_does_not_borrow_another_split(tmp_path, monkeypatch):
-    from src.eval.benchmark import find_existing_results, _method_dirname
+    from src.eval.benchmark import _method_dirname, find_existing_results
     from src.model.base import ModelHandle
     monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
     h = ModelHandle(name="xgboost", track="pd", source="baseline", task_type="classification")
@@ -20,20 +20,6 @@ def test_eval_resume_does_not_borrow_another_split(tmp_path, monkeypatch):
                                      n_folds_required=1, run_name="exp1v2_s01")
     assert find_existing_results(h, "demo", track="pd", results_base_dir="output CreditPFN/general/results",
                                  n_folds_required=1, run_name="exp1v2_s00")
-
-
-def test_effects_pair_before_averaging_splits_and_folds():
-    from src.visualize.paper_figures import paired_deltas
-    common = dict(base_short="v3", test_dataset_id="demo", fold_idx=0)
-    frame = pd.DataFrame([
-        dict(common, method_dirname="base", source="tabpfn-untuned", split=0, roc_auc=.6),
-        dict(common, method_dirname="base", source="tabpfn-untuned", split=1, roc_auc=.9),
-        dict(common, method_dirname="trained", source="tabpfn-trained", split=0, roc_auc=.7),
-        dict(common, method_dirname="trained", source="tabpfn-trained", split=2, roc_auc=.1),
-    ])
-    result = paired_deltas(frame)
-    assert len(result) == 1
-    assert result.iloc[0]["delta"] == pytest.approx(.1)
 
 
 def test_corpus_guard_refuses_silent_dataset_omission(monkeypatch):
@@ -67,6 +53,7 @@ def test_test_monitor_cannot_change_training_divergence_decision():
 def test_structured_logger_preserves_traceback():
     import logging
     import sys
+
     from src.utils.logging_setup import _StructuredFormatter
     try:
         raise RuntimeError("diagnostic marker")

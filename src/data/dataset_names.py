@@ -28,7 +28,8 @@ def _stem(slug: object) -> str:
 
 
 try:  # the gitignored mapping is present only where the private data is
-    from src.data._private_names import DISPLAY as _DISPLAY, PROPRIETARY as _PROPRIETARY
+    from src.data._private_names import DISPLAY as _DISPLAY
+    from src.data._private_names import PROPRIETARY as _PROPRIETARY
 except Exception:  # public clone / mapping absent -> degrade to raw slugs
     _DISPLAY, _PROPRIETARY = {}, set()
 
@@ -42,19 +43,6 @@ def display_name(slug: object) -> str:
 def is_proprietary(slug: object) -> bool:
     """True iff this dataset must never be named in anything published."""
     return _stem(slug) in _PROPRIETARY
-
-
-def display_id_list(ids: object, sep: str = ";") -> object:
-    """Map a ``sep``-joined slug list (manifest ``train/test_dataset_ids``) to display names."""
-    if ids is None or (isinstance(ids, float)):  # NaN / missing -> leave as-is
-        return ids
-    parts = [display_name(p) for p in str(ids).split(sep) if p != ""]
-    return sep.join(parts)
-
-
-def sort_key(slug: object) -> tuple[int, str]:
-    """(is_proprietary, display_name) — public datasets first, then alphabetical."""
-    return (int(is_proprietary(slug)), display_name(slug))
 
 
 def redact_private_names(value: object) -> object:

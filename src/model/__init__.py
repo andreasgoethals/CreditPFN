@@ -23,9 +23,10 @@ manifest CSV.
 """
 
 from src.model.base import BaselineModel, ModelHandle  # noqa: F401
-from src.model.tabpfn_models import (  # noqa: F401
-    TabPFNUntuned, TabPFNTrained,
-)
-from src.model.boosting import XGBoostModel, CatBoostModel  # noqa: F401
-from src.model.linear import LogRegModel, LinRegModel  # noqa: F401
+from src.model.boosting import CatBoostModel, XGBoostModel  # noqa: F401
+from src.model.linear import LinRegModel, LogRegModel  # noqa: F401
 from src.model.registry import build_baselines  # noqa: F401
+from src.model.tabpfn_models import (  # noqa: F401
+    TabPFNTrained,
+    TabPFNUntuned,
+)

@@ -32,17 +32,22 @@ import pandas as pd
 import pytest
 
 from src.eval.benchmark import (
-    EvalRow, _output_path_for, _method_dirname,
+    EvalRow,
+    _method_dirname,
     find_existing_results,
-    load_trained_handles, resolve_test_datasets, run_benchmark,
+    load_trained_handles,
+    resolve_test_datasets,
+    run_benchmark,
 )
 from src.eval.dataset_loader import (
-    ProcessedDataset, encode_for_model, load_processed_dataset, subsample,
+    ProcessedDataset,
+    encode_for_model,
+    load_processed_dataset,
+    subsample,
 )
 from src.model.base import ModelHandle
 from src.model.boosting import XGBoostModel
 from src.model.linear import LogRegModel
-
 
 # =============================================================================
 # Helpers
@@ -221,8 +226,7 @@ def test_run_benchmark_writes_per_method_csv(env_isolated: Path) -> None:
         assert len(files) == 1
         df = pd.read_csv(files[0])
         assert len(df) == 3
-        # Comprehensive metric columns are present (post-2026-05-21
-        # expansion: brier/mcc/balanced_accuracy/cohen_kappa/specificity
+        # Comprehensive metric columns are present (brier/mcc/balanced_accuracy/cohen_kappa/specificity
         # for classification; median_ae/mape/explained_variance/
         # pearson_r/spearman_r for regression).
         for col in (
@@ -270,7 +274,7 @@ def test_run_benchmark_classification_metrics_are_finite(env_isolated: Path) -> 
         assert 0.0 <= r.optimal_threshold <= 1.0
         assert 0.0 <= r.f1 <= 1.0
         assert 0.0 <= r.accuracy <= 1.0
-        # New metrics added 2026-05-21 — must be finite + in plausible range.
+        # Secondary metrics must be finite + in plausible range.
         assert 0.0 <= r.brier_score <= 1.0
         assert -1.0 <= r.mcc <= 1.0
         assert -1.0 <= r.cohen_kappa <= 1.0
@@ -437,7 +441,7 @@ def test_benchmark_passes_inner_val_to_model_fit(env_isolated: Path) -> None:
 
 def test_best_f1_threshold_via_pr_curve() -> None:
     """Synthetic: separable scores, optimum threshold should be around 0.5."""
-    from src.eval.benchmark import _best_f1_threshold
+    from src.eval.metrics import _best_f1_threshold
     rng = np.random.default_rng(0)
     n = 1000
     y = (rng.standard_normal(n) > 0).astype(int)
@@ -449,7 +453,7 @@ def test_best_f1_threshold_via_pr_curve() -> None:
 
 
 def test_best_f1_threshold_falls_back_when_no_positive() -> None:
-    from src.eval.benchmark import _best_f1_threshold
+    from src.eval.metrics import _best_f1_threshold
     # All-zero labels → no positives → F1 always 0 → fallback 0.5.
     proba = np.linspace(0.1, 0.9, 50)
     y = np.zeros(50, dtype=int)
@@ -867,7 +871,7 @@ def test_find_existing_results_requires_all_folds_when_count_given(
 
 
 # --------------------------------------------------------------------------- #
-# Post-hoc recalibration (added 08-08-2026)
+# Post-hoc recalibration
 # --------------------------------------------------------------------------- #
 
 
@@ -993,6 +997,7 @@ def test_posthoc_calibration_repairs_overconfident_probabilities() -> None:
     On deliberately over-confident probabilities both calibrators must cut
     ECE substantially while leaving AUC untouched (they are monotone maps)."""
     import numpy as np
+
     from src.eval.benchmark import _classification_metrics
 
     rng = np.random.default_rng(0)
@@ -1016,6 +1021,7 @@ def test_posthoc_calibration_repairs_overconfident_probabilities() -> None:
 
 def test_posthoc_calibration_is_nan_for_multiclass_and_never_raises() -> None:
     import numpy as np
+
     from src.eval.benchmark import _classification_metrics
 
     rng = np.random.default_rng(1)
@@ -1031,6 +1037,7 @@ def test_eval_row_exposes_calibration_columns() -> None:
     """The CSV writer serialises EvalRow via asdict, so the new fields must
     exist on the dataclass or they silently never reach disk."""
     from dataclasses import asdict
+
     from src.eval.benchmark import EvalRow
 
     cols = set(asdict(EvalRow(
@@ -1042,7 +1049,7 @@ def test_eval_row_exposes_calibration_columns() -> None:
 
 
 # =========================================================================== #
-# Eval task packing (11-08-2026)
+# Eval task packing
 # =========================================================================== #
 
 
@@ -1110,12 +1117,9 @@ def test_a_task_index_beyond_the_packed_grid_is_a_soft_no_op() -> None:
 
 
 def test_pools_over_packed_tasks_never_align_with_the_dataset_index() -> None:
-    """REGRESSION (found in the 11-08-2026 logs). LGD has 2 test datasets and the eval
-    ran on 2 pools. Cells are enumerated model-major, so a `i % pools` stride over RAW
-    cells handed pool 0 every even index — which is dataset 0, every time. Pool 0 scored
-    `0006.lgd_freddie` and nothing else; `0007.lgd_lendingclub` existed only in the other pool.
-    That is the 11-07-2026 dead end (a whole dataset in one pool) reintroduced by a
-    different mechanism.
+    """With 2 test datasets and 2 pools, a `i % pools` stride over RAW model-major cells
+    hands pool 0 every even index — dataset 0, every time — so a whole dataset sits in
+    one pool.
 
     Stable tie diversification prevents this reproduced isolation pattern.
     Cost balancing alone is not a general guarantee of dataset coverage per pool.

@@ -6,16 +6,15 @@ and use these definitions rather than choosing their own sizes or colors.
 
 from __future__ import annotations
 
-import zlib
 import re
+import zlib
 
 import matplotlib as mpl
 import numpy as np
 
 # ---------------------------------------------------------------------------
-# FIGURE SIZES — A4 article geometry, chosen by the user on 03-11-2026: a 160-mm
-# text block and two 77-mm columns separated by 6 mm. This replaces the ICML
-# US Letter widths (6.75/3.25 inches) chosen on 30-09-2026.
+# FIGURE SIZES — A4 article geometry: a 160-mm text block and two 77-mm columns
+# separated by 6 mm.
 #
 # DRAW AT FINAL WIDTH, and never rescale a figure in the document. Rescaling carries the text with
 # it: 9pt squeezed to 70% arrives as 6.3pt, under the ~7pt floor where small print stops being
@@ -32,30 +31,13 @@ WIDTH_THIRD = round((160 - 12) / 3 * _MM, 3)
 #: and `figsize` clamps to it rather than letting a tall panel grid silently overflow.
 MAX_HEIGHT = 4.80   # 122 mm
 BAR_LABEL_PAD = 3
-BAR_LIMIT_FACTOR = 1.35
 LOG_BAR_LIMIT_FACTOR = 4
 EXPOSURE_LABEL_PAD = 5
-EXPOSURE_COLLISION_LIFT = 6
 EXPOSURE_LIMIT_FACTOR = 1.30
-SCHEDULE_POINTS = 400
 
 GOLDEN = 0.618      # height = width * GOLDEN, unless the data wants otherwise
-GRID_CMAP = "viridis"
-GRID_FONT = 7
-TABLE_MAP_COLUMNS = 8
-GRID_RATIO = 0.76
-DASHBOARD_RATIO = 0.76
-FACTOR_ARM_STYLES = ("--", "-")
-ANCHOR_STYLES = {False: "--", True: "-"}
-TABLE_CURVE_ALPHA = 0.28
-CONTEXT_TABLES_PER_PAGE = 3
-CONTEXT_TABLE_PAGE_RATIO = 1.05
 TABLE_CURVE_LINE = 0.55
 MEAN_CURVE_LINE = 1.6
-PROTOCOL_POINT_OFFSET = 0.12
-CHOICE_LEGEND_RATIO = 0.40
-CHOICE_POINT_OFFSETS = (-0.18, -0.06, 0.06, 0.18)
-DIFFERENCE_STYLE = ":"
 GRID_TEXT_LIGHT = "white"
 GRID_TEXT_DARK = "black"
 
@@ -166,9 +148,8 @@ _PROJECT_RC: dict = {
 # their untuned controls, and the GBM/linear baselines. So each one gets ONE colour, fixed
 # here, and a reader who has learnt the legend once never re-learns it.
 #
-# This replaces what these figures used to do — `cm.get_cmap("tab10", n)` indexed by
-# position in a list — where dropping one arm from a plot shifted every colour after it
-# and the same model appeared blue in one figure and orange in the next.
+# Never `cm.get_cmap("tab10", n)` indexed by position in a list: dropping one arm from a
+# plot would shift every colour after it.
 #
 # Chosen from Okabe–Ito, which is colour-vision-safe and separates in greyscale. Order
 # matters: adjacent entries are the ones most often plotted side by side.
@@ -209,66 +190,27 @@ COLORS: dict[str, str] = {
 #: Sequential and diverging maps, so a heatmap is not chosen per notebook either.
 CMAP_SEQUENTIAL = "viridis"
 CMAP_DIVERGING = "RdBu"          # blue: positive effects (improvement); red: deterioration
-TRAJECTORY_LR_COLORS = {3e-7: "#0072B2", 1e-6: "#E69F00", 1e-5: "#009E73", 3e-5: "#CC79A7"}
-TRAJECTORY_LINESTYLES = {0.0: "-", 0.003: "--"}
 
-# Bounded pages keep the 64-recipe sweep legible at its final A4 width.
+# Bounded pages keep long dataset and recipe lists legible at the final A4 width.
 PAGE_ROWS = 12
 SIMPLE_PAGE_ROWS = 20
 PAGE_COLUMNS = 8
-SERIES_PER_PANEL = 4
-PANEL_MARKERS = ("o", "s", "^", "D")
 CONTINUOUS_TICKS = 4
-INTERVAL_ALPHA = 0.12
 LEGEND_COLUMNS = 4
 JITTER_WIDTH = 0.16
-CURVE_BINS = 50
 PANEL_RATIO = 0.72
-RELIABILITY_ROWS = 2
-CALIBRATION_EXAMPLE_TABLES = 2
-SMALL_RATIO = 0.48
 POINT_SIZE = 20
 TABLE_POINT_SIZE = 10
-TABLE_POINT_EDGE = 0.3
-CURVE_MARKER_SIZE = 2
-CURVE_MARKER_INTERVAL = 5
-CLIP_LINEAR_THRESHOLD = 0.001  # Fraction: linear from zero to 0.1%, logarithmic above.
-CLIP_DISPLAY_CEILING = 1.1  # Leave visible headroom above a 100% curve.
 POINT_ALPHA = 0.65
-ENDPOINT_LABEL_HEADROOM = 0.18
-ENDPOINT_LABEL_OFFSET = 0.04
-ENDPOINT_LABEL_SEPARATION = 0.08
-ENDPOINT_LABEL_LANE_HEIGHT = 0.10
-THIN_LINE = 0.8
 BAR_HEIGHT = 0.72
 ANNOTATION_SIZE = 7
-SAMPLING_LABELS = {"one_sample": "One sample", "full_pass": "Full pass", "accumulate": "Accumulate"}
-SAMPLING_COLORS = {"one_sample": "#0072B2", "full_pass": "#E69F00", "accumulate": "#009E73"}
-SAMPLING_STYLES = {"one_sample": "-", "full_pass": "--", "accumulate": ":"}
-STATUS_COLORS = {"OK": "#009E73", "PENDING": "#CCCCCC", "FAIL": "#D55E00",
-                 "DIVERGED": "#CC79A7", "INTERRUPTED": "#E69F00", "SKIP": "#56B4E9"}
+SAMPLING_LABELS = {"one_sample": "One sample", "full_pass": "Full pass"}
+SAMPLING_COLORS = {"one_sample": "#0072B2", "full_pass": "#E69F00"}
 SEED_MARKERS = ("o", "s", "^")
 
-#: Ordinal settings get ordinal colour ramps (light/low to dark/high), so the order of a
-#: setting can be read from colour alone. Each family keeps its own hue: E1 full updates
-#: blue-to-purple, E5 DiagScale greens, E6 LoRA purples (dashed), E9 episode sizes oranges.
-LR_COLORS = {3e-7: "#0B3C68", 1e-6: "#3E7DB8", 1e-5: "#E08A2E", 3e-5: "#B02E2E"}
-DIAGSCALE_COLORS = {1e-4: "#8FCB8F", 1e-3: "#2E9B4E", 3e-2: "#00441B"}
-LORA_COLORS = {1e-5: "#C2A5CF", 1e-4: "#8C62AA", 1e-3: "#40004B"}
-EPISODE_COLORS = {"2,048 rows": "#F4A259", "8,192 rows": "#D1495B", "10,000 rows": "#6A1B3A",
-                  "11,000 rows": "#6A1B3A", "26,000 rows": "#6A1B3A"}
 #: Height of one panel row in multi-row figures, plus the fixed band for titles/legend.
 ROW_HEIGHT = 1.22
 FIGURE_BAND = 0.85
-FOREST_ROW = 0.13
-_SUPERSCRIPT = str.maketrans("-0123456789", "⁻⁰¹²³⁴⁵⁶⁷⁸⁹")
-
-
-def lr_text(value) -> str:
-    """Learning rate in journal notation: 3e-7 -> 3×10⁻⁷, 1e-4 -> 10⁻⁴."""
-    mantissa, exponent = f"{float(value):.0e}".split("e")
-    power = "10" + str(int(exponent)).translate(_SUPERSCRIPT)
-    return power if mantissa == "1" else f"{mantissa}×{power}"
 
 
 def rows_figsize(rows: int, width: float = WIDTH_FULL, *, row_height: float = ROW_HEIGHT,
@@ -276,21 +218,8 @@ def rows_figsize(rows: int, width: float = WIDTH_FULL, *, row_height: float = RO
     """A figure whose height follows its number of panel rows, clamped to `MAX_HEIGHT`."""
     return (width, min(band + rows * row_height, MAX_HEIGHT))
 
+
 MODEL_LABELS = {"v2": "TabPFN v2", "v2.6": "TabPFN v2.6", "v3": "TabPFN v3", "tabicl-v2": "TabICLv2"}
-METRIC_LABELS = {"roc_auc": "AUC", "pr_auc": "PR-AUC", "brier_score": "Brier score",
-                 "log_loss": "Log loss", "ece": "ECE", "f1": "F1", "rmse": "RMSE",
-                 "mae": "MAE", "r2": "R²"}
-ADAPTER_LR_COLORS = {1e-4: "#0072B2", 1e-3: "#E69F00", 3e-2: "#009E73"}
-SIZE_STUDY_COLORS = {"All tables": "#0072B2", "Large tables": "#E69F00",
-                     "2,048 rows": "#0072B2", "8,192 rows": "#E69F00", "26,000 rows": "#009E73"}
-SIZE_STUDY_STYLES = {"All tables": "-", "Large tables": "--", "2,048 rows": "-",
-                     "8,192 rows": "--", "26,000 rows": ":"}
-SIZE_STUDY_COLORS.update({"10,000 rows": SIZE_STUDY_COLORS["26,000 rows"],
-                          "11,000 rows": SIZE_STUDY_COLORS["26,000 rows"]})
-SIZE_STUDY_STYLES.update({"10,000 rows": ":", "11,000 rows": ":"})
-ADAPTER_LR_STYLES = {1e-4: "-", 1e-3: "--", 3e-2: ":"}
-LORA_LR_COLORS = {1e-5: "#0072B2", 1e-4: "#E69F00", 1e-3: "#009E73"}
-LORA_LR_STYLES = {1e-5: "-", 1e-4: "--", 1e-3: ":"}
 _MODEL_TOKEN = re.compile(r"(?<!TabPFN )(?<![\w.-])(?:tabicl-v2|v2\.6|v2|v3)(?![\w.-])")
 
 
@@ -299,11 +228,6 @@ def model_label(text):
     if not isinstance(text, str):
         return text
     return _MODEL_TOKEN.sub(lambda match: MODEL_LABELS[match.group()], text)
-
-
-def adaptation_label(frozen: bool) -> str:
-    """Reader-facing parameter-update regimes, independent of internal flag names."""
-    return "Transformer backbone frozen" if frozen else "All trainable parameters updated"
 
 
 def page_slices(length, limit=PAGE_ROWS):
@@ -364,38 +288,6 @@ def categorical(names) -> dict:
 
 #: Remaining Okabe-Ito slots, for series that have not been registered yet.
 _EXTRAS = ("#CC79A7", "#56B4E9", "#F0E442", "#D55E00")
-SEED_COLORS = {42: "#0072B2", 43: "#D55E00"}
-SEED_STYLES = {42: "-", 43: "--"}
-
-#: One colour per CPT *hyperparameter*, repeated wherever that parameter is named (axis
-#: rows, column headers, annotations), so a reader links a label to its parameter by
-#: colour as well as by text. Distinct from the per-value learning-rate colours above.
-PARAMETER_COLORS = {"learning_rate": "#0072B2", "l2sp_lambda": "#D55E00", "scope": "#4D4D4D"}
-PARAMETER_LABELS = {"learning_rate": "Peak LR", "l2sp_lambda": "L2-SP λ", "scope": "Update scope"}
-
-#: Adaptation strategies compared across experiments. Okabe-Ito, colour-blind safe;
-#: marker shapes repeat the distinction for greyscale print.
-APPROACH_COLORS = {"Full CPT": "#0072B2", "Frozen backbone": "#E69F00",
-                   "DiagScale": "#009E73", "LoRA": "#CC79A7"}
-APPROACH_MARKERS = {"Full CPT": "o", "Frozen backbone": "s", "DiagScale": "^", "LoRA": "D"}
-#: Display scale and axis label for paired CPT − original effects, shared by every results
-#: notebook so the same quantity reads the same everywhere (AUC in percentage points, etc.).
-#: Tables keep native units unless a column name says otherwise.
-EFFECT_SCALE = {"roc_auc": 100., "pr_auc": 100., "brier_score": 100., "rmse": 100., "f1": 100.,
-                "ece": 100., "r2": 1., "log_loss": 1., "mae": 1.}
-EFFECT_LABELS = {"roc_auc": "ΔAUC (pp, + better)", "pr_auc": "ΔPR-AUC (pp, + better)",
-                 "brier_score": "Brier reduction ×100 (+ better)", "rmse": "RMSE reduction (%, + better)",
-                 "r2": "ΔR² (+ better)", "log_loss": "Log-loss reduction (nats, + better)",
-                 "mae": "MAE reduction (+ better)", "f1": "ΔF1 (pp, + better)", "ece": "ECE reduction ×100 (+ better)"}
-#: Win/tie/loss bars: improvement, negligible change, deterioration.
-OUTCOME_COLORS = {"Improved": "#2166AC", "Negligible": "#D0D0D0", "Worse": "#B2182B"}
-#: Effects inside +/- this band count as negligible ("ties") in win/tie/loss summaries.
-#: A reporting convention for this study, stated in every caption that uses it.
-TIE_BAND = {"roc_auc": 0.001, "r2": 0.001, "rmse": 0.001, "brier_score": 0.0001}
-#: Very large single-table effects would compress every other heatmap cell into one
-#: colour. Colour limits use this quantile of |effect|; printed values stay exact.
-HEATMAP_COLOR_QUANTILE = 0.95
-OVERVIEW_ROW_HEIGHT = 0.15   # inches per configuration row in the cross-study map
 
 
 def apply() -> None:
@@ -423,8 +315,6 @@ def apply() -> None:
 
 #: Above this many items, a per-item bar chart becomes a distribution.
 MAX_BARS = 28
-#: Above this many, tick labels are thinned to every Nth.
-MAX_TICK_LABELS = 28
 #: Above this many, a small-multiples grid becomes an overlay or a summary.
 MAX_PANELS = 12
 
@@ -432,32 +322,6 @@ MAX_PANELS = 12
 def too_many(n: int, limit: int = MAX_BARS) -> bool:
     """True when `n` items will not fit legibly on a publication-width figure."""
     return int(n) > int(limit)
-
-
-def head_tail(items, k: int = MAX_BARS):
-    """The k most extreme items, half from each end, for a "top and bottom" bar chart.
-
-    Returns `(subset, n_hidden)`. Keeping both ends rather than the top k is deliberate:
-    the question a reader asks of a ranked corpus chart is "what is unusual?", and the
-    smallest datasets are as informative as the largest.
-    """
-    items = list(items)
-    if not too_many(len(items), k):
-        return items, 0
-    half = k // 2
-    return items[:half] + items[-half:], len(items) - 2 * half
-
-
-def thin_ticks(ax, axis: str = "y", max_labels: int = MAX_TICK_LABELS) -> None:
-    """Keep every Nth tick label so they stop overlapping. Ticks stay, labels thin out."""
-    getter = ax.get_yticklabels if axis == "y" else ax.get_xticklabels
-    labels = getter()
-    if len(labels) <= max_labels:
-        return
-    step = int(np.ceil(len(labels) / max_labels))
-    for i, lab in enumerate(labels):
-        if i % step:
-            lab.set_visible(False)
 
 
 def note(ax, text: str) -> None:
@@ -483,8 +347,7 @@ def title(ax, text: str) -> None:
 
     Figures in this project end up in a paper, where the caption below the figure carries
     the explanation — so the title is a label for browsing the PDF folder, not a sentence.
-    A title longer than the figure is wide silently overlaps the y tick labels, which is
-    where several collisions in the 12-08-2026 figure audit came from.
+    A title longer than the figure is wide silently overlaps the y tick labels.
 
     The budget is derived from the figure's OWN width. A fixed 52 characters is right only at
     `WIDTH_FULL`: on a `WIDTH_HALF` panel it is twice the space available, which is how
@@ -516,8 +379,8 @@ def title(ax, text: str) -> None:
 
 def _legend_columns(fig, labels):
     """Fit measured legend text inside the declared publication width."""
-    from matplotlib.font_manager import FontProperties
     from matplotlib.backends.backend_agg import RendererAgg
+    from matplotlib.font_manager import FontProperties
     font = FontProperties(size=mpl.rcParams["legend.fontsize"])
     renderer = (fig.canvas.get_renderer() if hasattr(fig.canvas, "get_renderer")
                 else RendererAgg(int(fig.bbox.width), int(fig.bbox.height), fig.dpi))
@@ -536,7 +399,15 @@ def _legend_columns(fig, labels):
 def finish_figure(fig):
     """Reserve a separate legend band so legends never obscure data marks."""
     import textwrap
-    from matplotlib.ticker import AutoLocator, FixedLocator, MaxNLocator, LogLocator, LogFormatterSciNotation, NullFormatter
+
+    from matplotlib.ticker import (
+        AutoLocator,
+        FixedLocator,
+        LogFormatterSciNotation,
+        LogLocator,
+        MaxNLocator,
+        NullFormatter,
+    )
     handles, labels = [], []
     if fig._suptitle is not None:
         budget = max(20, int(fig.get_figwidth() * _TITLE_CHARS_PER_INCH))
@@ -570,7 +441,8 @@ def finish_figure(fig):
             for handle, label in zip(current_handles, current_labels):
                 label = model_label(label)
                 if label and not label.startswith("_") and label not in labels:
-                    handles.append(handle); labels.append(label)
+                    handles.append(handle)
+                    labels.append(label)
             legend.remove()
         if ax.get_title():
             panel_width = fig.get_figwidth() * ax.get_position().width
@@ -582,3 +454,98 @@ def finish_figure(fig):
         fig.legend(handles, labels, loc="outside lower center",
                    ncol=_legend_columns(fig, labels), frameon=False)
     return fig
+
+
+# Domain comparison (notebooks/general/03_domain_comparison): credit corpus vs non-credit tables.
+DOMAIN_COLORS = {"credit": "#0072B2", "retention": "#E69F00", "domain_control": "#009E73"}
+DOMAIN_LABELS = {"credit": "Credit corpus", "retention": "Non-credit retention panel",
+                 "domain_control": "Non-credit control corpus"}
+
+
+# ---------------------------------------------------------------------------
+# SECOND-CAMPAIGN RESULT FIGURES (src/visualize/results2.py). One meaning per encoding:
+#   colour = base model (fixed), line style = which tables a monitor scores, marker = L2-SP
+#   strength or training condition, ordered ramps = an ordered setting (learning rate, rows).
+# ---------------------------------------------------------------------------
+
+#: Display order of the four base models, everywhere (tables, panels, legends).
+MODEL_ORDER = ("TabPFN v2", "TabPFN v2.6", "TabPFN v3", "TabICLv2")
+#: Colour of each displayed model label; the same Okabe-Ito hues as the design names in COLORS.
+MODEL_COLORS = {"TabPFN v2": COLORS["v2"], "TabPFN v2.6": COLORS["v2.6"],
+                "TabPFN v3": COLORS["v3"], "TabICLv2": COLORS["tabicl"]}
+#: Small horizontal offsets that separate the four models inside one category row.
+MODEL_DODGE = {"TabPFN v2": -0.24, "TabPFN v2.6": -0.08, "TabPFN v3": 0.08, "TabICLv2": 0.24}
+
+
+def model_color(label: str) -> str:
+    """Colour of a model given either its display label or its design name."""
+    label = model_label(str(label))
+    return MODEL_COLORS.get(label, color(label))
+
+
+#: Which tables a training monitor scores. Held-out credit carries the result; the other two
+#: are context, so they are drawn lighter.
+SCOPE_LABELS = {"test": "Held-out credit tables", "train": "Own training tables",
+                "ood": "Non-credit retention panel"}
+SCOPE_LINESTYLES = {"test": "-", "train": "--", "ood": ":"}
+SCOPE_ALPHA = {"test": 1.0, "train": 0.75, "ood": 0.75}
+SEED_BAND_ALPHA = 0.22
+
+#: L2-SP strength (E5) as marker shape; the reference strength is the filled circle.
+LAMBDA_MARKERS = {0.0: "v", 0.003: "o", 0.03: "^"}
+#: Trainable scope (E6, plus the full-weight reference) as colour in the trade-off figure.
+SCOPE_COLORS = {"all": "#000000", "frozen_backbone": "#7F7F7F", "diagscale": "#56B4E9",
+                "lora_qv_r16": "#D55E00"}
+SCOPE_NAMES = {"all": "All weights", "frozen_backbone": "Frozen backbone", "diagscale": "DiagScale",
+               "lora_qv_r16": "LoRA r16 (query, value)"}
+
+#: E4 conditions relative to the original model without fine-tuning.
+CONDITION_LABELS = {"cpt": "CPT: continued pretraining only", "finetune": "FT: original fine-tuned on the fold",
+                    "cpt_finetune": "CPT+FT: CPT model fine-tuned on the fold"}
+CONDITION_TICKS = {"cpt": "CPT", "finetune": "FT", "cpt_finetune": "CPT+FT"}
+CONDITION_MARKERS = {"cpt": "o", "finetune": "s", "cpt_finetune": "D"}
+
+#: Original model versus its continued-pretrained counterpart in absolute-score panels.
+START_LINESTYLES = {"original": "--", "cpt": "-"}
+START_LABELS = {"original": "Original", "cpt": "CPT"}
+
+#: Markers for a measured value versus a summary of measured values.
+MEAN_MARKER = "D"
+MEAN_MARKER_SIZE = 28
+TABLE_MARKER_SIZE = 9
+FILLED_ALPHA = 0.9
+HOLLOW_FACE = "white"
+CONNECTOR_COLOR = "#BBBBBB"
+CONNECTOR_LINE = 0.5
+ZERO_LINE = dict(color="#000000", linewidth=0.6, linestyle=":")
+BASELINE_LINE = dict(color=COLORS["linear"], linewidth=0.9, linestyle="--")
+#: Consistency colour map for metric-profile heatmaps: share of tables improved, 0 to 1.
+CMAP_SHARE = "RdBu"
+ORDERED_CMAP = "viridis"
+ORDERED_RANGE = (0.0, 0.82)     # the yellow end of viridis is unreadable on white paper
+
+
+def ordered(names) -> dict:
+    """Colours for an ORDERED setting (learning rates, episode sizes, context sizes): a
+    perceptually uniform ramp, so the order is visible without the legend."""
+    import matplotlib.pyplot as plt
+    names = list(dict.fromkeys(names))
+    cmap = plt.get_cmap(ORDERED_CMAP)
+    low, high = ORDERED_RANGE
+    steps = np.linspace(low, high, max(len(names), 2))[:len(names)] if len(names) > 1 else [low]
+    return {name: mpl.colors.to_hex(cmap(step)) for name, step in zip(names, steps)}
+#: L2-SP strength as line style where lines connect learning rates (E5 dose response).
+LAMBDA_LINESTYLES = {0.0: "--", 0.003: "-", 0.03: ":"}
+#: Experiment family as marker in the quality-versus-cost view.
+SLUG_MARKERS = {"reference": "o", "exposure": "s", "episode_size": "^", "class_sampling": "P",
+                "table_size": "X"}
+#: Vertical space per dataset row in per-table dot plots and per arm row in arm dot plots.
+TABLE_ROW_HEIGHT = 0.16
+ARM_ROW_HEIGHT = 0.26
+#: Marker area range for an ordered setting encoded by size (learning rate in the trade-off view).
+SIZE_RANGE = (8, 46)
+#: Categorical colours for experiment arms drawn inside one model's panel. They avoid the four
+#: model hues, so a colour never means "TabPFN v3" in one figure and "full pass" in another.
+ARM_PALETTE = ("#D55E00", "#56B4E9", "#882255", "#7F7F7F", "#44AA99", "#332288", "#999933", "#AA4499")
+#: Two learning rates of one trainable scope (E6): the lower dashed, the higher solid.
+RATE_LINESTYLES = ("--", "-")

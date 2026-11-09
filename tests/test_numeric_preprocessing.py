@@ -12,7 +12,9 @@ def test_regression_query_uses_fitted_member_transform_without_refitting(monkeyp
     import copy
     import sys
     from types import ModuleType, SimpleNamespace
+
     from sklearn.preprocessing import PowerTransformer
+
     from src.train.tabpfn_preprocessing import build_ensemble_members
 
     # Exercise our builder against the upstream member contract. The fitted
@@ -107,7 +109,9 @@ def test_unit_change_rejects_unrepresentable_dynamic_range():
 
 def test_data_preparation_persists_unit_shifts_in_the_existing_manifest(tmp_path, monkeypatch):
     import json
+
     from omegaconf import OmegaConf
+
     from src.data import register, sanitize
 
     cfg = OmegaConf.load("config/data.yaml")

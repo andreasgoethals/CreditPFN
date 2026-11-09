@@ -1,7 +1,6 @@
 """Cheap invariants for isolated follow-ups. No released weights or GPU required."""
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -9,11 +8,18 @@ import numpy as np
 import pandas as pd
 import pytest
 import torch
-from torch import nn
 from omegaconf import OmegaConf
+from torch import nn
 
-from src.model import diagscale as ds
 from src.eval import context_curve as cc
+from src.model import diagscale as ds
+
+
+def context_policy():
+    """The second-campaign E11 context policy (TabPFN v3), as campaign_tasks builds it."""
+    from src.eval.campaign_tasks import policy
+    from src.utils.design import load_design
+    return policy('v3', load_design())
 
 
 class SoftmaxScalingMLP(nn.Module):
@@ -45,8 +51,8 @@ def small_model(family):
 
 @pytest.mark.parametrize('family', ['tabpfn', 'tabicl'])
 def test_identity_shapes_flag_parity_and_optimizer_isolation(family):
-    from src.train.optimization import step_mean_gradient
     from src.train.loop import _make_optimizer_and_scheduler
+    from src.train.optimization import step_mean_gradient
     model = small_model(family)
     original = [(p, p.detach().clone(), p.requires_grad) for p in model.parameters()]
     shape = (3, 4, 2, 3) if family == 'tabpfn' else (3, 2, 4, 3)
@@ -79,29 +85,6 @@ def test_identity_shapes_flag_parity_and_optimizer_isolation(family):
     assert torch.count_nonzero(params[0])
     assert all(torch.equal(p, initial) for p, initial, _ in original)
     assert all(p.grad is None for p in model.parameters())
-
-
-def test_cache_probe_detects_adapter_omission_on_cached_path():
-    from src.utils.followup_checks import attention_cache_probe
-    class Attention(MultiheadAttention):
-        omit_cached_adapter = False
-
-        def forward(self, query, key=None, value=None, *, need_kv=False, cached_kv=None):
-            q = query.reshape(1, 6, 2, 3).transpose(1, 2)
-            out = self.ssmax_layer(q, 10)
-            if cached_kv is not None and self.omit_cached_adapter:
-                out = q
-            return (out, key, value) if need_kv else out
-
-    attention = Attention()
-    attention.ssmax_layer = ds.QueryScale(None, (2, 1, 3), 'cpu')
-    with pytest.raises(AssertionError, match='nonzero'):
-        attention_cache_probe(attention, cache_factory=SimpleNamespace)
-    attention.ssmax_layer.delta.data.fill_(.2)
-    assert attention_cache_probe(attention, cache_factory=SimpleNamespace) == 0
-    attention.omit_cached_adapter = True
-    with pytest.raises(AssertionError, match='disagree'):
-        attention_cache_probe(attention, cache_factory=SimpleNamespace)
 
 
 def test_multiplier_is_after_query_dependent_transform():
@@ -146,7 +129,6 @@ def test_adapter_rejects_unsupported_duplicate_and_invalid_state():
 
 
 def test_bundle_pins_base_and_rejects_native_loader_schema(tmp_path, monkeypatch):
-    from src.utils import paths
     from src.utils.experiment import file_digest
     base = tmp_path/'tabpfn-v3-classifier-v3_default.ckpt'
     base.write_bytes(b'original')
@@ -192,8 +174,8 @@ def test_native_hook_restores_before_cache_and_keeps_explicit_v3(monkeypatch):
 
 
 def test_adapter_optimizer_and_rng_recovery(tmp_path):
-    from src.train.recovery import save_recovery, load_recovery
     from src.train.optimization import step_mean_gradient
+    from src.train.recovery import load_recovery, save_recovery
     model = small_model('tabpfn')
     ds.inject(model, family='tabpfn')
     opt = torch.optim.AdamW(ds.adapter_parameters(model), lr=.01)
@@ -217,7 +199,7 @@ def test_adapter_optimizer_and_rng_recovery(tmp_path):
 
 @pytest.mark.parametrize('kind', ['classification', 'regression'])
 def test_context_folds_keep_all_test_rows_nested_and_disjoint(kind):
-    cfg = cc.policy()
+    cfg = context_policy()
     y = np.arange(505)%2 if kind == 'classification' else np.random.default_rng(42).normal(size=505)
     observed = []
     for fold in range(5):
@@ -247,69 +229,6 @@ def test_predict_batches_do_not_drop_tail_rows():
     assert np.array_equal(cc.predict_all(model,x,'regression',16),np.arange(103))
 
 
-def test_budget_deduplication_and_capacity_guard():
-    cfg=cc.policy()
-    assert cc.budgets(32,cfg)==[8,12,16,24,32]
-    assert cc.budgets(34,cfg)==[8,12,16,24,32,34]
-    assert max(cc.budgets(1000000,cfg))==cfg['max_context_rows']
-    assert cfg['max_context_rows'] == 50000 and len(cfg['context_rows']) == 29
-
-
-def test_new_grid_sizes_and_existing_design_unchanged():
-    from src.train.config import load_train_config, resolve_grid
-    for exp, total in [(1,512),(2,32),(7,96),(5,48)]:
-        assert sum(len(resolve_grid(c:=load_train_config(config_path=f'config/experiment{exp}/{t}.yaml'),single=False))*int(c.corpus.n_splits)
-                   for t in ('pd','lgd'))==total
-    configs=[*Path('config/experiment8').glob('*.yaml'), *Path('config/experiment9').glob('*.yaml')]
-    assert len(configs)==3
-    assert sum(len(resolve_grid(c:=load_train_config(config_path=str(p)),single=False))*int(c.corpus.n_splits) for p in configs)==32
-    for path in configs:
-        cfg=load_train_config(config_path=str(path))
-        assert cfg.train.max_rows_per_step<=26000
-        assert {t[6] for t in resolve_grid(cfg,single=False)} == ({0,10001} if 'experiment8' in str(path) else {10001})
-    for track in ('pd','lgd'):
-        cfg=load_train_config(config_path=f'config/experiment5/{track}.yaml')
-        grid=resolve_grid(cfg,single=False)
-        assert all(('tabpfn-v3-' in t[0] or 'tabicl-' in t[0]) and not t[2] and t[7]==0 for t in grid)
-        assert list(cfg.tunable.learning_rates)==[.0001,.001,.03]
-        assert cfg.train.amp is False and cfg.train.max_rows_per_step == 8192
-        assert dict(cfg.evaluation.tabicl_inference_options) == {'use_amp': False, 'use_fa3': False}
-
-
-def test_followup_gate_never_accepts_missing_receipts(monkeypatch,tmp_path):
-    from src.utils import followup_checks as checks
-    monkeypatch.delenv('CREDITPFN_FOLLOWUP_GATE',raising=False)
-    with pytest.raises(RuntimeError,match='require'):
-        checks.require_gate()
-    monkeypatch.setattr(checks,'folder',lambda id:tmp_path)
-    with pytest.raises(FileNotFoundError): checks.require_gate('newworkflow')
-
-
-def test_scoped_cleanup_never_crosses_experiment_boundaries(tmp_path,monkeypatch):
-    from src.utils import clean_run as clean
-    data,project=tmp_path/'DATA',tmp_path/'PROJECT'
-    monkeypatch.setattr(clean,'outputs_dir',lambda:data/'output CreditPFN')
-    monkeypatch.setattr(clean,'resolve_staging_path',lambda p:project/p)
-    monkeypatch.setattr(clean,'resolve_output_path',lambda p:data/p)
-    monkeypatch.setattr(clean,'checkpoints_dir',lambda *p:project/'checkpoints'/Path(*p))
-    roots=clean.experiment_roots('experiment5')
-    assert len(roots)==4  # Scientific tiers + weights; figures use manifest ownership.
-    for tier in (data,project):
-        for exp in (1,5):
-            p=tier/'output CreditPFN'/f'experiment{exp}'/'results'/'value.csv'
-            p.parent.mkdir(parents=True,exist_ok=True);p.write_text('preserve' if exp==1 else 'remove')
-    for root in roots: clean.wipe(root)
-    assert all((tier/'output CreditPFN/experiment1/results/value.csv').read_text()=='preserve' for tier in (data,project))
-    assert all(not (tier/'output CreditPFN/experiment5/results/value.csv').exists() for tier in (data,project))
-    with pytest.raises(ValueError):clean.experiment_roots('../experiment1')
-    with pytest.raises(ValueError):clean.experiment_roots('general')
-
-
-def test_global_delete_requires_explicit_scope():
-    from src.utils.clean_run import main
-    with pytest.raises(SystemExit):main(['--clean'])
-
-
 def test_model_cast_preserves_fp32_adapter_values():
     model=small_model('tabpfn')
     ds.inject(model,family='tabpfn')
@@ -322,8 +241,8 @@ def test_model_cast_preserves_fp32_adapter_values():
 
 
 def test_context_encoding_fits_only_the_context(monkeypatch):
-    from src.model import tabpfn_models
     from src.eval.dataset_loader import ProcessedDataset
+    from src.model import tabpfn_models
     calls=[]
     class Estimator:
         def fit(self,X,y):
@@ -338,7 +257,7 @@ def test_context_encoding_fits_only_the_context(monkeypatch):
     monkeypatch.setattr(tabpfn_models,'_make_tabpfn',construct)
     data=ProcessedDataset(pd.DataFrame({'cat':['a','a','b','b','test-only','test-only']}),
                           np.array([0,1,0,1,0,1]),['cat'],'classification','synthetic','pd')
-    metrics,blob=cc.score_cell(data,np.array([0,1]),np.array([2,3]),np.array([4,5]),'v3.ckpt','tabpfn',cc.policy(),device='cpu')
+    metrics,blob=cc.score_cell(data,np.array([0,1]),np.array([2,3]),np.array([4,5]),'v3.ckpt','tabpfn',context_policy(),device='cpu')
     assert calls[0][0]=='fit' and calls[0][1].shape==(2,1)
     assert not options[0].get('ignore_pretraining_limits', False)
     assert all((record[1]==-1).all() for record in calls[1:])
@@ -346,44 +265,9 @@ def test_context_encoding_fits_only_the_context(monkeypatch):
     with np.load(io.BytesIO(blob)) as arrays:
         assert arrays['test'].tolist()==[4,5]
         assert arrays['context'].tolist()==[0,1]
-    limited = dict(cc.policy(), max_context_rows=1)
+    limited = dict(context_policy(), max_context_rows=1)
     with pytest.raises(ValueError, match='declared'):
         cc.score_cell(data,np.array([0,1]),np.array([2,3]),np.array([4,5]),'v3.ckpt','tabpfn',limited,device='cpu')
-
-
-def test_context_resume_does_not_repeat_completed_cells(tmp_path,monkeypatch):
-    from src.utils import followup_checks
-    from src.eval import dataset_loader
-    from src.train import corpus
-    base,cpt,datafile=[tmp_path/name for name in ('v3.ckpt','cpt.ckpt','data.csv')]
-    for p in (base,cpt,datafile,Path(str(cpt)+'.provenance.json')):p.write_text('fixture')
-    cfg=cc.policy();cfg['context_rows']=[16,32];cfg['max_context_rows']=32
-    task=dict(track='pd',family='tabpfn',partition=0,dataset_id='synthetic',fold=0,
-              base=str(base),cpt=str(cpt),base_sha256=cc.file_digest(base),cpt_sha256=cc.file_digest(cpt),
-              data_sha256=cc.file_digest(datafile),provenance_sha256=cc.file_digest(Path(str(cpt)+'.provenance.json')))
-    monkeypatch.setattr(followup_checks,'require_gate',lambda:None)
-    monkeypatch.setattr(cc,'read_plan',lambda p:dict(tasks=[task],config=cfg,sha256='prepared'))
-    monkeypatch.setattr(cc,'results_dir',lambda **k:tmp_path/'project')
-    monkeypatch.setattr(cc,'manifests_dir',lambda *a:tmp_path/'data')
-    monkeypatch.setattr(corpus,'build_dataset_pool',lambda t:[SimpleNamespace(dataset_id='synthetic',processed_csv=datafile)])
-    data=dataset_loader.ProcessedDataset(pd.DataFrame({'x':np.arange(100)}),np.arange(100)%2,[],
-                                       'classification','synthetic','pd')
-    monkeypatch.setattr(dataset_loader,'load_processed_dataset',lambda *a:data)
-    calls=[]
-    def fail_second(data,context,val,test,path,*args):
-        calls.append((len(context),str(path)))
-        if len(calls)==2:raise RuntimeError('interrupted')
-        return {'roc_auc':.5},b'predictions'
-    monkeypatch.setattr(cc,'score_cell',fail_second)
-    with pytest.raises(RuntimeError,match='interrupted'):cc.run_task('plan',0)
-    cc.run_task('plan',0)
-    assert calls.count((16,str(base)))==1
-    assert len(calls)==5
-    cc.run_task('plan',0)
-    assert len(calls)==5
-    metrics=pd.read_csv(tmp_path/'project/context_v1/task_0000.csv.gz')
-    assert len(metrics)==4 and metrics.test_indices_sha256.nunique()==1
-    assert metrics.test_rows.tolist()==[20]*4
 
 
 def test_large_filter_changes_training_only(monkeypatch,tmp_path):
@@ -400,30 +284,6 @@ def test_large_filter_changes_training_only(monkeypatch,tmp_path):
         assert not ({r.dataset_id for r in large.train}&{r.dataset_id for r in large.test})
         seen.extend(r.dataset_id for r in large.test)
     assert len(seen)==len(set(seen))==16
-
-
-def test_gate_rejects_failed_stale_and_changed_evidence(tmp_path, monkeypatch):
-    from src.utils import followup_checks as checks
-    monkeypatch.setattr(checks, 'folder', lambda key: tmp_path)
-    monkeypatch.setattr(checks, 'fingerprint', lambda: 'code')
-    monkeypatch.setattr(checks, 'environment_versions', lambda **k: {'torch': 'version'})
-    detail = tmp_path/'evidence.json'
-    detail.write_text('{}')
-    for stage in ('smoke', 'capacity'):
-        for task in range(4):
-            record = dict(passed=True, fingerprint='code', versions={'torch':'version'},
-                          evidence=str(detail), evidence_sha256=checks.file_digest(detail), stage=stage, task=task)
-            (tmp_path/f'{stage}_{task}.json').write_text(json.dumps(record))
-    assert checks.require_gate('workflow') == 'workflow'
-    receipt = tmp_path/'capacity_3.json'
-    record=json.loads(receipt.read_text()); record['passed']=False
-    receipt.write_text(json.dumps(record))
-    with pytest.raises(RuntimeError, match='failed'): checks.require_gate('workflow')
-    record['passed']=True; record['fingerprint']='old-code'; receipt.write_text(json.dumps(record))
-    with pytest.raises(RuntimeError, match='stale'): checks.require_gate('workflow')
-    record['fingerprint']='code'; receipt.write_text(json.dumps(record))
-    detail.write_text('{"changed":true}')
-    with pytest.raises(RuntimeError, match='evidence changed'): checks.require_gate('workflow')
 
 
 def test_tabicl_precision_is_matched_between_base_and_adapter(monkeypatch):
@@ -446,62 +306,3 @@ def test_tabicl_precision_is_matched_between_base_and_adapter(monkeypatch):
     est._load_model()
     assert calls[-1]['use_amp'] is False and calls[-1]['use_fa3'] is False
     assert len(ds.adapter_parameters(est.model_)) == 1
-
-
-def test_cleanup_blocks_unknown_or_same_experiment_writers(monkeypatch):
-    from src.utils.clean_run import check_cluster_writers
-    import subprocess
-    monkeypatch.setenv('VSC_DATA','/data/test');monkeypatch.setenv('USER','test')
-    def query(command, **kwargs):
-        if command[0]=='squeue':
-            return SimpleNamespace(stdout='123_[0-2]|creditpfn-pd-train\n')
-        return SimpleNamespace(stdout='SubmitLine=sbatch CREDITPFN_CONFIG=/data/CreditPFN/config/experiment1/pd.yaml')
-    monkeypatch.setattr(subprocess,'run',query)
-    check_cluster_writers('experiment5')
-    with pytest.raises(RuntimeError,match='still queued'):check_cluster_writers('experiment1')
-    with pytest.raises(RuntimeError,match='still queued'):check_cluster_writers()
-    monkeypatch.setattr(subprocess,'run',lambda command,**k:SimpleNamespace(stdout='123|creditpfn-unknown' if command[0]=='squeue' else ''))
-    with pytest.raises(RuntimeError,match='still queued'):check_cluster_writers('experiment5')
-
-
-def test_followup_workflow_cleanup_matches_whole_id_only(tmp_path, monkeypatch):
-    from src.utils import clean_run as clean
-    root=tmp_path/'experiment0';root.mkdir()
-    wanted=root/'cpt_diagscale_debug_abc123_pd.log';wanted.write_text('old')
-    other=root/'cpt_diagscale_debug_abc1234_pd.log';other.write_text('keep')
-    monkeypatch.setattr(clean,'experiment_roots',lambda *args:[root])
-    monkeypatch.setattr(clean,'check_cluster_writers',lambda *args:None)
-    monkeypatch.delenv('CREDITPFN_ACTIVE_LOG',raising=False)
-    clean.main(['--experiment','experiment0','--workflow','abc123'])
-    assert wanted.exists()
-    clean.main(['--experiment','experiment0','--workflow','abc123','--clean'])
-    assert not wanted.exists() and other.read_text()=='keep'
-
-
-def test_cleanup_protects_cross_experiment_checkpoint_and_gate_consumers(monkeypatch):
-    from src.utils.clean_run import check_cluster_writers
-    import subprocess
-    monkeypatch.setenv('VSC_DATA', '/data/test')
-    monkeypatch.setenv('USER', 'test')
-    monkeypatch.setattr(subprocess, 'run', lambda *a, **k:
-                        SimpleNamespace(stdout='123|creditpfn-context-eval\n'))
-    for experiment in ('experiment0', 'experiment1', 'experiment4'):
-        with pytest.raises(RuntimeError, match='input consumers'):
-            check_cluster_writers(experiment)
-    check_cluster_writers('experiment5')
-    def adapter_job(command, **kwargs):
-        return SimpleNamespace(stdout='124|creditpfn-pd-train\n' if command[0]=='squeue' else
-                               'SubmitLine=sbatch CREDITPFN_CONFIG=/repo/config/experiment5/pd.yaml')
-    monkeypatch.setattr(subprocess, 'run', adapter_job)
-    with pytest.raises(RuntimeError, match='input consumers'):
-        check_cluster_writers('experiment0')
-
-
-def test_new_slurm_scripts_parse_and_never_submit_locally():
-    import subprocess
-    from tests.test_benchmark_submission import bash_path
-    names=['run_experiment0_followups.sh','followup_prepare.slurm','followup_gpu.slurm',
-           'run_experiment10.sh','context_benchmark.slurm','run_experiment5.sh','run_experiment8.sh','run_experiment9.sh']
-    for name in names:
-        result=subprocess.run([bash_path(),'-n',str(Path('scripts/slurm')/name)],capture_output=True,text=True)
-        assert result.returncode==0, result.stderr

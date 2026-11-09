@@ -7,8 +7,7 @@ RUN THIS ON A LOGIN NODE. Compute nodes have no outbound internet, and every loa
 ``allow_auto_download=False`` so a missing checkpoint fails loudly at trial start rather than
 silently downloading mid-job on a GPU we are paying for.
 
-Replaces the hand-edited snippet that used to live in ``docs/VSC.md``: the ladder is read from
-the config, so adding a base to ``tunable.classifier_base_paths`` is all it takes for this to
+The ladder is read from the config, so adding a base to ``tunable.classifier_base_paths`` is all it takes for this to
 know about it — one place to change instead of two.
 """
 

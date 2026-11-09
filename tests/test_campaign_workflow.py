@@ -10,8 +10,8 @@ from omegaconf import OmegaConf
 
 
 def test_corpus_metadata_reuses_reads_and_invalidates_file_or_registry_changes(tmp_path, monkeypatch):
-    import src.train.corpus as corpus
     import src.data.preprocessing as registry
+    import src.train.corpus as corpus
     path = tmp_path / 'synthetic.sanitized.csv'
     path.write_text('x,z,y\n1,5,0\n2,6,1\nlate-category,7,0\n', encoding='utf-8')
     meta = {'synthetic': {'track': 'pd', 'target_column': 'y', 'categorical_columns': []}}
@@ -39,10 +39,10 @@ def test_corpus_metadata_reuses_reads_and_invalidates_file_or_registry_changes(t
 
 
 def test_plan_reuses_split_per_filter_without_reusing_wrong_corpus(tmp_path, monkeypatch):
-    import src.utils.prepare_experiment as module
-    import src.train.corpus as corpus
     import src.train.config as pipeline
-    cfg = pipeline.load_train_config(config_path='config/experiment0/null_pd.yaml')
+    import src.train.corpus as corpus
+    import src.utils.prepare_experiment as module
+    cfg = pipeline.load_train_config(config_path='config/experiments/E00_pilots/reference_pd.yaml')
     grid = [('missing-base.ckpt', lr, False, .4, 1, 'one_sample', rows, 0.)
             for lr in (0., 1e-6) for rows in (0, 10)]
     calls, identities = [], []
@@ -68,7 +68,7 @@ def test_plan_reuses_split_per_filter_without_reusing_wrong_corpus(tmp_path, mon
 
 def test_scratch_stage_is_immutable_and_pointer_cannot_escape(tmp_path):
     from src.data.preprocessing import DATASET_METADATA
-    from src.utils.stage_inputs import stage, resolve
+    from src.utils.stage_inputs import resolve, stage
     cfg = OmegaConf.load("config/train.yaml")
     names = [f"data/processed/{m['track']}/{did}.sanitized.csv" for did, m in DATASET_METADATA.items()]
     names += list(cfg.tunable.classifier_base_paths) + list(cfg.tunable.regressor_base_paths)
@@ -111,6 +111,7 @@ def test_pool_reuses_lanes_and_cannot_resize_around_active_work():
 
 def test_uncertain_submission_blocks_the_next_submit(tmp_path, monkeypatch):
     import sys
+
     import src.utils.submit_bounded as module
     monkeypatch.setitem(sys.modules, "fcntl", NS(LOCK_EX=1, flock=lambda *a: None))
     monkeypatch.setenv("USER", "test-user")
@@ -181,13 +182,22 @@ def test_null_control_detects_changed_tensor_and_monitor(tmp_path):
     assert null_monitor_parity(f)
     f.loc[1, "metric__test__table"] = .6
     assert not null_monitor_parity(f)
+    six = pd.DataFrame({"successful_updates": [0, 50, 100, 150, 200, 250], "metric__test__table": [.7] * 6})
+    assert null_monitor_parity(six)                       # the generated zero-LR pilot's six points
+    six.loc[5, "metric__test__table"] = .71
+    assert not null_monitor_parity(six)
 
 
 def test_campaign_audit_finds_the_actual_trial_filename(tmp_path, monkeypatch):
-    import src.utils.audit_experiment as module
     import src.train.config as pipeline
-    from src.train.loop import descriptive_name
-    cfg = pipeline.load_train_config(config_path="config/experiment0/null_pd.yaml")
+    import src.utils.audit_experiment as module
+    from src.train.loop import descriptive_name, naming_mode
+    cfg = pipeline.load_train_config(config_path="config/experiments/E00_pilots/reference_pd.yaml")
+    # A two-update null-style control with the smoke retention panel, as the fixture files below record.
+    cfg.train.target_total_steps = 2
+    cfg.train.trajectory_steps = [0, 2]
+    cfg.train.trajectory_rows = []
+    cfg.train.retention_panel = "smoke"
     cfg.checkpoint.trained_dir = str(tmp_path / "weights")
     trial = ("base.ckpt", 0., False, .4, 1, "one_sample", 0, 0.)
     monkeypatch.setattr(pipeline, "load_train_config", lambda **kw: cfg)
@@ -195,11 +205,10 @@ def test_campaign_audit_finds_the_actual_trial_filename(tmp_path, monkeypatch):
     plan = tmp_path / "plan.json"
     plan.write_text(json.dumps({"trials": {f"{cfg.run_name}_s00/0": "expected"}}))
     monkeypatch.setattr(module, "plan_path", lambda *a: plan)
-    monkeypatch.setattr(module, "manifests_dir", lambda: tmp_path / "manifests")
     monkeypatch.setattr(module, "training_dir", lambda track: tmp_path / "manifests" / "epochs" / track)
     filename = descriptive_name(run_name=f"{cfg.run_name}_s00", track="pd", base_path=trial[0],
         learning_rate=0., seed=42, query_fraction=.4, accumulate_grad_batches=1,
-        epoch_pass_mode="one_sample", l2sp_lambda=0.)
+        epoch_pass_mode="one_sample", l2sp_lambda=0., adaptation_mode=naming_mode(cfg, False))
     weight = tmp_path / "weights" / "pd" / filename
     weight.parent.mkdir(parents=True)
     torch.save({"state_dict": {"weight": torch.ones(1)}}, weight)
@@ -218,7 +227,7 @@ def test_campaign_audit_finds_the_actual_trial_filename(tmp_path, monkeypatch):
     history = curve.with_name(curve.name.replace(".trajectory.csv", ".csv"))
     pd.DataFrame({"data_skipped_steps": [0], "amp_skipped_steps": [0]}).to_csv(history, index=False)
     result = module.audit(Path("unused"), null=True)
-    assert result["passed"] and result["completed"] == 1
+    assert result["passed"] and result["completed"] == 1, result.get("problems")
     for counter in ("data_skipped_steps", "amp_skipped_steps"):
         pd.DataFrame({"data_skipped_steps": [0], "amp_skipped_steps": [0], counter: [21]}).to_csv(history, index=False)
         result = module.audit(Path("unused"), null=True)
@@ -234,21 +243,9 @@ def test_campaign_audit_finds_the_actual_trial_filename(tmp_path, monkeypatch):
     assert not module.audit(Path("unused"), null=True)["passed"]
 
 
-def test_lgd_trajectory_effects_are_scale_invariant_and_require_baseline():
-    from src.visualize.trajectories import trajectory_effects
-    name = "cpt_main_v3_s00_lgd_tabpfn-v3-regressor-v3_default_lr1e-6_seed42_l2sp0"
-    f = pd.DataFrame({"trial_name": [name, name], "successful_updates": [0, 250],
-                      "processed_rows": [0, 1000], "metric__test__small": [1., .8],
-                      "metric__test__large": [100., 80.]})
-    effects = trajectory_effects(f, "lgd")
-    assert effects.loc[effects.updates.eq(250), "effect"].tolist() == pytest.approx([.2, .2])
-    with pytest.raises(ValueError, match="update-zero"):
-        trajectory_effects(f.iloc[1:], "lgd")
-
-
 def test_evaluation_cache_rejects_incomplete_folds(tmp_path):
-    from src.eval.cache import save, load
     from src.eval.benchmark import EvalRow
+    from src.eval.cache import load, save
     row = EvalRow(track="pd", task_type="classification", model_name="control", model_source="baseline",
                   model_path=None, test_dataset_id="sample", fold_idx=0,
                   n_train_rows=10, n_val_rows=2, n_test_rows=3, roc_auc=.7)

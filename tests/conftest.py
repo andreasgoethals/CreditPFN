@@ -22,7 +22,7 @@ if str(REPO_ROOT) not in sys.path:
 def _mutable_dataset_metadata(monkeypatch):
     """Give every test a MUTABLE, isolated ``DATASET_METADATA``.
 
-    Since 26-08-2026 the dataset pool and the eval loader read per-dataset metadata from
+    The dataset pool and the eval loader read per-dataset metadata from
     ``src.data.preprocessing.DATASET_METADATA`` (code), not a manifest file. In production that
     dict is a read-only ``mappingproxy``; tests build SYNTHETIC datasets with fake ids and must
     register them. Every consumer does ``from src.data.preprocessing import DATASET_METADATA`` at
@@ -77,3 +77,14 @@ def isolated_output(tmp_path, monkeypatch):
 @pytest.fixture(autouse=True)
 def _experiment_routing(monkeypatch):
     monkeypatch.delenv("CREDITPFN_EXPERIMENT", raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _restore_environment():
+    """Undo environment changes made by code under test (e.g. entry points that export
+    CREDITPFN_DATA_ROOT), so later tests never inherit another test's storage roots."""
+    import os
+    saved = dict(os.environ)
+    yield
+    os.environ.clear()
+    os.environ.update(saved)

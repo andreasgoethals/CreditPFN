@@ -1,7 +1,7 @@
 """Capacity diagnostics must measure the requested model mode and expose failures."""
-from omegaconf import OmegaConf
 import pytest
 import torch
+from omegaconf import OmegaConf
 
 from src.train import capacity
 
@@ -9,7 +9,8 @@ from src.train import capacity
 @pytest.mark.parametrize("family", ["tabpfn", "tabicl"])
 @pytest.mark.parametrize("frozen", [False, True])
 def test_probe_passes_adaptation_to_loader(tmp_path, monkeypatch, family, frozen):
-    from src.train import model as tabpfn_model, tabicl_model
+    from src.train import model as tabpfn_model
+    from src.train import tabicl_model
     ckpt = tmp_path / "base.ckpt"
     ckpt.write_bytes(b"synthetic")
     monkeypatch.setattr(capacity, "_checkpoint", lambda *args: ckpt)

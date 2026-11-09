@@ -86,6 +86,8 @@ def resolve_grid(cfg, *, single: bool) -> list[Trial]:
                  "accumulate_grad_batches")
     passes = _axis(getattr(cfg.tunable, "epoch_pass_modes", "one_sample"), str,
                    "epoch_pass_modes")
+    if not set(passes) <= {"one_sample", "full_pass"}:
+        raise SystemExit(f"config error: unknown epoch_pass_modes {passes}")
     min_rows = _axis(getattr(getattr(cfg, "corpus", None), "min_train_rows", 0), int,
                      "corpus.min_train_rows")
     raw_l2 = cfg.tunable.l2sp_lambdas
@@ -119,8 +121,10 @@ def validate_lora_config(cfg) -> None:
         raise ValueError("LoRA requires frozen_backbone=[false]; adapters define the update scope")
     lambdas = cfg.tunable.l2sp_lambdas
     values = [cfg.optimizer.l2sp_lambda] if lambdas is None else _axis(lambdas, float, "l2sp_lambdas")
-    if any(float(value) != 0 for value in values) or float(cfg.optimizer.weight_decay) != 0:
-        raise ValueError("LoRA study requires L2-SP=0 and weight_decay=0; factor penalties are not weight-displacement penalties")
+    # L2-SP applies to the effective update (alpha/r)BA (src/train/l2sp.py). Weight decay on the
+    # factors would be a nuclear-norm penalty that is non-zero at initialisation: refuse it.
+    if any(float(value) < 0 for value in values) or float(cfg.optimizer.weight_decay) != 0:
+        raise ValueError("LoRA requires L2-SP >= 0 on the effective update and weight_decay=0 on the factors")
     rank = OmegaConf.select(cfg, "lora.r")
     alpha = OmegaConf.select(cfg, "lora.alpha")
     if isinstance(rank, bool) or not isinstance(rank, int) or rank <= 0:

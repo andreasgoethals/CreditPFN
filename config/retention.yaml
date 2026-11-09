@@ -1,15 +1,56 @@
-# Fixed non-credit retention panel. No panel table enters credit pretraining.
-# OpenML IDs are the curated versions in TabArena-v0.1 (study 457).
-# This is an eight-table panel, not the complete TabArena benchmark.
+# Non-credit TabArena panels. `research` measures forgetting (never trained on);
+# The matched domain-control training corpus (E3) is generated separately: config/domain_control.yaml.
+#
+# research: every TabArena-v0.1 table (OpenML curated versions, study 457) with fewer than
+# 50,000 rows that is binary classification (track pd) or regression (track lgd), excluding
+# tables that overlap the credit corpus and three credit-like tables:
+#   corpus overlap: 46918 credit-g, 46932 (same source as a corpus table),
+#                   46919 credit_card_clients_default, 46929 GiveMeSomeCredit
+#   credit-like:    46962 taiwanese_bankruptcy_prediction, 46950 polish_companies_bankruptcy,
+#                   46938 Is-this-a-good-customer
+# Multiclass tables are excluded; kddcup09_appetency has exactly 50,000 rows and is excluded.
+# Source: TabArena Table B.2, tfm-library/supporting-references/text/2025/2025_TabArena_*.txt.
+# `tabarena` repeats Table B.2's N, d and C (null for regression); preparation checks N.
+#
+# The OpenML default target is used. `preprocessing: credit_sanitize` applies the credit
+# tables' sanitize pipeline (config/data.yaml: 64-column unsupervised feature cap, float32,
+# constant/duplicate/high-missing column drops) without the credit LGD [0, 1] target clip.
+# `version`/`license`, when absent, are recorded from OpenML at first preparation; the
+# OpenML data_id already identifies one dataset version.
 smoke:
   - {id: package_breast_cancer, track: pd, source: sklearn, name: breast_cancer}
   - {id: package_diabetes, track: lgd, source: sklearn, name: diabetes}
 research:
-  - {id: openml_46905, track: pd, source: openml, data_id: 46905, name: Amazon_employee_access, version: 3, license: Public Domain}
-  - {id: openml_46947, track: pd, source: openml, data_id: 46947, name: online_shoppers_intention, version: 1, license: CC BY 4.0}
-  - {id: openml_46952, track: pd, source: openml, data_id: 46952, name: qsar-biodeg, version: 2, license: CC BY 4.0}
-  - {id: openml_46956, track: pd, source: openml, data_id: 46956, name: seismic-bumps, version: 4, license: CC BY 4.0}
-  - {id: openml_46904, track: lgd, source: openml, data_id: 46904, name: airfoil_self_noise, version: 9, license: CC BY 4.0}
-  - {id: openml_46917, track: lgd, source: openml, data_id: 46917, name: concrete_compressive_strength, version: 8, license: CC BY 4.0}
-  - {id: openml_46949, track: lgd, source: openml, data_id: 46949, name: physiochemical_protein, version: 8, license: CC BY 4.0}
-  - {id: openml_46961, track: lgd, source: openml, data_id: 46961, name: superconductivity, version: 8, license: CC BY 4.0}
+  # Binary classification (19)
+  - {id: openml_46913, track: pd, source: openml, data_id: 46913, name: blood-transfusion-service-center, preprocessing: credit_sanitize, tabarena: {n: 748, d: 5, classes: 2}}
+  - {id: openml_46921, track: pd, source: openml, data_id: 46921, name: diabetes, preprocessing: credit_sanitize, tabarena: {n: 768, d: 9, classes: 2}}
+  - {id: openml_46952, track: pd, source: openml, data_id: 46952, name: qsar-biodeg, version: 2, license: CC BY 4.0, preprocessing: credit_sanitize, tabarena: {n: 1054, d: 42, classes: 2}}
+  - {id: openml_46927, track: pd, source: openml, data_id: 46927, name: Fitness_Club, preprocessing: credit_sanitize, tabarena: {n: 1500, d: 7, classes: 2}}
+  - {id: openml_46940, track: pd, source: openml, data_id: 46940, name: Marketing_Campaign, preprocessing: credit_sanitize, tabarena: {n: 2240, d: 26, classes: 2}}
+  - {id: openml_46930, track: pd, source: openml, data_id: 46930, name: hazelnut-spread-contaminant-detection, preprocessing: credit_sanitize, tabarena: {n: 2400, d: 31, classes: 2}}
+  - {id: openml_46956, track: pd, source: openml, data_id: 46956, name: seismic-bumps, version: 4, license: CC BY 4.0, preprocessing: credit_sanitize, tabarena: {n: 2584, d: 16, classes: 2}}
+  - {id: openml_46912, track: pd, source: openml, data_id: 46912, name: Bioresponse, preprocessing: credit_sanitize, tabarena: {n: 3751, d: 1777, classes: 2}}
+  - {id: openml_46915, track: pd, source: openml, data_id: 46915, name: churn, preprocessing: credit_sanitize, tabarena: {n: 5000, d: 20, classes: 2}}
+  - {id: openml_46969, track: pd, source: openml, data_id: 46969, name: NATICUSdroid, preprocessing: credit_sanitize, tabarena: {n: 7491, d: 87, classes: 2}}
+  - {id: openml_46916, track: pd, source: openml, data_id: 46916, name: coil2000_insurance_policies, preprocessing: credit_sanitize, tabarena: {n: 9822, d: 86, classes: 2}}
+  - {id: openml_46911, track: pd, source: openml, data_id: 46911, name: Bank_Customer_Churn, preprocessing: credit_sanitize, tabarena: {n: 10000, d: 11, classes: 2}}
+  - {id: openml_46979, track: pd, source: openml, data_id: 46979, name: jm1, preprocessing: credit_sanitize, tabarena: {n: 10885, d: 22, classes: 2}}
+  - {id: openml_46924, track: pd, source: openml, data_id: 46924, name: E-CommereShippingData, preprocessing: credit_sanitize, tabarena: {n: 10999, d: 11, classes: 2}}
+  - {id: openml_46947, track: pd, source: openml, data_id: 46947, name: online_shoppers_intention, version: 1, license: CC BY 4.0, preprocessing: credit_sanitize, tabarena: {n: 12330, d: 18, classes: 2}}
+  - {id: openml_46937, track: pd, source: openml, data_id: 46937, name: in_vehicle_coupon_recommendation, preprocessing: credit_sanitize, tabarena: {n: 12684, d: 25, classes: 2}}
+  - {id: openml_46935, track: pd, source: openml, data_id: 46935, name: HR_Analytics_Job_Change_of_Data_Scientists, preprocessing: credit_sanitize, tabarena: {n: 19158, d: 13, classes: 2}}
+  - {id: openml_46905, track: pd, source: openml, data_id: 46905, name: Amazon_employee_access, version: 3, license: Public Domain, preprocessing: credit_sanitize, tabarena: {n: 32769, d: 10, classes: 2}}
+  - {id: openml_46910, track: pd, source: openml, data_id: 46910, name: bank-marketing, preprocessing: credit_sanitize, tabarena: {n: 45211, d: 14, classes: 2}}
+  # Regression (12)
+  - {id: openml_46954, track: lgd, source: openml, data_id: 46954, name: QSAR_fish_toxicity, preprocessing: credit_sanitize, tabarena: {n: 907, d: 7, classes: null}}
+  - {id: openml_46917, track: lgd, source: openml, data_id: 46917, name: concrete_compressive_strength, version: 8, license: CC BY 4.0, preprocessing: credit_sanitize, tabarena: {n: 1030, d: 9, classes: null}}
+  - {id: openml_46931, track: lgd, source: openml, data_id: 46931, name: healthcare_insurance_expenses, preprocessing: credit_sanitize, tabarena: {n: 1338, d: 7, classes: null}}
+  - {id: openml_46904, track: lgd, source: openml, data_id: 46904, name: airfoil_self_noise, version: 9, license: CC BY 4.0, preprocessing: credit_sanitize, tabarena: {n: 1503, d: 6, classes: null}}
+  - {id: openml_46907, track: lgd, source: openml, data_id: 46907, name: Another-Dataset-on-used-Fiat-500, preprocessing: credit_sanitize, tabarena: {n: 1538, d: 8, classes: null}}
+  - {id: openml_46953, track: lgd, source: openml, data_id: 46953, name: QSAR-TID-11, preprocessing: credit_sanitize, tabarena: {n: 5742, d: 1025, classes: null}}
+  - {id: openml_46964, track: lgd, source: openml, data_id: 46964, name: wine_quality, preprocessing: credit_sanitize, tabarena: {n: 6497, d: 13, classes: null}}
+  - {id: openml_46942, track: lgd, source: openml, data_id: 46942, name: miami_housing, preprocessing: credit_sanitize, tabarena: {n: 13776, d: 16, classes: null}}
+  - {id: openml_46934, track: lgd, source: openml, data_id: 46934, name: houses, preprocessing: credit_sanitize, tabarena: {n: 20640, d: 9, classes: null}}
+  - {id: openml_46961, track: lgd, source: openml, data_id: 46961, name: superconductivity, version: 8, license: CC BY 4.0, preprocessing: credit_sanitize, tabarena: {n: 21263, d: 82, classes: null}}
+  - {id: openml_46928, track: lgd, source: openml, data_id: 46928, name: Food_Delivery_Time, preprocessing: credit_sanitize, tabarena: {n: 45451, d: 10, classes: null}}
+  - {id: openml_46949, track: lgd, source: openml, data_id: 46949, name: physiochemical_protein, version: 8, license: CC BY 4.0, preprocessing: credit_sanitize, tabarena: {n: 45730, d: 10, classes: null}}

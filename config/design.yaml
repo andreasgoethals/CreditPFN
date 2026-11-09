@@ -1,45 +1,52 @@
-# CreditPFN study design (second campaign, drafted 03-11-2026).
+# CreditPFN study design (second campaign; agreed with Andreas 04-11-2026).
 #
-# One reference recipe; every experiment changes only the settings listed under
-# `deviations`. Anything not listed MUST equal the reference; tests/test_design.py
-# fails on undeclared differences. Runs = models x partitions x tasks x arms.
-# Items marked `status: proposed` still need Andreas's decision before launch.
+# One reference recipe; every experiment changes only the settings listed in its arms.
+# Anything not listed MUST equal the reference; tests/test_design.py fails on undeclared
+# differences. Training runs = models x partitions x tasks x arms. E1 is the shared control of
+# E2, E3 and E5-E10 and is never re-run; generated configs live in config/experiments/ (do not edit).
 
-schema: 1
+schema: 2
 models: [v2, v2.6, v3, tabicl-v2]
 partitions: 4              # whole-dataset groups, split_seed 1729; train on 3, evaluate on the 4th
 tasks: [pd, lgd]
+tables: {pd: 17, lgd: 8}   # registry sizes; single-source runs index tables sorted by id
 
 reference:
   optimizer: adamw
-  learning_rate: 3.0e-7
+  learning_rate: 3.0e-7      # best tested rate in the first study (PD +0.0009 AUC; LGD least harm)
   weight_decay: 0.0
-  l2sp_lambda: 0.003
+  l2sp_lambda: 0.003         # adapters: on the effective weight change (src/train/l2sp.py)
   warmup_fraction: 0.10
   min_lr_fraction: 0.05
   grad_clip_norm: 1.0
   trainable: all
-  successful_updates: 10000
+  successful_updates: 10000  # first-study curves are flat by 2,500 updates; dense monitors show every horizon
   episode_rows: {v2: 10000, v2.6: 10000, v3: 26000, tabicl-v2: 26000}
-  query_fraction: 0.40          # 60/40 context/query, as Real-TabPFN
-  pd_class_sampling: proportional   # rows drawn uniformly; LGD is always uniform
-  exposure: one_sample          # one sampled episode per table visit
+  query_fraction: 0.40       # 60/40 context/query, as Real-TabPFN
+  pd_class_sampling: proportional
+  exposure: one_sample       # one sampled episode per table visit
   corpus: all_training_tables
+  regression_objective: window_nll   # TabPFN LGD; TabICL keeps its native quantile objective
   preprocessing_views: 2
-  training_precision: bf16
-  evaluation_precision: fp32    # proposed for all models; Experiment 0 checks capacity
+  training_precision: bf16          # TabICLv2: fp16 + GradScaler (config/train.yaml tabicl_precision)
+  evaluation_precision: fp32
   seed: 42
   monitor:
     updates: [0, 50, 100, 150, 200, 250, every_250_to_budget]
-    split: single_context_query   # one fixed fold per table, not five-fold
-    rows_per_table: 2000
+    processed_rows: [1000000, 2000000, 5000000, 10000000, 20000000, 50000000]
+    split: single_context_query   # one fixed context/query split per table, not five-fold
+    rows_per_table: 10000         # capped by each model's limit; Experiment 0 times 2,000/10,000/full
+    preprocessing_views: 2        # the same number of views as training
     tables: [heldout_credit, own_training_tables, retention_panel]
 
+baselines: [catboost, linear]     # CatBoost and logistic (PD) / linear (LGD) regression
+
 experiments:
+  # ---------------------------------------------------------------- RQ1: transfer
   E1:
     slug: reference
     rq: 1
-    question: Does CPT on credit tables transfer to unseen credit tables, and how does it develop?
+    question: Does CPT on credit tables improve prediction on unseen credit tables, and how does it develop?
     tasks: [pd, lgd]
     arms: [{}]
   E2:
@@ -47,55 +54,59 @@ experiments:
     rq: 1
     question: How much of the effect is training randomness?
     tasks: [pd, lgd]
-    arms: [{seed: 43}]
+    arms: [{seed: 43}, {seed: 44}]   # with E1 (seed 42): three seeds of the reference
   E3:
-    slug: length
+    slug: domain_control
     rq: 1
-    question: Does the longer Real-TabPFN budget change the outcome?
+    question: Is the transfer domain-specific, or would CPT on comparable non-credit real tables do the same?
     tasks: [pd, lgd]
-    arms: [{successful_updates: 20000}]
+    # Each credit training table is replaced by its matched non-credit twin (same number of tables,
+    # matched rows, features and categorical features; config/domain_control.yaml).
+    arms: [{corpus: domain_control}]
   E4:
+    slug: target_finetune
+    rq: 1
+    kind: finetune
+    question: Is CPT worth it compared with fine-tuning on the target table, and do the two stack?
+    source: E1
+    starts: [original, cpt]       # original and CPT models without fine-tuning come from the benchmark
+    # learning rate: the geometric midpoint of the two most frequent tuned winners in Rubachev et al.
+    # 2025 (2.3e-5 and 1.8e-4, each in 11 of 49 tuned configurations), itself a point of their grid.
+    recipe: {epochs: 30, learning_rate: 6.5e-5, early_stopping_patience: 8, validation_fraction: 0.20}
+    outer_folds: 5
+  # ------------------------------------------------------- RQ2: controlling weight change
+  E5:
     slug: update_size_anchoring
     rq: 2
-    question: How do update size and anchoring strength trade transfer against forgetting?
+    question: How do update size and anchoring trade transfer against forgetting?
     tasks: [pd, lgd]
     arms:
+      - {learning_rate: 1.0e-7}
       - {learning_rate: 1.0e-6}
       - {learning_rate: 3.0e-6}
       - {learning_rate: 1.0e-5}
       - {learning_rate: 3.0e-6, l2sp_lambda: 0.0}
       - {learning_rate: 3.0e-6, l2sp_lambda: 0.03}
-      - {learning_rate: 3.0e-6, l2sp_lambda: 0.3}
       - {learning_rate: 1.0e-5, l2sp_lambda: 0.0}
       - {learning_rate: 1.0e-5, l2sp_lambda: 0.03}
-      - {learning_rate: 1.0e-5, l2sp_lambda: 0.3}
-  E5:
+  E6:
     slug: scope
     rq: 2
     question: Which parameters should change?
     tasks: [pd, lgd]
     arms:
-      - {trainable: frozen_backbone, learning_rate: 1.0e-6}
-      - {trainable: frozen_backbone, learning_rate: 1.0e-5}
-      - {trainable: frozen_backbone, learning_rate: 1.0e-4}
+      - {trainable: frozen_backbone, learning_rate: 3.0e-7}
+      - {trainable: frozen_backbone, learning_rate: 3.0e-6}
       - {trainable: diagscale, learning_rate: 1.0e-4}
       - {trainable: diagscale, learning_rate: 1.0e-3}
-      - {trainable: diagscale, learning_rate: 1.0e-2}
       - {trainable: lora_qv_r16, learning_rate: 3.0e-6}
       - {trainable: lora_qv_r16, learning_rate: 1.0e-5}
-      - {trainable: lora_qv_r16, learning_rate: 3.0e-5}
-  E6:
+  E7:
     slug: class_sampling
     rq: 3
     question: Do class-balanced training episodes help PD transfer?
     tasks: [pd]
     arms: [{pd_class_sampling: balanced}]
-  E7:
-    slug: context_query_split
-    rq: 3
-    question: Does a larger context share (80/20) change transfer?
-    tasks: [pd, lgd]
-    arms: [{query_fraction: 0.20}]
   E8:
     slug: exposure
     rq: 3
@@ -103,41 +114,78 @@ experiments:
     tasks: [pd, lgd]
     arms: [{exposure: full_pass}]
   E9:
-    slug: corpus
+    slug: table_size
     rq: 3
-    question: All training tables or only those above 10,000 rows?
-    tasks: [pd]
-    arms: [{corpus: tables_above_10000_rows}]
+    question: Small or large training tables, at an equal number of tables?   # compares selected corpora, not table size alone
+    tasks: [pd]              # only two LGD tables in the corpus exceed 10,000 rows
+    arms:
+      - {corpus: small_only}
+      - {corpus: large_matched}
   E10:
     slug: episode_size
     rq: 3
-    question: Do larger training episodes help, on the large-table corpus?
+    question: Do larger training episodes help, at equal updates, rows seen and compute?
     tasks: [pd]
-    shared_arm: E9          # the model-maximum arm is E9's large-table run
     arms:
       - {corpus: tables_above_10000_rows, episode_rows: 2048}
-      - {corpus: tables_above_10000_rows, episode_rows: 10000, models: [v3, tabicl-v2]}
+      - {corpus: tables_above_10000_rows, episode_rows: 4096}
+      - {corpus: tables_above_10000_rows, episode_rows: 8192}
+      - {corpus: tables_above_10000_rows, episode_rows: 16384, models: [v3, tabicl-v2]}
+    matched_context_evaluation: [2048, 8192, full]
+  # ------------------------------------------------------------ RQ4: when and why
   E11:
     slug: context
     rq: 4
-    question: Does CPT help more when the target table has few labelled rows?
     kind: inference
+    question: Does CPT help more when the target table offers few labelled context rows?   # validation rows stay labelled (calibration, thresholds)
     source: E1
     outer_folds: 5
     validation_fraction: 0.20
     context_rows: [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 50000]
     include_full_available: true
     max_context_rows: {v2: 10000, v2.6: 50000, v3: 50000, tabicl-v2: 50000}
-
-optional:            # status: proposed; not part of the launch grid until approved
-  muon:
-    slug: optimizer_muon
-    rq: 2
-    question: Does Muon (orthogonalized updates on matrix weights) change CPT?
+  E12:
+    slug: transfer
+    rq: 4
+    kind: transfer
+    question: Which source tables help which targets, and why?
     tasks: [pd, lgd]
-    arms: [{optimizer: muon_adamw, muon_learning_rate: 2.0e-4}]
-    note: One rate per model; AdamW keeps non-matrix parameters. Experiment 0 tests the mechanics only.
-  top_layers:
-    slug: scope_top_layers
-    rq: 2
-    arms: [{trainable: top_quarter_blocks, learning_rate: 1.0e-6}]
+    successful_updates: 2500
+    learning_rate: 1.0e-6    # one table moves little at 3e-7; 1e-6 was neutral on held-out tables in the first study
+    evaluation: the training monitor on every other table of the task and the retention panel (one fixed split, up to 10,000 rows per table, two views), start versus end; no five-fold evaluation
+
+# Experiment 0 (debugging only): mechanics, timing, memory and sanity, never a scientific result.
+experiment0:
+  partition: 0
+  pilots:            # reference + the declared deviation, short budgets, all models unless noted
+    zero_lr:        {tasks: [pd, lgd], arm: {learning_rate: 0.0, successful_updates: 250}}
+    reference:      {tasks: [pd, lgd], arm: {successful_updates: 250}}
+    monitor2000:    {tasks: [pd, lgd], arm: {successful_updates: 250}, monitor_rows: 2000}
+    monitorfull:    {tasks: [pd, lgd], arm: {successful_updates: 250}, monitor_rows: 50000}
+    sanity_single:  {tasks: [pd, lgd], arm: {single_source: 0, learning_rate: 1.0e-5, successful_updates: 250}}
+    lr1e5:          {tasks: [pd, lgd], arm: {learning_rate: 1.0e-5, successful_updates: 250}}
+    lr1e8:          {tasks: [pd, lgd], arm: {learning_rate: 1.0e-8, successful_updates: 250}}   # dose response 0 / 1e-8 / 3e-7 / 1e-5
+    l2sp0:          {tasks: [pd, lgd], arm: {learning_rate: 1.0e-5, l2sp_lambda: 0.0, successful_updates: 250}}   # E5's unanchored full-weight arms
+    noclip:         {tasks: [pd, lgd], arm: {grad_clip_norm: null, successful_updates: 250}}      # clipping was active on nearly every LGD update
+    bar_nll:        {tasks: [lgd], arm: {regression_objective: bar_nll, models: [v2, v2.6, v3], successful_updates: 250}}
+    frozen:         {tasks: [pd, lgd], arm: {trainable: frozen_backbone, learning_rate: 3.0e-6, successful_updates: 250}}
+    diagscale:      {tasks: [pd, lgd], arm: {trainable: diagscale, learning_rate: 1.0e-3, successful_updates: 250}}
+    diagscale_l0:   {tasks: [pd, lgd], arm: {trainable: diagscale, learning_rate: 1.0e-3, l2sp_lambda: 0.0, successful_updates: 250}}
+    lora:           {tasks: [pd, lgd], arm: {trainable: lora_qv_r16, learning_rate: 1.0e-5, successful_updates: 250}}
+    lora_l0:        {tasks: [pd, lgd], arm: {trainable: lora_qv_r16, learning_rate: 1.0e-5, l2sp_lambda: 0.0, successful_updates: 250}}
+    full_pass:      {tasks: [pd, lgd], arm: {exposure: full_pass, successful_updates: 250}}
+    balanced:       {tasks: [pd], arm: {pd_class_sampling: balanced, successful_updates: 250}}
+    small_only:     {tasks: [pd], arm: {corpus: small_only, successful_updates: 250}}
+    large_matched:  {tasks: [pd], arm: {corpus: large_matched, successful_updates: 250}}
+    episode2048:    {tasks: [pd], arm: {corpus: tables_above_10000_rows, episode_rows: 2048, successful_updates: 250}}
+    episode16384:   {tasks: [pd], arm: {corpus: tables_above_10000_rows, episode_rows: 16384, models: [v3, tabicl-v2], successful_updates: 250}}
+    transfer:       {tasks: [pd, lgd], arm: {single_source: 1, learning_rate: 1.0e-6, successful_updates: 250}}
+    domain_control: {tasks: [pd, lgd], arm: {corpus: domain_control, successful_updates: 250}}
+  recovery:          # interrupted at `interrupt_after`, resumed, compared with an uninterrupted twin
+    successful_updates: 100
+    interrupt_after: 60
+    learning_rate: 1.0e-5   # larger than the reference so a wrong resume cannot hide below tolerance
+    variants:
+      adamw: {}
+      diagscale: {trainable: diagscale, learning_rate: 1.0e-3}
+      lora: {trainable: lora_qv_r16}

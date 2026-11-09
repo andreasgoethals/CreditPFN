@@ -1,15 +1,14 @@
-"""Reader-facing names, balanced pages and compact pilot evidence."""
+"""Reader-facing names, balanced pages and corpus report figures."""
 from types import SimpleNamespace
 
 import matplotlib.pyplot as plt
-import matplotlib as mpl
 import numpy as np
 import pandas as pd
 import pytest
-from omegaconf import OmegaConf
 
 from src.data import dataset_names
-from src.visualize import campaign as cp, corpus, pilots, reporting, style
+from src.visualize import campaign as cp
+from src.visualize import corpus, reporting, style
 
 
 def test_public_dataset_aliases_work_without_a_private_mapping(monkeypatch):
@@ -26,35 +25,9 @@ def test_public_model_names_are_idempotent_and_do_not_change_file_ids():
     labels = "TabPFN v2 / TabPFN v2.6 / TabPFN v3 / TabICLv2"
     assert style.model_label(text) == labels
     assert style.model_label(labels) == labels
-    filename = "cpt_main_v5_pd_tabpfn-v3-classifier-v3_default_lr3e-7"
+    filename = "cpt2_reference_a0_s0_pd_tabpfn-v3-classifier-v3_default"
     assert style.model_label(filename) == filename
     assert "TabPFN v2" in reporting.table_text(pd.DataFrame({"base": ["v2"]}))
-
-
-def test_optimization_titles_explain_parameter_update_conditions():
-    run = _short_campaign()
-    run.trials["frozen"] = [False, True]
-    pages = cp.plot_optimization(run)
-    titles = [page.figure._suptitle.get_text() for page in pages]
-    assert any("All trainable parameters updated" in title for title in titles)
-    assert any("Transformer backbone frozen" in title for title in titles)
-    assert all("surrounding input/target embeddings" in page.caption for page in pages)
-
-
-def test_long_adaptation_legends_fit_without_reducing_font_size():
-    style.apply()
-    fig, ax = plt.subplots(figsize=style.figsize())
-    for frozen in (False, True):
-        for lr in (3e-7, 3e-5):
-            ax.plot([0,1], [0,1], label=f"{lr:.0e} / {style.adaptation_label(frozen)}")
-    ax.legend()
-    style.finish_figure(fig)
-    fig.canvas.draw()
-    legend = fig.legends[0]
-    bounds = legend.get_window_extent(fig.canvas.get_renderer())
-    assert legend._ncols == 2
-    assert bounds.x0 >= fig.bbox.x0 and bounds.x1 <= fig.bbox.x1
-    assert all(text.get_fontsize() == mpl.rcParams["legend.fontsize"] for text in legend.get_texts())
 
 
 @pytest.mark.parametrize("length,limit", [(17,12), (16,12), (25,12), (5,4), (17,20), (0,12)])
@@ -66,17 +39,25 @@ def test_balanced_pages_cover_every_item_once(length, limit):
         assert max(sizes) <= limit and max(sizes)-min(sizes) <= 1
 
 
-def test_target_bars_and_single_pd_assignment_figure():
+def test_corpus_overview_shows_every_table_once_with_its_partition():
     style.apply()
-    data = pd.DataFrame({"track": "pd", "dataset_id": [f"Dataset {i}" for i in range(17)],
-                         "minority_class_ratio": np.linspace(.02,.49,17), "target_mean": np.nan})
-    pages = corpus.plot_target_profiles(data)
+    data = pd.DataFrame({"track": ["pd"] * 17 + ["lgd"] * 8,
+                         "dataset_id": [f"Dataset {i}" for i in range(25)],
+                         "rows": np.geomspace(500, 700000, 25), "features": np.arange(25) + 3,
+                         "missing": np.linspace(0, .2, 25),
+                         "minority_class_ratio": [.2] * 17 + [np.nan] * 8,
+                         "target_mean": [np.nan] * 17 + [.4] * 8})
+    partitions = pd.DataFrame({"track": data.track, "dataset": data.dataset_id, "fold": np.arange(25) % 4 + 1})
+    pages = corpus.plot_corpus_overview(data, partitions)
     assert len(pages) == 1
-    assert len(pages[0].figure.axes[0].patches) == 17
-    assert pages[0].figure.axes[0].get_xlim()[0] == 0
-    partition = pd.DataFrame({"track":"pd", "dataset":data.dataset_id,"fold":np.arange(17)%4+1})
-    pages = corpus.plot_partitions(partition)
-    assert len(pages) == 1 and pages[0].figure.axes[0].images[0].get_array().shape == (17,4)
+    rows, features, missing, target = pages[0].figure.axes[:4]
+    labels = [t.get_text() for t in rows.get_yticklabels()]
+    assert len(labels) == 25 and labels[0] == "Dataset 16 · P1" and all("· P" in t for t in labels)
+    assert rows.get_xscale() == "log" and features.get_xscale() == "log"
+    assert missing.get_xlim()[0] == 0 and target.get_xlim() == (0, 1)
+    assert len(target.patches) == 25
+    table = pages[0].tables["Corpus overview"]
+    assert table.target.notna().all() and len(table) == 25
 
 
 def test_processed_target_statistics_use_current_rows_not_stale_manifest(monkeypatch):
@@ -113,32 +94,6 @@ def test_delivery_checks_recognize_actual_sanitized_filenames(tmp_path, monkeypa
     assert checks.loc[0,"status"] == "Inspect delivery"
 
 
-def _short_campaign():
-    cfg = OmegaConf.create({"track":"pd", "train":{"target_total_steps":250}})
-    trials = pd.DataFrame([dict(trial_name=f"trial_{i}",base=base,learning_rate=3e-7,
-        frozen=False,l2sp_lambda=.003,sampling="one_sample") for i,base in enumerate(["v2","v3"])])
-    updates = [*range(13,250,13),250]
-    history = pd.DataFrame([dict(trial_name=name,successful_updates=u,train_loss=.7-u/1000,
-        lr_applied=3e-7*(1-u/300)) for name in trials.trial_name for u in updates])
-    return cp.Campaign(cfg,trials,pd.DataFrame(),history,pd.DataFrame())
-
-
-def test_short_history_uses_observed_cadence_and_one_shared_schedule():
-    style.apply()
-    run = _short_campaign()
-    assert cp.optimization_window(run) == 13
-    pages = pilots.plot_loss(run)
-    assert len(pages) == 1
-    for ax in pages[0].figure.axes:
-        assert len(ax.lines)==1 and np.isfinite(ax.lines[0].get_ydata()).all()
-    schedule = cp.plot_optimization(run,"lr_applied")
-    assert len(schedule)==1 and len(schedule[0].figure.axes[0].lines)==1
-    assert schedule[0].figure.axes[0].get_yscale() == "log"
-    assert schedule[0].tables["Observed trial windows"].trial_name.nunique() == 2
-    run.histories.loc[:,"train_loss"] = np.nan
-    assert pilots.plot_loss(run) == []
-
-
 def test_track_scopes_export_name_title_and_caption(monkeypatch):
     import IPython.display
     monkeypatch.setattr(IPython.display,"display",lambda *args: None)
@@ -154,17 +109,6 @@ def test_track_scopes_export_name_title_and_caption(monkeypatch):
     assert [caption for _,caption in saved] == ["PD. Recorded values.","LGD. Recorded values."]
 
 
-def test_profile_bars_and_shared_geometry_keep_both_tracks():
-    data = pd.DataFrame(dict(track=["pd", "pd", "lgd"], dataset_id=["A", "B", "C"],
-        rows=[100, 1000, 250], features=[3, 5, 4], missing=[0, .1, .2]))
-    geometry = corpus.plot_geometry(data, "Processed")[0].figure
-    assert len(geometry.axes) == 1 and len(geometry.axes[0].collections) == 2
-    for page in corpus.plot_profiles(data, "Processed"):
-        for ax in page.figure.axes[:2]:
-            assert ax.patches and ax.get_xlim()[0] == 1 and ax.get_xscale() == "log"
-        assert page.figure.axes[2].get_xlim()[0] == 0
-
-
 def test_exposure_merges_equal_markers_and_labels_step_share_ratio():
     data = pd.DataFrame(dict(track=["pd", "pd"], dataset_id=["A", "B"], rows=[100, 90000]))
     table = corpus.planned_exposure(data, row_cap=10000)
@@ -177,88 +121,6 @@ def test_exposure_merges_equal_markers_and_labels_step_share_ratio():
     assert {text.get_color() for text in ax.texts} == {style.color("improvement"), style.color("deterioration")}
 
 
-def test_partial_table_traversal_does_not_create_a_loss_cliff():
-    run = _short_campaign()
-    for i in range(13):
-        run.histories[f"loss__table{i}"] = .5
-        if i >= 3:
-            run.histories.loc[run.histories.successful_updates.eq(250), f"loss__table{i}"] = np.nan
-    run.histories.loc[run.histories.successful_updates.eq(250), "train_loss"] = .1
-    support = cp.loss_epoch_support(run)
-    assert support.loc[~support.complete_pass, "observed_tables"].eq(3).all()
-    tables = cp.loss_coverage_tables(run)
-    counts = tables["Loss coverage by trial"]
-    assert len(counts) == run.trials.trial_name.nunique()
-    assert counts.partial_coverage_epochs.eq(1).all()
-    assert counts.recorded_epochs.sum() == len(support)
-    assert tables["Partial-coverage epoch losses"].train_loss.eq(.1).all()
-    assert cp.optimization_curves(run, "train_loss").window_end.max() == 247
-    page = pilots.plot_loss(run)[0]
-    assert page.tables["Partial-coverage epoch losses"].train_loss.eq(.1).all()
-    assert all(not ax.collections for ax in page.figure.axes)  # No misleading partial-pass crosses.
-
-
-def test_equal_configured_schedules_merge_despite_different_epoch_cadences():
-    import copy
-    pd_run = _short_campaign()
-    lgd_run = copy.deepcopy(pd_run)
-    lgd_run.cfg.track = "lgd"
-    lgd_run.histories = lgd_run.histories[lgd_run.histories.successful_updates.mod(26).eq(0)]
-    page = pilots.plot_schedule([pd_run, lgd_run])[0]
-    assert len(page.figure.axes) == 1 and len(page.figure.axes[0].lines) == 1
-    schedule = page.tables["Configured applied schedules"]
-    assert schedule.tracks.eq("PD + LGD").all()
-    assert schedule.iloc[0].applied_lr == 0
-    assert set(page.tables["Observed trial windows"].track) == {"PD", "LGD"}
-
-
-def test_device_curves_give_each_trial_one_contribution(monkeypatch):
-    from src.visualize import diagnostics
-    run = _short_campaign()
-    data = pd.DataFrame([dict(trial_name="long", base="v2", frozen=False,
-        sampling="one_sample", successful_updates=13, phase="training", gpu_utilization_percent=0.)]*100 +
-        [dict(trial_name="short", base="v2", frozen=False, sampling="one_sample",
-              successful_updates=13, phase="training", gpu_utilization_percent=100.)])
-    monkeypatch.setattr(diagnostics, "load", lambda *args: data.copy())
-    page = diagnostics.plot_resource_curves(run)[0]
-    shown = page.tables["Window medians and trial counts"].dropna(subset=["median"])
-    assert shown.iloc[0]["median"] == 50 and shown.iloc[0]["count"] == 2
-
-
-def test_factor_means_require_every_matching_partition_and_ignore_row_frequency():
-    from src.visualize.optimization import factor_curves
-    rows, history = [], []
-    for partition in range(2):
-        for lam in (0., .003):
-            name = f"p{partition}_l{lam}"
-            rows.append(dict(trial_name=name, base="v2", learning_rate=3e-7, l2sp_lambda=lam,
-                             frozen=False, sampling="one_sample", partition=partition, seed=42))
-            for update in (10,20):
-                history.append(dict(trial_name=name, successful_updates=update,
-                                    train_loss=float(partition) + (2 if lam else 0)))
-    cfg = OmegaConf.create({"track":"pd", "train":{"target_total_steps":20}})
-    run = cp.Campaign(cfg, pd.DataFrame(rows), pd.DataFrame(), pd.DataFrame(history), pd.DataFrame())
-    curve = factor_curves(run, "train_loss", "l2sp_lambda")
-    assert curve["mean"].eq(2).all() and curve.pairs.eq(2).all() and curve.complete.all()
-    # Remove one arm at the final window: do not publish a biased changing cohort.
-    run.histories = run.histories.iloc[:-1]
-    curve = factor_curves(run, "train_loss", "l2sp_lambda")
-    assert curve.iloc[-1].pairs == 1 and not curve.iloc[-1].complete and pd.isna(curve.iloc[-1]["mean"])
-
-
-def test_zero_anchoring_panels_are_omitted_and_small_clipping_is_visible():
-    run = _short_campaign()
-    run.histories["l2sp_penalty"] = .01
-    run.histories["clipped_frac"] = .0002
-    run.trials.loc[0,"l2sp_lambda"] = 0.
-    penalty = cp.plot_optimization(run,"l2sp_penalty")
-    assert len(penalty) == 1 and "v3" in penalty[0].name
-    clipping = cp.plot_optimization(run,"clipped_frac")
-    assert all(0 < p.figure.axes[0].get_ylim()[1] < .001 for p in clipping)
-    run.histories["clipped_frac"] = 0.
-    assert cp.plot_optimization(run,"clipped_frac") == []
-
-
 def test_lgd_histograms_include_dataset_mean_and_median(monkeypatch):
     import src.data.preprocessing as prep
     monkeypatch.setattr(prep,"DATASET_METADATA", {"synthetic":{"track":"lgd","target_column":"y"}})
@@ -268,32 +130,3 @@ def test_lgd_histograms_include_dataset_mean_and_median(monkeypatch):
     assert [line.get_xdata()[0] for line in ax.lines] == [.375,.25]
     assert all(line.get_linestyle() == ":" for line in ax.lines)
     assert page.tables["LGD distribution statistics"].iloc[0]["mean"] == .375
-
-
-def test_budget_gap_compares_training_and_held_out_credit(monkeypatch):
-    run = _short_campaign()
-    frames = {s: run.trials[cp.FACTORS].assign(split=s) for s in ("test","train","ood")}
-    monkeypatch.setattr(cp,"effects",lambda _,split: frames[split])
-    def curve(campaign,group,split,x):
-        values = {"test":[0,.02],"train":[0,.05],"ood":[0,-.01]}[split]
-        return pd.DataFrame({"updates":[0,250],"x":[0,250],"mean":values})
-    monkeypatch.setattr(cp,"trajectory_curve",curve)
-    page = pilots.plot_horizon(run)[0]
-    assert len(page.figure.axes) == 3
-    assert page.figure.axes[2].lines[0].get_ydata() == pytest.approx([0,.03])
-    assert "not an unbiased overfitting estimate" in page.caption
-
-
-def test_weight_drift_uses_milestones_instead_of_empty_epoch_placeholders():
-    run = _short_campaign()
-    run.histories["weight_drift"] = np.nan
-    run.cfg.train.trajectory_steps = [0,100,250]
-    run.trajectories = pd.DataFrame([dict(trial_name=name, successful_updates=u,weight_drift=u/10000)
-                                    for name in run.trials.trial_name for u in (0,100,250)])
-    curves = cp.optimization_curves(run,"weight_drift")
-    assert curves.window_end.tolist() == [100,250,100,250]
-    assert curves.weight_drift.tolist() == [.01,.025,.01,.025]
-    assert cp.optimization_grid(run,"weight_drift").tolist() == [100,250]
-    health = pilots.health_table(run)
-    assert health.nonfinite_diagnostics.eq(0).all()
-    assert health.peak_weight_drift.eq(.025).all()

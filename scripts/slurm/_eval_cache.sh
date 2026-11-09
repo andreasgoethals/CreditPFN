@@ -13,13 +13,12 @@ share_eval_controls() {
         echo 'Expected an experiment evaluation_cache directory.' >&2; return 1;
     }
     root="$(dirname "$(dirname "$cache_dir")")"
-    if [[ "$(basename "$root")" == shared ]]; then root="$(dirname "$root")"; fi
-    if [[ -f "$root/STUDY_LAYOUT.json" ]]; then
-        donors=("$root/shared/main_grid/evaluation_cache" "$root/experiment2/evaluation_cache" "$root/experiment7/evaluation_cache")
-    else
-        donors=("$root/experiment1/evaluation_cache" "$root/experiment2/evaluation_cache" "$root/experiment3/evaluation_cache")
-    fi
-    # Experiment 0, adapters and isolated refresh/extension controls are excluded.
+    # Original-model controls are identical across second-campaign experiments (the slugs of
+    # src/utils/paths.py CAMPAIGN2_GROUPS, tested); Experiment 0 stays isolated.
+    for donor in reference seed domain_control target_finetune update_size_anchoring scope \
+            class_sampling exposure table_size episode_size context transfer; do
+        donors+=("$root/$donor/evaluation_cache")
+    done
     for donor in "${donors[@]}"; do [[ "$cache_dir" != "$donor" ]] || allowed=1; done
     (( allowed )) || return 0
     mkdir -p -- "$cache_dir" || return

@@ -1,14 +1,13 @@
 #!/bin/bash -l
 # CPU baseline HPO is cached across training recipes, folds and seeds.
 #SBATCH --job-name=creditpfn-classical
-#SBATCH --clusters=wice
+#SBATCH --clusters=mindwell
 #SBATCH --account=lp_verbekelab
-#SBATCH --partition=batch
+#SBATCH --partition=batch_graniterapids
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=16
-#SBATCH --mem=64G
-#SBATCH --time=04:00:00
+#SBATCH --time=12:00:00
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 #SBATCH --export=ALL

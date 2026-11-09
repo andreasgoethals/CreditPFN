@@ -1,12 +1,12 @@
 """Training batches from cached sanitized tables.
 
 ``one_sample`` draws one capped context/query batch per table visit.
-``full_pass`` and ``accumulate`` repartition all rows into disjoint capped
-chunks each epoch; their optimizer update rules differ. Every chunk splits
-into disjoint context/query rows. Persistent workers receive epoch-aware
-indices, so sampling is deterministic across worker counts and recovery.
+``full_pass`` repartitions all rows into disjoint capped chunks each epoch,
+one update per chunk. Every chunk splits into disjoint context/query rows.
+Persistent workers receive epoch-aware indices, so sampling is deterministic
+across worker counts and recovery.
 
-The legacy single-view path encodes categoricals on context rows. The official
+The single-view path (mocked tests only) encodes categoricals on context rows. The official
 TabPFN and TabICL preprocessing paths have their own contracts, documented in
 the corresponding builders below and in docs/RESEARCH_BRIEF.md.
 """
@@ -16,8 +16,9 @@ from __future__ import annotations
 import functools
 import logging
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Any, Sequence
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -58,7 +59,7 @@ class TabPFNBatch:
     # TabICLTrainBatch.ctx_pos_rate for why it must be measured pre-shuffle).
     ctx_pos_rate: float = float("nan")
 
-    def to(self, device: str) -> "TabPFNBatch":
+    def to(self, device: str) -> TabPFNBatch:
         return TabPFNBatch(
             X_context=self.X_context.to(device, non_blocking=True),
             y_context=self.y_context.to(device, non_blocking=True),
@@ -121,8 +122,7 @@ _NAN_IMPUTE_VALUE: float = 0.0
 """Sentinel that replaces ±inf / NaN in the encoded feature matrix.
 
 WHY THIS EXISTS.  TabPFN-v2.5's transformer asserts ``embedded_x``
-has no NaN (``tabpfn/architectures/base/transformer.py:520``) — see
-the PD-run-2026-05-20 trial-16 traceback. Our ordinal encoder
+has no NaN (``tabpfn/architectures/base/transformer.py``). Our ordinal encoder
 intentionally leaves NaN for missing categorical values (and the
 sanitize pipeline leaves NaN for missing numerical values), so the
 raw `model.forward()` call on v2.5 fails fast.
@@ -151,9 +151,11 @@ def _ordinal_encode(
     ctx_idx: np.ndarray,
     cat_cols: Sequence[str],
     unknown_value: int = -1,
+    fill: bool = True,
 ) -> tuple[np.ndarray, list[int]]:
-    """Ordinal-encode categorical columns with a context-only fit, then
-    replace any remaining ±inf / NaN with :data:`_NAN_IMPUTE_VALUE`.
+    """Ordinal-encode categorical columns with a context-only fit, then (``fill``)
+    replace any remaining ±inf / NaN with :data:`_NAN_IMPUTE_VALUE`. TabICL batches pass
+    ``fill=False`` and impute themselves, as TabICL's own inference does.
 
     Mirrors :func:`src.eval.dataset_loader.encode_for_model`: the
     encoder is fit on the *context* rows so any category seen only
@@ -165,7 +167,9 @@ def _ordinal_encode(
     cols = list(X_full.columns)
     cat_positions = [cols.index(c) for c in cat_cols if c in cols]
     if not cat_positions:
-        arr = X_full.to_numpy(dtype=np.float32, na_value=_NAN_IMPUTE_VALUE)
+        arr = X_full.to_numpy(dtype=np.float32, na_value=np.nan)
+        if not fill:
+            return arr, []
         np.nan_to_num(
             arr, copy=False, nan=_NAN_IMPUTE_VALUE,
             posinf=_NAN_IMPUTE_VALUE, neginf=_NAN_IMPUTE_VALUE,
@@ -186,6 +190,8 @@ def _ordinal_encode(
     for write_pos, src_pos in enumerate(cat_positions):
         out[:, src_pos] = encoded[:, write_pos]
     out = out.astype(np.float32)
+    if not fill:
+        return out, cat_positions
     # Single in-place sweep — every NaN/±inf becomes _NAN_IMPUTE_VALUE.
     np.nan_to_num(
         out, copy=False, nan=_NAN_IMPUTE_VALUE,
@@ -249,7 +255,6 @@ def _stratified_subsample_indices(
     # the max(1,…) floor below makes a balanced per-class quota impossible
     # (every class wants >=1 row but n_total < n_classes). Fall back to a
     # plain random draw rather than spinning in the drift loop forever.
-    # (Bug fixed 2026-06-23.)
     if n_total < len(classes):
         return rng.choice(n, size=n_total, replace=False)
 
@@ -399,7 +404,7 @@ def _build_step_batch(
 
 @dataclass
 class TabICLTrainBatch:
-    """One training step for the TabICLv2 family (2026-08-04).
+    """One training step for the TabICLv2 family.
 
     Thin wrapper around tabicl's own ``MetaBatch`` fields (built by their
     ``_finetune.data._build_meta_batch`` — context/query split, per-member
@@ -423,7 +428,7 @@ class TabICLTrainBatch:
     # `context_sampling: balanced` actually raised minority exposure.
     ctx_pos_rate: float = float("nan")
 
-    def to(self, device: str) -> "TabICLTrainBatch":
+    def to(self, device: str) -> TabICLTrainBatch:
         return TabICLTrainBatch(
             X=self.X.to(device, non_blocking=True),
             y_train=self.y_train.to(device, non_blocking=True),
@@ -461,7 +466,7 @@ def _build_tabicl_step_batch(
       (`_stratified_subsample_indices`) so the "context construction" axis
       (Tanna 2026 shows it can move AUC more than model choice) is held
       constant across model families.
-    * Ordinal encoding + median imputation are fit on the WHOLE subsample.
+    * Ordinal encoding + mean imputation are fit on the WHOLE subsample.
       That matches the upstream user contract — their finetune wrappers
       expect X already numeric and imputed for the entire training set
       (their ``TransformToNumerical`` is not in the finetune path) — and the
@@ -487,7 +492,7 @@ def _build_tabicl_step_batch(
     # Encode over the full subsample (see faithfulness note above).
     all_idx = np.arange(len(X_sub))
     X_arr, _cat_idx = _ordinal_encode(
-        X_sub, ctx_idx=all_idx, cat_cols=loaded.cat_columns,
+        X_sub, ctx_idx=all_idx, cat_cols=loaded.cat_columns, fill=False,
     )
     X_arr = np.asarray(X_arr, dtype=np.float64)
     # ±inf → NaN first, so the median impute below absorbs it. TabPFN clips
@@ -496,12 +501,16 @@ def _build_tabicl_step_batch(
     # scalers). Credit features hit this via zero-denominator ratios.
     if np.isinf(X_arr).any():
         X_arr[np.isinf(X_arr)] = np.nan
-    # Median-impute NaNs; all-NaN columns fall back to 0.
+    # Mean-impute NaNs, all-NaN columns with 0: TabICL's own inference preprocessing on numeric
+    # arrays (``TransformToNumerical`` -> ``SimpleImputer(keep_empty_features=True)``).
     if np.isnan(X_arr).any():
-        col_median = np.nanmedian(X_arr, axis=0)
-        col_median = np.where(np.isfinite(col_median), col_median, 0.0)
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)   # an all-NaN column gives NaN -> 0 below
+            col_mean = np.nanmean(X_arr, axis=0)
+        col_mean = np.where(np.isfinite(col_mean), col_mean, 0.0)
         nan_r, nan_c = np.nonzero(np.isnan(X_arr))
-        X_arr[nan_r, nan_c] = col_median[nan_c]
+        X_arr[nan_r, nan_c] = col_mean[nan_c]
 
     classification = loaded.task_type == "classification"
     query_size = max(1, int(round(len(X_arr) * query_fraction)))
@@ -570,14 +579,12 @@ def _build_ensemble_step_batch(
          already-cleaned numeric slices to ``build_ensemble_members``
          which calls ``TabPFNEnsemblePreprocessor.fit_transform_ensemble_members``.
 
-    The earlier 2026-05-27 PD/LGD crash (``np.isnan`` on object dtype
-    inside `encode_categorical_features_step`) was caused by skipping
-    phase 1 — we passed a raw object-dtype slice directly to
-    ``fit_transform_ensemble_members``. Fixed by routing through
-    ``clean_loaded_dataset`` first.
+    Phase 1 is required: a raw object-dtype slice crashes
+    `encode_categorical_features_step` (``np.isnan`` on object dtype).
     """
     from src.train.tabpfn_preprocessing import (
-        build_ensemble_members, clean_loaded_dataset,
+        build_ensemble_members,
+        clean_loaded_dataset,
     )
 
     # Determine n_classes BEFORE the clean cache lookup — the cache key
@@ -650,8 +657,8 @@ def _build_ensemble_step_batch(
 
 
 class ProcessedDatasetLoader(Dataset):
-    """One ``__getitem__`` call → one batch (legacy ``TabPFNBatch`` OR
-    new ``TabPFNEnsembleBatch``) from one sanitized CSV.
+    """One ``__getitem__`` call → one batch (single-view ``TabPFNBatch`` OR
+    ``TabPFNEnsembleBatch``) from one sanitized CSV.
 
     Designed to be wrapped in ``torch.utils.data.DataLoader`` with
     ``batch_size=1`` and ``collate_fn=identity_collate``.
@@ -669,7 +676,7 @@ class ProcessedDatasetLoader(Dataset):
         ``load_tabpfn_for_training``). When non-None, ``__getitem__``
         runs TabPFN's official preprocessor and returns a
         ``TabPFNEnsembleBatch`` with ``n_estimators_finetune``
-        preprocessed views. When None, falls back to the legacy
+        preprocessed views. When None, falls back to the
         single-view ``TabPFNBatch`` (used by the mocked smoke test that
         doesn't have a real TabPFN checkpoint).
     n_estimators_finetune
@@ -711,11 +718,11 @@ class ProcessedDatasetLoader(Dataset):
         self._inference_config = inference_config
         self._n_estimators_finetune = max(1, int(n_estimators_finetune))
         self.pass_mode = str(pass_mode)
-        if self.pass_mode not in ("one_sample", "full_pass", "accumulate"):
+        if self.pass_mode not in ("one_sample", "full_pass"):
             raise ValueError(f"unknown pass_mode: {self.pass_mode!r}")
         if (self.pass_mode != "one_sample" and self.context_sampling == "balanced"
                 and any(ref.task_type == "classification" for ref in self.refs)):
-            raise ValueError("Non-overlapping full_pass/accumulate require context_sampling='stratified'; "
+            raise ValueError("Non-overlapping full_pass requires context_sampling='stratified'; "
                              "class-balanced draws cannot also cover every row exactly once")
         # At most one epoch's permutation per table in each worker. Reuse it
         # across chunks instead of shuffling the whole table on every access.
@@ -736,16 +743,10 @@ class ProcessedDatasetLoader(Dataset):
         #
         #  * "one_sample" (default): exactly ONE step per dataset per epoch —
         #    each step a fresh random subsample of <= max_rows_per_epoch rows.
-        #    This is the original behaviour; nothing changes.
-        #
         #  * "full_pass": ceil(n / effective_cap) disjoint, nearly equal
         #    chunks cover every row once per completed epoch. Repartition on
         #    the next epoch. Larger tables contribute more optimizer updates.
-        # "accumulate" walks the SAME plan as full_pass — every batch of every dataset —
-        # and differs only in when the optimizer steps, which the training loop decides
-        # from EpochSampler.dataset_end_flags (the actual emitted order).
-        # Both modes use the same row partitions for a given seed and epoch.
-        if self.pass_mode in ("full_pass", "accumulate"):
+        if self.pass_mode == "full_pass":
             self._plan: list[tuple[int, int]] = []
             for ref_idx, ref in enumerate(self.refs):
                 loaded = _load_processed_csv(ref)
@@ -760,20 +761,11 @@ class ProcessedDatasetLoader(Dataset):
         else:
             self._plan = [(i, 0) for i in range(len(self.refs))]
 
-        # True on the LAST batch of each dataset, so a caller can step the optimizer exactly at
-        # dataset boundaries ("accumulate" mode). Under one_sample every batch is a boundary,
-        # which makes accumulate and one_sample coincide there — correct, since there is nothing
-        # to accumulate over.
-        self.is_dataset_end: list[bool] = [
-            (i + 1 == len(self._plan)) or (self._plan[i + 1][0] != ref_idx)
-            for i, (ref_idx, _r) in enumerate(self._plan)
-        ]
-
     def set_epoch(self, epoch: int) -> None:
         """Bump the epoch counter so the next __getitem__ reshuffles."""
         self._epoch = int(epoch)
 
-    def _effective_cap(self, loaded: "_LoadedDataset") -> int:
+    def _effective_cap(self, loaded: _LoadedDataset) -> int:
         """Per-step row cap for one dataset.
 
         Pure row cap (``max_rows_per_epoch``) unless a cell budget is set,
@@ -810,7 +802,7 @@ class ProcessedDatasetLoader(Dataset):
         ) & 0xFFFF_FFFF
         rng = np.random.default_rng(step_seed)
         row_indices = None
-        if self.pass_mode in ("full_pass", "accumulate"):
+        if self.pass_mode == "full_pass":
             cached = self._row_partitions.get(ref_idx)
             if cached is None or cached[:2] != (epoch, n_total_target):
                 partition_seed = (self._base_seed * 1_000_003 + epoch * 10_007 + ref_idx * 31) & 0xFFFF_FFFF
@@ -854,12 +846,12 @@ class ProcessedDatasetLoader(Dataset):
         # (`tfm-library/repositories/TabPFN .txt`).
         return _build_ensemble_step_batch(
             loaded,
-            # Use the SAME effective cap as the legacy path and the full_pass
+            # Use the SAME effective cap as the single-view path and the full_pass
             # step-count math (`_effective_cap`), not the raw row cap —
             # otherwise the optional max_cells_per_epoch budget is silently
             # ignored on the real (ensemble) training path, and under
             # full_pass the per-step row count would disagree with the
-            # k = ceil(n_rows / eff_cap) step count. (Bug fixed 2026-06-23.)
+            # k = ceil(n_rows / eff_cap) step count.
             n_total_target=n_total_target,
             query_fraction=self.query_fraction,
             rng=rng,

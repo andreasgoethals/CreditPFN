@@ -2,9 +2,9 @@
 # CPU data registration/sanitization. Prepare inputs before staging/plans.
 # 64 GB retains the measured margin for wide-table preparation.
 #SBATCH --job-name=creditpfn-data
-#SBATCH --clusters=wice
+#SBATCH --clusters=mindwell
 #SBATCH --account=lp_verbekelab
-#SBATCH --partition=batch
+#SBATCH --partition=batch_graniterapids
 #SBATCH --time=02:00:00
 #SBATCH --nodes=1
 #SBATCH --ntasks=1

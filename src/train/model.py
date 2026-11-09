@@ -111,14 +111,13 @@ def load_tabpfn_for_training(
     inference_config
         The :class:`tabpfn.inference_config.InferenceConfig` embedded in
         the checkpoint (v2.6 / v3) or rebuilt via
-        ``InferenceConfig.get_default`` (legacy v2 / v2.5). The
+        ``InferenceConfig.get_default`` (v2 / v2.5). The
         continued-pretraining dataloader uses this to instantiate
         TabPFN's official preprocessor (`TabPFNEnsemblePreprocessor`)
         per training step so the X tensors fed to the model match the
         distribution it was pretrained on (and the distribution it
-        will see at inference time via ``TabPFNClassifier.predict_proba``).
-        See chat 2026-05-27 for the audit that found we were skipping
-        this and the calibration-collapse failure mode it produced.
+        will see at inference time via ``TabPFNClassifier.predict_proba``);
+        skipping it produced calibration collapse.
     """
     from tabpfn.base import load_model_criterion_config
 
@@ -150,8 +149,7 @@ def load_tabpfn_for_training(
         train_criterion: torch.nn.Module = torch.nn.CrossEntropyLoss()
     else:
         # Version-tolerant import: the module moved between tabpfn 2.x
-        # (architectures.base) and 8.x (architectures.shared). The hardcoded
-        # 2.x path killed all 32 LGD trials of the 2026-07-03 run in seconds.
+        # (architectures.base) and 8.x (architectures.shared).
         from src.train.tabpfn_compat import import_bar_distribution
         FullSupportBarDistribution = import_bar_distribution().FullSupportBarDistribution
         if not isinstance(criterion, FullSupportBarDistribution):
@@ -170,9 +168,6 @@ def load_tabpfn_for_training(
     if freeze_backbone:
         # A true freeze, matching TabICLv2. Mutually exclusive with LoRA: wrapping a
         # frozen model in adapters would train the adapters and defeat the point.
-        # `version` is already inferred above (line ~128); the earlier `ckpt_path`
-        # here was a NameError that failed all 168 frozen TabPFN trials in exp1_pd
-        # (j11538779/796/797…, 29-08-2026) — the local is `ckpt`, not `ckpt_path`.
         freeze_tabpfn_backbone(model, version=version)
     elif lora_config is not None:
         model = _wrap_with_lora(model, lora_config)
@@ -182,7 +177,7 @@ def load_tabpfn_for_training(
     return model, train_criterion, architecture_config, inference_config
 
 
-def freeze_tabpfn_backbone(model: "torch.nn.Module", version: str = "") -> dict:
+def freeze_tabpfn_backbone(model: torch.nn.Module, version: str = "") -> dict:
     """Freeze the transformer stack, leave embedders / label encoder / head trainable.
 
     Thin wrapper over :func:`src.train.freeze.freeze_backbone`, which is the SINGLE
@@ -231,8 +226,7 @@ def _wrap_with_lora(model: torch.nn.Module, lora_config: dict) -> torch.nn.Modul
     except ValueError as exc:
         # PEFT raises "Target modules ... not found in the base model"
         # when its suffix matcher can't find any of the listed names.
-        # This is the symptom on TabPFN v2.5 / v2.6 (PD trial 17 in the
-        # 2026-05-20 run): PEFT's matcher fails despite v2.5's source
+        # This is the symptom on TabPFN v2.5 / v2.6: PEFT's matcher fails despite v2.5's source
         # naming the layers `q_projection`. Dump the actual layer
         # inventory so the next config bump can use the right names.
         if "Target modules" not in str(exc):
@@ -313,7 +307,6 @@ def save_finetuned(
     and calls ``criterion.load_state_dict(...)``. Without them, reloading
     a trained LGD checkpoint would raise ``Missing key(s) in state_dict``.
     """
-    import json
     from dataclasses import asdict, is_dataclass
 
     save_path = Path(save_path)
@@ -341,7 +334,6 @@ def save_finetuned(
         # "base" (which load_model remaps to tabpfn_v2_5): silently saving a
         # v3 state_dict under a v2.5 architecture makes the checkpoint
         # unloadable. Raise instead so the failure is loud and immediate.
-        # (Hardened 2026-06-23 per the TabPFN-core consistency audit.)
         cls_name = type(architecture_config).__name__
         if "V3" in cls_name:
             architecture_name = "tabpfn_v3"

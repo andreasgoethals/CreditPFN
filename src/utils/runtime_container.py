@@ -10,12 +10,11 @@ import hashlib
 import importlib.metadata as metadata
 import json
 import os
-from pathlib import Path
 import re
 import subprocess
 import sys
+from pathlib import Path
 from urllib.parse import urlsplit
-
 
 MINIFORGE_VERSION = "25.3.1-0"
 MINIFORGE_SHA256 = "376b160ed8130820db0ab0f3826ac1fc85923647f75c1b8231166e3d559ab768"

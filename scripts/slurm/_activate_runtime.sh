@@ -2,7 +2,7 @@
 # Sourced by _activate_env after CPU thread/cache setup. The persistent runtime is immutable.
 [[ "${CREDITPFN_RUNTIME_VERSION:-}" =~ ^[a-zA-Z0-9]+$ ]] || { echo 'Invalid runtime version'; return 2; }
 [[ -n "${SLURM_JOB_ID:-}" ]] || { echo 'Container activation requires a Slurm allocation'; return 2; }
-_runtime_project="${CREDITPFN_PROJECT_ROOT:-${VSC_PROJECT_ROOT:-/lustre1/project/stg_00211}}"
+_runtime_project="${CREDITPFN_PROJECT_ROOT:-${VSC_PROJECT_ROOT:-/gpfs1/project/prj_00013}}"
 [[ "$(basename "$_runtime_project")" == CreditPFN ]] || _runtime_project="$_runtime_project/CreditPFN"
 _persistent_runtime="$_runtime_project/runtimes/$CREDITPFN_RUNTIME_VERSION"
 case "${SLURM_CLUSTER_NAME:-}" in

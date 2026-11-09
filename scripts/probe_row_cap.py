@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import argparse
 import os
-from pathlib import Path
 import sys
+from pathlib import Path
 
 _REPO = Path(__file__).resolve().parents[1]
 if str(_REPO) not in sys.path:
@@ -21,7 +21,7 @@ from src.train.capacity import probe_configured_bases  # noqa: E402
 def _gpu_is_usable() -> bool:
     """Refuse to probe on a GPU that cannot give a meaningful answer.
 
-    WHY (2026-08-05): run bare on a Genius **login** node, this script found
+    WHY: run bare on a Genius **login** node, this script found
     the node's *display* GPU (Quadro P6000, sm_61), which
     ``torch.cuda.is_available()`` happily reports as available even though
     (a) the installed PyTorch has no sm_61 kernels and (b) the card is tiny
@@ -34,6 +34,7 @@ def _gpu_is_usable() -> bool:
     name the submit command instead.
     """
     import socket
+
     import torch
 
     try:

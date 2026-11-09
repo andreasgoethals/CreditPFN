@@ -110,12 +110,6 @@ from __future__ import annotations
 import logging
 import os
 import re
-from pathlib import Path
-from types import MappingProxyType
-from typing import Callable, Mapping
-
-import numpy as np
-import pandas as pd
 
 # Opt-in to pandas's future `replace` behaviour: no silent downcasting,
 # no FutureWarning. Each surgical fix that wants the old downcast
@@ -128,6 +122,13 @@ import pandas as pd
 # swallow the cosmetic "option deprecated" warning in that case so the
 # module loads cleanly on every pandas version we care about.
 import warnings as _warnings
+from collections.abc import Callable, Mapping
+from pathlib import Path
+from types import MappingProxyType
+
+import numpy as np
+import pandas as pd
+
 with _warnings.catch_warnings():
     _warnings.simplefilter("ignore")
     try:

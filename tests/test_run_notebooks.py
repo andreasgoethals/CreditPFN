@@ -101,7 +101,7 @@ def test_summary_reads_final_code_stdout_not_setup_messages_or_warnings(notebook
 def test_captions_are_grouped_per_notebook_in_order(isolated_output, monkeypatch) -> None:
     """ONE CAPTIONS.md for the project, built from each notebook's manifest — so it can be
     regenerated after an interactive run without executing anything."""
-    from src.utils.paths import figures_dir
+    from src.visualize.figures import manifest_path
 
     for name, entries in {
         "b_second": [{"index": 1, "stem": "01_x", "name": "x", "caption": "Caption X."}],
@@ -110,9 +110,9 @@ def test_captions_are_grouped_per_notebook_in_order(isolated_output, monkeypatch
             {"index": 2, "stem": "02_q", "name": "q", "caption": "Caption Q."},
         ],
     }.items():
-        folder = figures_dir(name)
-        folder.mkdir(parents=True, exist_ok=True)
-        (folder / "_figures.json").write_text(json.dumps(entries), encoding="utf-8")
+        folder = manifest_path(name)
+        folder.parent.mkdir(parents=True, exist_ok=True)
+        folder.write_text(json.dumps(entries), encoding="utf-8")
 
     text = rn.write_captions(("a_first", "b_second")).read_text(encoding="utf-8")
     assert text.index("## a_first") < text.index("## b_second")
@@ -123,11 +123,11 @@ def test_captions_are_grouped_per_notebook_in_order(isolated_output, monkeypatch
 
 def test_a_missing_caption_is_flagged_not_skipped(isolated_output) -> None:
     """A gap should be visible in the document that is supposed to contain it."""
-    from src.utils.paths import figures_dir
+    from src.visualize.figures import manifest_path
 
-    folder = figures_dir("nb")
-    folder.mkdir(parents=True, exist_ok=True)
-    (folder / "_figures.json").write_text(
+    folder = manifest_path("nb")
+    folder.parent.mkdir(parents=True, exist_ok=True)
+    folder.write_text(
         json.dumps([{"index": 1, "stem": "01_x", "name": "x", "caption": ""}]), encoding="utf-8"
     )
     assert "MISSING CAPTION" in rn.write_captions(("nb",)).read_text(encoding="utf-8")
@@ -215,20 +215,6 @@ def test_end_to_end_a_notebook_saves_its_own_figure(isolated_output, monkeypatch
     assert "SMOKE SUMMARY: 1 figure" in all_results_path().read_text(encoding="utf-8")
 
 
-def test_root_summary_retires_legacy_copy_and_folder_order(isolated_output, notebook_folder):
-    from src.utils.paths import all_results_path as legacy
-    legacy().parent.mkdir(parents=True, exist_ok=True)
-    legacy().write_text("OLD SUMMARY")
-    names = ("experiment2/01_training", "general/02_processed", "experiment1/02_results")
-    for name in names:
-        save_summary(notebook_folder / (name + ".ipynb"), "SUMMARY " + name)
-    path = rn.write_all_results(names)
-    assert path.parent.name == "output CreditPFN"
-    assert not legacy().exists()
-    text = path.read_text(encoding="utf-8")
-    assert text.index("## experiment1/") < text.index("## experiment2/") < text.index("## general/")
-
-
 def test_summaries_only_is_not_destructive(isolated_output, notebook_folder) -> None:
     """`--summaries-only` must rebuild `All_Results.md` in full, not gut it.
 
@@ -253,12 +239,12 @@ def test_a_partial_run_does_not_narrow_the_shared_documents(isolated_output, not
     `--only 2.0 2.1` cut CAPTIONS.md from 435 lines to 191 — deleting four notebooks' captions
     from a file that is now tracked in git.
     """
-    from src.utils.paths import figures_dir
+    from src.visualize.figures import manifest_path
 
     for name in ("a_first", "b_second"):
-        folder = figures_dir(name)
-        folder.mkdir(parents=True, exist_ok=True)
-        (folder / "_figures.json").write_text(
+        folder = manifest_path(name)
+        folder.parent.mkdir(parents=True, exist_ok=True)
+        folder.write_text(
             json.dumps([{"index": 1, "stem": "01_x", "name": "x",
                          "caption": f"Caption of {name}."}]), encoding="utf-8")
         save_summary(notebook_folder / f"{name}.ipynb", f"SUMMARY OF {name}")
@@ -298,8 +284,9 @@ def test_failed_rerun_cannot_publish_a_previous_success(isolated_output, noteboo
 
 
 def test_full_run_invalidates_old_outputs_before_starting_workers(isolated_output, notebook_folder, monkeypatch):
-    from src.visualize.figures import FigureSaver
     import matplotlib.pyplot as plt
+
+    from src.visualize.figures import FigureSaver
     save_summary(notebook_folder / "nb.ipynb", "OLD SUCCESS")
     fig, ax = plt.subplots()
     ax.plot([0, 1], [0, 1])

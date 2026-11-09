@@ -103,7 +103,7 @@ def test_no_proprietary_slug_in_tracked_files():
     offenders: dict[str, list[str]] = {}
     for rel in tracked:
         # Temporary, explicit project exception: preprocessing remains tracked
-        # with routing slugs until the code is frozen (user handover 22-09-2026).
+        # with routing slugs until the code is frozen.
         if not rel or rel.startswith("tfm-library/") or rel == "src/data/preprocessing.py":
             continue
         try:

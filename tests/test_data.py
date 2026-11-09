@@ -4,9 +4,7 @@ Layout choice
 -------------
 One file per ``src/`` subpackage. ``test_data.py`` covers everything in
 ``src/data/``: preprocessing, register, sanitize, and the
-exploration helpers. The ``.npz`` chunking stage and its module
-(``src/data/dataset.py``) were removed in the 2026-05-20 refactor —
-training reads sanitized CSVs directly now.
+exploration helpers. Training reads sanitized CSVs directly.
 
 Running
 -------
@@ -39,9 +37,9 @@ import pytest
 
 from src.data.preprocessing import (
     DATASET_METADATA,
-    apply_dataset_specific_fixes,
-    _yrs_mons_to_months,
     _two_digit_year_to_full,
+    _yrs_mons_to_months,
+    apply_dataset_specific_fixes,
 )
 from src.data.register import (
     MANIFEST_COLUMNS,
@@ -50,16 +48,15 @@ from src.data.register import (
     shape_aware_sha256,
 )
 from src.data.sanitize import (
+    _clip_lgd_target,
+    _coerce_numeric_strings,
     _drop_constant_columns,
     _drop_exact_duplicate_feature_columns,
     _drop_high_missing_columns,
-    _coerce_numeric_strings,
-    _replace_inf_with_nan,
-    _clip_lgd_target,
     _label_encode_classification_target,
+    _replace_inf_with_nan,
     _select_to_max_columns,
 )
-
 
 REPO = Path(__file__).resolve().parents[1]
 

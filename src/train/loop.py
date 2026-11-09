@@ -21,9 +21,9 @@ import random
 import re
 import socket
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
-from typing import Callable
 
 import numpy as np
 import torch
@@ -35,11 +35,15 @@ from src.train.corpus import (
     split_from_cfg,
 )
 from src.train.dataloader import (
-    ProcessedDatasetLoader, TabPFNBatch, identity_collate, prepare_eval_chunk,
+    ProcessedDatasetLoader,
+    TabPFNBatch,
+    identity_collate,
+    prepare_eval_chunk,
 )
 from src.train.metrics import (
-    classification_metric, regression_metric,
+    classification_metric,
     mean_ignore_nan,
+    regression_metric,
 )
 from src.train.model import load_tabpfn_for_training, save_finetuned
 from src.train.tabicl_compat import model_family
@@ -54,11 +58,10 @@ LOGGER = logging.getLogger(__name__)
 # WHY THIS EXISTS. Each training step re-fits TabPFN's ensemble preprocessor on the context
 # (`fit_transform_ensemble_members`) on CPU. With `num_workers=0` that preprocessing runs
 # INLINE, so the GPU SMs idle while the CPU works — the low-utilization pattern the VSC
-# maintainers flagged (02-09-2026). Worker processes run the preprocessing in parallel and
+# maintainers flagged. Worker processes run the preprocessing in parallel and
 # PREFETCH the next batches while the GPU computes the current step, so the SMs stay fed.
 #
-# The old default was `num_workers=0` because ">0 deadlocks" — the deadlock is the classic
-# fork+state trap: by the time the DataLoader is built the model is already on the GPU (CUDA is
+# Forked workers deadlock (the classic fork+state trap): by the time the DataLoader is built the model is already on the GPU (CUDA is
 # initialised) and `_load_processed_csv` holds an `lru_cache` lock, and forking such a process
 # hangs the children. We fix that STRUCTURALLY by forcing the `spawn` start method (clean
 # processes: no inherited CUDA context, no inherited locks). Correctness does not depend on the
@@ -219,7 +222,7 @@ class TrainingResult:
     elapsed_sec: float = 0.0
     descriptive_name: str = ""           # the basename of final_ckpt_path
 
-    # NEW (2026-05-28) — summary fields surfaced through to the manifest.
+    # Summary fields surfaced through to the manifest.
     diverged: bool = False               # True if the loop aborted early
     diverged_at_epoch: int | None = None # last good epoch index (None if no divergence)
     diverge_reason: str = ""             # short tag — "loss_const" / "auc_random" / "amp_skip_storm"
@@ -237,13 +240,8 @@ class TrainingResult:
     primary_metric_name:   str = ""                # "roc_auc" / "rmse"
     secondary_metric_name: str = ""                # "brier_score" / "r2"
 
-    # NEW (12-08-2026) — what this trial ACTUALLY ran, as opposed to what the config
-    # asked for. Every one of these has been the subject of a wrong conclusion:
-    #   * realised steps    — run-7's LGD ran 800 of a 9 100 target and nobody saw it
-    #   * epochs            — trimmed or extended per base, so it is not cfg.train.epochs
-    #   * corpus rows/ids   — "17 datasets" means something different every quarter
-    #   * min_train_rows    — a swept axis as of run-8
-    #   * final drift       — the difference between "no effect" and "did not train"
+    # What this trial ACTUALLY ran, as opposed to what the config asked for: realised
+    # steps and epochs, the exact corpus, and the final drift ("no effect" vs "did not train").
     total_optimizer_steps: int = 0
     epochs_run:            int = 0
     steps_per_epoch:       int = 0
@@ -278,7 +276,7 @@ def _resolve_max_rows_per_epoch(base_checkpoint: str | Path, mapping,
                                 frozen_backbone: bool = False) -> int:
     """Look up the per-version `max_rows_per_epoch` cap.
 
-    Accepts either an int (legacy single-value config) or a mapping
+    Accepts either an int (one cap for every version) or a mapping
     ``{"v3": 26000, "v2.6": 11000, ...}`` (the PD 2-member per-step caps;
     ``train_one_config`` scales them down for higher member counts). For a
     mapping, we extract
@@ -323,6 +321,42 @@ def _resolve_max_rows_per_epoch(base_checkpoint: str | Path, mapping,
     )
 
 
+def monitor_rows(requested: int, base_path, query_fraction: float) -> int:
+    """Monitor rows per table, capped so the context never exceeds the model's inference limit.
+
+    The context is ``(1 - query_fraction)`` of the sampled rows; limits come from
+    ``config/eval.yaml`` ``max_rows_per_model`` (TabPFN v2: 10,000), the same caps as evaluation.
+    """
+    if requested <= 0:
+        return requested
+    from omegaconf import OmegaConf
+
+    from src.utils.paths import REPO_ROOT
+    limits = OmegaConf.to_container(OmegaConf.load(REPO_ROOT / "config/eval.yaml"))["max_rows_per_model"]
+    name = Path(str(base_path)).name.lower()
+    key = ("tabicl" if name.startswith("tabicl") else "v2.6" if "tabpfn-v2.6-" in name
+           else "v2" if "tabpfn-v2-" in name else "v3" if "tabpfn-v3-" in name else "default")
+    cap = int(limits.get(key, limits["default"]))
+    return min(requested, int(cap / max(1e-9, 1 - float(query_fraction))))
+
+
+def naming_mode(cfg, use_lora) -> str | None:
+    """The adaptation tag for trial names; the single rule for every caller.
+
+    Fingerprinted (campaign) configs always tag the scope; unfingerprinted configs
+    (ad-hoc and test runs) keep untagged names.
+    """
+    from omegaconf import OmegaConf
+    if not OmegaConf.select(cfg, "experiment.fingerprint", default=False):
+        return None
+    mode = str(OmegaConf.select(cfg, "train.adaptation_mode", default="full") or "full")
+    if mode in ("lora", "diagscale"):
+        return mode
+    if use_lora:
+        return "lora" if bool(OmegaConf.select(cfg, "lora.enabled", default=False)) else "frozen_backbone"
+    return "full_ft"
+
+
 def descriptive_name(
     *, run_name: str, track: str, base_path: str | Path,
     learning_rate: float, seed: int,
@@ -339,12 +373,8 @@ def descriptive_name(
     Schema:
         <run_name>_<track>_<base-stem>_lr<lr>_seed<seed>[_qf<qf>][_acc<K>][_fullpass][_lora].ckpt
 
-    ``query_fraction`` is part of the sweep grid as of 2026-05-21,
-    ``accumulate_grad_batches`` as of 2026-05-27, ``epoch_pass_mode`` as
-    of 2026-06-01. All are optional in the filename — passing ``None``
-    (or ``"one_sample"`` for the pass mode) omits the segment, so legacy
-    callers / the default one-step-per-dataset sweep produce identical
-    names to before.
+    Every tag is optional: ``None`` (or ``"one_sample"`` for the pass mode) omits
+    its segment.
     """
     base_stem = Path(str(base_path)).stem
     lr_tag = f"{learning_rate:.0e}".replace("+", "")
@@ -355,30 +385,17 @@ def descriptive_name(
     acc_tag = ""
     if accumulate_grad_batches is not None:
         acc_tag = f"_acc{int(accumulate_grad_batches)}"
-    # Only the non-default "full_pass" mode adds a tag, so "one_sample"
-    # (the default) keeps the exact pre-2026-06-01 filename.
-    pass_tag = {None: "", "one_sample": "", "full_pass": "_fullpass",
-                "accumulate": "_accumulate"}[epoch_pass_mode]
-    # Corpus composition is a swept axis as of run-8, so it has to be in the name:
-    # two trials that differ only in which training datasets existed are different
-    # experiments, and without a tag they would overwrite each other's checkpoint.
-    # Absent / 0 keeps the pre-run-8 filename byte-for-byte.
+    pass_tag = {None: "", "one_sample": "", "full_pass": "_fullpass"}[epoch_pass_mode]
+    # Two trials that differ only in their training corpus must not overwrite each other.
     rows_tag = f"_min{int(min_train_rows)}" if min_train_rows else ""
-    # Anchor strength, swept from run-9. `None` = "not swept" and emits nothing, so every
-    # trial name written before run-9 is byte-identical and still parses. The tag sits
-    # BEFORE the adapter tag because `_NAME_RE` anchors `_lora|_iclhead` to the end.
+    # The L2-SP tag sits BEFORE the adapter tag because `_NAME_RE` anchors the adapter
+    # tag to the end.
     l2sp_tag = "" if l2sp_lambda is None else f"_l2sp{float(l2sp_lambda):g}"
-    # The `use_lora` grid axis means LoRA for the TabPFN family but
-    # FREEZE-BACKBONE / train-ICL-head-only for TabICLv2 (its upstream
-    # stage-3 regime; full SFT collapsed TabICLv2 in two independent
-    # reports — see src/train/tabicl_compat.py). Tag names must be
-    # honest about which adaptation actually ran. Derived from
-    # `base_path` HERE so every caller (loop + train_pipeline
-    # idempotency + epoch CSVs) stays consistent with zero call-site
-    # changes.
-    if adaptation_mode == "diagscale" or run_name.startswith("cpt_diagscale"):
+    # Without an explicit adaptation mode, the `use_lora` grid axis means frozen backbone
+    # (TabICLv2: train the ICL head only). Derived here so every caller names alike.
+    if adaptation_mode == "diagscale":
         lora_tag = "_diagscale"
-    elif adaptation_mode == "lora" or run_name.startswith("cpt_lora"):
+    elif adaptation_mode == "lora":
         lora_tag = "_lora"
     elif adaptation_mode == "frozen_backbone":
         lora_tag = "_frozen"
@@ -399,7 +416,7 @@ def descriptive_name(
 
 def _stage_drift(
     model: torch.nn.Module,
-    anchor: dict[str, "torch.Tensor"],
+    anchor: dict[str, torch.Tensor],
     stage_names: dict[str, list[str]],
     stage_w0: dict[str, float],
 ) -> dict[str, float]:
@@ -437,7 +454,7 @@ def _stage_drift(
 _WOULD_STOP_PATIENCE = 4
 
 
-def would_have_stopped(losses: "list[float]", patience: int = _WOULD_STOP_PATIENCE) -> int | None:
+def would_have_stopped(losses: list[float], patience: int = _WOULD_STOP_PATIENCE) -> int | None:
     """The epoch a `patience`-epoch early-stopping rule would have fired at, or None.
 
     Reports; never acts. Experiment 1 runs a FIXED step budget on purpose — a budget that
@@ -465,7 +482,7 @@ def would_have_stopped(losses: "list[float]", patience: int = _WOULD_STOP_PATIEN
 
 def _layer_drift(
     model: torch.nn.Module,
-    anchor: dict[str, "torch.Tensor"],
+    anchor: dict[str, torch.Tensor],
     *,
     top_k: int = 24,
 ) -> dict[str, float]:
@@ -520,8 +537,8 @@ def _drift_fraction(l2sp_value: float, lam: float, w0_norm: float) -> float:
 
 
 def _divergence_reason(
-    recent: "list[EpochRecord]",
-    monitored_metrics: "list[tuple[float, float]]",
+    recent: list[EpochRecord],
+    monitored_metrics: list[tuple[float, float]],
     diverge_patience: int,
     track_primary_metric: str,
     epoch_eval_n0: int,
@@ -531,16 +548,13 @@ def _divergence_reason(
 ) -> str | None:
     """Early-abort reason for a window of the last ``diverge_patience`` epoch records, or ``None``
     if the trial looks healthy. A PURE FUNCTION so the collapse heuristics are unit-testable in
-    isolation — the in-loop copy of this logic once drifted from its test replica (a test asserting
-    a per-epoch drift signal that production only produced on monitor epochs), which is exactly how
-    the ``loss_const`` false-abort of every accumulate + L2-SP trial went unnoticed.
+    isolation, and the in-loop logic cannot drift from what the tests assert.
 
     Reasons, in priority order:
 
     * ``loss_const`` — flat loss AND flat weight-drift, AND only in the EARLY part of the step
-      budget. A flat loss alone is NOT a dead model: in run-8, v2.6 @3e-7 full-FT held its loss at
-      0.4689-0.4690 for five epochs (inside the 1e-4 window) while its drift rose 0.042 %→0.085 % —
-      it was training slowly, which is what the lowest LR in the sweep is FOR. A model that has
+      budget. A flat loss alone is NOT a dead model: at a low learning rate the loss
+      can stay inside the 1e-4 window for several epochs while the weights keep moving. A model that has
       actually died stops MOVING, so we require both. ``weight_drift`` is the per-epoch ‖w−w0‖/‖w0‖
       (NaN when no anchor); reading it here rather than the monitor-only per-stage drift is what
       makes "is it still moving?" answerable on every epoch instead of only every ~19th. The
@@ -559,7 +573,6 @@ def _divergence_reason(
     # Metric signals must look only at monitored epochs — skipped ones hold NaN by design.
     monitored_recent = monitored_metrics[-diverge_patience:]
     metrics_window_full = len(monitored_recent) == diverge_patience
-    test_metrics_recent = [t for t, _ in monitored_recent]
     train_metrics_recent = [tr for _, tr in monitored_recent]
 
     recent_drift = [r.weight_drift for r in recent if r.weight_drift == r.weight_drift]
@@ -614,8 +627,7 @@ def _divergence_reason(
 def enable_tf32() -> str:
     """Let fp32 matmuls use tensor cores. Free speed; call once per process.
 
-    MEASURED 24-08-2026 (cluster_report section 5) — `tf32 matmul` was OFF on both cards, and
-    the fp32 penalty is severe:
+    Measured: `tf32 matmul` was OFF by default on both cards, and the fp32 penalty is severe:
 
         B200   fp32   66.2 TFLOP/s   vs  bf16  1586.3 TFLOP/s   (24x)
         A100   fp32   19.0 TFLOP/s   vs  bf16   289.3 TFLOP/s   (15x)
@@ -663,8 +675,7 @@ def make_warmup_cosine_schedule(
     over 20 000 steps; a 600-step run that also decays to exactly zero spends
     its final quarter taking steps of size ~0, so the effective budget is far
     smaller than the step count suggests. Holding a small floor keeps the tail
-    of training useful. (Added 2026-08-06 after the first two-family run moved
-    v3's weights by only ~0.02 % at lr=3e-7.)
+    of training useful.
     """
     warmup_steps = max(1, int(round(total_steps * warmup_fraction)))
     total_steps = max(1, int(total_steps))
@@ -689,7 +700,7 @@ def make_warmup_cosine_schedule(
 
 def _l2sp_penalty(
     model: torch.nn.Module,
-    anchor: dict[str, "torch.Tensor"],
+    anchor: dict[str, torch.Tensor],
     lam: float,
 ):
     """L2-SP regulariser: ``0.5 * lam * Σ ‖w − w₀‖²`` over anchored params.
@@ -720,18 +731,15 @@ def _l2sp_penalty(
 def _make_optimizer_and_scheduler(
     model: torch.nn.Module, cfg, *, total_steps: int,
 ) -> tuple[torch.optim.Optimizer, torch.optim.lr_scheduler.LambdaLR]:
-    """AdamW (betas=(0.9, 0.999)) + linear-warmup → cosine-decay schedule.
-
-    ``optimizer.name`` selects AdamW (default) or the one-factor Muon arm
-    (Muon on hidden matrices with AdamW-matched update RMS, AdamW elsewhere).
-    """
+    """AdamW (betas=(0.9, 0.999)) + linear-warmup → cosine-decay schedule."""
     lr = float(cfg.optimizer.lr) if hasattr(cfg.optimizer, "lr") else None
     if lr is None:
         lr = float(cfg.tunable.learning_rates[0])
 
     from src.model.diagscale import adapter_parameters
     params = adapter_parameters(model) if hasattr(model, '_creditpfn_adapter') else model.parameters()
-    from src.model.lora import is_lora, adapter_parameters as lora_parameters
+    from src.model.lora import adapter_parameters as lora_parameters
+    from src.model.lora import is_lora
     if is_lora(model):
         params = lora_parameters(model)
     from src.train.optimization import make_optimizer
@@ -765,13 +773,19 @@ def _resolve_device(cfg) -> str:
     return pref
 
 
-def _resolve_amp_dtype(cfg, device: str) -> tuple[bool, torch.dtype | None]:
+def _resolve_amp_dtype(cfg, device: str, family: str = "tabpfn") -> tuple[bool, torch.dtype | None]:
     """Resolve whether AMP is active and which CUDA autocast dtype to use.
 
-    BF16 is preferred when supported: unlike FP16 it retains FP32's exponent
-    range, so large TabPFN regression gradients do not repeatedly overflow and
-    force ``GradScaler`` to discard optimizer steps.  The tensor width remains
-    two bytes, so the B200/H100 memory budget is unchanged.
+    TabPFN: BF16 is preferred when supported: unlike FP16 it retains FP32's
+    exponent range, so large TabPFN regression gradients do not repeatedly
+    overflow and force ``GradScaler`` to discard optimizer steps.
+
+    TabICLv2: FP16 with ``GradScaler``, upstream's own fine-tuning recipe
+    (``tabicl._finetune``). BF16's 8-bit mantissa corrupts its column embedder:
+    the first study's TabICL runs started at 1.2 nats (TabPFN 0.48) with every
+    update clipped, and an update-zero forward on a credit table measured
+    0.545 nats in FP32, 0.548 in FP16 and 0.858 in BF16. TabICLv2 therefore
+    follows ``train.tabicl_precision`` (fp16 or fp32) and a BF16 request is refused.
     """
     enabled = bool(cfg.train.amp) and device == "cuda"
     if not enabled:
@@ -794,6 +808,13 @@ def _resolve_amp_dtype(cfg, device: str) -> tuple[bool, torch.dtype | None]:
     bf16_supported = bool(
         getattr(torch.cuda, "is_bf16_supported", lambda: False)()
     )
+    if family == "tabicl":
+        if requested == "bfloat16":
+            raise ValueError("TabICLv2 does not train correctly under BF16 autocast; use auto or float16")
+        precision = str(getattr(cfg.train, "tabicl_precision", "fp16")).lower()
+        if precision not in ("fp16", "fp32"):
+            raise ValueError(f"train.tabicl_precision must be fp16 or fp32; got {precision!r}")
+        return (True, torch.float16) if precision == "fp16" else (False, None)
     if requested == "auto":
         return True, torch.bfloat16 if bf16_supported else torch.float16
     if requested == "bfloat16" and not bf16_supported:
@@ -850,7 +871,7 @@ def _log_debug_banner(
 ) -> None:
     """Emit a single, comprehensive DEBUG banner at training start.
 
-    The goal (user request, 2026-06-23): if a trial crashes or is killed
+    If a trial crashes or is killed
     mid-run, the log alone must contain EVERY piece of context needed to
     reproduce and debug it — environment, cluster, hardware, library
     versions, resolved storage paths, the full hyperparameter set, and the
@@ -872,7 +893,7 @@ def _log_debug_banner(
     gpu_name, gpu_mem, cuda_cap = "cpu", None, None
     if device == "cuda" and torch.cuda.is_available():
         # Free speed on the fp32 ops autocast leaves alone. Measured OFF on both the B200 and
-        # the A100 (cluster_report section 5), where fp32 runs 24x / 15x slower than bf16.
+        # the A100, where fp32 runs 24x / 15x slower than bf16.
         LOGGER.info("%s", enable_tf32())
         try:
             props = torch.cuda.get_device_properties(0)
@@ -992,10 +1013,8 @@ def _forward(
         train_y = (train_y - mean) / std
         y_target = (batch.y_query.float() - mean) / std
         # `mean` and `std` are (1, E, 1) — one statistic per ensemble member. `.item()` on
-        # that raises "a Tensor with 2 elements cannot be converted to Scalar" for any E > 1,
-        # which is what killed ALL TWELVE TabPFN regressor probes in cluster job 11524668
-        # (every generation, every row count, both adaptation modes) while the classifier
-        # probes passed — the classifier branch never reaches this code.
+        # that raises "a Tensor with 2 elements cannot be converted to Scalar" for any E > 1;
+        # only the regression branch reaches this code, so classifier tests cannot catch it.
         #
         # Collapsing to a scalar is exact rather than a fudge: ensemble members of a
         # REGRESSION batch differ in feature order and preprocessing, never in y, so every
@@ -1265,8 +1284,8 @@ def _query_missing_context_class(batch) -> bool:
     is then ill-defined on the positive query row(s) because the
     in-context examples never demonstrate what "class 1" looks like.
 
-    Works for both the legacy :class:`TabPFNBatch` (single y_context /
-    y_query tensors) and the new :class:`TabPFNEnsembleBatch` (list of
+    Works for both the single-view :class:`TabPFNBatch` (single y_context /
+    y_query tensors) and :class:`TabPFNEnsembleBatch` (list of
     per-member y_context tensors). Regression batches always return
     False — the check is classifier-only.
     """
@@ -1327,8 +1346,7 @@ def _save_eval_snapshot(
     Skipping ``architecture_name`` and ``inference_config`` makes
     ``load_model`` (TabPFN .txt) fall back to V2 architecture
     inference, producing the "Missing key(s) in state_dict" error on V3
-    weights — observed in every snapshot-load attempt in the
-    2026-05-27 PD/LGD logs.
+    weights.
     """
     from src.model.diagscale import save_if_adapter
     if save_if_adapter(model, snapshot_path):
@@ -1419,6 +1437,103 @@ def _save_eval_snapshot(
     torch.save(checkpoint, str(snapshot_path))
 
 
+
+
+def training_row_cap(cfg, base_checkpoint, family: str, n_estimators_finetune: int, *,
+                     frozen_backbone: bool = False) -> int:
+    """Rows per training episode (context + query) for one base model, as trained."""
+    from omegaconf import OmegaConf
+
+    from src.train.config import limit_training_rows
+    from src.utils.paths import REPO_ROOT
+    mapping = OmegaConf.load(REPO_ROOT / "config/data.yaml").finetuning.max_rows_per_epoch
+    # A separately measured frozen cap is used only when explicitly configured.
+    max_rows_per_epoch = _resolve_max_rows_per_epoch(base_checkpoint, mapping,
+                                                     frozen_backbone=frozen_backbone)
+    # ---- member-aware row-cap scaling (GPU-memory safety) ---------------- #
+    # A training step forwards ALL `n_estimators_finetune` preprocessed
+    # ensemble members and holds every member's activation graph
+    # simultaneously for a SINGLE backward (see `_ensemble_step_loss`), so
+    # per-step GPU memory ≈ n_estimators × rows × per-member-per-row cost.
+    # Measured on the B200 (scripts/probe_row_cap.py, 64 feats,
+    # fwd+bwd, single member): v3 ≈ 2.5 GB and v2.6 ≈ 5.7 GB per 1 000 rows,
+    # ~linear (intercept ≈ 0). The `max_rows_per_epoch` config values are
+    # calibrated for the 2-member reference (PD); we scale INVERSELY with the
+    # actual member count so an 8-member LGD step holds ~the same memory as a
+    # 2-member PD step instead of 4× more (which OOMs the 192 GiB card).
+    # (TabPFN-measured constants. NOT applied to the
+    # tabicl family: its memory slope is unmeasured and its member count is
+    # fixed at 2 anyway; the `tabicl` row-cap key in config/data.yaml is the
+    # sizing knob there.)
+    _REFERENCE_MEMBERS = 2
+    if family == "tabpfn" and n_estimators_finetune > _REFERENCE_MEMBERS:
+        _scaled = max(1000, max_rows_per_epoch * _REFERENCE_MEMBERS // n_estimators_finetune)
+        if _scaled < max_rows_per_epoch:
+            LOGGER.info(
+                "Row cap scaled %d → %d rows/step for %d ensemble members "
+                "(per-step GPU memory ≈ n_estimators × rows; see probe_row_cap).",
+                max_rows_per_epoch, _scaled, n_estimators_finetune,
+            )
+            max_rows_per_epoch = _scaled
+    return limit_training_rows(cfg, max_rows_per_epoch)
+
+
+def batch_loss(model, batch, *, criterion, activation_checkpointing=False,
+               regression_objective="bar_nll"):
+    """Pure data loss of one training batch (no L2-SP), as the training loop computes it.
+
+    Shared with Experiment 0's precision check, which evaluates exactly this
+    function in FP32 and in the training precision."""
+    # Branch on batch type. The new TabPFNEnsembleBatch (path
+    # taken when `inference_config` is non-None, i.e. every
+    # real training run) carries N preprocessed views; we
+    # forward each one, stack logits as (Q,B,E,L), and let
+    # CE / NLL average across the E*Q query positions —
+    # mirroring `FinetunedTabPFNClassifier._forward_with_loss`
+    # at `TabPFN .txt`. The single-view TabPFNBatch
+    # path (E=1, no preprocessing) is kept ONLY for the
+    # mocked smoke test in tests/test_train.py.
+    from src.train.dataloader import TabICLTrainBatch
+    from src.train.tabpfn_preprocessing import TabPFNEnsembleBatch
+    if isinstance(batch, TabICLTrainBatch):
+        # TabICLv2 family: one forward over all E
+        # ensemble members — `TabICL._train_forward` routes on
+        # model.train(). Losses are verbatim tabicl's own
+        # finetuning objectives (`tabicl._finetune.{classifier,
+        # regressor}._compute_batch_loss`): CE over the first
+        # n_classes of the 10 logit columns; mean pinball over
+        # the 999-quantile head on z-normed targets.
+        out = model(batch.X, batch.y_train)   # (E, test, out_dim)
+        if batch.task_type == "classification":
+            n_cls = int(batch.y_train.max().item()) + 1
+            loss = torch.nn.functional.cross_entropy(
+                out[..., :n_cls].reshape(-1, n_cls),
+                batch.y_query.long().reshape(-1),
+            )
+        else:
+            from src.train.tabicl_model import tabicl_pinball_loss
+            loss = tabicl_pinball_loss(out, batch.y_query)
+    elif isinstance(batch, TabPFNEnsembleBatch):
+        loss = _ensemble_step_loss(
+            model, batch, criterion=criterion,
+            activation_checkpointing=activation_checkpointing,
+            regression_objective=regression_objective,
+        )
+    else:
+        pred_logits, y_target, _, _ = _forward(model, batch)
+        if batch.task_type == "classification":
+            loss = _classification_loss(
+                pred_logits, batch.y_query,
+                n_classes=_n_classes(batch), criterion=criterion,
+            )
+        else:
+            loss = _regression_loss(
+                pred_logits, y_target, criterion=criterion,
+                objective=regression_objective,
+            )
+    return loss
+
+
 def evaluate_ensemble_on_split(
     ckpt_path: Path | str,
     refs: list[DatasetRef],
@@ -1449,10 +1564,14 @@ def evaluate_ensemble_on_split(
     # Local imports — the function is called once per epoch from the
     # training loop, so we can afford the lazy-load overhead in exchange
     # for keeping `loop.py`'s module-level import cost low.
-    from src.eval.metrics import _classification_metrics, _regression_metrics
-    from src.train.dataloader import _load_processed_csv
-    from src.train.dataloader import _stratified_subsample_indices  # type: ignore[attr-defined]
-    from src.model.tabpfn_models import _make_tabpfn
+    from src.eval.benchmark import score_fitted
+    from src.eval.dataset_loader import encode_for_model
+    from src.model.tabicl_models import TabICLTrained
+    from src.model.tabpfn_models import TabPFNTrained
+    from src.train.dataloader import (
+        _load_processed_csv,
+        _stratified_subsample_indices,  # type: ignore[attr-defined]
+    )
     from src.train.metrics import mean_ignore_nan
 
     if not refs or n_subsample <= 0:
@@ -1478,60 +1597,24 @@ def evaluate_ensemble_on_split(
 
         from src.train.monitoring import monitor_indices
         ctx, val, qry = monitor_indices(y_sub, task_type, query_fraction, seed+i)
-        X_ctx, y_ctx = X_sub.iloc[ctx].values, y_sub[ctx]
-        X_val, y_val = X_sub.iloc[val].values, y_sub[val]
-        X_qry, y_qry = X_sub.iloc[qry].values, y_sub[qry]
-
-        # Categorical feature INDICES (positional) into the dataframe.
-        cat_idx = [
-            X_sub.columns.get_loc(c)
-            for c in loaded.cat_columns if c in X_sub.columns
-        ]
+        # Same encoder, wrappers and scorer as the five-fold benchmark, so the
+        # monitor differs from it only in rows, ensemble size and split.
+        X_ctx, X_val, X_qry, cat_idx = encode_for_model(
+            X_sub.iloc[ctx].reset_index(drop=True), X_sub.iloc[val].reset_index(drop=True),
+            X_sub.iloc[qry].reset_index(drop=True), categorical_columns=loaded.cat_columns)
+        y_ctx, y_val, y_qry = y_sub[ctx], y_sub[val], y_sub[qry]
 
         try:
             if family == "tabicl":
-                # TabICLv2 sklearn wrappers do their own preprocessing on raw
-                # features (no categorical-indices parameter exists).
-                # allow_auto_download=False: VSC compute nodes have no
-                # outbound network — a missing checkpoint must fail loudly,
-                # not attempt an HF download.
-                from src.train.tabicl_compat import import_tabicl_sklearn
-                ticl_clf, ticl_reg = import_tabicl_sklearn()
-                wrapper_cls = ticl_clf if task_type == "classification" else ticl_reg
-                if "_diagscale" in Path(ckpt_path).stem:
-                    from src.model.diagscale import make_estimator
-                    tabpfn = make_estimator(task_type, ckpt_path, family="tabicl",
-                                           device=device, n_estimators=int(n_estimators),
-                                           random_state=int(seed))
-                else:
-                    tabpfn = wrapper_cls(
-                        model_path=str(ckpt_path),
-                        device=device,
-                        n_estimators=int(n_estimators),
-                        allow_auto_download=False,
-                        random_state=int(seed),
-                        **(tabicl_inference_options or {}),
-                    )
+                model = TabICLTrained(task_type=task_type, ckpt_path=ckpt_path, device=device,
+                                      n_estimators=int(n_estimators),
+                                      inference_options=tabicl_inference_options)
             else:
-                tabpfn = _make_tabpfn(
-                    task_type, ckpt_path,
-                    device=device, n_estimators=int(n_estimators),
-                    categorical_features_indices=(cat_idx or None),
-                )
-            tabpfn.fit(X_ctx, y_ctx)
-            if task_type == "classification":
-                proba = tabpfn.predict_proba(X_qry)
-                proba_val = tabpfn.predict_proba(X_val)
-                metrics = _classification_metrics(
-                    proba_test=proba, y_test=y_qry,
-                    proba_val=proba_val, y_val=y_val,
-                    n_classes_seen=int(len(np.unique(y_ctx))),
-                )
-            else:
-                preds = tabpfn.predict(X_qry)
-                metrics = _regression_metrics(
-                    pred_test=preds, y_test=y_qry, neg_nll=None,
-                )
+                model = TabPFNTrained(task_type=task_type, ckpt_path=ckpt_path, device=device,
+                                      n_estimators=int(n_estimators))
+            model.fit(X_ctx, y_ctx, cat_idx)
+            metrics, _, _ = score_fitted(model, task_type, y_tr=y_ctx, X_va=X_val, y_va=y_val,
+                                         X_te=X_qry, y_te=y_qry)
         except Exception as exc:                                       # noqa: BLE001
             LOGGER.warning(
                 "ensemble eval failed for dataset=%s (n_est=%d): %s — emitting NaN",
@@ -1638,12 +1721,9 @@ def train_one_config(
     query_fraction: float | None = None,
     accumulate_grad_batches: int | None = None,
     pass_mode: str | None = None,
-    #: Swept from run-9. Overrides `cfg.optimizer.l2sp_lambda` for this trial. Same
-    #: contract as `min_train_rows`: the per-trial value wins, `None` falls back to the
-    #: config, so a run that does not sweep it behaves exactly as before.
+    #: Overrides `cfg.optimizer.l2sp_lambda` for this trial; `None` falls back to the config.
     l2sp_lambda: float | None = None,
-    #: Swept in run-8. Overrides `cfg.corpus.min_train_rows` for this trial, so the
-    #: whole grid can share one config while each trial trains on its own corpus.
+    #: Overrides `cfg.corpus.min_train_rows` for this trial.
     min_train_rows: int | None = None,
     save_path: Path | str | None = None,
     on_epoch_end: Callable[[EpochRecord], None] | None = None,
@@ -1657,7 +1737,7 @@ def train_one_config(
     accumulation, pass mode, corpus size filter and L2-SP strength.
 
     The pass mode controls exposure: one_sample draws one batch per table;
-    full_pass visits disjoint chunks; accumulate averages chunk gradients per table.
+    full_pass visits disjoint chunks, one update per chunk.
 
     Parameters
     ----------
@@ -1760,11 +1840,7 @@ def train_one_config(
         # A config list means "sweep this"; a bare trial resolves to its first value.
         min_train_rows = int(raw[0]) if isinstance(raw, (list, tuple)) else int(raw or 0)
     # THE single split path — the same `split_from_cfg` the eval pipeline uses, so training and
-    # eval cannot disagree on the held-out datasets. Calling `split_corpus` directly here used to
-    # drop `n_test_datasets` / `split_seed` / `n_folds` / `fold`, so every split trained on the
-    # same seed-42 fractional draw while eval scored a different `n_test_datasets`/`split_seed`
-    # draw (caught by exp0's pairing-risk guard, 26-08-2026). `min_train_rows` is the one swept
-    # axis, passed through explicitly.
+    # eval cannot disagree on the held-out datasets. `min_train_rows` is passed explicitly.
     split: CorpusSplit = split_from_cfg(
         cfg, track=track, min_train_rows=int(min_train_rows),
     )
@@ -1792,11 +1868,9 @@ def train_one_config(
         )
 
     # ---- 2) base model + criterion ---------------------------------------- #
-    # The grid's `use_lora` axis is the FROZEN-BACKBONE axis, and since 25-08-2026 it means
-    # the same operation in both families: freeze the repeated-block transformer stack that
+    # The grid's `use_lora` axis is the FROZEN-BACKBONE axis, the same operation in both families: freeze the repeated-block transformer stack that
     # holds the bulk of the parameters, train the embedders / label encoder / head around
-    # it. One implementation, `src/train/freeze.py`. Set `cfg.lora.enabled: true` to get
-    # Legacy PEFT is separate from public experiment 6's explicit native LoRA mode.
+    # it. One implementation, `src/train/freeze.py`. Native LoRA is `train.adaptation_mode: lora`.
     #
     # Tracks whether ADAPTERS were inserted, which is NOT the same question as whether the
     # frozen arm was selected. Adapter-factor anchoring is not effective-weight anchoring.
@@ -1805,10 +1879,10 @@ def train_one_config(
     if native_lora:
         from src.train.config import validate_lora_config
         validate_lora_config(cfg)
-        if use_lora or (l2sp_lambda is not None and float(l2sp_lambda) != 0):
-            raise ValueError("Native LoRA cannot combine the frozen axis or L2-SP")
+        if use_lora:
+            raise ValueError("Native LoRA cannot combine the frozen-backbone axis")
     family = model_family(base_checkpoint_config)
-    regression_objective = str(cfg.train.get("regression_objective", "bar_nll"))
+    regression_objective = str(cfg.train.get("regression_objective", "window_nll"))
     from src.train.regression_objectives import OBJECTIVES
     if regression_objective not in OBJECTIVES:
         raise ValueError(f"Unknown train.regression_objective: {regression_objective!r}")
@@ -1872,21 +1946,19 @@ def train_one_config(
     # L2-SP anchor (Li et al. 2018): snapshot the pretrained weights w0 right
     # after load, so the loss can penalise drift away from them (see
     # _l2sp_penalty). λ=0.003 matches Real-TabPFN's corpus-CPT regularizer
-    # exactly (Garg et al. 2025 §method — verified against the paper
-    # 2026-07-10). Configurable via cfg.optimizer.l2sp_lambda (0.0 = off).
+    # exactly (Garg et al. 2025 §method). Configurable via cfg.optimizer.l2sp_lambda (0.0 = off).
     # Applicability per family/mode:
     #   tabpfn + LoRA        → inert (base frozen, adapters start at 0): skip.
     #   tabpfn + full-FT     → anchor all trainable weights.
     #   tabicl (both modes)  → anchor the TRAINABLE weights (full-FT: all;
     #                          icl-head mode: the head only — it starts at the
     #                          pretrained weights and can drift, unlike LoRA).
-    # SWEPT AXIS from run-9: the per-trial value wins over the config, exactly as
-    # `min_train_rows` does. Shadowing the parameter name is deliberate — everything
+    # The per-trial value wins over the config, exactly as `min_train_rows` does. Shadowing the parameter name is deliberate — everything
     # below this line already reads `l2sp_lambda`.
     # Preserve the ORIGINAL swept value (None = "not an axis") for the checkpoint NAME, so the
     # saved file's _l2sp tag matches run_basename, the epoch CSV, and the resume-skip check. The
     # resolution below replaces None with the config default for the TRAINING math only — keeping
-    # the two separate is what stops the swept 0.0 arm silently training at the default (22-09-2026).
+    # the two separate is what stops a 0.0 arm silently training at the default.
     _l2sp_lambda_name = l2sp_lambda
     if l2sp_lambda is None:
         l2sp_lambda = float(getattr(cfg.optimizer, "l2sp_lambda", 0.0) or 0.0)
@@ -1899,11 +1971,16 @@ def train_one_config(
     # LoRA's factors have no pretrained counterpart. An effective-weight penalty
     # on (alpha/r)BA is possible, but is a different experiment and not implemented.
     #
-    # This read `(family == "tabicl") or (not use_lora)` until 25-08-2026 — correct while
-    # `use_lora` meant LoRA, wrong the moment it came to mean frozen-backbone. Every frozen
-    # TabPFN trial then ran with the anchor silently off while the manifest still recorded
-    # the configured lambda. Caught before the full run, not after it.
-    l2sp_applicable = not lora_adapters_inserted
+    # Adapter scopes (native LoRA, DiagScale) use L2-SP on the effective weight change
+    # (src/train/l2sp.py), so one lambda means the same distance from W0 in every scope.
+    adapter_l2sp = None
+    if l2sp_lambda > 0.0 and (native_lora or diagscale):
+        from src.train.l2sp import EffectiveWeightL2SP
+        adapter_l2sp = EffectiveWeightL2SP(model, "lora" if native_lora else "diagscale")
+        LOGGER.info("L2-SP on the effective %s weight change: lambda=%.2e, ||W0||=%.3f over "
+                    "adapted weights", "LoRA" if native_lora else "DiagScale", l2sp_lambda,
+                    adapter_l2sp.reference_norm)
+    l2sp_applicable = not lora_adapters_inserted and adapter_l2sp is None
     l2sp_anchor: dict[str, torch.Tensor] | None = None
     l2sp_w0_norm: float = 0.0
     l2sp_stage_names: dict[str, list[str]] = {}
@@ -1914,16 +1991,14 @@ def train_one_config(
         l2sp_anchor = {
             n: p.detach().clone()
             for n, p in model.named_parameters()
-            if (n.endswith(".delta") if diagscale else p.requires_grad)
+            if p.requires_grad
         }
         # ‖w0‖ over the anchored tensors, captured once. It turns the L2-SP
         # penalty into a HUMAN-READABLE drift figure: the penalty is
         #     l2sp = 0.5 * lambda * ‖w - w0‖²
         # so   ‖w - w0‖ = sqrt(2 * l2sp / lambda)
         # and the relative drift is ‖w - w0‖ / ‖w0‖. Logged per epoch below.
-        # Added 08-08-2026 — the single most useful diagnostic we have for
-        # "did continued pretraining actually change the model?", which took
-        # manual arithmetic on the log to answer for runs 5 and 6.
+        # The direct answer to "did continued pretraining actually change the model?".
         l2sp_w0_norm = float(torch.sqrt(sum(
             (t.double() ** 2).sum() for t in l2sp_anchor.values()
         )).item())
@@ -1946,28 +2021,22 @@ def train_one_config(
             "(‖w0‖=%.3f). Per-epoch lines report drift=‖w-w0‖/‖w0‖.",
             l2sp_lambda, len(l2sp_anchor), l2sp_w0_norm,
         )
-    elif l2sp_lambda > 0.0:
+    elif l2sp_lambda > 0.0 and adapter_l2sp is None:
         LOGGER.info(
             "L2-SP lambda=%.2e configured but use_lora=True (TabPFN) — base "
             "weights are frozen, so L2-SP is inert; skipping it.", l2sp_lambda,
         )
+    if adapter_l2sp is not None:
+        l2sp_w0_norm = adapter_l2sp.reference_norm
+    l2sp_active = l2sp_anchor is not None or adapter_l2sp is not None
 
     # ---- 3) DataLoader + optimiser / scheduler ---------------------------- #
     # The per-step subsample size is `finetuning.max_rows_per_epoch` in
-    # `config/data.yaml`. As of the 2026-05-20 PD run it became clear
-    # that v2.6 OOMs at the v3-safe 10_000 rows (alternating row ×
-    # feature attention × 24 layers is much more memory-hungry than
-    # v3's three-stage design). So `max_rows_per_epoch` is now a
-    # per-version map; we look it up by the base checkpoint's leading
+    # `config/data.yaml`, a per-version map (v2.6's alternating row ×
+    # feature attention needs far more memory than v3's three-stage design); we look it up by the base checkpoint's leading
     # `v<MAJOR>` segment.
     from omegaconf import OmegaConf
     _data_cfg = OmegaConf.load("config/data.yaml")
-    max_rows_per_epoch = _resolve_max_rows_per_epoch(
-        base_checkpoint_config, _data_cfg.finetuning.max_rows_per_epoch,
-        # Use a separately measured frozen cap only when explicitly configured.
-        # Frozen weights can still need activations for trainable upstream modules.
-        frozen_backbone=bool(use_lora),
-    )
     # Optional per-architecture cell budget (rows × features). Off (null)
     # for both bases by default → pure row cap. Appropriate for v3 (whose
     # capacity is a cell-budget frontier), NOT v2.6 (quadratic in rows).
@@ -1994,38 +2063,11 @@ def train_one_config(
     if query_fraction is None:
         query_fraction = float(_data_cfg.finetuning.query_fraction)
 
-    from src.train.config import training_members, limit_training_rows
+    from src.train.config import training_members
     n_estimators_finetune = training_members(cfg, track, family)
 
-    # ---- member-aware row-cap scaling (GPU-memory safety) ---------------- #
-    # A training step forwards ALL `n_estimators_finetune` preprocessed
-    # ensemble members and holds every member's activation graph
-    # simultaneously for a SINGLE backward (see `_ensemble_step_loss`), so
-    # per-step GPU memory ≈ n_estimators × rows × per-member-per-row cost.
-    # Measured on the B200 (scripts/probe_row_cap.py, 2026-07-08, 64 feats,
-    # fwd+bwd, single member): v3 ≈ 2.5 GB and v2.6 ≈ 5.7 GB per 1 000 rows,
-    # ~linear (intercept ≈ 0). The `max_rows_per_epoch` config values are
-    # calibrated for the 2-member reference (PD); we scale INVERSELY with the
-    # actual member count so an 8-member LGD step holds ~the same memory as a
-    # 2-member PD step instead of 4× more (which OOMs the 192 GiB card).
-    # (TabPFN-measured constants — B200 probe 2026-07-08. NOT applied to the
-    # tabicl family: its memory slope is unmeasured and its member count is
-    # fixed at 2 anyway; the `tabicl` row-cap key in config/data.yaml is the
-    # sizing knob there.)
-    _REFERENCE_MEMBERS = 2
-    if family == "tabpfn" and n_estimators_finetune > _REFERENCE_MEMBERS:
-        _scaled = max(1000, max_rows_per_epoch * _REFERENCE_MEMBERS // n_estimators_finetune)
-        if _scaled < max_rows_per_epoch:
-            LOGGER.info(
-                "Row cap scaled %d → %d rows/step for %d ensemble members "
-                "(per-step GPU memory ≈ n_estimators × rows; see probe_row_cap).",
-                max_rows_per_epoch, _scaled, n_estimators_finetune,
-            )
-            max_rows_per_epoch = _scaled
-
-    max_rows_per_epoch = limit_training_rows(cfg, max_rows_per_epoch)
-    from src.train.size_studies import validate_runtime_cap
-    validate_runtime_cap(cfg, max_rows_per_epoch, max_cells_per_epoch)
+    max_rows_per_epoch = training_row_cap(cfg, base_checkpoint_config, family,
+                                          n_estimators_finetune, frozen_backbone=bool(use_lora))
 
     # Resolve the per-epoch step plan. None → head of the sweep list
     # (default "one_sample" = one step per dataset per epoch).
@@ -2049,8 +2091,8 @@ def train_one_config(
         model_family=family,
         context_sampling=context_sampling,
     )
-    from src.train.sampling import EpochSampler, PROTOCOL_VERSION
-    train_sampler = EpochSampler(train_ds, seed=int(cfg.seed), accumulate=pass_mode == "accumulate")
+    from src.train.sampling import PROTOCOL_VERSION, EpochSampler
+    train_sampler = EpochSampler(train_ds, seed=int(cfg.seed))
     n_workers = _resolve_dataloader_workers(cfg)
     dl_kwargs: dict = dict(
         batch_size=1,
@@ -2078,35 +2120,19 @@ def train_one_config(
     train_loader = DataLoader(train_ds, **dl_kwargs)
 
     epochs = int(cfg.train.epochs)
-    # `accumulate_grad_batches` is a tunable as of 2026-05-27. Caller
-    # may pass the trial's value via the kwarg; falls back to the
-    # legacy `cfg.train.accumulate_grad_batches` (or the first value of
-    # `cfg.tunable.accumulate_grad_batches`) for back-compat.
+    # The trial's `accumulate_grad_batches`, else the first value of the tunable axis.
     if accumulate_grad_batches is not None:
         accumulate = max(1, int(accumulate_grad_batches))
     else:
-        legacy = getattr(cfg.train, "accumulate_grad_batches", None)
-        if legacy is None:
-            raw_acc = getattr(cfg.tunable, "accumulate_grad_batches", [1])
-            if isinstance(raw_acc, int):
-                accumulate = max(1, int(raw_acc))
-            else:
-                accumulate = max(1, int(list(raw_acc)[0]))
-        else:
-            accumulate = max(1, int(legacy))
+        raw_acc = getattr(cfg.tunable, "accumulate_grad_batches", [1])
+        accumulate = max(1, int(raw_acc if isinstance(raw_acc, int) else list(raw_acc)[0]))
     # Use ``ceil`` (not floor) so this matches what the loop actually
     # does: the inner block fires `floor(L/A)` optimizer steps, and the
     # end-of-epoch flush adds one more when `L % A != 0` — i.e.
     # `ceil(L/A)` optimizer/scheduler steps per epoch. Floor here would
     # under-size ``total_steps`` and the cosine schedule would reach LR=0
     # before training ends.
-    if str(pass_mode) == "accumulate":
-        # One update per dataset per epoch, so the step count is the dataset count — NOT
-        # len(loader)/accumulate, which would report the 91 micro-batches as 91 steps and
-        # make every steps-based budget and log line wrong.
-        steps_per_epoch = max(1, len(split.train))
-    else:
-        steps_per_epoch = max(1, math.ceil(len(train_loader) / accumulate))
+    steps_per_epoch = max(1, math.ceil(len(train_loader) / accumulate))
 
     # All architectures share an exact successful-update budget. The epoch limit
     # is a safety rail for skipped numerical updates, not the requested run length.
@@ -2131,7 +2157,7 @@ def train_one_config(
         model, cfg, total_steps=total_steps,
     )
 
-    use_amp, amp_dtype = _resolve_amp_dtype(cfg, device)
+    use_amp, amp_dtype = _resolve_amp_dtype(cfg, device, family)
     # Dynamic loss scaling is useful for FP16 but unnecessary for BF16, whose
     # exponent range matches FP32. Keeping it disabled for BF16 also makes an
     # optimizer step's success/failure unambiguous.
@@ -2143,8 +2169,7 @@ def train_one_config(
     # ---- 4) checkpoint name + path ---------------------------------------- #
     # resolve_writable_staging_path PROBES writability here — before the
     # baseline eval and all training compute — and falls back to $VSC_DATA
-    # with a loud warning if staging can't be written from this node (the
-    # failure mode that killed all 32 PD trials on 2026-07-03).
+    # with a loud warning if staging can't be written from this node.
     save_path = Path(save_path) if save_path is not None else (
         resolve_writable_staging_path(Path(cfg.checkpoint.trained_dir) / track) / descriptive_name(
             run_name=str(cfg.run_name),
@@ -2158,7 +2183,7 @@ def train_one_config(
             epoch_pass_mode=pass_mode,
             min_train_rows=int(min_train_rows or 0),
             l2sp_lambda=_l2sp_lambda_name,
-            adaptation_mode=("lora" if lora_adapters_inserted else "frozen_backbone" if use_lora else "full_ft") if trial_identity else None,
+            adaptation_mode=naming_mode(cfg, use_lora) if trial_identity else None,
         )
     )
 
@@ -2174,7 +2199,7 @@ def train_one_config(
     # Comprehensive debug banner — logged BEFORE the first forward pass so the
     # log retains full context even if the trial is later OOM-killed / SIGKILLed
     # / diverges. Captures env, cluster, hardware, versions, storage roots and
-    # the complete hyperparameter set. (User request 2026-06-23.)
+    # the complete hyperparameter set.
     _log_debug_banner(
         track=track, device=device, base_checkpoint=base_checkpoint_path,
         save_path=save_path, learning_rate=float(learning_rate),
@@ -2187,7 +2212,7 @@ def train_one_config(
         epochs=int(epochs), total_steps=int(total_steps),
         steps_per_epoch=int(steps_per_epoch),
         weight_decay=float(cfg.optimizer.weight_decay),
-        l2sp_lambda=(l2sp_lambda if l2sp_anchor is not None else 0.0),
+        l2sp_lambda=(l2sp_lambda if l2sp_active else 0.0),
         warmup_fraction=float(cfg.scheduler.warmup_fraction),
         seed=int(cfg.seed), n_train_ds=len(split.train),
         n_test_ds=len(split.test), use_amp=bool(use_amp),
@@ -2208,20 +2233,20 @@ def train_one_config(
 
     # ---- 5a) BASELINE eval — pre-finetuning snapshot ----------------------- #
     # The unmodified checkpoint provides a paired reference for the trajectory.
-    epoch_eval_n0 = int(getattr(cfg.train, "epoch_eval_subsample_samples", 0))
+    epoch_eval_n0 = monitor_rows(int(getattr(cfg.train, "epoch_eval_subsample_samples", 0)),
+                                 base_checkpoint_config, query_fraction)
     epoch_eval_ne = int(getattr(cfg.train, "epoch_eval_n_estimators", 1))
     if family == "tabicl":
         # Use the family's own inference-ensemble size (8, upstream's default)
         # rather than TabPFN's 32. The monitor exists so its curves are directly
         # comparable to the final eval numbers, and config/eval.yaml scores
         # tabicl with 8 — running the monitor at 32 broke that comparability
-        # and cost 4x the monitor time. (2026-08-06.)
+        # and cost 4x the monitor time.
         epoch_eval_ne = int(getattr(cfg.train, "epoch_eval_n_estimators_tabicl",
                                     min(epoch_eval_ne, 8)))
     # Monitor CADENCE: run the (expensive, 32-estimator) per-epoch eval only
-    # every k-th epoch (+ always the first and last). The 2026-07-03 run's
-    # timing lines showed the monitor dominating one_sample epochs ~3:1 —
-    # config/train.yaml sets 5; code default 1 preserves legacy behaviour.
+    # every k-th epoch (+ always the first and last); it can dominate
+    # one_sample epochs. Code default 1 monitors every epoch.
     # `epoch_eval_count` wins when set: monitor this many times across the run, whatever the
     # epoch count turned out to be. Under a step budget `epochs` is DERIVED (see the
     # step-budget equalisation above), so a fixed stride gives wildly different numbers of
@@ -2261,8 +2286,7 @@ def train_one_config(
 
     # Picks the per-track primary + secondary metric names. For PD we
     # add brier_score as the calibration-collapse early-warning metric
-    # (see chat 2026-05-21: loss-vs-AUC divergence diagnosed as
-    # over-confidence). For LGD we keep R² as the rank/scale secondary.
+    # (loss-vs-AUC divergence is typically over-confidence). For LGD we keep R² as the rank/scale secondary.
     if split.train and split.train[0].task_type == "classification":
         track_primary_metric = "roc_auc"
         track_secondary_metric = "brier_score" if use_ensemble_eval else ""
@@ -2276,7 +2300,8 @@ def train_one_config(
         "mcc", "f1_at_05", "prediction_mean", "prediction_std", "prediction_entropy",
         "ece_platt", "brier_score_platt", "log_loss_platt", "ece_isotonic", "brier_score_isotonic")
         if track_task_type == "classification" and use_ensemble_eval
-        else ("rmse", "r2", "mae", "median_ae", "pearson_r", "spearman_r")
+        else ("rmse", "r2", "mae", "median_ae", "pearson_r", "spearman_r", "neg_nll", "crps",
+              "bias", "prediction_mean", "prediction_std", "prediction_std_ratio")
         if use_ensemble_eval else (track_primary_metric,))
     from src.data.retention import load_refs
     retention_refs = load_refs(str(getattr(cfg.train, "retention_panel", "none")), track)
@@ -2284,6 +2309,11 @@ def train_one_config(
         raise ValueError("Non-credit retention monitoring requires the ensemble inference path")
     monitor_details = {}
 
+
+    from omegaconf import OmegaConf
+    # Every TabICL monitor uses the evaluation's inference options (FP32, no FA3).
+    monitor_tabicl_options = dict(OmegaConf.select(
+        cfg, "evaluation.tabicl_inference_options", default=None) or {})
 
     def _do_eval_impl(
         ckpt_path: Path | str, refs: list[DatasetRef], *, seed: int,
@@ -2302,8 +2332,7 @@ def train_one_config(
                 task_type=track_task_type,
                 metric_names=track_metric_names,
                 family=family,
-                **({"tabicl_inference_options": dict(cfg.evaluation.tabicl_inference_options)}
-                   if native_lora and family == "tabicl" else {}),
+                tabicl_inference_options=monitor_tabicl_options,
             )
         result = evaluate_on_split(
             model, refs, criterion=criterion, device=device,
@@ -2315,7 +2344,7 @@ def train_one_config(
         # evaluate_on_split returns dict[str, float] when given a tuple.
         return result if isinstance(result, dict) else {track_primary_metric: float(result)}
 
-    from src.train.recovery import preserve_random_state, batch_rows
+    from src.train.recovery import batch_rows, preserve_random_state
 
     def _do_eval(*args, **kwargs):
         with preserve_random_state(model):
@@ -2341,9 +2370,14 @@ def train_one_config(
     trajectory_steps = {int(v) for v in getattr(cfg.train, "trajectory_steps", [])}
     if any(v < 0 or v > total_steps for v in trajectory_steps):
         raise ValueError("Trajectory updates must lie between zero and the training budget")
+    # Equal-data milestones (second campaign): also monitor when the cumulative number of
+    # processed episode rows first reaches each value, so arms with different episode sizes
+    # can be compared at the same amount of data seen. Recorded as record_type="rows_milestone".
+    trajectory_rows = sorted({int(v) for v in (OmegaConf.select(cfg, "train.trajectory_rows") or [])})
+    if any(v <= 0 for v in trajectory_rows):
+        raise ValueError("Row milestones must be positive")
 
-    from src.train.recovery import load_recovery, save_recovery, TrainingInterrupted, stop_requested
-    from src.utils.source_transition import execution_record
+    from src.train.recovery import TrainingInterrupted, load_recovery, save_recovery, stop_requested
     recovery_every = int(getattr(cfg.train, "recovery_every_updates", 0))
     recovery_path = Path(str(save_path) + ".resume.pt")
     resuming = recovery_every > 0 and recovery_path.is_file()
@@ -2357,7 +2391,7 @@ def train_one_config(
         raise ValueError("Segmented jobs require recovery_every_updates > 0")
     recovery_identity = trial_identity
     if recovery_every and recovery_identity is None:
-        from src.utils.experiment import scientific_config, digest_json
+        from src.utils.experiment import digest_json, scientific_config
         recovery_identity = {"sha256": digest_json({"config": scientific_config(cfg),
                                                     "name": save_path.name})}
 
@@ -2367,13 +2401,24 @@ def train_one_config(
         drift_anchor = {n: p.detach().clone() for n, p in model.named_parameters()
                         if (n.endswith('.delta') if diagscale else p.requires_grad)}
 
-    def _record_trajectory(epoch):
-        if successful_updates not in trajectory_steps:
-            return
-        if any(r.successful_updates == successful_updates for r in trajectory_history):
-            return
+    def _row_milestones_recorded():
+        return {max((m for m in trajectory_rows if m <= r.processed_rows), default=None)
+                for r in trajectory_history if r.record_type == "rows_milestone"}
+
+    def _record_row_milestone(epoch):
+        due = [m for m in trajectory_rows if processed_rows >= m]
+        if due and due[-1] not in _row_milestones_recorded():
+            _record_trajectory(epoch, record_type="rows_milestone")
+
+    def _record_trajectory(epoch, record_type="trajectory"):
+        if record_type == "trajectory":
+            if successful_updates not in trajectory_steps:
+                return
+            if any(r.successful_updates == successful_updates and r.record_type == "trajectory"
+                   for r in trajectory_history):
+                return
         started = time.monotonic()
-        from src.train.telemetry import progress, parameter_statistics
+        from src.train.telemetry import parameter_statistics, progress
         progress(successful_updates, processed_rows, "monitoring")
         monitor_details.clear()
         with preserve_random_state(model):
@@ -2404,7 +2449,7 @@ def train_one_config(
             allocated_bytes, reserved_bytes = memory_peaks.capture()
             rec = EpochRecord(
                 epoch=epoch, train_loss=float("nan"), elapsed_sec=time.monotonic() - t0,
-                lr=float(optimizer.param_groups[0]["lr"]), record_type="trajectory",
+                lr=float(optimizer.param_groups[0]["lr"]), record_type=record_type,
                 lr_applied=last_applied_lr,
                 successful_updates=successful_updates, processed_rows=processed_rows,
                 metric_name=track_primary_metric, secondary_metric_name=track_secondary_metric,
@@ -2416,7 +2461,8 @@ def train_one_config(
                 per_dataset_scores=dict(monitor_details), parameter_statistics=stats,
                 cuda_peak_allocated_bytes=allocated_bytes,
                 cuda_peak_reserved_bytes=reserved_bytes,
-                l2sp_penalty=0.5 * l2sp_lambda * float(numerator.item()) if drift_anchor else 0.0,
+                l2sp_penalty=(float(adapter_l2sp(l2sp_lambda).detach()) if adapter_l2sp is not None
+                              else 0.5 * l2sp_lambda * float(numerator.item()) if drift_anchor else 0.0),
                 per_dataset_metric={**{f"train__{k}": v for k, v in train_by_dataset.items()},
                                     **{f"test__{k}": v for k, v in test_by_dataset.items()},
                                     **{f"ood__{k}": v for k, v in ood_by_dataset.items()}},
@@ -2540,11 +2586,10 @@ def train_one_config(
 
     for epoch in range(start_epoch, epochs):
         model.train()
-        # NOTE (2026-08-06): do NOT snap TabICLv2's frozen stages back to eval()
+        # NOTE: do NOT snap TabICLv2's frozen stages back to eval()
         # here. `.training` picks the ALGORITHM in TabICLv2 (train forward vs the
         # no_grad, KV-cached inference forward that writes into its input in
-        # place), so eval-ing them crashed every `_iclhead` trial in the
-        # 2026-08-05 run. Freezing is requires_grad=False only — see
+        # place), so eval-ing them crashes every `_iclhead` trial. Freezing is requires_grad=False only — see
         # load_tabicl_for_training. The whole model therefore stays on the
         # train forward path, exactly as in full-FT.
         # Per-epoch reshuffle: a fresh random subsample is drawn from each
@@ -2559,7 +2604,7 @@ def train_one_config(
         # the accumulation boundary, because steps can be SKIPPED (missing
         # context class, non-finite loss) before any backward, and using the
         # raw step index would mis-scale gradients and desync the end-of-epoch
-        # flush whenever a skip occurs. (Bug fixed 2026-06-23.)
+        # flush whenever a skip occurs.
         micro_since_step = 0
         optimizer.zero_grad(set_to_none=True)
         epoch_t0 = time.monotonic()
@@ -2663,9 +2708,9 @@ def train_one_config(
             micro_since_step = 0
             if did_step:
                 _record_trajectory(epoch)
+                _record_row_milestone(epoch)
             return norm
 
-        _dataset_end_flags = train_sampler.dataset_end_flags
         for step, batch in enumerate(train_loader, start=train_sampler.start_offset + 1):
             if successful_updates >= total_steps:
                 break
@@ -2673,7 +2718,6 @@ def train_one_config(
             monitor_before = sum(r.monitor_seconds for r in trajectory_history)
             batch = batch.to(device)
             processed_rows += batch_rows(batch)
-            dataset_boundary = pass_mode == "accumulate" and _dataset_end_flags[step - 1]
             # Skip-on-missing-class check — mirrors the official
             # `FinetunedTabPFNClassifier._should_skip_batch` at
             # `TabPFN .txt`. If a stratified subsample
@@ -2692,8 +2736,6 @@ def train_one_config(
                     epoch, step, batch.dataset_id,
                 )
                 epoch_skipped_steps += 1
-                if dataset_boundary:
-                    flush_gradients()
                 after_batch()
                 continue
             # Pre-declare every tensor that will hold the forward autograd graph, so the
@@ -2702,59 +2744,16 @@ def train_one_config(
             with torch.amp.autocast(
                 "cuda", enabled=use_amp, dtype=amp_dtype,
             ):
-                # Branch on batch type. The new TabPFNEnsembleBatch (path
-                # taken when `inference_config` is non-None, i.e. every
-                # real training run) carries N preprocessed views; we
-                # forward each one, stack logits as (Q,B,E,L), and let
-                # CE / NLL average across the E*Q query positions —
-                # mirroring `FinetunedTabPFNClassifier._forward_with_loss`
-                # at `TabPFN .txt`. The legacy TabPFNBatch
-                # path (E=1, no preprocessing) is kept ONLY for the
-                # mocked smoke test in tests/test_train.py.
-                from src.train.tabpfn_preprocessing import TabPFNEnsembleBatch
-                from src.train.dataloader import TabICLTrainBatch
-                if isinstance(batch, TabICLTrainBatch):
-                    # TabICLv2 family (2026-08-04): one forward over all E
-                    # ensemble members — `TabICL._train_forward` routes on
-                    # model.train(). Losses are verbatim tabicl's own
-                    # finetuning objectives (`tabicl._finetune.{classifier,
-                    # regressor}._compute_batch_loss`): CE over the first
-                    # n_classes of the 10 logit columns; mean pinball over
-                    # the 999-quantile head on z-normed targets.
-                    out = model(batch.X, batch.y_train)   # (E, test, out_dim)
-                    if batch.task_type == "classification":
-                        n_cls = int(batch.y_train.max().item()) + 1
-                        loss = torch.nn.functional.cross_entropy(
-                            out[..., :n_cls].reshape(-1, n_cls),
-                            batch.y_query.long().reshape(-1),
-                        )
-                    else:
-                        from src.train.tabicl_model import tabicl_pinball_loss
-                        loss = tabicl_pinball_loss(out, batch.y_query)
-                elif isinstance(batch, TabPFNEnsembleBatch):
-                    loss = _ensemble_step_loss(
-                        model, batch, criterion=criterion,
-                        activation_checkpointing=activation_checkpointing,
-                        regression_objective=regression_objective,
-                    )
-                else:
-                    pred_logits, y_target, _, _ = _forward(model, batch)
-                    if batch.task_type == "classification":
-                        loss = _classification_loss(
-                            pred_logits, batch.y_query,
-                            n_classes=_n_classes(batch), criterion=criterion,
-                        )
-                    else:
-                        loss = _regression_loss(
-                            pred_logits, y_target, criterion=criterion,
-                            objective=regression_objective,
-                        )
+                loss = batch_loss(model, batch, criterion=criterion,
+                                  activation_checkpointing=activation_checkpointing,
+                                  regression_objective=regression_objective)
                 # L2-SP anchors trainable pretrained weights in both full and frozen modes.
                 # Added to the back-prop loss ONLY — `loss` stays the pure
                 # data loss (CE / NLL) for logging, curves, and the
                 # non-finite / divergence checks below.
-                if l2sp_anchor is not None:
-                    _pen = _l2sp_penalty(model, l2sp_anchor, l2sp_lambda)
+                if l2sp_active:
+                    _pen = (adapter_l2sp(l2sp_lambda) if adapter_l2sp is not None
+                            else _l2sp_penalty(model, l2sp_anchor, l2sp_lambda))
                     if _pen is not None:
                         epoch_l2sp.append(float(_pen.detach().cpu().item()))
                     loss_to_backprop = (
@@ -2774,13 +2773,9 @@ def train_one_config(
                 # saved activations; here we skip backward, so unless we drop EVERY reference
                 # (the loss, the backprop tensor, AND the forward outputs, which each hold a
                 # grad_fn chain into the ~full-step activations) the graph lingers into the
-                # next step's forward and roughly DOUBLES peak memory. v2 OOM'd exactly this
-                # way at 10k rows the step after a large PD table's non-finite loss (26-08-2026),
-                # having run 40 earlier steps — including 64-feature home_credit — cleanly.
+                # next step's forward and roughly DOUBLES peak memory (an observed v2 OOM at 10k rows).
                 loss = loss_to_backprop = pred_logits = y_target = out = _pen = None
                 epoch_skipped_steps += 1
-                if dataset_boundary:
-                    flush_gradients()
                 after_batch()
                 continue
 
@@ -2788,7 +2783,7 @@ def train_one_config(
             micro_since_step += 1
 
             pre_clip_norm = None
-            if dataset_boundary or (pass_mode != "accumulate" and micro_since_step >= accumulate):
+            if micro_since_step >= accumulate:
                 pre_clip_norm = flush_gradients()
 
             loss_val = float(loss.detach().cpu().item())
@@ -2998,8 +2993,7 @@ def train_one_config(
         data_io_s = max(0.0, training_s - epoch_compute_s)
         steps_per_s = (n_batches / training_s) if training_s > 0 else float("nan")
         # Scientific notation: at conservative LRs the penalty is ~1e-6..1e-9
-        # (‖w−w0‖² after tiny steps), which a %.4f rendered as a useless
-        # "0.0000" in every Jul-10 log line.
+        # (‖w−w0‖² after tiny steps), which %.4f would render as a useless "0.0000".
         # Per-epoch weight drift for the divergence guard (and the log line below). Derived from
         # the L2-SP penalty, so it is free and available EVERY epoch — the monitor-only
         # `stage_drift` is not, which is what let the guard fall back to a loss-only rule.
@@ -3066,7 +3060,7 @@ def train_one_config(
         if successful_updates >= total_steps:
             break
 
-        # ONE comprehensive line per epoch (user request 2026-07-11): every
+        # ONE comprehensive line per epoch: every
         # number needed to diagnose a run lives on a single greppable line —
         # loss stats, LR, monitor metrics, gradient health, skip counters,
         # L2-SP, GPU peak, worst dataset, and the full timing decomposition.
@@ -3097,8 +3091,7 @@ def train_one_config(
 
         # ---- Divergence detection — early abort on collapse ------------ #
         # We watch the LAST ``divergence_patience`` epoch records and
-        # trip if any of these heuristics matches the published
-        # collapse signature from the 2026-05-28 PD run (trials a0/a1):
+        # trip if any of these collapse heuristics matches:
         #   * loss CONSTANT to ~6 sig figs across all watched epochs
         #     (the model is dead — outputs deterministic garbage)
         #   * train AND test metric == 0.5 (PD) or NaN for both
@@ -3109,9 +3102,7 @@ def train_one_config(
         # diverged=True on the TrainingResult, and STILL save the
         # checkpoint (so the user can inspect what went wrong). The
         # caller writes a status="DIVERGED" row to the manifest.
-        # The heuristics live in `_divergence_reason` (a pure, unit-tested function) so the in-loop
-        # logic can never again silently drift from what the tests assert — the `loss_const`
-        # false-abort of every accumulate + L2-SP trial hid behind exactly that gap.
+        # The heuristics live in `_divergence_reason` (a pure, unit-tested function).
         diverge_patience = int(getattr(cfg.train, "divergence_patience", 5))
         recent = [r for r in history if r.epoch >= 0][-diverge_patience:]
         # Cumulative optimizer steps so far — gates loss_const to the early budget so a
@@ -3192,7 +3183,7 @@ def train_one_config(
         "run_name":            str(cfg.run_name),
         "training_protocol_version": PROTOCOL_VERSION,
         "trial_identity": trial_identity,
-        "execution_source": execution_record(),
+        "execution_source": None,  # no source transitions exist in the second campaign
         "adaptation": getattr(model, "_creditpfn_freeze_info", {
             "frozen_modules": [], "trainable_parameter_names": [n for n, p in model.named_parameters() if p.requires_grad]}),
         "successful_updates": successful_updates,
@@ -3225,7 +3216,7 @@ def train_one_config(
             "weight_decay":        float(cfg.optimizer.weight_decay),
             # Effective L2-SP strength actually applied this trial (0.0 when
             # off, or when genuine inserted LoRA adapters leave no anchored weights).
-            "l2sp_lambda":         (l2sp_lambda if l2sp_anchor is not None else 0.0),
+            "l2sp_lambda":         (l2sp_lambda if l2sp_active else 0.0),
             "betas":               [0.9, 0.999],          # hardcoded AdamW betas
             "scheduler_type":      "warmup_cosine",       # hardcoded schedule family
             "warmup_fraction":     float(cfg.scheduler.warmup_fraction),
@@ -3249,13 +3240,12 @@ def train_one_config(
             # family (currently two for both tracks/families), and it drives
             # both the gradient noise and the member-aware row scaling — so
             # a checkpoint that doesn't record it can't be reproduced from
-            # its own provenance. (Added 2026-08-04.)
+            # its own provenance.
             "n_estimators_finetune": int(n_estimators_finetune),
             "activation_checkpointing": activation_checkpointing,
             "query_fraction":      query_fraction,
             "epoch_pass_mode":     pass_mode,
-            # Swept since run-8. Without it in the provenance the eval cannot tell the
-            # two corpus arms apart and writes both to one results directory.
+            # Without it in the provenance the eval cannot tell corpus arms apart.
             "min_train_rows":      int(min_train_rows or 0),
             "seed":                int(cfg.seed),
             "use_lora":            bool(use_lora),
@@ -3280,7 +3270,7 @@ def train_one_config(
         # TorchVersion (a str subclass), which torch.load(weights_only=True)
         # — PyTorch >=2.6's default — refuses to unpickle. Embedding the raw
         # object made every trained checkpoint unloadable at eval time
-        # (the 2026-05-31 run: 1475 UnpicklingError fails). Cast to a plain
+        # (UnpicklingError). Cast to a plain
         # str so the .ckpt is weights_only-safe regardless of the loader.
         "torch_version":       str(torch.__version__),
         "tabpfn_version":      (str(tabpfn_version) if tabpfn_version is not None else None),

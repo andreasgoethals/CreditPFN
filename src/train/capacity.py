@@ -68,9 +68,10 @@ def probe_base(base_path: str, track: str, rows_grid: list[int], device: str,
                n_estimators: int = 2, *, freeze_backbone: bool = False,
                query_fraction: float = 0.4, n_features: int = 64) -> None:
     import torch
-    from src.train.model import load_tabpfn_for_training
+
     from src.train.dataloader import TabPFNBatch
-    from src.train.loop import _forward, _classification_loss, _regression_loss, _n_classes
+    from src.train.loop import _classification_loss, _forward, _n_classes, _regression_loss
+    from src.train.model import load_tabpfn_for_training
 
     ckpt = _checkpoint(base_path, track, n_estimators, freeze_backbone, query_fraction, n_features)
     model, criterion, _, _ = load_tabpfn_for_training(
@@ -102,6 +103,7 @@ def probe_tabicl_base(base_path: str, track: str, rows_grid: list[int], device: 
                       n_estimators: int = 2, *, freeze_backbone: bool = False,
                       query_fraction: float = 0.4, n_features: int = 64) -> None:
     import torch
+
     from src.train.tabicl_model import load_tabicl_for_training, tabicl_pinball_loss
 
     ckpt = _checkpoint(base_path, track, n_estimators, freeze_backbone, query_fraction, n_features)
@@ -128,6 +130,7 @@ def probe_tabicl_base(base_path: str, track: str, rows_grid: list[int], device: 
 def probe_configured_bases(cfg, tracks, rows_grid=None, *, device="cuda", frozen_modes=(False, True)):
     """Probe the configured members and query fraction with family-specific row grids."""
     from omegaconf import OmegaConf
+
     from src.train.config import training_members
     from src.train.tabicl_compat import model_family
 

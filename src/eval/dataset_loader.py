@@ -1,8 +1,7 @@
 """Eval-time dataset loader: reads ``data/processed/{track}/<id>.sanitized.csv``
 and produces ``(X, y, categorical_idx)`` for downstream model wrappers.
 
-Since the 2026-05-20 refactor, the sanitized CSV is the **only**
-on-disk training input — there is no more ``.npz`` chunking step. Both
+The sanitized CSV is the **only** on-disk training input. Both
 the training and eval pipelines read the same CSV files; the training
 pipeline applies its own per-epoch random subsample, while the eval
 pipeline applies K-fold cross-validation and a per-model architectural
@@ -22,9 +21,8 @@ Public surface
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from dataclasses import dataclass
-from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 import pandas as pd
@@ -127,7 +125,7 @@ def load_processed_dataset(track: str, dataset_id: str) -> ProcessedDataset:
         # silently injecting a phantom extra class that corrupts
         # StratifiedKFold, the unique-class count, and log_loss's label set.
         # A non-numeric / missing target in a *sanitized* CSV is a real data
-        # error, so fail loudly. (Bug fixed 2026-06-23.)
+        # error, so fail loudly.
         y_num = pd.to_numeric(y_raw, errors="coerce")
         n_bad = int(y_num.isna().sum())
         if n_bad:
@@ -180,7 +178,7 @@ def subsample(
         # the max(1,…) floor for rare classes can push the TOTAL above
         # max_rows; for TabPFN the cap is a HARD architectural memory limit,
         # so we must not exceed it. Trim the overflow afterwards, preferring
-        # to thin the largest (majority) classes. (Bug fixed 2026-06-23.)
+        # to thin the largest (majority) classes.
         keep = np.zeros(n, dtype=bool)
         for cls in np.unique(y):
             idx = np.where(y == cls)[0]

@@ -124,7 +124,7 @@ def _drop_constant_columns(
 
 def _coerce_numeric_strings(
     df: pd.DataFrame, target: str, threshold: float,
-    *, skip_cols: "list[str] | tuple[str, ...]" = (),
+    *, skip_cols: list[str] | tuple[str, ...] = (),
 ) -> tuple[pd.DataFrame, list[str]]:
     """Where ≥ ``threshold`` of a string-like column's non-NaN values
     parse as numeric, commit the coercion. Targets are left untouched.
@@ -134,9 +134,9 @@ def _coerce_numeric_strings(
     ZIP, an ordinal code — must stay categorical (TabPFN ordinal-encodes it)
     rather than being cast to a continuous magnitude with a false ordering.
     Honouring the categorical hint here makes the documented "mark it
-    categorical to prevent coercion" mitigation actually work (2026-06-24).
+    categorical to prevent coercion" mitigation actually work.
 
-    Treats both legacy ``object`` and the new pandas-3.x ``str`` /
+    Treats both pandas ``object`` and the pandas-3.x ``str`` /
     ``StringDtype`` columns as candidates — a single ``is_object_dtype``
     check would silently miss strings on pandas 3.x.
     """
@@ -491,17 +491,10 @@ def sanitize_dataset(
     nums = [c for c in nums if c in surviving]
 
     # --- (i) feature selection (cap feature count; keep REAL columns) ------
-    # Reads cfg.sanitize.feature_selection.{enabled, corr_threshold}; falls
-    # back to the legacy cfg.sanitize.agglomeration.enabled flag so old
-    # configs still parse.
+    # Reads cfg.sanitize.feature_selection.{enabled, corr_threshold}.
     fs_cfg = getattr(cfg.sanitize, "feature_selection", None)
-    if fs_cfg is not None:
-        fs_enabled = bool(getattr(fs_cfg, "enabled", True))
-        corr_thr = float(getattr(fs_cfg, "corr_threshold", 0.95))
-    else:                                                       # legacy config
-        agg = getattr(cfg.sanitize, "agglomeration", None)
-        fs_enabled = bool(getattr(agg, "enabled", True)) if agg is not None else True
-        corr_thr = 0.95
+    fs_enabled = bool(getattr(fs_cfg, "enabled", True)) if fs_cfg is not None else True
+    corr_thr = float(getattr(fs_cfg, "corr_threshold", 0.95)) if fs_cfg is not None else 0.95
     if fs_enabled and (len(nums) + len(cats)) > cfg.sanitize.max_columns:
         df, nums, cats = _select_to_max_columns(
             df, target, nums, cats,

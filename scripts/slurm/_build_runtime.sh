@@ -3,7 +3,7 @@ set -euo pipefail
 identifier="${1:?}"; original_python="${2:?}"; conda_executable="${3:?}"
 [[ "$identifier" =~ ^[a-zA-Z0-9]+$ && -n "${SLURM_JOB_ID:-}" ]] || exit 2
 repo="$PWD"
-project="${CREDITPFN_PROJECT_ROOT:-${VSC_PROJECT_ROOT:-/lustre1/project/stg_00211}}"
+project="${CREDITPFN_PROJECT_ROOT:-${VSC_PROJECT_ROOT:-/gpfs1/project/prj_00013}}"
 [[ "$(basename "$project")" == CreditPFN ]] || project="$project/CreditPFN"
 destination="$project/runtimes/$identifier"
 spec="$repo/output CreditPFN/experiment0/runtime/$identifier"

@@ -5,9 +5,9 @@ The scientific packages below must match it exactly locally, so a local test exe
 same upstream training and inference code that the cluster runs. (The v2.6 regression
 loss defect went unnoticed because the local tabpfn was 2.2.1 while VSC ran 8.0.8.)
 """
+import sys
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-import sys
 
 import pytest
 
@@ -48,5 +48,6 @@ def test_local_scientific_versions_match_the_cluster_lock(package):
     assert installed.split("+")[0] == expected, (package, installed, expected)
 
 
-def test_local_python_matches_the_cluster_minor_version():
-    assert sys.version_info[:2] == (3, 13)
+def test_local_python_matches_the_cluster_version_exactly():
+    """The container runs Python 3.13.11; the local .venv uses the same release."""
+    assert sys.version_info[:3] == (3, 13, 11), sys.version

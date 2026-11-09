@@ -5,7 +5,11 @@ from __future__ import annotations
 import logging
 import warnings
 
-from src.utils.logging_setup import RepeatedWarnings, _StructuredFormatter, configure_warning_filters
+from src.utils.logging_setup import (
+    RepeatedWarnings,
+    _StructuredFormatter,
+    configure_warning_filters,
+)
 
 
 def test_multiline_column_transformer_futurewarning_is_filtered() -> None:

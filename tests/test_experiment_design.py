@@ -1,14 +1,14 @@
 """Scientific identities, exact budgets and uninterrupted-versus-recovered training."""
-from pathlib import Path
 import os
 import random
+from pathlib import Path
 from types import SimpleNamespace as NS
 
 import pytest
 import torch
 from omegaconf import OmegaConf
 
-from tests.test_train import synthetic_processed, _DummyClassifier
+from tests.test_train import _DummyClassifier, synthetic_processed  # noqa: F401 - pytest fixture
 
 
 @pytest.fixture
@@ -69,93 +69,22 @@ def test_debug_row_limit_rejects_invalid_values(value):
         limit_training_rows(OmegaConf.create({"train": {"max_rows_per_step": value}}), 1000)
 
 
-def test_only_recovery_controls_request_strict_numerics_and_small_batches():
-    from src.train.config import load_train_config
-    from src.utils.experiment import digest_json, scientific_config
-    # This invariant describes the established campaigns. New context policies
-    # and episode-size ablations have their own explicit design tests.
-    for path in Path("config").glob("experiment[0-3]/*.yaml"):
-        if path.name in {"auxiliary.yaml", "followups.yaml"}:
-            continue
-        cfg = load_train_config(config_path=str(path))
-        recovery = path.stem.startswith("recovery_")
-        assert cfg.train.deterministic is recovery
-        assert cfg.train.max_rows_per_step == (2048 if recovery else None)
-    cfg = load_train_config(config_path="config/experiment0/recovery_pd.yaml")
-    before = digest_json(scientific_config(cfg))
-    cfg.train.deterministic = False
-    assert digest_json(scientific_config(cfg)) != before
-    cfg.train.deterministic = True
-    cfg.train.max_rows_per_step = 1024
-    assert digest_json(scientific_config(cfg)) != before
-
-
-def test_main_and_sampling_grid_counts_and_shared_partitions():
-    from src.train.config import load_train_config, resolve_grid
-    from src.utils.experiment import apply_split_index
-    from src.train.corpus import _assign_folds
-    for track, size in (("pd", 17), ("lgd", 8)):
-        main = load_train_config(config_path=f"config/experiment1/{track}.yaml")
-        sampling = load_train_config(config_path=f"config/experiment7/{track}.yaml")
-        assert len(resolve_grid(main, single=False)) * main.corpus.n_splits == 256
-        assert len(resolve_grid(sampling, single=False)) * sampling.corpus.n_splits == 48
-        assert set(sampling.tunable.epoch_pass_modes) == {"one_sample", "full_pass", "accumulate"}
-        assert sampling.train.context_sampling == "stratified"
-        seeds = load_train_config(config_path=f"config/experiment2/{track}.yaml")
-        assert len(resolve_grid(seeds, single=False)) * seeds.corpus.n_splits == 16
-        assert list(seeds.experiment.training_seeds) == [43]
-        assert seeds.seed == 43
-        assert seeds.corpus.split_seed == main.corpus.split_seed
-        assert seeds.train.context_sampling == main.train.context_sampling
-        assert seeds.train.monitor_seed == main.train.monitor_seed
-        from src.eval.config import load_eval_configs
-        main_eval, _ = load_eval_configs([], [], config_path=f"config/experiment1/{track}.yaml")
-        seed_eval, _ = load_eval_configs([], [], config_path=f"config/experiment2/{track}.yaml")
-        assert seed_eval.seed == main_eval.seed == 99
-        assert list(seeds.tunable.learning_rates) == [3e-7]
-        assert list(seeds.tunable.l2sp_lambdas) == [.003]
-        assert list(seeds.tunable.frozen_backbone) == [False]
-        assert list(seeds.tunable.epoch_pass_modes) == ['one_sample']
-        test_sets = []
-        for index in range(4):
-            cfg = apply_split_index(OmegaConf.create(OmegaConf.to_container(main)), index)
-            repeat = apply_split_index(OmegaConf.create(OmegaConf.to_container(sampling)), index)
-            assert cfg.seed == repeat.seed == 42
-            assert cfg.corpus.fold == repeat.corpus.fold == index
-            assert cfg.corpus.split_seed == repeat.corpus.split_seed == 1729
-            assigned = _assign_folds([str(i) for i in range(size)], n_folds=4,
-                                           fold=index, seed=1729)
-            test_sets.append({k for k, v in assigned.items() if v == "test"})
-        assert len(set.union(*test_sets)) == sum(map(len, test_sets)) == size
-
-
 def test_pass_modes_have_distinct_names_and_evaluation_directories():
-    from src.train.loop import descriptive_name
     from src.eval.benchmark import _method_dirname
     from src.model.base import ModelHandle
+    from src.train.loop import descriptive_name
     names, directories = set(), set()
-    for mode in ("one_sample", "full_pass", "accumulate"):
+    for mode in ("one_sample", "full_pass"):
         names.add(descriptive_name(run_name="r", track="pd", base_path="model.ckpt",
                                    learning_rate=1e-6, seed=42, epoch_pass_mode=mode))
         handle = ModelHandle(name="r", source="tabpfn-trained", track="pd", task_type="classification",
                              extra={"base_checkpoint": "model.ckpt", "learning_rate": 1e-6,
                                     "epoch_pass_mode": mode})
         directories.add(_method_dirname(handle))
-    assert len(names) == len(directories) == 3
+    assert len(names) == len(directories) == 2
 
 
-def test_fingerprint_covers_scientific_changes_but_not_workers():
-    from src.train.config import load_train_config
-    from src.utils.experiment import scientific_config, digest_json
-    cfg = load_train_config(config_path="config/experiment1/pd.yaml")
-    before = digest_json(scientific_config(cfg))
-    cfg.train.dataloader_workers = 8
-    assert digest_json(scientific_config(cfg)) == before
-    cfg.train.target_total_steps = 6000
-    assert digest_json(scientific_config(cfg)) != before
-
-
-@pytest.mark.parametrize("mode", ["one_sample", "full_pass", "accumulate"])
+@pytest.mark.parametrize("mode", ["one_sample", "full_pass"])
 @pytest.mark.parametrize("terminal_divergence", [False, True])
 @pytest.mark.parametrize("seed", [42, 43])
 def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
@@ -281,8 +210,10 @@ def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
 
 def test_monitoring_restores_rng_and_module_modes():
     import random
+
     import numpy as np
-    from src.train.recovery import capture_rng, restore_rng, preserve_random_state
+
+    from src.train.recovery import capture_rng, preserve_random_state, restore_rng
     model = torch.nn.Sequential(torch.nn.Dropout(), torch.nn.Linear(2, 1)).train()
     state = capture_rng()
     expected = (random.random(), np.random.random(), torch.rand(3))

@@ -40,24 +40,16 @@ for (( TRIAL=FIRST; TRIAL<=LAST; TRIAL++ )); do
         --log-path "$LOG" "${EXTRA_ARGS[@]}" "track=$TRACK"
     then
         echo "TRIAL ${TRIAL} completed."
-        if [[ -n "${CREDITPFN_FLOW_ID:-}" ]]; then
-            python -m src.utils.experiment0 complete --id "$CREDITPFN_FLOW_ID" \
-                --phase "$CREDITPFN_FLOW_PHASE" --track "$TRACK" --trial "$TRIAL" --rc 0
-        fi
     else
         RC=$?
         if [[ "$RC" == 75 ]]; then
             if [[ "${CREDITPFN_AUTO_REQUEUE:-0}" == 1 && "${SLURM_RESTART_COUNT:-0}" -lt "${CREDITPFN_MAX_REQUEUES:-20}" ]]; then
-                scontrol requeue "${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}" && exit 0
+                scontrol --clusters="${SLURM_CLUSTER_NAME:?}" requeue "${SLURM_ARRAY_JOB_ID}_${SLURM_ARRAY_TASK_ID}" && exit 0
             fi
             echo 'Recovery saved. Resubmit this task with the same configuration.' >&2
             exit 75
         fi
         echo "TRIAL ${TRIAL} FAILED (rc=${RC}); continuing this task's remaining trials." >&2
-        if [[ -n "${CREDITPFN_FLOW_ID:-}" ]]; then
-            python -m src.utils.experiment0 complete --id "$CREDITPFN_FLOW_ID" \
-                --phase "$CREDITPFN_FLOW_PHASE" --track "$TRACK" --trial "$TRIAL" --rc "$RC"
-        fi
     fi
 done
 exit "$RC"

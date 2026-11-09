@@ -1,7 +1,6 @@
 """Manifest construction (Stage 2 of the data pipeline).
 
-The manifest is now an OPTIONAL, human-readable summary — since 26-08-2026 nothing needs it to
-RUN. `src.train.corpus.build_dataset_pool` and the eval loader build their per-dataset metadata
+The manifest is an OPTIONAL, human-readable summary — nothing needs it to RUN. `src.train.corpus.build_dataset_pool` and the eval loader build their per-dataset metadata
 from :data:`src.data.preprocessing.DATASET_METADATA` (code) plus the processed CSVs, so a wiped
 ``output CreditPFN/`` no longer has to be rebuilt from raw or copied across before a run. This stage is
 still useful for `AGENTS_MEMORY.md`-style inspection and dataset stats.
@@ -61,8 +60,8 @@ import argparse
 import datetime as dt
 import hashlib
 import logging
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 import numpy as np
 import pandas as pd
@@ -99,7 +98,7 @@ def shape_aware_sha256(n_rows: int, n_cols: int, columns: Iterable[str]) -> str:
     of column *names* (order-independent) hash identically — a stable
     content-aware identifier recorded in the manifest.
     """
-    payload = f"{n_rows}|{n_cols}|{'|'.join(sorted(columns))}".encode("utf-8")
+    payload = f"{n_rows}|{n_cols}|{'|'.join(sorted(columns))}".encode()
     return hashlib.sha256(payload).hexdigest()
 
 
@@ -108,7 +107,7 @@ def _is_string_like(dtype) -> bool:
 
     Covers the three pandas dtype families in current use:
 
-    * legacy ``object`` (pandas ≤ 2.x default for strings),
+    * ``object`` (pandas ≤ 2.x default for strings),
     * the new ``str`` / ``StringDtype`` (pandas 3.x default),
     * ``pd.CategoricalDtype`` (explicit categorical).
 
@@ -249,7 +248,7 @@ def main(cfg=None) -> int:  # noqa: C901
     if cfg is None:
         cfg = _load_cfg()
     raw_root = resolve_data_path(cfg.paths.raw)
-    today = dt.datetime.now(dt.timezone.utc).date().isoformat()
+    today = dt.datetime.now(dt.UTC).date().isoformat()
 
     by_track: dict[str, list[dict]] = {"pd": [], "lgd": []}
     failures = 0

@@ -32,15 +32,15 @@ _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO) not in _sys.path:
     _sys.path.insert(0, str(_REPO))
 
+from src.train.config import load_train_config, resolve_grid  # noqa: E402
+from src.utils.config import dump_resolved  # noqa: E402
+from src.utils.experiment import apply_split_index  # noqa: E402
+from src.utils.logging_setup import resolve_run_log, setup_logging  # noqa: E402
 from src.utils.paths import (  # noqa: E402
     apply_data_source_from_cfg,
     manifests_dir,
     resolve_staging_path,
 )
-from src.train.config import load_train_config, resolve_grid  # noqa: E402
-from src.utils.experiment import apply_split_index  # noqa: E402
-from src.utils.config import dump_resolved  # noqa: E402
-from src.utils.logging_setup import resolve_run_log, setup_logging  # noqa: E402
 
 LOGGER = logging.getLogger(__name__)
 
@@ -92,9 +92,9 @@ def _refuse_unusable_gpu() -> None:
     lines += [
         "",
         "  Submit it as a batch job instead:",
-        "      bash scripts/slurm/run_experiment.sh config/experiment1/pd.yaml",
+        "      bash scripts/slurm/run_experiment.sh config/experiments/E01_reference/pd_a0.yaml",
         "  or, for a single trial:",
-        "      sbatch --array=0-0 --export=ALL,CREDITPFN_CONFIG=config/experiment1/pd.yaml \\",
+        "      sbatch --array=0-0 --export=ALL,CREDITPFN_CONFIG=config/experiments/E01_reference/pd_a0.yaml \\",
         "             scripts/slurm/train_pd.slurm",
         "",
         "  To train on CPU on purpose, pass device=cpu.",
@@ -158,10 +158,11 @@ def _ensure_processed(cfg, log_path: Path | str | None) -> None:
     on disk this function does O(#datasets) ``Path.exists()`` checks and
     returns.
     """
-    from src.data.preprocessing import DATASET_METADATA
-    from src.utils.paths import resolve_data_path
-    from src.train.corpus import resolve_ids_for_track
     from omegaconf import OmegaConf
+
+    from src.data.preprocessing import DATASET_METADATA
+    from src.train.corpus import resolve_ids_for_track
+    from src.utils.paths import resolve_data_path
 
     track = str(cfg.track)
     corpus = cfg.corpus
@@ -173,9 +174,7 @@ def _ensure_processed(cfg, log_path: Path | str | None) -> None:
     # SAME per-track resolver the authoritative corpus builder (split_from_cfg)
     # uses: `train_dataset_ids` / `test_dataset_ids` may be a flat list OR a
     # per-track mapping {pd: [...], lgd: [...]}. A naive `list()` on the mapping
-    # yields its KEYS (["lgd"]) — the latent bug that made this pre-check
-    # resolve 0 candidates on 2026-07-08 (both tracks) and, with a too-strict
-    # guard, fatally block the run.
+    # yields its KEYS (["lgd"]) and resolves 0 candidates.
     train_explicit = list(resolve_ids_for_track(corpus.get("train_dataset_ids", None), track))
     test_explicit  = list(resolve_ids_for_track(corpus.get("test_dataset_ids",  None), track))
     explicit = set(train_explicit) | set(test_explicit)
@@ -187,7 +186,7 @@ def _ensure_processed(cfg, log_path: Path | str | None) -> None:
     # Best-effort pre-check ONLY: its job is to auto-run the data pipeline for
     # any missing sanitized CSV. The AUTHORITATIVE corpus is built and validated
     # by split_from_cfg downstream, so an empty candidate set here must NEVER be
-    # fatal (a 2026-07-08 hard-error regression blocked a whole run this way).
+    # fatal.
     if not candidate_ids:
         LOGGER.warning(
             "Processed-CSV preflight resolved 0 candidate datasets for "
@@ -236,6 +235,7 @@ def _run_provenance(cfg, base_checkpoint: str, l2sp_lambda: float | None = None,
     `origin/main`, so the commit is the only reliable identifier of what actually ran.
     """
     import subprocess
+
     from src.train.tabicl_compat import model_family
 
     def _git(*args: str) -> str:
@@ -261,8 +261,8 @@ def _run_provenance(cfg, base_checkpoint: str, l2sp_lambda: float | None = None,
     return {
         "max_rows_per_epoch": limit_training_rows(cfg, int(caps.get(tag, caps.get("default", 0)) or 0)),
         # The SWEPT per-trial value (what training actually used); falls back to the config
-        # default only when λ is not an axis. Reading `opt` unconditionally here is what made
-        # every row read 0.003 while the grid believed it swept {0, 0.003} (fixed 22-09-2026).
+        # default only when λ is not an axis; reading `opt` unconditionally would record the
+        # config default for every swept value.
         "l2sp_lambda": float(
             l2sp_lambda if l2sp_lambda is not None
             else (getattr(opt, "l2sp_lambda", float("nan")) if opt is not None else float("nan"))
@@ -334,7 +334,7 @@ class RunRow:
     status: str                       # "OK" | "FAIL" | "SKIP" | "DIVERGED"
     error: str | None
 
-    # NEW (2026-05-28) — per-trial summary metrics.
+    # Per-trial summary metrics.
     # `primary_metric_name` = "roc_auc" for PD, "rmse" for LGD.
     # `secondary_metric_name` = "brier_score" for PD, "r2" for LGD.
     # The `baseline_*` numbers come from epoch=-1 (pre-FT) so a quick
@@ -355,9 +355,8 @@ class RunRow:
     # "full_pass" (size-proportional steps). See cfg.tunable.epoch_pass_modes.
     epoch_pass_mode:        str   = "one_sample"
 
-    # NEW (12-08-2026) — the run's own configuration, so the manifest is
-    # self-describing. docs/AGENTS_MEMORY.md is written from these columns; without them a
-    # score cannot be attributed to a setting, and the corpus keeps changing.
+    # The run's own configuration, so the manifest is self-describing: without these
+    # columns a score cannot be attributed to a setting.
     min_train_rows:         int   = 0
     total_optimizer_steps:  int   = 0
     epochs_run:             int   = 0
@@ -374,7 +373,7 @@ class RunRow:
     tfm_library_pin:        str   = ""      # which literature snapshot this ran against
     git_commit:             str   = ""
 
-    # COMPUTE ACCOUNTING (19-08-2026). A paper reports what a result cost, and a reviewer asks
+    # COMPUTE ACCOUNTING. A paper reports what a result cost, and a reviewer asks
     # whether the comparison was compute-matched. `elapsed_sec` alone cannot answer either:
     # it hides which GPU ran the trial and how much of it was used, so two numbers from
     # different partitions look comparable when they are not.
@@ -414,33 +413,32 @@ def _manifest_lock(path: Path):
     """
     lock_path = path.with_suffix(path.suffix + ".lock")
     lock_path.parent.mkdir(parents=True, exist_ok=True)
-    with _MANIFEST_THREAD_LOCK:
-        with lock_path.open("a+b") as lock_fh:
+    with _MANIFEST_THREAD_LOCK, lock_path.open("a+b") as lock_fh:
+        try:
+            import fcntl  # type: ignore[import-not-found]
+        except ImportError:  # Windows: no multi-process SLURM writers.
+            fcntl = None
+        locked = False
+        if fcntl is not None:
             try:
-                import fcntl  # type: ignore[import-not-found]
-            except ImportError:  # Windows: no multi-process SLURM writers.
-                fcntl = None
-            locked = False
-            if fcntl is not None:
-                try:
-                    fcntl.flock(lock_fh.fileno(), fcntl.LOCK_EX)
-                    locked = True
-                except OSError as exc:
-                    # e.g. ENOSYS on a Lustre mount without `-o flock`, or ENOLCK
-                    # if the NFS lock manager is down. Don't abort the trial's
-                    # manifest write over this — fall back to the in-process lock
-                    # (already held) with a one-time warning. Cross-node races
-                    # become possible, but the append-only single-row writes make
-                    # data loss unlikely, and the benchmark dedup is a backstop.
-                    LOGGER.warning(
-                        "manifest flock() unavailable on this filesystem (%s); "
-                        "using the in-process lock only.", exc,
-                    )
-            try:
-                yield
-            finally:
-                if locked:
-                    fcntl.flock(lock_fh.fileno(), fcntl.LOCK_UN)
+                fcntl.flock(lock_fh.fileno(), fcntl.LOCK_EX)
+                locked = True
+            except OSError as exc:
+                # e.g. ENOSYS on a Lustre mount without `-o flock`, or ENOLCK
+                # if the NFS lock manager is down. Don't abort the trial's
+                # manifest write over this — fall back to the in-process lock
+                # (already held) with a one-time warning. Cross-node races
+                # become possible, but the append-only single-row writes make
+                # data loss unlikely, and the benchmark dedup is a backstop.
+                LOGGER.warning(
+                    "manifest flock() unavailable on this filesystem (%s); "
+                    "using the in-process lock only.", exc,
+                )
+        try:
+            yield
+        finally:
+            if locked:
+                fcntl.flock(lock_fh.fileno(), fcntl.LOCK_UN)
 
 
 def _write_csv(rows: list[RunRow], path: Path, *, append: bool) -> None:
@@ -560,7 +558,7 @@ def run(
     csv_path.parent.mkdir(parents=True, exist_ok=True)
 
     # ---- 3) per-trial training
-    from src.train.loop import descriptive_name, train_one_config
+    from src.train.loop import descriptive_name, naming_mode, train_one_config
 
     # Per-epoch CSVs live in output CreditPFN/<experiment>/training/<track>/<descriptive_name>.csv
     from src.utils.paths import training_dir
@@ -587,10 +585,9 @@ def run(
         )
         # Mini environment banner BEFORE any tabpfn import / model load, so a
         # crash during load still leaves version + path context in the log.
-        # (The 2026-07-03 LGD failures died before the full debug banner —
-        # those 32 logs carried no git sha / tabpfn version at all.)
         try:
             import torch as _torch
+
             from src.train.loop import _git_sha as _sha
             try:
                 import tabpfn as _tp
@@ -615,9 +612,7 @@ def run(
             use_lora=use_lora, query_fraction=query_fraction,
             accumulate_grad_batches=accumulate, epoch_pass_mode=pass_mode,
             min_train_rows=min_train_rows, l2sp_lambda=l2sp_lambda,
-            adaptation_mode=("frozen_backbone" if use_lora and (
-                not bool(getattr(cfg.lora, "enabled", False)) or "tabicl" in base) else None)
-                if OmegaConf.select(cfg, "experiment.fingerprint", default=False) else None,
+            adaptation_mode=naming_mode(cfg, use_lora),
         ).removesuffix(".ckpt")
 
         identity = None
@@ -659,8 +654,7 @@ def run(
         # .provenance.json sidecar are on disk, the trial is considered
         # successfully completed. We emit a one-line "SKIP" record into
         # the manifest (so it still appears in the summary) and move on.
-        # To force a rerun, delete the .ckpt (or use
-        # `python -m src.utils.clean_run --clean --stages train`).
+        # To force a rerun, delete the .ckpt.
         # A finished checkpoint may live in staging OR — when staging wasn't
         # writable from the training node and the loop fell back — under the
         # output root. Check BOTH so re-submissions skip completed trials
@@ -680,8 +674,8 @@ def run(
         )
         if expected_ckpt.exists() and expected_prov.exists():
             # Fingerprinted numerical failures are terminal scientific outcomes:
-            # preserve them and their failed exit status on resubmission. Only
-            # legacy, non-fingerprinted trials retain the old retry behavior.
+            # preserve them and their failed exit status on resubmission; a
+            # non-fingerprinted diverged trial is retried.
             _diverged_ckpt = False
             try:
                 import json as _json
@@ -694,15 +688,14 @@ def run(
             from src.train.sampling import PROTOCOL_VERSION
             if _prov.get("training_protocol_version") != PROTOCOL_VERSION:
                 raise RuntimeError("Existing checkpoint uses an older training protocol. "
-                                   "Use a new run_name; preserve legacy results.")
+                                   "Use a new run_name; preserve existing results.")
             if identity and _prov.get("trial_identity", {}).get("sha256") != identity["sha256"]:
                 raise RuntimeError("Existing checkpoint has a different configuration, corpus, base, "
                                    "code or environment fingerprint. Use a new run_name.")
             if not _diverged_ckpt or identity:
                 LOGGER.info(
                     "SKIP trial %d (global %d): checkpoint already exists at %s "
-                    "— delete the file or use `clean_run --clean --stages train` "
-                    "to force a rerun.",
+                    "— delete the file to force a rerun.",
                     trial_idx_local, global_idx, expected_ckpt,
                 )
                 rows.append(RunRow(

@@ -1,4 +1,4 @@
-"""Bucket CRPS and the density-roughness guard (v2.6 regressor diagnosis, 03-11-2026)."""
+"""Regression objectives (window NLL, bucket CRPS) and the density-roughness guard."""
 import pytest
 import torch
 
@@ -65,3 +65,72 @@ def test_bar_nll_is_refused_for_a_comb_density_unless_declared():
         check_regression_objective(logits, objective="bar_nll", base="v2.6")
     assert check_regression_objective(logits, objective="bucket_crps", base="v2.6") > ROUGHNESS_LIMIT
     assert check_regression_objective(logits, objective="bar_nll", base="v2.6", allow_rough_density=True)
+
+
+# ---- window_nll (reference LGD objective) ----------------------------------------------
+def _edges(k=50):
+    return torch.linspace(-2.5, 2.5, k + 1)
+
+
+def test_window_nll_of_uniform_density_equals_bar_density():
+    from src.train.regression_objectives import window_nll
+    edges = _edges()
+    logits = torch.zeros(7, 50)
+    y = torch.linspace(-2.4, 2.4, 7)
+    expected = torch.log(torch.tensor(5.0))  # total width 5 -> density 1/5 everywhere
+    assert torch.allclose(window_nll(logits, edges, y), expected.expand(7), atol=1e-5)
+
+
+def test_window_nll_ignores_a_comb_inside_the_window():
+    """Alternate empty buckets (a comb) cost bar NLL a lot but the window barely notices."""
+    from src.train.regression_objectives import window_nll
+    edges = _edges()
+    smooth = torch.zeros(1, 50)
+    comb = torch.zeros(1, 50)
+    comb[0, 1::2] = -9.0                                 # odd buckets ~1e-4 of the even ones
+    y = torch.tensor([float(edges[25] + edges[26]) / 2])  # target in odd bucket 25
+    smooth_loss, comb_loss = window_nll(smooth, edges, y), window_nll(comb, edges, y)
+    assert float(comb_loss - smooth_loss) < 0.75       # density shrinks at most ~2x at this resolution
+    bucket = torch.log_softmax(comb, -1)[0, 25] - torch.log(edges[26] - edges[25])
+    assert float(-bucket - comb_loss) > 5                # single-bucket NLL is far worse
+
+
+def test_window_nll_is_finite_and_clamped_at_the_edges():
+    from src.train.regression_objectives import window_nll
+    edges = _edges()
+    logits = torch.randn(4, 50)
+    y = torch.tensor([-10.0, -2.5, 2.5, 10.0])
+    out = window_nll(logits, edges, y)
+    assert torch.isfinite(out).all()
+
+
+def test_window_nll_rejects_even_windows_and_bad_borders():
+    from src.train.regression_objectives import window_nll
+    with pytest.raises(ValueError):
+        window_nll(torch.zeros(1, 50), _edges(), torch.zeros(1), window=4)
+    with pytest.raises(ValueError):
+        window_nll(torch.zeros(1, 50), _edges(49), torch.zeros(1))
+
+
+def test_window_nll_close_to_bar_nll_for_smooth_density():
+    from src.train.regression_objectives import window_nll
+    edges = _edges(500)
+    centres = (edges[1:] + edges[:-1]) / 2
+    logits = -(centres ** 2).unsqueeze(0) / (2 * 0.5 ** 2)  # smooth Gaussian over buckets
+    y = torch.tensor([0.3])
+    k = int(torch.searchsorted(edges, y, right=True)) - 1
+    bar = -(torch.log_softmax(logits, -1)[0, k] - torch.log(edges[k + 1] - edges[k]))
+    assert abs(float(window_nll(logits, edges, y)) - float(bar)) < 0.01
+
+
+def test_window_nll_ignores_missing_targets_and_rejects_oversized_windows():
+    from types import SimpleNamespace
+
+    from src.train.regression_objectives import regression_loss, window_nll
+    edges = _edges()
+    logits = torch.zeros(3, 1, 50)
+    y = torch.tensor([[0.1], [float("nan")], [-0.4]])
+    loss = regression_loss(logits, y, criterion=SimpleNamespace(borders=edges), objective="window_nll")
+    assert torch.isfinite(loss)
+    with pytest.raises(ValueError, match="exceeds"):
+        window_nll(torch.zeros(1, 3), torch.linspace(0, 1, 4), torch.zeros(1))

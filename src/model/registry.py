@@ -20,14 +20,14 @@ Three model groups:
 from __future__ import annotations
 
 import logging
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, Literal
+from typing import Literal
 
 from src.model.base import ModelHandle
 from src.model.boosting import CatBoostModel, XGBoostModel
 from src.model.linear import LinRegModel, LogRegModel
 from src.model.tabpfn_models import TabPFNUntuned
-from src.utils.paths import resolve_output_path, resolve_staging_path
 
 LOGGER = logging.getLogger(__name__)
 
@@ -110,7 +110,7 @@ def build_baselines(
     # or any constructor failure SKIPS that one baseline with a warning
     # rather than crashing the whole benchmark. The eval always runs with
     # whatever subset of {xgboost, catboost, logreg/linreg, <family>-untuned}
-    # can actually be built. (Added 2026-05-29.)
+    # can actually be built.
     def _try_add(name: str, factory) -> None:
         try:
             m = factory()

@@ -8,6 +8,7 @@ Unknown attention layouts fail before any model is mutated.
 from __future__ import annotations
 
 import math
+
 from torch import nn
 from torch.nn.utils import parametrize
 

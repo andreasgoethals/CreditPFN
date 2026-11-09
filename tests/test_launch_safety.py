@@ -1,13 +1,13 @@
 """Catch stale plans, misleading readiness checks and lost cluster error logs."""
 import json
 import os
-from pathlib import Path
 import shutil
 import subprocess
+from pathlib import Path
 from types import SimpleNamespace as NS
 
-from omegaconf import OmegaConf
 import pytest
+from omegaconf import OmegaConf
 
 from src.train.config import load_train_config
 from src.utils.experiment import digest_json
@@ -29,7 +29,7 @@ def test_source_identity_normalizes_line_endings_and_includes_slurm(tmp_path):
 
 def test_submission_gate_rejects_changed_source_environment_config_and_corrupt_plan(tmp_path, monkeypatch):
     import src.utils.prepare_experiment as module
-    cfg = load_train_config(config_path="config/experiment0/null_pd.yaml")
+    cfg = load_train_config(config_path="config/experiments/E00_pilots/reference_pd.yaml")
     spec = {"code_sha256": "original", "versions": {"torch": "test"},
             "data_config": OmegaConf.to_container(OmegaConf.load("config/data.yaml"))["finetuning"]}
     key = digest_json(spec)
@@ -44,19 +44,19 @@ def test_submission_gate_rejects_changed_source_environment_config_and_corrupt_p
         path.write_text(json.dumps(dict(payload, sha256=digest_json(payload))), encoding="utf-8")
 
     save()
-    assert module.check_prepared(Path("config/experiment0/null_pd.yaml"))["checked"]
+    assert module.check_prepared(Path("config/experiments/E00_pilots/reference_pd.yaml"))["checked"]
     monkeypatch.setattr(module, "code_identity", lambda: "changed")
     with pytest.raises(RuntimeError, match="Code/environment"):
-        module.check_prepared(Path("config/experiment0/null_pd.yaml"))
-    assert module.check_prepared(Path("config/experiment0/null_pd.yaml"), stage="eval")["checked"]
+        module.check_prepared(Path("config/experiments/E00_pilots/reference_pd.yaml"))
+    assert module.check_prepared(Path("config/experiments/E00_pilots/reference_pd.yaml"), stage="eval")["checked"]
     monkeypatch.setattr(module, "code_identity", lambda: "original")
     monkeypatch.setattr(module, "environment_versions", lambda: {"torch": "changed"})
     with pytest.raises(RuntimeError, match="Code/environment"):
-        module.check_prepared(Path("config/experiment0/null_pd.yaml"))
+        module.check_prepared(Path("config/experiments/E00_pilots/reference_pd.yaml"))
     payload["config"]["seed"] += 1
     save()
     with pytest.raises(RuntimeError, match="Configuration"):
-        module.check_prepared(Path("config/experiment0/null_pd.yaml"))
+        module.check_prepared(Path("config/experiments/E00_pilots/reference_pd.yaml"))
     contents = json.loads(path.read_text())
     contents["sha256"] = "corrupt"
     path.write_text(json.dumps(contents))
@@ -65,10 +65,10 @@ def test_submission_gate_rejects_changed_source_environment_config_and_corrupt_p
 
 
 def test_plan_check_recomputes_input_identities_without_writing(tmp_path, monkeypatch):
-    import src.utils.prepare_experiment as module
     import src.train.config as pipeline
     import src.train.corpus as corpus
-    cfg = load_train_config(config_path="config/experiment0/null_pd.yaml")
+    import src.utils.prepare_experiment as module
+    cfg = load_train_config(config_path="config/experiments/E00_pilots/reference_pd.yaml")
     grid = [("missing.ckpt", 0., False, .4, 1, "one_sample", 0, 0.)]
     monkeypatch.setattr(pipeline, "load_train_config", lambda **kw: cfg)
     monkeypatch.setattr(pipeline, "resolve_grid", lambda *args, **kw: grid)
@@ -87,23 +87,6 @@ def test_plan_check_recomputes_input_identities_without_writing(tmp_path, monkey
     assert path.read_bytes() == original
 
 
-def test_preflight_uses_smallest_partition_and_rejects_mixed_pass_packing(monkeypatch):
-    from src.utils.preflight import Report, check_step_budget, check_packing_divides
-    import src.train.corpus as corpus
-    cfg = load_train_config(config_path="config/experiment1/pd.yaml")
-    cfg.train.target_total_steps = 1201
-    cfg.train.max_epochs_for_step_budget = 100
-    monkeypatch.setattr(corpus, "split_from_cfg", lambda cfg, **kw: NS(
-        train=[None] * (12 if cfg.corpus.fold == 2 else 13), test=[None]))
-    report = Report()
-    check_step_budget(cfg, "synthetic", report)
-    assert report.n_fail == 1  # 1201/13 fits; 1201/12 does not.
-    cfg = load_train_config(config_path="config/experiment7/pd.yaml")
-    report = Report()
-    check_packing_divides([(cfg, "synthetic")], report, trials_per_task=2)
-    assert report.n_fail == 1
-
-
 def test_empty_size_filter_cannot_silently_restore_the_unfiltered_corpus(monkeypatch):
     import src.train.corpus as corpus
     refs = [NS(dataset_id=f"synthetic-{i}", n_rows=10) for i in range(4)]
@@ -112,52 +95,7 @@ def test_empty_size_filter_cannot_silently_restore_the_unfiltered_corpus(monkeyp
         corpus.split_corpus(track="pd", n_folds=2, min_train_rows=11)
 
 
-def test_preflight_does_not_accept_a_base_from_an_unused_storage_root(tmp_path, monkeypatch):
-    import src.utils.paths as paths
-    import src.utils.preflight as module
-    (tmp_path / "checkpoints").mkdir()
-    (tmp_path / "checkpoints/base.ckpt").write_bytes(b"wrong location")
-    monkeypatch.setattr(module, "REPO", tmp_path)
-    monkeypatch.setattr(paths, "resolve_base_checkpoint", lambda p: tmp_path / "project" / p)
-    report = module.Report()
-    module.check_checkpoints(None, "synthetic", [("checkpoints/base.ckpt",)], report)
-    assert report.n_fail == 1
-
-
-@pytest.mark.parametrize("missing_panel", [False, True])
-def test_preflight_entry_point_checks_retention_and_reports_missing_inputs(monkeypatch, capsys, missing_panel):
-    """Exercise the CLI orchestration, where a missing import stopped every VSC workflow."""
-    import src.data.retention as retention
-    import src.utils.preflight as module
-
-    # Hardware, storage and the individual scientific checks have separate tests.
-    # Keep real config loading/grid expansion and the CLI's retention check here.
-    monkeypatch.setattr(module, "_resolved_roots", lambda: (None, {}))
-    for name in ("check_storage_layout", "check_launchers_pass_config", "check_name_collisions",
-                 "check_checkpoints", "check_step_budget", "check_train_eval_agree",
-                 "check_row_caps", "check_eval_caps", "check_l2sp_applies", "check_stale_knobs",
-                 "check_slurm", "check_data", "check_predictions_writer", "check_job_count",
-                 "check_packing_divides"):
-        monkeypatch.setattr(module, name, lambda *args: None)
-    calls = []
-
-    def load_refs(panel, track):
-        calls.append((panel, track))
-        if missing_panel:
-            raise FileNotFoundError("synthetic missing retention input")
-        return [NS(dataset_id="synthetic-retention")]
-
-    monkeypatch.setattr(retention, "load_refs", load_refs)
-    result = module.main(["--config", "config/experiment0/null_pd.yaml",
-                          "--config", "config/experiment0/pilot_lgd.yaml"])
-    assert calls == [("smoke", "pd"), ("research", "lgd")]
-    assert result == int(missing_panel)
-    output = capsys.readouterr().out
-    assert ("retention inputs unavailable" if missing_panel else
-            "verified non-credit monitoring tables") in output
-
-
-@pytest.mark.parametrize("job", ["maintenance", "eval_classical", "cluster_report",
+@pytest.mark.parametrize("job", ["eval_classical",
                                 "train_pd", "train_lgd", "eval_pd", "eval_lgd",
                                 "data", "probe_row_cap"])
 def test_environment_failure_is_logged_and_propagated_before_python(tmp_path, job):
@@ -199,7 +137,7 @@ def test_training_lookup_failure_stops_before_smoke_or_training(tmp_path, failur
     scripts.mkdir(parents=True)
     for name in ("train_pd.slurm", "_train_job.sh", "_run_train.sh", "_job_log.sh"):
         shutil.copyfile(repo / "scripts/slurm" / name, scripts / name)
-    config_file = node / 'CreditPFN/config/experiment0/null_pd.yaml'
+    config_file = node / 'CreditPFN/config/experiments/E00_pilots/reference_pd.yaml'
     config_file.parent.mkdir(parents=True)
     config_file.write_text('experiment:\n  output_group: experiment0\n')
     (scripts / "_activate_env.sh").write_text('''python() {
@@ -211,7 +149,7 @@ def test_training_lookup_failure_stops_before_smoke_or_training(tmp_path, failur
     result = subprocess.run([bash, (scripts / "train_pd.slurm").as_posix()],
         env=dict(os.environ, VSC_DATA=node.as_posix(), SLURM_JOB_ID="synthetic",
                  CREDITPFN_OUTPUT_ROOT=(node / "CreditPFN").as_posix(),
-                 CREDITPFN_CONFIG="config/experiment0/null_pd.yaml", CREDITPFN_SPLIT_INDEX="0",
+                 CREDITPFN_CONFIG="config/experiments/E00_pilots/reference_pd.yaml", CREDITPFN_SPLIT_INDEX="0",
                  SLURM_ARRAY_TASK_ID="0", FAIL_LOOKUP=failure), capture_output=True, text=True)
     assert result.returncode == 29, result.stderr
     log = (node / "CreditPFN/output CreditPFN/experiment0/logs/train_pd_synthetic_r0.log").read_text(encoding="utf-8")
@@ -219,31 +157,28 @@ def test_training_lookup_failure_stops_before_smoke_or_training(tmp_path, failur
     assert "UNEXPECTED_COMPUTE" not in log
 
 
-@pytest.mark.parametrize("experiment", ["experiment1", "experiment3", "experiment7"])
-@pytest.mark.parametrize("job", ["maintenance", "train_pd", "train_lgd", "eval_pd", "eval_lgd",
-                                "benchmark_foundation", "benchmark_classical"])
+@pytest.mark.parametrize("experiment", ["experiment0", "reference", "exposure"])
+@pytest.mark.parametrize("job", ["train_pd", "train_lgd", "eval_pd", "eval_lgd"])
 def test_batch_entrypoints_route_setup_failures_to_the_selected_experiment(tmp_path, experiment, job):
     """Exercise real shell routing before any Python, scheduler call or model load."""
-    from tests.test_benchmark_submission import bash_path
+    from tests.test_eval_control_sharing import bash_path
     repo = Path(__file__).resolve().parents[1]
     node = tmp_path / "node"
     scripts = node / "CreditPFN/scripts/slurm"
     scripts.mkdir(parents=True)
-    for name in (f"{job}.slurm", "_job_log.sh", "_train_job.sh", "_eval_job.sh",
-                 "_benchmark_dispatch.sh", "_study_map.sh"):
+    for name in (f"{job}.slurm", "_job_log.sh", "_train_job.sh", "_eval_job.sh"):
         shutil.copyfile(repo / "scripts/slurm" / name, scripts / name)
     (scripts / "_activate_env.sh").write_text(
         'echo "synthetic activation failure" >&2\nreturn 17\n', encoding="utf-8")
-    from src.utils.study_layout import config_folder
-    config = f"{config_folder(experiment)}/pd.yaml"
+    config = f"config/experiments/{experiment}/pd.yaml"
     config_file = node / 'CreditPFN' / config
     config_file.parent.mkdir(parents=True)
     config_file.write_text(f'experiment:\n  output_group: {experiment}\n')
     env = dict(os.environ, VSC_DATA=node.as_posix(), SLURM_JOB_ID="synthetic",
                SLURM_RESTART_COUNT="0", SLURM_ARRAY_TASK_ID="0",
                CREDITPFN_OUTPUT_ROOT=(node / "CreditPFN").as_posix(),
-               CREDITPFN_EXPERIMENT=experiment if job.startswith("benchmark_") else "general",
-               CREDITPFN_CONFIG="" if job == "maintenance" else config,
+               CREDITPFN_EXPERIMENT="general",
+               CREDITPFN_CONFIG=config,
                CREDITPFN_BENCHMARK_SPLITS="4", EVAL_TASKS="16")
     result = subprocess.run(
         [bash_path(), "--noprofile", "--norc", (scripts / f"{job}.slurm").as_posix(),
@@ -270,7 +205,7 @@ def test_walltime_warning_is_reserved_for_segmented_training(tmp_path, walltime,
     launcher = Path("scripts/slurm/run_experiment.sh").resolve()
     script = '''python() {
     cat >/dev/null
-    printf '%s\\n' pd cpt_null_synthetic 1 2 4 False 'base.ckpt one_sample'
+    printf '%s\\n' pd cpt2e0_synthetic 1 2 4 False 'base.ckpt one_sample'
 }
 export -f python
 bash "$1" "$2"

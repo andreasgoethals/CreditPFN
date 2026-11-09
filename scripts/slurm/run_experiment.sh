@@ -25,17 +25,10 @@ PYCFG
 # Python on Windows emits CRLF, including during local dry checks.
 for i in "${!META[@]}"; do META[$i]="${META[$i]%$'\r'}"; done
 TRACK="${META[0]}"; RUN="${META[1]}"; BUDGET="${META[3]}"
+# Generated run names: cpt2e0_<pilot> (Experiment 0) and cpt2_<slug>_a<arm> (src/utils/paths.py).
 case "$RUN" in
- cpt_lora_debug_*) export CREDITPFN_EXPERIMENT=experiment0 ;;
- cpt_lora_*) export CREDITPFN_EXPERIMENT=experiment8 ;;
- cpt_diagscale_debug_*|cpt_large_debug_*) export CREDITPFN_EXPERIMENT=experiment0 ;;
- cpt_diagscale_*) export CREDITPFN_EXPERIMENT=experiment5 ;;
- cpt_large_*|cpt_corpus_*) export CREDITPFN_EXPERIMENT=experiment6 ;;
- cpt_episode_*) export CREDITPFN_EXPERIMENT=experiment7 ;;
- cpt_null_*|cpt_pilot_*|cpt_recovery_*|cpt_budget_*) export CREDITPFN_EXPERIMENT=experiment0 ;;
- cpt_main_*) export CREDITPFN_EXPERIMENT=experiment1 ;;
- cpt_seeds_*) export CREDITPFN_EXPERIMENT=experiment2 ;;
- cpt_sampling_*) export CREDITPFN_EXPERIMENT=experiment3 ;;
+ cpt2e0_*) export CREDITPFN_EXPERIMENT=experiment0 ;;
+ cpt2_*_a[0-9]*) _slug="${RUN#cpt2_}"; export CREDITPFN_EXPERIMENT="${_slug%_a*}"; unset _slug ;;
  *) export CREDITPFN_EXPERIMENT=general ;;
 esac
 [[ "$TRACK" == pd || "$TRACK" == lgd ]] || exit 1
@@ -53,7 +46,7 @@ export EVAL_TASKS="${EVAL_TASKS:-16}"
 export CREDITPFN_DATALOADER_WORKERS="${CREDITPFN_DATALOADER_WORKERS:-${META[4]}}"
 export CREDITPFN_USE_SCRATCH="${CREDITPFN_USE_SCRATCH:-1}"
 export CREDITPFN_REQUIRE_STAGING="${CREDITPFN_REQUIRE_STAGING:-1}"
-# Opt in to short resumable segments after the null/pilot gate. The schedule still
+# Opt in to short resumable segments after the Experiment 0 pilots. The schedule still
 # spans the complete update budget. Ten minutes cover monitoring/save/exit work.
 SEGMENT_MINUTES="${SEGMENT_MINUTES:-0}"
 export CREDITPFN_SEGMENT_SECONDS=$(( SEGMENT_MINUTES * 60 ))
@@ -93,20 +86,11 @@ fi
 
 hms() { printf '%d:%02d:00' $(( $1 / 60 )) $(( $1 % 60 )); }
 walltime_for() {
-    local base="$1" mode="$2" rate
     if (( SEGMENT_MINUTES > 0 )); then hms $(( SEGMENT_MINUTES + 10 )); return; fi
-    if [[ "$mode" == accumulate && -n "${ACC_WALLTIME:-}" ]]; then echo "$ACC_WALLTIME"; return; fi
     if [[ -n "${WALLTIME:-}" ]]; then echo "$WALLTIME"; return; fi
     if (( BUDGET <= 250 )); then hms 60; return; fi
-    # Historical full_pass/accumulate measurements are provisional for the current protocol.
-    # Override WALLTIME with the pilot report; never shorten measured context caps.
-    rate=90
-    if [[ "$mode" == accumulate ]]; then
-        case "$base" in
-            *tabicl*) rate=600 ;; *v2.6*) rate=810 ;; *v3*) rate=720 ;; *) rate=1170 ;;
-        esac
-    fi
-    hms $(( TRIALS_PER_TASK * rate + 30 ))
+    # Provisional default; override WALLTIME with the Experiment 0 pilot timings.
+    hms $(( TRIALS_PER_TASK * 90 + 30 ))
 }
 route_for() {
     if [[ "${ROUTE:-1}" == 0 ]]; then echo 'mindwell gpu_b200'; return; fi
@@ -120,8 +104,9 @@ EVAL_JOB="scripts/slurm/eval_${TRACK}.slurm"
 if [[ "$CREDITPFN_EVAL_KIND" == classical ]]; then
     [[ "$STAGES" == eval ]] || { echo 'Classical CPU scoring is a separate STAGES=eval submission' >&2; exit 1; }
     EVAL_JOB=scripts/slurm/eval_classical.slurm
-    read -r ECLUSTER EPARTITION <<< "${EVAL_DEST:-wice batch}"
-    EVAL_WALLTIME="${EVAL_WALLTIME:-04:00:00}"
+    read -r ECLUSTER EPARTITION <<< "${EVAL_DEST:-mindwell batch_graniterapids}"
+    # Untimed 50-trial HPO: the largest table alone needs about two hours of logistic tuning.
+    EVAL_WALLTIME="${CLASSICAL_WALLTIME:-12:00:00}"
 else
     read -r ECLUSTER EPARTITION <<< "${EVAL_DEST:-mindwell gpu_b200}"
 fi
@@ -194,7 +179,7 @@ if [[ " $STAGES " == *' train '* ]]; then
         for key in "${KEYS[@]}"; do
             IFS='|' read -r destination mode base <<< "$key"
             read -r cluster partition <<< "$destination"
-            wt="$(walltime_for "$base" "$mode")"
+            wt="$(walltime_for)"
             [[ "$cluster" == wice ]] && cpus=16 || cpus=24
             n=$(awk -F, '{print NF}' <<< "${BUCKET[$key]}")
             limit=$THROTTLE; (( n < limit )) && limit=$n
@@ -216,7 +201,10 @@ if [[ " $STAGES " == *' eval '* ]]; then
     for (( k=SPLIT_START; k<N_SPLITS; k++ )); do
         wait_for_room "$ECLUSTER" "$EVAL_TASKS"
         DEP=()
-        [[ -n "${DEP_JOBS[$k]:-}" ]] && DEP=(--dependency="afterany:${DEP_JOBS[$k]}")
+        # Evaluation needs every training task of this partition to succeed; a failed
+        # or unrecovered task cancels the evaluation instead of leaving it pending.
+        # submit_bounded appends its afterany lane dependency to this one (AND).
+        [[ -n "${DEP_JOBS[$k]:-}" ]] && DEP=(--dependency="afterok:${DEP_JOBS[$k]}" --kill-on-invalid-dep=yes)
         CMD=(sbatch --parsable --clusters="$ECLUSTER" --partition="$EPARTITION" --account="$ACCOUNT"
              --array="0-$((EVAL_TASKS-1))%${EVAL_CONCURRENCY}" --time="${EVAL_WALLTIME:-02:00:00}" "${DEP[@]}"
              --export=ALL,CREDITPFN_CONFIG="$CONFIG",CREDITPFN_SPLIT_INDEX="$k",EVAL_TASKS="$EVAL_TASKS"

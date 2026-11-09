@@ -9,10 +9,11 @@ from __future__ import annotations
 import json
 import os
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from src.utils.paths import describe, ensure, manifests_dir
+
 
 def dump_resolved(cfg, task_name: str, *, extra: dict | None = None) -> Path:
     """Write the fully resolved config a run used to `output CreditPFN/<experiment>/manifests/resolved/`.
@@ -23,12 +24,12 @@ def dump_resolved(cfg, task_name: str, *, extra: dict | None = None) -> Path:
     about a number, not about a commit.
 
     Includes the resolved storage roots (`paths.describe()`) and the SLURM identifiers,
-    because a result that cannot be located is as good as lost: run-4's checkpoints were in
-    two different places depending on whether staging was writable from the node.
+    because a result that cannot be located is as good as lost: where checkpoints land can
+    depend on whether project storage was writable from the node.
     """
     from omegaconf import OmegaConf
 
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+    stamp = datetime.now(UTC).strftime("%Y%m%d_%H%M%S")
     slurm = {k: v for k, v in os.environ.items() if k.startswith("SLURM_JOB")
              or k in ("SLURM_ARRAY_JOB_ID", "SLURM_ARRAY_TASK_ID", "SLURMD_NODENAME")}
     payload = {

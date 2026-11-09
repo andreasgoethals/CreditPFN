@@ -17,8 +17,15 @@ export CREDITPFN_EXPERIMENT=experiment0 CREDITPFN_RUNTIME_ACCEPTANCE=1
 export CREDITPFN_USE_SCRATCH=0 PYTHONUNBUFFERED=1
 source scripts/slurm/_job_log.sh
 start_job_log "runtime_${action}_${CREDITPFN_RUNTIME_VERSION}"
+if [[ "$action" == record ]]; then
+    # Record the environment specification the container is sealed against, from the preserved
+    # Conda comparator. The destination must not exist yet (runtime_container refuses to overwrite).
+    "$VSC_DATA/miniconda3/envs/CreditPFN/bin/python" -m src.utils.runtime_container record         "${3:?destination folder required}" --conda "$VSC_DATA/miniconda3/bin/conda"
+    sha256sum "$3/environment.json" "$3/pip-lock.txt"
+    exit 0
+fi
 if [[ "$action" == prepare ]]; then
-    _project="${CREDITPFN_PROJECT_ROOT:-${VSC_PROJECT_ROOT:-/lustre1/project/stg_00211}}"
+    _project="${CREDITPFN_PROJECT_ROOT:-${VSC_PROJECT_ROOT:-/gpfs1/project/prj_00013}}"
     [[ "$(basename "$_project")" == CreditPFN ]] || _project="$_project/CreditPFN"
     /usr/bin/python3 -m src.utils.runtime_container seal "$_project/runtimes/$CREDITPFN_RUNTIME_VERSION" --specification "${3:?}"
     unset _project

@@ -136,4 +136,3 @@ class NotebookReport:
             parts.extend(("", title, text))
         parts.extend(("", sink.summary()))
         return redact_private_names("\n".join(parts))
-

@@ -1,4 +1,4 @@
-"""DiagScale under BF16: small query corrections must survive (second campaign, E5)."""
+"""DiagScale under BF16: small query corrections must survive (second campaign, E6)."""
 import torch
 
 from src.model.diagscale import QueryScale

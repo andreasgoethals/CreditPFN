@@ -51,13 +51,12 @@ import datetime as _dt
 import logging
 import os
 import warnings
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable
 
 from src.utils.paths import resolve_output_path
 
-#: Under `output CreditPFN/`, like everything else the code generates (11-08-2026 — logs used
-#: to land in `<output_root>/logs`, a second generated tree outside `output CreditPFN/`).
+#: Under `output CreditPFN/`, like everything else the code generates.
 DEFAULT_LOG_DIR = "output CreditPFN/logs"
 
 # Detection: bash's `exec > $LOG 2>&1` in a slurm script means stdout
@@ -275,7 +274,7 @@ class _StructuredFormatter(logging.Formatter):
             name = name.removeprefix("src.data.")
         # Pad / truncate to a fixed width so columns align.
         name = (name[:18]).ljust(18)
-        # ``WARNING[:5]`` used to render as the confusing ``[WARNI]``.
+        # Explicit labels: ``WARNING[:5]`` would render as the confusing ``[WARNI]``.
         lvl_short = _LEVEL_LABELS.get(lvl, lvl[:5].ljust(5))
         msg = record.getMessage()
         if record.exc_info:
@@ -328,7 +327,7 @@ def setup_logging(
     log file isn't double-written. Outside slurm, both handlers fire
     so the user sees live output AND the file is created locally.
 
-    **Formatter (2026-05-28):** structured + colored. Stream handler
+    **Formatter:** structured + colored. Stream handler
     gets ANSI colors when the runtime supports them (TTY, FORCE_COLOR,
     no NO_COLOR); file handler stays plain text so the log files don't
     contain escape codes that confuse plain editors. The format is:

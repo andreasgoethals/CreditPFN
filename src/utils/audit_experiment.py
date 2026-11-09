@@ -15,7 +15,12 @@ from omegaconf import OmegaConf
 
 from src.utils.checkpoint_inventory import resolve_checkpoint
 from src.utils.experiment import apply_split_index
-from src.utils.paths import manifests_dir, resolve_base_checkpoint, resolve_staging_path, training_dir, activate_experiment
+from src.utils.paths import (
+    activate_experiment,
+    resolve_base_checkpoint,
+    resolve_staging_path,
+    training_dir,
+)
 from src.utils.prepare_experiment import plan_path
 
 
@@ -30,9 +35,11 @@ def _inference_state(path: Path, track: str | None) -> dict:
     import torch
     if track is None:
         return torch.load(path, map_location="cpu", weights_only=False)["state_dict"]
-    from tabpfn.base import load_model_criterion_config
-    from src.train.model import _infer_version
     import inspect
+
+    from tabpfn.base import load_model_criterion_config
+
+    from src.train.model import _infer_version
     parameters = inspect.signature(load_model_criterion_config).parameters
     options = {"estimator_type" if "estimator_type" in parameters else "which":
                "classifier" if track == "pd" else "regressor",
@@ -59,11 +66,12 @@ def compare_states(base: Path, trained: Path, *, tabpfn_track: str | None = None
 
 
 def null_monitor_parity(frame: pd.DataFrame) -> bool:
+    """Every monitor point of a zero-learning-rate run equals the update-zero point."""
     columns = [c for c in frame if c.startswith("metric__")]
-    if len(frame) != 2 or not columns:
+    if len(frame) < 2 or not columns:
         return False
     values = frame.sort_values("successful_updates")[columns].to_numpy(dtype=float)
-    return bool(np.isfinite(values).all() and np.allclose(values[0], values[1], rtol=1e-6, atol=1e-7))
+    return bool(np.isfinite(values).all() and np.allclose(values, values[0], rtol=1e-6, atol=1e-7))
 
 
 def numerical_skip_counts(epochs: pd.DataFrame) -> dict[str, int]:
@@ -78,14 +86,44 @@ def numerical_skip_counts(epochs: pd.DataFrame) -> dict[str, int]:
     return counts
 
 
+#: An FP16 GradScaler skips the updates whose scaled gradients overflow while it finds its
+#: scale; the budget counts successful updates, so a few skips are expected, not a fault.
+FP16_SKIP_ALLOWANCE = (16, 0.05)   # at most this many, and this share of successful updates
+#: A model whose predictions barely vary has collapsed to a constant; its RMSE or log loss can
+#: still look plausible. Flagged per run at the last monitor (PD: probability std; LGD: the
+#: prediction std relative to the target std), as a finding rather than a code failure.
+COLLAPSE_LIMITS = {"pd": ("prediction_std", 1e-3), "lgd": ("prediction_std_ratio", 0.05)}
+
+
+def collapsed(frame: pd.DataFrame, track: str) -> bool | None:
+    """Median over monitored tables of the prediction spread at the last monitor is below the limit."""
+    metric, limit = COLLAPSE_LIMITS[track]
+    columns = [c for c in frame if c.startswith("score__") and c.endswith("__" + metric)]
+    if frame.empty or not columns:
+        return None
+    values = pd.to_numeric(frame.iloc[-1][columns], errors="coerce").to_numpy(dtype=float)
+    values = values[np.isfinite(values)]
+    return bool(np.median(values) < limit) if values.size else None
+
+
+def tolerated_skips(counts: dict[str, int], successful_updates: int, fp16: bool) -> bool:
+    if counts["data_skipped_steps"]:
+        return False
+    if not fp16:
+        return counts["amp_skipped_steps"] == 0
+    most, share = FP16_SKIP_ALLOWANCE
+    return counts["amp_skipped_steps"] <= min(most, share * max(successful_updates, 1))
+
+
 def audit(config: Path, *, null=False) -> dict:
     from src.train.config import load_train_config, resolve_grid
-    from src.train.loop import descriptive_name
+    from src.train.loop import descriptive_name, naming_mode
     cfg = load_train_config(config_path=str(config))
     experiment = activate_experiment(cfg)
     plan = json.loads(plan_path(str(cfg.run_name), str(cfg.track)).read_text(encoding="utf-8"))
     report = {"run": str(cfg.run_name), "track": str(cfg.track), "expected": len(plan["trials"]),
-              "completed": 0, "diverged": 0, "pending": 0, "problems": [], "trials": [], "timing": []}
+              "completed": 0, "diverged": 0, "pending": 0, "problems": [], "trials": [], "timing": [],
+              "collapsed": []}
     timings = {}
     for index in range(int(cfg.corpus.n_splits)):
         current = apply_split_index(OmegaConf.create(OmegaConf.to_container(cfg)), index)
@@ -94,8 +132,7 @@ def audit(config: Path, *, null=False) -> dict:
             name = descriptive_name(run_name=current.run_name, track=current.track, base_path=base,
                 learning_rate=lr, seed=current.seed, use_lora=frozen, query_fraction=query,
                 accumulate_grad_batches=accum, epoch_pass_mode=mode, min_train_rows=min_rows,
-                l2sp_lambda=l2sp, adaptation_mode=(getattr(current.train, "adaptation_mode", None)
-                    or ("frozen_backbone" if frozen else "full"))).removesuffix(".ckpt")
+                l2sp_lambda=l2sp, adaptation_mode=naming_mode(current, frozen)).removesuffix(".ckpt")
             path, prov = resolve_checkpoint(str(resolve_staging_path(current.checkpoint.trained_dir) /
                                                current.track / (name + ".ckpt")), current.track)
             row = {"trial": name, "status": "PENDING"}
@@ -115,6 +152,21 @@ def audit(config: Path, *, null=False) -> dict:
                 report["problems"].append(f"{name}: incorrect successful-update budget")
             trajectory = training_dir(current.track) / (name + ".trajectory.csv")
             frame = pd.read_csv(trajectory) if trajectory.is_file() else pd.DataFrame()
+            milestones = (frame[frame.record_type == "rows_milestone"] if "record_type" in frame
+                          else frame.iloc[0:0])
+            if "record_type" in frame:
+                frame = frame[frame.record_type == "trajectory"].reset_index(drop=True)
+            expected_rows = list(OmegaConf.select(cfg, "train.trajectory_rows") or [])
+            if not divergent and expected_rows and len(milestones) > len(expected_rows):
+                report["problems"].append(f"{name}: duplicate processed-row milestones")
+            processed = pd.to_numeric(frame.get("processed_rows", pd.Series(dtype=float)), errors="coerce").max()
+            reached = [r for r in expected_rows if processed == processed and r <= processed]
+            if not divergent and len(milestones) < len(reached):
+                report["problems"].append(f"{name}: missing processed-row milestones")
+            row["row_milestones"] = int(len(milestones))
+            row["collapsed"] = collapsed(frame, str(current.track)) if not divergent else None
+            if row["collapsed"]:
+                report["collapsed"].append(name)
             observed = frame.get("successful_updates", pd.Series(dtype=int)).tolist()
             if not divergent and observed != list(cfg.train.trajectory_steps):
                 report["problems"].append(f"{name}: missing/duplicate trajectory measurements")
@@ -157,7 +209,15 @@ def audit(config: Path, *, null=False) -> dict:
             if experiment == "experiment0" and not divergent:
                 try:
                     row["numerical_skips"] = numerical_skip_counts(epochs)
-                    if any(row["numerical_skips"].values()):
+                    from src.train.tabicl_compat import model_family
+                    # TabICLv2 follows train.tabicl_precision (see loop._resolve_amp_dtype).
+                    if model_family(base) == "tabicl":
+                        fp16 = bool(cfg.train.amp) and str(OmegaConf.select(
+                            cfg, "train.tabicl_precision", default="fp16")).lower() == "fp16"
+                    else:
+                        fp16 = bool(cfg.train.amp) and str(OmegaConf.select(
+                            cfg, "train.amp_dtype", default="auto")).lower() in ("fp16", "float16")
+                    if not tolerated_skips(row["numerical_skips"], int(prov.get("successful_updates") or 0), fp16):
                         report["problems"].append(f"{name}: skipped training batches/updates require investigation")
                 except ValueError as exc:
                     report["problems"].append(f"{name}: {exc}")
@@ -172,10 +232,11 @@ def audit(config: Path, *, null=False) -> dict:
     for (base, mode, frozen), values in timings.items():
         rate = max(v[0] for v in values)
         monitor = max(v[1] for v in values if math.isfinite(v[1])) if any(math.isfinite(v[1]) for v in values) else 0
-        # Compare candidate horizons before settling the main budget. Counts include
-        # update zero and the corresponding proposed trajectory milestones.
-        estimates = {str(steps): math.ceil((steps * rate + monitors * monitor + 600) * 1.3 / 60)
-                     for steps, monitors in ((5000, 5), (10000, 6), (20000, 7))}
+        # Candidate horizons with the design's actual monitor schedule (45 points at 10,000
+        # updates) plus the six processed-row milestones; 30% margin and 10 minutes of setup.
+        from src.utils.design import monitor_updates
+        estimates = {str(steps): math.ceil((steps * rate + (len(monitor_updates(steps)) + 6) * monitor + 600)
+                                           * 1.3 / 60) for steps in (2500, 5000, 10000)}
         report["timing"].append({"base": base, "mode": mode, "frozen": frozen,
             "seconds_per_update": rate, "max_monitor_seconds": monitor,
             "estimated_walltime_minutes_by_updates": estimates})

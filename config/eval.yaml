@@ -4,7 +4,7 @@ train_cfg_path: config/train.yaml         # where the trained-checkpoint roster 
 seed: 99                                 # fixed across training-seed repetitions
 
 baselines:
-  enabled: [xgboost, catboost, logreg, linreg, tabpfn-untuned, tabicl-untuned]
+  enabled: [catboost, logreg, linreg, tabpfn-untuned, tabicl-untuned]   # second campaign: CatBoost + logistic/linear only
 
 cv:
   n_folds: 5                              # outer CV folds per dataset
@@ -23,11 +23,13 @@ max_rows_per_model:                       # inference context cap; forward-only,
 tabpfn_n_estimators: 32                   # inference ensemble; 2 at training time is a memory limit
 tabicl_n_estimators: 8
 
-hpo:                                      # Optuna budget per classical baseline
-  xgboost: {n_trials: 50, timeout_seconds: 900, max_rows: 50000}
-  catboost: {n_trials: 50, timeout_seconds: 900, max_rows: 50000}
-  logreg: {n_trials: 50, timeout_seconds: 300}
-  linreg: {n_trials: 50, timeout_seconds: 300}
+hpo:                                      # Optuna budget per classical baseline: exactly n_trials
+  # seeded trials, no wall-clock timeout. A timeout made the trial count depend on node speed
+  # (first study: logreg completed 12-50 trials, XGBoost 8-50), so reruns differed.
+  xgboost: {n_trials: 50, timeout_seconds: null, max_rows: 50000}
+  catboost: {n_trials: 50, timeout_seconds: null, max_rows: 50000}
+  logreg: {n_trials: 50, timeout_seconds: null}
+  linreg: {n_trials: 50, timeout_seconds: null}
 
 results:
   base_dir: output CreditPFN/results                # resolved onto project storage by paths.py

@@ -1,6 +1,6 @@
 """`src/visualize/figures.py` — the saver.
 
-Every test redirects `output CreditPFN/general/` into `tmp_path` via `isolated_output`, so the suite never
+Every test redirects `output CreditPFN/` into `tmp_path` via `isolated_output`, so the suite never
 writes a real figure into the repository.
 """
 
@@ -65,10 +65,10 @@ def test_clearing_touches_only_this_notebook(isolated_output, fig) -> None:
 
 
 def test_other_worker_cannot_prune_a_saver_before_its_first_write(isolated_output, fig):
-    first = figures.FigureSaver("experiment1/first")
-    figures.clear("experiment1/second")
+    first = figures.FigureSaver("rq1/first")
+    figures.clear("rq1/second")
     assert first.folder.is_dir() and figures.manifest_path(first.notebook).parent.is_dir()
-    second = figures.FigureSaver("experiment1/second")
+    second = figures.FigureSaver("rq1/second")
     first(fig, "first", caption="First worker's plot.")
     second(fig, "second", caption="Second worker's plot.")
     assert first.last_path.is_file() and second.last_path.is_file()
@@ -176,75 +176,53 @@ def test_fresh_figures_clear_own_metadata_without_touching_debug_logs(isolated_o
     assert figures.manifest_path("other").exists() and (logs_dir() / "notebook_other.log").exists()
 
 
-def test_experiment_collection_migration_and_notebook_ownership(isolated_output, fig):
-    from src.utils.paths import figures_dir as legacy, results_dir
-    a = figures.FigureSaver("experiment1/01_training")
-    b = figures.FigureSaver("experiment2/01_training")
-    a(fig, "same", caption="A.")
-    b(fig, "same", caption="B.")
-    assert a.folder != b.folder and a.last_path != b.last_path
-    assert a.folder.name == "experiment1" and a.folder.parent.name == "figures"
-    old = legacy("experiment1/01_training")
-    old.mkdir(parents=True)
-    (old / "01_old.pdf").write_text("old")
-    evidence = results_dir(experiment="experiment1") / "keep.csv"
-    evidence.parent.mkdir(parents=True, exist_ok=True)
-    evidence.write_text("measurement")
-    figures.clear("experiment1/01_training")
-    assert not a.last_path.exists() and not (old / "01_old.pdf").exists()
-    assert not old.parent.exists()
-    assert b.last_path.exists() and evidence.read_text() == "measurement"
-    figures.clear_collection(("experiment1/01_training",))
-    assert not b.last_path.exists()  # retired notebook's metadata identifies its files
-    assert evidence.exists()
-
-
-def test_migration_keeps_captions_and_removes_empty_legacy_folders(isolated_output, fig):
-    from src.visualize.paths import figures_dir, notebook_figures_dir
-    from src.utils.paths import manifests_dir, figures_dir as legacy, logs_dir
-    name = "experiment1/01_training"
-    root = figures_dir()
-    root.mkdir(parents=True)
-    stem = "experiment1__01_training__01_loss"
-    (root / (stem + ".pdf")).write_bytes(b"old pdf")
-    old = manifests_dir("experiment1") / "figures" / "01_training.json"
-    old.parent.mkdir(parents=True)
-    entries = [dict(index=1, stem=stem, name="loss", caption="Recorded query loss.")]
-    old.write_text(json.dumps(entries))
-    legacy(name).mkdir(parents=True)
-    log = logs_dir("experiment1") / "train.log"
-    log.parent.mkdir(parents=True)
-    log.write_text("Scientific evidence")
-    figures.migrate_collection((name,))
-    assert (notebook_figures_dir(name) / (stem + ".pdf")).read_bytes() == b"old pdf"
-    assert figures.read_manifest(name) == entries
-    assert not old.parent.exists() and not legacy(name).parent.exists()
-    assert log.read_text() == "Scientific evidence"
-    figures.migrate_collection((name,))  # idempotent
-    assert len(figures.owned_pdfs(name)) == 1
-
-
 def test_shared_folder_names_cannot_alias_other_notebooks(isolated_output, fig):
     from src.visualize.paths import figure_prefix
     with pytest.raises(ValueError):
-        figure_prefix("experiment1/a__b")
+        figure_prefix("rq1/a__b")
     with pytest.raises(ValueError):
         figures.clear("../elsewhere")
-    assert figure_prefix("experiment1/a/b") != figure_prefix("experiment1/a_b")
-    parent = figures.FigureSaver("experiment1/a")
-    nested = figures.FigureSaver("experiment1/a/b")
+    assert figure_prefix("rq1/a/b") != figure_prefix("rq1/a_b")
+    parent = figures.FigureSaver("rq1/a")
+    nested = figures.FigureSaver("rq1/a/b")
     parent(fig, "same", caption="Parent.")
     nested(fig, "same", caption="Nested.")
-    figures.clear("experiment1/a")
+    figures.clear("rq1/a")
     assert not parent.last_path.exists() and nested.last_path.exists()
 
 
 @pytest.mark.skipif(os.name != "nt", reason="Windows directory attributes")
 def test_empty_readonly_download_directories_are_pruned(isolated_output):
     import stat
-    from src.utils.paths import figures_dir as legacy
-    empty = legacy("experiment1/old_notebook")
+
+    from src.visualize.paths import figures_dir
+    empty = figures_dir() / "rq1" / "_metadata" / "old_notebook"
     empty.mkdir(parents=True)
     empty.chmod(stat.S_IREAD)
-    figures._prune_legacy_trees()
-    assert not empty.parent.exists()
+    figures.clear_collection(())
+    assert not empty.exists()
+
+
+def test_summary_repeats_all_displayed_values_in_section_order(isolated_output):
+    import numpy as np
+    import pandas as pd
+
+    from src.visualize import campaign as cp
+    from src.visualize import style
+    sink = figures.FigureSaver("rq1/text_contract")
+    report = cp.NotebookReport("Report", sink=sink)
+    frame = pd.DataFrame({"dataset": [f"Dataset {i:03}" for i in range(80)], "value": np.arange(80)})
+    report.table("All datasets", frame)
+    report.add("1. Inventory", "No truncation")
+    fig, ax = plt.subplots(figsize=style.figsize())
+    ax.imshow(np.ma.array([[1, 2], [3, 4]], mask=[[0, 0], [0, 1]]))
+    page = cp.Page("matrix", fig, "Observed values; masked cells are unavailable.")
+    cp.show(sink, [page])
+    report.add("2. Effects", "No imputation")
+    summary = report.summary(sink)
+    assert summary.index("1. Inventory") < summary.index("Dataset 079") < summary.index("2. Effects")
+    assert "unavailable" in summary and "..." not in summary
+    assert page.caption in summary and "Figure: matrix" in summary
+    report.table("Unassigned", frame.head())
+    with pytest.raises(ValueError, match="assigned"):
+        report.summary(sink)

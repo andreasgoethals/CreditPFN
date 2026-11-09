@@ -246,18 +246,15 @@ def _notebook_summary(name: str) -> str:
                    if out.get("output_type") == "stream" and out.get("name") == "stdout")
 
 
-def write_captions(notebooks: tuple[str, ...], *, migrate: bool = True) -> Path:
+def write_captions(notebooks: tuple[str, ...]) -> Path:
     """ONE CAPTIONS.md for the project, grouped per notebook, in notebook order.
 
     Built from each figure manifest, so it regenerates from disk after an interactive run. A
     figure with no caption gets a loud placeholder rather than being skipped — a gap should be
     visible in the document meant to contain it.
     """
-    from src.visualize.figures import read_manifest, migrate_collection
+    from src.visualize.figures import read_manifest
     from src.visualize.paths import notebook_figures_dir
-
-    if migrate:
-        migrate_collection(notebooks)
 
     lines = [
         "# Figure captions",
@@ -316,12 +313,6 @@ def write_all_results(notebooks: tuple[str, ...]) -> Path:
     path = all_results_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("\n".join(lines), encoding="utf-8")
-    from src.utils.paths import all_results_path as legacy_all_results_path
-    from src.visualize.figures import _prune_empty
-    old = legacy_all_results_path()
-    if old != path:
-        old.unlink(missing_ok=True)
-        _prune_empty(old.parent)
     return path
 
 
@@ -434,9 +425,7 @@ def run_all(
 
     # ALWAYS over every notebook, never only the ones just run. `CAPTIONS.md` and
     # `All_Results.md` are single project-wide documents assembled from each notebook's
-    # figure manifests and saved notebook outputs, so a partial run must not narrow them:
-    # `--only 2.0 2.1` used to cut CAPTIONS.md from 435 lines to 191, deleting four
-    # notebooks' captions from what is now a tracked file.
+    # figure manifests and saved notebook outputs, so a partial run must not narrow them.
     everything = discover()
     print("Rebuilding CAPTIONS.md and All_Results.md for every notebook...", flush=True)
     write_captions(everything)

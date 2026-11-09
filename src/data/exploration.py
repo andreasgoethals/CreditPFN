@@ -16,9 +16,8 @@ Three layers
 * **Processed** — ``data/processed/{pd,lgd}/<id>.sanitized.csv``.
                   Read by ``corpus_summary_table`` / the
                   ``processed_data_exploration`` notebook. The
-                  "is the cleaning sound" view. Since 2026-05-20
-                  this is also the format that the training pipeline
-                  reads directly (no more `.npz` chunks).
+                  "is the cleaning sound" view. This is also the
+                  format that the training pipeline reads directly.
 
 Glossary
 --------
@@ -75,9 +74,8 @@ All plot helpers return the matplotlib ``Figure`` so the caller can
 
 from __future__ import annotations
 
-import json
+from collections.abc import Iterable
 from pathlib import Path
-from typing import Iterable, Mapping
 
 import numpy as np
 import pandas as pd
@@ -178,15 +176,6 @@ def load_manifests(cfg=None) -> dict[str, pd.DataFrame]:
             _SUMMARY_CACHE[key] = pd.DataFrame(rows, columns=MANIFEST_COLUMNS)
         result[track] = _SUMMARY_CACHE[key].copy()
     return result
-
-
-def load_raw_dataset(track: str, dataset_id: str, cfg=None) -> pd.DataFrame:
-    """Read ``<cfg.paths.raw>/{track}/<dataset_id>.csv``."""
-    paths = _resolve_paths(cfg)
-    p = paths["raw"] / track / f"{dataset_id}.csv"
-    if not p.exists():
-        raise FileNotFoundError(f"raw CSV not found at {p}")
-    return pd.read_csv(p, low_memory=False)
 
 
 def load_sanitized_dataset(
@@ -669,8 +658,8 @@ def plot_size_scatter(
 
     who = track.upper() if track else "PD + LGD"
     tracks = [track] if track else ("pd", "lgd")
-    # Extra horizontal padding: at 160 mm the left panel's x tick labels ran into
-    # the right panel's y tick labels (3 collisions in the 12-08-2026 audit).
+    # Extra horizontal padding: at 160 mm the left panel's x tick labels otherwise run into
+    # the right panel's y tick labels.
     fig, axes = plt.subplots(1, 2, figsize=style.figsize(style.WIDTH_FULL, ratio=0.400))
     for ax, scale in zip(axes, ("linear", "log")):
         for tr in tracks:
@@ -692,7 +681,6 @@ def plot_size_scatter(
             if not y_vals.empty:
                 lo = 10 ** math.floor(math.log10(y_vals.min()))
                 hi = 10 ** math.ceil(math.log10(y_vals.max()))
-                import numpy as np
                 ticks = [10**p for p in range(int(math.log10(lo)),
                                               int(math.log10(hi)) + 1)]
                 if len(ticks) > 1:
@@ -711,71 +699,6 @@ def plot_size_scatter(
     fig.suptitle(f"Shape space — {who}: features vs rows ({source})",
                  fontsize=12, fontweight="bold")
     fig.get_layout_engine().set(w_pad=0.10)
-    return fig
-
-
-def plot_missing_cells_bar(
-    track: str | None = None, *, source: str = "processed", cfg=None,
-):
-    """Per-dataset missing-cell rate as a sorted bar chart.
-
-    ``track``: ``"pd"`` / ``"lgd"`` for one track, ``None`` for both
-    (datasets coloured by track). Missing rate = fraction of NaN cells
-    (denominator = rows × features). ``source``: ``"raw"`` / ``"processed"``.
-    """
-    plt = _import_mpl()
-    if source == "raw":
-        summary = raw_corpus_summary(cfg)
-        col = "missing_cells_rate"
-    elif source == "processed":
-        summary = corpus_summary_table(cfg=cfg)
-        col = "missing_rate_raw"
-    else:
-        raise ValueError("source must be 'raw' or 'processed'")
-    if summary.empty or col not in summary.columns:
-        return None
-    df = summary.dropna(subset=[col]).copy()
-    if track is not None:
-        if track not in ("pd", "lgd"):
-            raise ValueError("track must be 'pd', 'lgd', or None")
-        df = df[df["track"] == track]
-    if df.empty:
-        return None
-    df = df.sort_values(col, ascending=False)
-    who = track.upper() if track else "PD + LGD"
-    # SCALE: one bar per dataset is the clearest form while the labels still fit, and
-    # useless past that. Beyond `style.MAX_BARS` keep the extremes — the question a
-    # reader asks of a ranked corpus chart is "what is unusual?", and both ends answer it.
-    n_all = len(df)
-    if style.too_many(n_all):
-        half = style.MAX_BARS // 2
-        df = pd.concat([df.head(half), df.tail(half)])
-
-    # HORIZONTAL bars. Dataset ids are long, and rotating them 60 degrees put adjacent
-    # labels on top of each other (11 collisions in the 12-08-2026 figure audit).
-    # Horizontal labels read left-to-right at full size and cannot collide.
-    height = max(0.30, 0.052 * len(df) + 0.10)
-    fig, ax = plt.subplots(figsize=style.figsize(style.WIDTH_FULL, ratio=height))
-    colors = [_TRACK_COLOR[t] for t in df["track"]]
-    ypos = np.arange(len(df))[::-1]
-    ax.barh(ypos, df[col].to_numpy(), color=colors, height=0.74)
-    ax.set_yticks(ypos)
-    from src.data.dataset_names import display_name
-    ax.set_yticklabels([display_name(x) for x in df["dataset_id"]], fontsize=7)
-    ax.grid(axis="x", linewidth=0.4, alpha=0.35)
-    ax.grid(axis="y", visible=False)
-    if n_all > len(df):
-        style.note(ax, f"{n_all - len(df)} mid-range of {n_all} hidden")
-    ax.set_xlim(0.0, max(0.01, float(df[col].max()) * 1.1))
-    _apply_style(ax, title=f"Missing cells per dataset — {who}",
-                 xlabel="missing-cell rate  (NaN cells / rows x features)", ylabel="")
-    if track is None:
-        import matplotlib.patches as mpatches
-        ax.legend(
-            handles=[mpatches.Patch(color=_TRACK_COLOR["pd"], label="PD"),
-                     mpatches.Patch(color=_TRACK_COLOR["lgd"], label="LGD")],
-            frameon=False,
-        )
     return fig
 
 
@@ -888,8 +811,6 @@ def plot_target_distribution_lgd(
         df = load_sanitized_dataset("lgd", mrow["dataset_id"], cfg)
         y = pd.to_numeric(df[mrow["target_column"]], errors="coerce").dropna()
         ax.hist(y, bins=40, color="tab:orange", alpha=0.85)
-        frac_zero = float((y == 0).mean())
-        frac_one = float((y == 1).mean())
         # Identifier only. Three lines of statistics per panel is what made these
         # titles collide with the neighbouring panels' tick labels, and the numbers are
         # already in the corpus summary table this notebook prints.
@@ -1000,5 +921,3 @@ def find_anomalous_datasets(
                 **{f"flag_{r}": True for r in reasons},
             })
     return pd.DataFrame(flags)
-
-

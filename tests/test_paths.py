@@ -16,46 +16,15 @@ from pathlib import Path
 
 import pytest
 
-from src.utils.paths import (
-    REPO_ROOT, get_roots, is_staging_available, is_vsc_environment,
-    resolve_data_path, resolve_output_path, resolve_staging_path,
-)
 from src.utils import paths as _paths_mod
-
-
-@pytest.mark.parametrize('campaign,public', [
-    ('experiment4', 'experiment10'), ('experiment5', 'experiment5'),
-    ('experiment6', 'experiment8'), ('experiment7', 'experiment9'), ('experiment8', 'experiment6')])
-@pytest.mark.parametrize('name', ['output', 'output CreditPFN'])
-def test_legacy_yaml_output_aliases_keep_extension_scope(monkeypatch, tmp_path, campaign, public, name):
-    import json
-    from src.utils.study_layout import manifest
-    personal = tmp_path / 'personal'
-    project = tmp_path / 'project' / 'CreditPFN'
-    root = personal / 'output CreditPFN'
-    root.mkdir(parents=True)
-    (root / 'STUDY_LAYOUT.json').write_text(json.dumps(manifest()))
-    monkeypatch.setenv('CREDITPFN_OUTPUT_ROOT', str(personal))
-    monkeypatch.setenv('CREDITPFN_STAGING_ROOT', str(project))
-    monkeypatch.setenv('CREDITPFN_EXPERIMENT', campaign)
-    monkeypatch.setenv('CREDITPFN_LEGACY_ID', 'case1')
-    expected = project / 'output CreditPFN' / public / 'extensions/case1/results'
-    assert resolve_staging_path(f'{name}/results') == expected
-    assert resolve_staging_path(f'{name}/{campaign}/results') == expected
-    assert _paths_mod.results_dir() == expected
-    assert resolve_output_path(f'{name}/logs') == root / public / 'extensions/case1/logs'
-    assert resolve_staging_path(f'{name}/{campaign}/extensions/case1/results') == expected
-    assert resolve_staging_path(expected) == expected
-
-
-def test_generic_lora_alias_does_not_repeat_explicit_scope(monkeypatch, tmp_path):
-    monkeypatch.setenv('CREDITPFN_OUTPUT_ROOT', str(tmp_path))
-    monkeypatch.setenv('CREDITPFN_EXPERIMENT', 'experiment0')
-    monkeypatch.setenv('CREDITPFN_LORA_WORKFLOW', 'case1')
-    monkeypatch.delenv('CREDITPFN_LEGACY_ID', raising=False)
-    expected = tmp_path / 'output CreditPFN/experiment0/lora/case1/logs'
-    assert resolve_output_path('output/logs') == expected
-    assert resolve_output_path('output/experiment0/lora/case1/logs') == expected
+from src.utils.paths import (
+    REPO_ROOT,
+    get_roots,
+    is_vsc_environment,
+    resolve_data_path,
+    resolve_output_path,
+    resolve_staging_path,
+)
 
 
 @pytest.fixture(autouse=True)
@@ -103,20 +72,26 @@ def test_absolute_path_passes_through(monkeypatch, tmp_path) -> None:
     assert resolve_output_path(abs_path) == abs_path
 
 
-@pytest.mark.parametrize("name", ["output", "output CreditPFN"])
-def test_output_aliases_share_one_named_directory_on_both_tiers(monkeypatch, tmp_path, name):
-    from src.utils.paths import resolve_staging_path
-
+def test_output_alias_routes_to_the_active_experiment_on_both_tiers(monkeypatch, tmp_path):
     monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path / "personal/CreditPFN"))
     monkeypatch.setenv("CREDITPFN_STAGING_ROOT", str(tmp_path / "project/CreditPFN"))
     monkeypatch.setenv("CREDITPFN_EXPERIMENT", "experiment0")
     personal = tmp_path / "personal/CreditPFN/output CreditPFN"
     project = tmp_path / "project/CreditPFN/output CreditPFN"
-    assert resolve_output_path(name) == personal
-    assert resolve_output_path(f"{name}/logs") == personal / "experiment0/logs"
-    assert resolve_output_path(f"{name}/experiment2/manifests") == personal / "experiment2/manifests"
-    assert resolve_staging_path(f"{name}/results") == project / "experiment0/results"
-    assert resolve_staging_path(f"{name}/experiment3/training") == project / "experiment3/training"
+    assert resolve_output_path("output CreditPFN") == personal
+    assert resolve_output_path("output CreditPFN/logs") == personal / "experiment0/logs"
+    assert resolve_output_path("output CreditPFN/seed/manifests") == personal / "seed/manifests"
+    assert resolve_output_path("output CreditPFN/general/manifests") == personal / "general/manifests"
+    assert resolve_staging_path("output CreditPFN/results") == project / "experiment0/results"
+    assert resolve_staging_path("output CreditPFN/exposure/training") == project / "exposure/training"
+
+
+def test_generated_run_names_route_to_their_experiment():
+    assert _paths_mod.group_for_run("cpt2e0_zero_lr") == "experiment0"
+    assert _paths_mod.group_for_run("cpt2_update_size_anchoring_a3") == "update_size_anchoring"
+    assert _paths_mod.group_for_run("cpt2_unknown_a0") == "general"
+    with pytest.raises(ValueError):
+        _paths_mod.experiment_group("experiment1")
 
 
 def test_get_roots_reflects_env(monkeypatch, tmp_path) -> None:
@@ -159,13 +134,13 @@ def test_vsc_autodetect_uses_staging_for_data(monkeypatch) -> None:
     monkeypatch.delenv("CREDITPFN_DATA_ROOT",    raising=False)
     monkeypatch.delenv("CREDITPFN_OUTPUT_ROOT",  raising=False)
     monkeypatch.delenv("CREDITPFN_STAGING_ROOT", raising=False)
-    monkeypatch.setenv("TABPFN_STAGING_ROOT", "/lustre1/project/stg_00211")
+    monkeypatch.setenv("TABPFN_STAGING_ROOT", "/gpfs1/project/prj_00013")
     monkeypatch.setenv("VSC_DATA",     "/data/leuven/example/vsc12345")
     monkeypatch.setenv("VSC_SCRATCH",  "/scratch/leuven/example/vsc12345")
     monkeypatch.setenv("VSC_HOME",     "/user/leuven/example/vsc12345")  # for is_vsc_environment
     p = resolve_data_path("data/cached")
     assert str(p).replace("\\", "/").endswith(
-        "/lustre1/project/stg_00211/CreditPFN/data/cached"
+        "/gpfs1/project/prj_00013/CreditPFN/data/cached"
     )
 
 
@@ -205,7 +180,7 @@ def test_partial_vsc_envvars_route_data_to_staging(monkeypatch) -> None:
     monkeypatch.delenv("VSC_SCRATCH", raising=False)
     monkeypatch.setenv("VSC_HOME", "/user/leuven/example/vsc12345")
     assert resolve_data_path("data/cached") == \
-        Path("/lustre1/project/stg_00211/CreditPFN/data/cached")
+        Path("/gpfs1/project/prj_00013/CreditPFN/data/cached")
     assert resolve_output_path("logs") == REPO_ROOT / "logs"
 
 
@@ -214,19 +189,19 @@ def test_get_roots_on_vsc(monkeypatch) -> None:
     data -> project staging, output -> $VSC_DATA, staging -> project staging."""
     for v in ("CREDITPFN_DATA_ROOT", "CREDITPFN_OUTPUT_ROOT", "CREDITPFN_STAGING_ROOT"):
         monkeypatch.delenv(v, raising=False)
-    monkeypatch.setenv("TABPFN_STAGING_ROOT", "/lustre1/project/stg_00211")
+    monkeypatch.setenv("TABPFN_STAGING_ROOT", "/gpfs1/project/prj_00013")
     monkeypatch.setenv("VSC_DATA",    "/data/leuven/example/vsc12345")
     monkeypatch.setenv("VSC_SCRATCH", "/scratch/leuven/example/vsc12345")
     monkeypatch.setenv("VSC_HOME",    "/user/leuven/example/vsc12345")
     roots = get_roots()
     assert str(roots["data_root"]).replace("\\", "/").endswith(
-        "/lustre1/project/stg_00211/CreditPFN"
+        "/gpfs1/project/prj_00013/CreditPFN"
     )
     assert str(roots["output_root"]).replace("\\", "/").endswith(
         "/data/leuven/example/vsc12345/CreditPFN"
     )
     assert str(roots["staging_root"]).replace("\\", "/").endswith(
-        "/lustre1/project/stg_00211/CreditPFN"
+        "/gpfs1/project/prj_00013/CreditPFN"
     )
 
 
@@ -239,7 +214,7 @@ def test_builtin_staging_default_used_on_vsc_without_env(monkeypatch) -> None:
     monkeypatch.setenv("VSC_DATA", "/data/leuven/example/vsc12345")
     monkeypatch.setenv("VSC_HOME", "/user/leuven/example/vsc12345")
     got = str(resolve_staging_path("checkpoints/trained")).replace("\\", "/")
-    assert got == "/lustre1/project/stg_00211/CreditPFN/checkpoints/trained"
+    assert got == "/gpfs1/project/prj_00013/CreditPFN/checkpoints/trained"
 
 
 def test_is_vsc_environment_only_true_when_vsc_envvars_present(monkeypatch) -> None:
@@ -280,27 +255,6 @@ def test_resolve_staging_path_passes_absolute_through(monkeypatch) -> None:
     assert resolve_staging_path(abs_path) == abs_path
 
 
-def test_is_staging_available_false_when_unset(monkeypatch) -> None:
-    monkeypatch.delenv("CREDITPFN_STAGING_ROOT", raising=False)
-    monkeypatch.delenv("TABPFN_STAGING_ROOT",    raising=False)
-    monkeypatch.delenv("VSC_DATA", raising=False)
-    monkeypatch.delenv("VSC_HOME", raising=False)
-    assert is_staging_available() is False
-
-
-def test_is_staging_available_false_when_path_missing(monkeypatch, tmp_path) -> None:
-    missing = str(tmp_path / "does_not_exist")
-    monkeypatch.setenv("CREDITPFN_STAGING_ROOT", missing)
-    assert is_staging_available() is False
-
-
-def test_is_staging_available_true_when_path_exists(monkeypatch, tmp_path) -> None:
-    # Staging base + the /CreditPFN project subdir must exist on disk.
-    (tmp_path / "CreditPFN").mkdir()
-    monkeypatch.setenv("CREDITPFN_STAGING_ROOT", str(tmp_path))
-    assert is_staging_available() is True
-
-
 def test_get_roots_includes_staging(monkeypatch) -> None:
     """get_roots() exposes staging_root."""
     staging = "/staging/leuven/stg_00001/CreditPFN"
@@ -323,15 +277,15 @@ def test_tabpfn_staging_root_env_is_honoured(monkeypatch) -> None:
     """The generic TABPFN_STAGING_ROOT var (no CREDITPFN_ override) resolves
     staging to <base>/CreditPFN."""
     monkeypatch.delenv("CREDITPFN_STAGING_ROOT", raising=False)
-    monkeypatch.setenv("TABPFN_STAGING_ROOT", "/lustre1/project/stg_00211")
+    monkeypatch.setenv("TABPFN_STAGING_ROOT", "/gpfs1/project/prj_00013")
     assert resolve_staging_path("checkpoints/trained") == \
-        Path("/lustre1/project/stg_00211/CreditPFN/checkpoints/trained")
+        Path("/gpfs1/project/prj_00013/CreditPFN/checkpoints/trained")
 
 
 def test_creditpfn_staging_root_takes_precedence_over_tabpfn(monkeypatch) -> None:
     monkeypatch.setenv("TABPFN_STAGING_ROOT",    "/staging/leuven/stg_99999")
-    monkeypatch.setenv("CREDITPFN_STAGING_ROOT", "/lustre1/project/stg_00211")
-    assert resolve_staging_path("x") == Path("/lustre1/project/stg_00211/CreditPFN/x")
+    monkeypatch.setenv("CREDITPFN_STAGING_ROOT", "/gpfs1/project/prj_00013")
+    assert resolve_staging_path("x") == Path("/gpfs1/project/prj_00013/CreditPFN/x")
 
 
 def test_builtin_staging_default_on_vsc(monkeypatch) -> None:
@@ -341,7 +295,7 @@ def test_builtin_staging_default_on_vsc(monkeypatch) -> None:
     monkeypatch.delenv("TABPFN_STAGING_ROOT",    raising=False)
     monkeypatch.setenv("VSC_HOME", "/user/leuven/example/vsc12345")
     assert resolve_staging_path("checkpoints") == \
-        Path("/lustre1/project/stg_00211/CreditPFN/checkpoints")
+        Path("/gpfs1/project/prj_00013/CreditPFN/checkpoints")
 
 
 # =============================================================================
@@ -461,7 +415,7 @@ def test_explicit_envvar_wins_over_autodetect(monkeypatch, tmp_path) -> None:
 def test_make_task_log_path_includes_task_and_timestamp(monkeypatch, tmp_path) -> None:
     """``output CreditPFN/general/logs/<task>_<YYYYMMDD>_<HHMMSS>.log`` schema, flat inside that directory.
 
-    Under `output CreditPFN/general/` since 11-08-2026, like everything else the code generates."""
+    Under `output CreditPFN/general/`, like everything else the code generates."""
     from src.utils.logging_setup import make_task_log_path
     monkeypatch.setenv("CREDITPFN_OUTPUT_ROOT", str(tmp_path))
     monkeypatch.delenv("SLURM_ARRAY_JOB_ID", raising=False)
@@ -494,6 +448,7 @@ def test_setup_logging_skips_filehandler_under_slurm(monkeypatch, tmp_path) -> N
     """Under slurm, bash's `exec > $LOG 2>&1` already routes stdout
     to the log file; adding a Python FileHandler would double-write."""
     import logging as _logging
+
     from src.utils.logging_setup import setup_logging
 
     monkeypatch.setenv("SLURM_JOB_ID", "999")
@@ -507,6 +462,7 @@ def test_setup_logging_uses_filehandler_locally(monkeypatch, tmp_path) -> None:
     """Locally (no slurm), both StreamHandler and FileHandler attach
     so the user sees live output AND the log file is created."""
     import logging as _logging
+
     from src.utils.logging_setup import setup_logging
 
     monkeypatch.delenv("SLURM_JOB_ID", raising=False)

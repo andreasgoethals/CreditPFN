@@ -1,10 +1,10 @@
 """One publication tree, with disjoint notebook ownership and paper captions.
 
-PDFs: output CreditPFN/figures/<group>/<owner>__<NN>_<name>.pdf
+PDFs: output CreditPFN/figures/<group>/<group>__<notebook>__<NN>_<name>.pdf
 Metadata: output CreditPFN/figures/<group>/_metadata/<notebook>.json
 
-Constructing a saver removes that notebook's previous figures, including the old
-folder layout. Other notebooks and scientific evidence are never cleared by it.
+Constructing a saver removes that notebook's previous figures; other notebooks and
+scientific evidence are never cleared by it.
 """
 
 from __future__ import annotations
@@ -16,19 +16,18 @@ from pathlib import Path
 
 import matplotlib.pyplot as plt
 
-from src.utils.paths import REPO_ROOT, EXPERIMENTS, manifests_dir
-from src.utils.paths import figures_dir as legacy_figures_dir
-from src.visualize.paths import (figures_dir, figure_prefix, notebook_figures_dir,
-                                 notebook_parts, PUBLICATION_GROUPS)
+from src.utils.paths import REPO_ROOT
+from src.visualize.paths import (
+    PUBLICATION_GROUPS,
+    figure_prefix,
+    figures_dir,
+    notebook_figures_dir,
+    notebook_parts,
+)
 
 #: Vector already, but heatmaps and scatter clouds inside a PDF rasterise, so it still needs a
 #: print DPI.
 DPI = 300
-
-# Only these generated files are removed from a legacy notebook folder.
-_OWNED = ("*.pdf", "_figures.json", "_stdout.txt")
-
-MANIFEST = "_figures.json"
 
 
 def manifest_path(notebook: str) -> Path:
@@ -36,62 +35,31 @@ def manifest_path(notebook: str) -> Path:
     return notebook_figures_dir(notebook) / "_metadata" / f"{name.as_posix()}.json"
 
 
-def _legacy_manifest_path(notebook: str) -> Path:
-    from src.utils.paths import notebook_parts
-    group, name = notebook_parts(notebook)
-    return manifests_dir(group) / "figures" / f"{name.as_posix()}.json"
-
-
-def _renamed_corpus_folder(notebook: str) -> Path:
-    # Read-only compatibility for artifacts drawn before the corpus group rename.
-    return figures_dir() / "00_general"
-
-
 def read_manifest(notebook: str) -> list[dict]:
     """What this notebook drew last time it ran, in order. `[]` if it never has."""
     path = manifest_path(notebook)
-    if not path.is_file() and notebook.startswith(("general/", "00_general/")):
-        path = _renamed_corpus_folder(notebook) / "_metadata" / manifest_path(notebook).name
-    if not path.is_file():
-        path = _legacy_manifest_path(notebook)
-    if not path.is_file():
-        path = legacy_figures_dir(notebook) / MANIFEST
     if not path.is_file():
         return []
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError:
-        # A run killed mid-write leaves truncated JSON. That is a missing manifest, not a crash:
-        # the figures are still on disk and the next run rewrites it.
+        # A run killed mid-write leaves truncated JSON: a missing manifest, not a crash.
         return []
 
 
 def clear(notebook: str) -> int:
-    """Remove owned PDFs and metadata, preserving other notebooks and run evidence."""
+    """Remove this notebook's PDFs and metadata, preserving other notebooks and run evidence."""
     removed = 0
-    for folder, patterns in ((notebook_figures_dir(notebook), (figure_prefix(notebook) + "*.pdf",)),
-                             (_renamed_corpus_folder(notebook), (figure_prefix(notebook) + "*.pdf",)),
-                             (figures_dir(), (figure_prefix(notebook) + "*.pdf",)),
-                             (legacy_figures_dir(notebook), _OWNED)):
-        for pattern in patterns:
-            for path in folder.glob(pattern):
-                _guard(path, folder)
-                if path.is_file():
-                    path.unlink()
-                    removed += 1
-        if folder == legacy_figures_dir(notebook):
-            _prune_empty(folder)
-    for path in (manifest_path(notebook), _legacy_manifest_path(notebook)):
+    folder = notebook_figures_dir(notebook)
+    for path in folder.glob(figure_prefix(notebook) + "*.pdf"):
+        _guard(path, folder)
         if path.is_file():
             path.unlink()
             removed += 1
-        if path == _legacy_manifest_path(notebook):
-            _prune_empty(path.parent)
-    if notebook.startswith(("general/", "00_general/")):
-        old = _renamed_corpus_folder(notebook) / "_metadata" / manifest_path(notebook).name
-        if old.is_file():
-            old.unlink()
-        _prune_empty(old.parent)
+    path = manifest_path(notebook)
+    if path.is_file():
+        path.unlink()
+        removed += 1
     return removed
 
 
@@ -119,77 +87,18 @@ def _prune_empty(folder: Path) -> None:
         folder = folder.parent
 
 
-def _prune_legacy_trees() -> None:
-    for group in EXPERIMENTS:
-        for root in (legacy_figures_dir(f"{group}/placeholder").parent,
-                     manifests_dir(group) / "figures"):
-            for folder in sorted(root.rglob("*"), key=lambda p: len(p.parts), reverse=True):
-                if folder.is_dir():
-                    _prune_empty(folder)
-            _prune_empty(root)
-
-
-def migrate_collection(notebooks: tuple[str, ...]) -> None:
-    """Move recognized publication artifacts; retain unknown files and run evidence."""
-    for name in sorted(notebooks):
-        entries = read_manifest(name)
-        if not entries:
-            continue
-        destination = notebook_figures_dir(name)
-        for entry in entries:
-            filename = entry["stem"] + ".pdf"
-            target = destination / filename
-            _guard(target, destination)
-            for folder in (figures_dir(), legacy_figures_dir(name), _renamed_corpus_folder(name)):
-                source = folder / filename
-                _guard(source, folder)
-                if source.is_file():
-                    destination.mkdir(parents=True, exist_ok=True)
-                    if target.exists() and source.read_bytes() != target.read_bytes():
-                        raise ValueError(f"Conflicting publication files: {filename}")
-                    if target.exists():
-                        source.unlink()
-                    else:
-                        source.replace(target)
-        path = manifest_path(name)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(json.dumps(entries, indent=2), encoding="utf-8")
-        for old in (_legacy_manifest_path(name), legacy_figures_dir(name) / MANIFEST,
-                    _renamed_corpus_folder(name) / "_metadata" / path.name):
-            if old.is_file():
-                old.unlink()
-    _prune_legacy_trees()
-
-
 def clear_collection(notebooks: tuple[str, ...]) -> None:
     """Full reruns also retire figures from notebooks that were renamed or removed."""
     owners = set(notebooks)
-    old_metadata = figures_dir() / "00_general" / "_metadata"
-    owners.update("general/" + p.relative_to(old_metadata).with_suffix("").as_posix()
-                  for p in old_metadata.rglob("*.json"))
     for group in PUBLICATION_GROUPS:
-        root = notebook_figures_dir(f"{group}/placeholder") / "_metadata"
+        root = figures_dir() / group / "_metadata"
         owners.update(group + "/" + p.relative_to(root).with_suffix("").as_posix()
                       for p in root.rglob("*.json"))
-    for group in EXPERIMENTS:
-        for root in (manifests_dir(group) / "figures",
-                     notebook_figures_dir(f"{group}/placeholder") / "_metadata"):
-            owners.update(group + "/" + p.relative_to(root).with_suffix("").as_posix()
-                          for p in root.rglob("*.json"))
-        root = legacy_figures_dir(f"{group}/placeholder").parent
-        owners.update(group + "/" + p.parent.relative_to(root).as_posix()
-                      for p in root.rglob(MANIFEST))
     for name in sorted(owners):
         clear(name)
-    # Caption indexes are generated from scratch after execution. The old shared
-    # index is removed during migration; no training/result directories are visited.
-    for path in (figures_dir() / "CAPTIONS.md", legacy_figures_dir() / "CAPTIONS.md"):
-        if path.is_file():
-            path.unlink()
-    _prune_legacy_trees()
-    # Only the full pre-execution cleanup may prune shared publication folders.
-    # An individual worker must not remove an empty directory another saver has
-    # just created and is about to write into.
+    (figures_dir() / "CAPTIONS.md").unlink(missing_ok=True)
+    # Only the full pre-execution cleanup may prune shared publication folders: an individual
+    # worker must not remove an empty directory another saver is about to write into.
     for folder in sorted(figures_dir().rglob("*"), key=lambda p: len(p.parts), reverse=True):
         if folder.is_dir():
             _prune_empty(folder)
@@ -230,18 +139,9 @@ class FigureSaver:
         #: wiping what the earlier cells wrote. Never pass it in the setup cell.
         if clear_first:
             clear(notebook)
-        else:
-            migrate_collection((notebook,))
         self.folder.mkdir(parents=True, exist_ok=True)
         manifest_path(notebook).parent.mkdir(parents=True, exist_ok=True)
         self.entries: list[dict] = [] if clear_first else read_manifest(notebook)
-        from src.utils.study_layout import notebook_campaigns
-        self.dependencies = {"campaign_ids": notebook_campaigns(notebook), "extension_ids": []}
-        if set(self.dependencies['campaign_ids']).intersection({'experiment4', 'experiment5', 'experiment6', 'experiment7', 'experiment8'}):
-            from src.visualize.legacy_extensions import selected
-            selection = selected()
-            if selection:
-                self.dependencies['extension_ids'] = [selection[1]['id']]
 
     def __call__(self, fig: plt.Figure, name: str, caption: str = "", **kwargs) -> None:
         return self.save(fig, name, caption=caption, **kwargs)
@@ -257,12 +157,8 @@ class FigureSaver:
         The figure is left open so it still displays in Jupyter — that inline render is the only
         raster copy there is, and the interactive run has to look the same as the runner's.
 
-        RETURNS NOTHING, deliberately. It used to return the `Path`, and since every notebook
-        cell here is a bare `sink.save(...)`, Jupyter echoed that return value as the cell's
-        result: an `Out[n]: WindowsPath('C:/Users/<name>/.../20_paper_zero_shot.pdf')` line
-        under all 22 figures. That is noise beside every figure, and — now that the executed
-        notebooks are saved with their outputs — it wrote an absolute path carrying the author's
-        username into a tracked file. Use `last_path` when a caller genuinely needs the path.
+        Returns nothing: a bare `sink.save(...)` cell would otherwise echo an absolute path, with
+        the author's username, into the saved notebook. Use `last_path` when the path is needed.
         """
         index = len(self.entries) + 1
         stem = f"{self.prefix}{index:02d}_{_slug(name)}"
@@ -270,7 +166,8 @@ class FigureSaver:
         _guard(path, self.folder)
         fig.savefig(path, format="pdf", dpi=DPI)
         entry = {"index": index, "stem": stem, "name": name, "caption": caption.strip()}
-        entry["provenance"] = {**self.dependencies, **(provenance or {})}
+        if provenance:
+            entry["provenance"] = provenance
         self.entries.append(entry)
         # Rewritten after every figure, so a notebook that dies halfway still has a manifest
         # describing the figures it did produce.
@@ -283,10 +180,7 @@ class FigureSaver:
         drew, not only what it computed."""
         if not self.entries:
             return f"{self.notebook}: no figures saved."
-        # REPO-RELATIVE, never absolute. `All_Results.md` can be shared, so an
-        # absolute path would publish the author's home directory and username — and would
-        # differ on every machine, so the file churned in the diff after each run (locally
-        # `C:\Users\<name>\...`, on the cluster `/data/leuven/383/<account>/...`).
+        # Repo-relative, never absolute: All_Results.md is shared and must not carry a home path.
         try:
             where = self.folder.resolve().relative_to(REPO_ROOT).as_posix()
         except ValueError:

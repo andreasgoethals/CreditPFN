@@ -87,7 +87,8 @@ def inject(model, *, family, base_path=None, base_sha256=None):
         raise ValueError("DiagScale already injected")
     targets = []
     legacy = []
-    from src.model.tabpfn_legacy import supported, targets as legacy_targets
+    from src.model.tabpfn_legacy import supported
+    from src.model.tabpfn_legacy import targets as legacy_targets
     if family == "tabpfn" and supported(model):
         legacy = legacy_targets(model, query_only=True)
     for name, module in model.named_modules():

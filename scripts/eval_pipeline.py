@@ -27,14 +27,14 @@ _REPO = Path(__file__).resolve().parent.parent
 if str(_REPO) not in _sys.path:
     _sys.path.insert(0, str(_REPO))
 
+from src.eval.config import load_eval_configs  # noqa: E402
+from src.utils.config import dump_resolved  # noqa: E402
+from src.utils.logging_setup import resolve_run_log, setup_logging  # noqa: E402
 from src.utils.paths import (  # noqa: E402
     apply_data_source_from_cfg,
     manifests_dir,
     results_dir,
 )
-from src.eval.config import load_eval_configs  # noqa: E402
-from src.utils.config import dump_resolved  # noqa: E402
-from src.utils.logging_setup import resolve_run_log, setup_logging  # noqa: E402
 
 LOGGER = logging.getLogger(__name__)
 
@@ -112,30 +112,10 @@ def _build_roster(eval_cfg, train_cfg, track: str):
     is missing). Trained models prefer their own provenance test set.
     """
     import os
-    from src.train.corpus import split_from_cfg
-    from src.model import build_baselines
-    from src.eval.benchmark import load_trained_handles
 
-    refresh = bool(os.environ.get("CREDITPFN_EVAL_REFRESH", ""))
-    if refresh:
-        from src.utils.evaluation_refresh import validate
-        validate(train_cfg, eval_cfg)
-    if not refresh and OmegaConf.select(train_cfg, "experiment.legacy_gate", default=False):
-        from src.utils.legacy_checks import require_gate
-        require_gate(str(train_cfg.experiment.extension_id))
-    if not refresh and OmegaConf.select(train_cfg, "experiment.lora_gate", default=False):
-        from src.utils.lora_checks import validate_evaluation
-        validate_evaluation(train_cfg, eval_cfg)
-    if not refresh and OmegaConf.select(train_cfg, "experiment.followup_gate", default=False):
-        from src.utils.followup_checks import require_gate
-        require_gate()
-    from src.train.size_studies import study
-    if study(train_cfg):
-        from src.utils.prepare_experiment import plan_path, read_plan, check_shared_reference, check_size_evaluation
-        prepared = read_plan(plan_path(str(train_cfg.run_name), track))
-        check_shared_reference(prepared)
-        if not refresh:
-            check_size_evaluation(train_cfg, prepared, eval_cfg)
+    from src.eval.benchmark import load_trained_handles
+    from src.model import build_baselines
+    from src.train.corpus import split_from_cfg
 
     split = split_from_cfg(train_cfg, track=track)
     _PACK_ROW_COUNTS[track] = {c.dataset_id: c.n_rows for c in (*split.train, *split.test)}
@@ -196,15 +176,10 @@ def _build_roster(eval_cfg, train_cfg, track: str):
             identity = (handle.extra or {}).get("trial_identity_sha256")
             if identity not in expected:
                 raise RuntimeError(f"Checkpoint does not belong to the prepared training plan: {handle.name}")
-        if OmegaConf.select(train_cfg, "experiment.legacy_gate", default=False):
-            observed = {(handle.extra or {}).get("trial_identity_sha256") for handle, _ in trained}
-            if observed != expected:
-                raise RuntimeError("Extension benchmark requires every planned, non-diverged checkpoint in this partition")
 
-    # LOUD guard (post-mortem, 2026-07-04): in the Jul-3 run all 64 training
-    # trials failed and eval silently benchmarked a baselines-only roster —
-    # nothing in any eval log said "there are no trained models here". Make
-    # that state unmissable so a wasted comparison can't masquerade as a run.
+    # LOUD guard: if every training trial failed, evaluation would silently benchmark a
+    # baselines-only roster. Make that state unmissable so a wasted comparison cannot
+    # masquerade as a run.
     if not trained:
         LOGGER.warning(
             "=========================================================\n"
@@ -271,7 +246,7 @@ def _enumerate_tasks(handles_and_models, cfg_test_ids: list[str]):
 # Packing cells into array tasks
 # --------------------------------------------------------------------------- #
 #
-# MEASURED on the 10/11-08-2026 run (147 eval logs). Seconds to score one model on one
+# MEASURED from 147 earlier evaluation logs. Seconds to score one model on one
 # dataset, per 1 000 rows of that dataset, 5 folds:
 #
 #     baselines (xgboost/lightgbm/catboost/linear)   9.3   <- 50-trial Optuna, per fold
@@ -320,13 +295,10 @@ def _pack_tasks(pairs, handles_and_models, *, n_tasks: int, track: str,
                 max_rows_per_model: dict[str, int] | None) -> list[list[int]]:
     """Group cells into `n_tasks` slurm array tasks of roughly equal cost.
 
-    WHY THIS EXISTS (measured, 10/11-08-2026 run). One cell per array task meant 209 PD
-    tasks for ~16 GPU-hours of work. The median task computed for **94 seconds**, 19 tasks
-    did nothing at all (already scored) and still took a GPU allocation, and the array
-    reached an average concurrency of **0.73** — 44 % of the elapsed time nothing was
-    computing at all, because every task had to be scheduled separately onto a busy
-    partition. 6.7 GPU-hours took 9.1 hours of wall-clock. Training, submitted as 36 big
-    tasks on the same day, held 15-21 GPUs at once and drained 90 GPU-hours in 5.1 hours.
+    WHY THIS EXISTS. One cell per array task produced hundreds of tasks that each computed
+    for about a minute (some for nothing, already scored) yet each waited for its own GPU
+    allocation, so the array averaged under one concurrent task. A few large tasks keep the
+    allocations busy.
 
     The scheduler rewards a few substantial jobs; it punishes hundreds of tiny ones.
 
@@ -424,10 +396,6 @@ def run(
     from src.utils.paths import activate_experiment
     activate_experiment(train_cfg)
     track = str(train_cfg.track)
-
-    if OmegaConf.select(train_cfg, "experiment.lora_gate", default=False):
-        from src.utils.lora_checks import validate_evaluation
-        validate_evaluation(train_cfg, eval_cfg)
 
     # Apply paths.data_source from config/data.yaml (single source of
     # truth) BEFORE any resolve_*_path calls below.
@@ -603,7 +571,7 @@ def _parse_args(argv: list[str] | None = None):
     )
     p.add_argument("--config", default=None,
                    help="experiment config, merged as a DELTA over eval.train_cfg_path "
-                        "(e.g. config/experiment1/pd.yaml). Must match the config the "
+                        "(e.g. config/experiments/E01_reference/pd_a0.yaml). Must match the config the "
                         "checkpoints were TRAINED with, or the test-dataset draw differs.")
     p.add_argument("--split-index", type=int, default=None,
                    help="which random dataset split to evaluate; sets corpus.split_seed and "
@@ -670,7 +638,6 @@ if __name__ == "__main__":
         # roster builder calls into the corpus splitter, which checks
         # for sanitized CSVs via `resolve_data_path`. Without this the
         # task count is computed against the wrong storage tier on VSC.
-        # Reported by Codex on 2026-05-21.
         apply_data_source_from_cfg(OmegaConf.load("config/data.yaml"))
         logging.basicConfig(level=logging.WARNING, force=True)
         handles_and_models, cfg_test_ids, _ = _build_roster(
@@ -694,23 +661,15 @@ if __name__ == "__main__":
             # (model-major) task list, so each pool contains a slice of EVERY
             # model rather than a subset of models.
             #
-            # This replaced a model-parity split on 08-08-2026 after a pool
-            # was lost in the 07-08 run. Model parity meant pool p held whole
-            # models (m % pools == p), so when the gpu_a100 pool never ran we
-            # lost 12 of 24 models OUTRIGHT — including `tabpfn-untuned[v3]`
-            # and `tabicl-untuned`, i.e. the two controls the entire
-            # trained-vs-untuned comparison rests on. That is the worst
-            # possible way to lose half a run.
-            #
+            # A model-parity split (pool p holds whole models) loses entire models,
+            # possibly the original-model controls, when one pool never runs.
             # Under task-stride, losing a pool costs each model roughly half
             # its DATASETS instead. Every model survives, so model-to-model
             # comparisons stay computable (on fewer datasets), and the
             # skip-existing logic fills the rest on a re-run. Tasks are
             # enumerated model-major, so consecutive indices are the same
             # model on different datasets — the stride therefore spreads each
-            # model's datasets across pools, which also preserves the original
-            # reason model-parity existed (never send one whole dataset to the
-            # slow pool).
+            # model's datasets across pools (never one whole dataset to the slow pool).
             idx = [str(i) for i in range(n_units)
                    if i % args.pools == args.pool]
             print(",".join(idx))
