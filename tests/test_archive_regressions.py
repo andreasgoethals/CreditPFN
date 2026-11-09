@@ -190,3 +190,50 @@ def test_training_identity_covers_the_monitor_protocol():
     source = inspect.getsource(experiment.code_identity)
     assert all(f in source for f in ("src/eval/benchmark.py", "src/eval/dataset_loader.py",
                                      "config/domain_control.yaml"))
+
+
+# ------------------------------------------------- pre-launch review (09-11-2026)
+def test_numerical_stop_counts_update_attempts_not_epochs():
+    from src.train.loop import no_finite_updates
+    epoch = lambda steps, skipped: NS(epoch=1, optimizer_steps=steps, amp_skipped_steps=skipped)
+    single_table = [epoch(1, 1)] * 5                           # five FP16 back-offs, one update each
+    assert not no_finite_updates(single_table, 50)
+    assert no_finite_updates([epoch(1, 1)] * 50, 50)
+    assert not no_finite_updates([epoch(1, 1)] * 60 + [epoch(1, 0)], 50)   # a success resets
+    assert no_finite_updates([epoch(13, 13)] * 4, 50)          # multi-table: about four epochs
+
+
+def test_monitor_runs_without_tf32_and_restores_training_setting():
+    from src.train.loop import strict_fp32
+    torch.backends.cuda.matmul.allow_tf32 = True
+    with strict_fp32():
+        assert torch.backends.cuda.matmul.allow_tf32 is False and torch.backends.cudnn.allow_tf32 is False
+    assert torch.backends.cuda.matmul.allow_tf32 is True
+    import inspect
+
+    from src.train import loop
+    assert "with strict_fp32():" in inspect.getsource(loop.train_one_config)
+
+
+def test_lgd_capacity_uses_lgd_sized_contexts():
+    from src.utils import pilot_checks as pc
+    largest_lgd_context = int(57_932 * 0.8 * 0.8)
+    assert max(pc.CAPACITY_ROWS["lgd"].values()) <= largest_lgd_context
+    assert pc.CAPACITY_ROWS["pd"]["v3"] == 467_312 and pc.PRECISION_ROWS <= 10_000
+
+
+def test_campaign_walltimes_are_explicit_and_validated(monkeypatch):
+    from src.utils import campaign_launch as cl
+    assert cl.campaign_walltimes() == cl.DEFAULT_WALLTIMES
+    monkeypatch.setenv("CREDITPFN_TRAIN_WALLTIME", "06:30:00")
+    assert cl.campaign_walltimes()["WALLTIME"] == "06:30:00"
+    monkeypatch.setenv("CREDITPFN_EVAL_WALLTIME", "6h")
+    with pytest.raises(ValueError):
+        cl.campaign_walltimes()
+
+
+def test_evaluation_arrays_reserve_only_their_own_lanes():
+    from pathlib import Path
+    source = (Path(__file__).resolve().parents[1] / "scripts/slurm/run_experiment.sh").read_text()
+    assert '(( EVAL_TASKS < elimit )) && elimit=$EVAL_TASKS' in source
+    assert 'submit_array "$ECLUSTER" "$elimit"' in source

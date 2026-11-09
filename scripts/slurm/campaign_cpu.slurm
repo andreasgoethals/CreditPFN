@@ -35,7 +35,8 @@ case "$action" in
             tests/test_pilot_checks.py tests/test_regression_objectives.py \
             tests/test_diagscale_precision.py tests/test_tabpfn_precision_policy.py \
             tests/test_environment_parity.py tests/test_retention_panel.py tests/test_corpus_policies.py \
-            tests/test_target_finetune.py tests/test_campaign_tasks.py
+            tests/test_target_finetune.py tests/test_campaign_tasks.py tests/test_control_matching.py \
+            tests/test_archive_regressions.py tests/test_campaign_launch.py
         # Whole suite for the record.
         python -m pytest -q -p no:cacheprovider tests || echo "FULL SUITE HAD FAILURES (recorded above; not a gate)"
         python -m src.utils.density_audit --out "$CREDITPFN_OUTPUT_ROOT/output CreditPFN/experiment0/manifests/pilots/density_audit.json" \

@@ -83,12 +83,16 @@ def finetune_cell(data, context, validation, test, path, family, *, recipe=None,
         a, mask = _sanitize(a)
         b, _ = _sanitize(b, dead_cols=mask)
         c, _ = _sanitize(c, dead_cols=mask)
-        # Upstream's TabICL fine-tuner rejects NaN (its inference wrapper imputes internally).
-        # Impute with medians of the fine-tuning rows only; validation/test never inform it.
+        # Upstream's TabICL fine-tuner rejects NaN. Impute with the column means of the
+        # fine-tuning rows only (validation/test never inform it), exactly what TabICL's own
+        # inference imputer does in the paired untuned cell, so both cells see identical inputs.
         a, b, c = (np.asarray(m, dtype=np.float64) for m in (a, b, c))
-        medians = np.nan_to_num(np.nanmedian(np.where(np.isfinite(a), a, np.nan), axis=0)
-                                if len(a) else np.zeros(a.shape[1]), nan=0.0)
-        a, b, c = (np.where(np.isfinite(m), m, medians) for m in (a, b, c))
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)   # an all-missing column becomes 0
+            means =np.nan_to_num(np.nanmean(np.where(np.isfinite(a), a, np.nan), axis=0)
+                                  if len(a) else np.zeros(a.shape[1]), nan=0.0)
+        a, b, c = (np.where(np.isfinite(m), m, means) for m in (a, b, c))
         estimator = _tabicl_finetuner(data.task_type, path, recipe=recipe, device=device,
                                       views=views, seed=seed, context_rows=len(context))
     else:

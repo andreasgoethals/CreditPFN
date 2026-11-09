@@ -2,6 +2,7 @@
 
 ## 09-11-2026
 
+- Pre-launch review fixes: evaluation arrays reserve only their own scheduler lanes (they serialised every later job); campaign jobs get explicit 24 h walltimes (env-overridable) and Experiment 0 6 h pilots / 12 h benchmark; E4/E11 arrays 12 h; LGD capacity at LGD-sized contexts; precision check at 8,192 rows with failures recorded; monitors run without TF32; numerical stopping counts update attempts (50), not epochs; E4 TabICL fine-tuning mean-imputes like its paired untuned cell; Experiment 0 gate runs the new tests.
 - Prepared CSVs (processed tables, retention panel, E3 twins) always use LF, so laptop and VSC preparation give identical bytes.
 - Notebook figures redesigned: one figure per scientific question for RQ1–RQ4 (`src/visualize/results2.py`; per-table effects with seed noise, transfer vs retention, metric profile, CatBoost position, E3/E4, E5 dose response and trade-off, data arms, matched context, cost, context curves, properties, E12 matrix), drawn only when evidence exists and tested on synthetic frames; general notebooks cut from 26 to 7 figures.
 - Review fixes: fold coverage checked against the credit registry (E3, E9 now prepare); zero-LR parity over all monitor points; DiagScale recovery comparison; E10 matched-context arrays (offset indices, wrapper kind); endpoint reports read the metric CSVs, OK rows only, and require all five folds.

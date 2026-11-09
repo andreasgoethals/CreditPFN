@@ -147,8 +147,9 @@ def submit_experiment0(folder: Path, receipt: Path) -> dict:
                        GLOBAL_CONCURRENCY=NO_CAP, EVAL_CONCURRENCY=NO_CAP, STAGES="train",
                        EVAL_TASKS=EVAL_TASKS,
                        # Unmeasured until Experiment 0 itself: generous rails for 250-update
-                       # pilots with up to 50,000-row monitors on ~36 tables.
-                       WALLTIME="03:00:00", EVAL_WALLTIME="04:00:00")
+                       # pilots with up to 50,000-row monitors on ~36 tables, and for the
+                       # reference benchmark (v3/TabICL at a 467,000-row context on the largest table).
+                       WALLTIME="06:00:00", EVAL_WALLTIME="12:00:00")
     state = {"pilots": {}, "benchmark": {}, "classical": {}, "recovery": None, "capacity": None,
              "precision": None, "evaluation": None, "summary": None}
     receipt.parent.mkdir(parents=True, exist_ok=True)
@@ -213,6 +214,23 @@ def _receipt(slug: str) -> Path:
     return manifests_dir(slug) / "submission.json"
 
 
+#: Walltime rails for campaign jobs until Experiment 0 has measured them; override with
+#: CREDITPFN_TRAIN_WALLTIME / CREDITPFN_EVAL_WALLTIME (HH:MM:SS). The run_experiment.sh default
+#: (two hours, no segments) is far below first-study timings for 26,000-row trials (2.1-2.4 h
+#: with 2,000-row monitors; monitors are now 10,000 rows), and a timed-out training job
+#: cancels its evaluation.
+DEFAULT_WALLTIMES = {"WALLTIME": "24:00:00", "EVAL_WALLTIME": "24:00:00"}
+
+
+def campaign_walltimes() -> dict:
+    values = {"WALLTIME": os.environ.get("CREDITPFN_TRAIN_WALLTIME", DEFAULT_WALLTIMES["WALLTIME"]),
+              "EVAL_WALLTIME": os.environ.get("CREDITPFN_EVAL_WALLTIME", DEFAULT_WALLTIMES["EVAL_WALLTIME"])}
+    for value in values.values():
+        if not re.fullmatch(r"\d{1,3}:\d{2}:\d{2}", value):
+            raise ValueError(f"Walltime must be HH:MM:SS, got {value!r}")
+    return values
+
+
 def require_experiment0() -> None:
     """Campaign work starts only after a passing Experiment 0 summary."""
     from src.utils.pilot_checks import receipts
@@ -231,7 +249,7 @@ def submit_experiment(name: str, *, budget: int = QUEUE_BUDGET, queued=queued_jo
     receipt = _receipt(slug)
     state = json.loads(receipt.read_text(encoding="utf-8")) if receipt.exists() else {"submitted": {}}
     env = _environment(CREDITPFN_EXPERIMENT=slug, THROTTLE=NO_CAP, GLOBAL_CONCURRENCY=NO_CAP,
-                       EVAL_CONCURRENCY=NO_CAP, EVAL_TASKS=EVAL_TASKS)
+                       EVAL_CONCURRENCY=NO_CAP, EVAL_TASKS=EVAL_TASKS, **campaign_walltimes())
     receipt.parent.mkdir(parents=True, exist_ok=True)
     try:
         if kind in ("finetune", "inference"):

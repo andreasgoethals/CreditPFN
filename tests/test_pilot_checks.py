@@ -192,7 +192,8 @@ def test_benchmark_check_requires_every_model_table_and_fold(monkeypatch):
 @pytest.mark.parametrize("task", [0, 4])        # PD and LGD with TabPFN v2
 def test_capacity_check_runs_the_benchmark_scoring_path(task, monkeypatch, tmp_path):
     monkeypatch.setattr(pc, "receipts", lambda: tmp_path)
-    monkeypatch.setitem(pc.CAPACITY_ROWS, "v2", 200)
+    monkeypatch.setitem(pc.CAPACITY_ROWS["pd"], "v2", 200)
+    monkeypatch.setitem(pc.CAPACITY_ROWS["lgd"], "v2", 200)
     monkeypatch.setitem(pc.CAPACITY_TEST_ROWS, "pd", 300)
     monkeypatch.setitem(pc.CAPACITY_TEST_ROWS, "lgd", 300)
     monkeypatch.setitem(pc.CAPACITY_VIEWS, "tabpfn", 2)

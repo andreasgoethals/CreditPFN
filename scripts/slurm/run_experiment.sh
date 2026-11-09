@@ -205,11 +205,14 @@ if [[ " $STAGES " == *' eval '* ]]; then
         # or unrecovered task cancels the evaluation instead of leaving it pending.
         # submit_bounded appends its afterany lane dependency to this one (AND).
         [[ -n "${DEP_JOBS[$k]:-}" ]] && DEP=(--dependency="afterok:${DEP_JOBS[$k]}" --kill-on-invalid-dep=yes)
+        # Like training, an array reserves at most as many pool lanes as it has tasks; reserving
+        # the whole uncapped pool would make every later array wait for this evaluation.
+        elimit=$EVAL_CONCURRENCY; (( EVAL_TASKS < elimit )) && elimit=$EVAL_TASKS
         CMD=(sbatch --parsable --clusters="$ECLUSTER" --partition="$EPARTITION" --account="$ACCOUNT"
-             --array="0-$((EVAL_TASKS-1))%${EVAL_CONCURRENCY}" --time="${EVAL_WALLTIME:-02:00:00}" "${DEP[@]}"
+             --array="0-$((EVAL_TASKS-1))%${elimit}" --time="${EVAL_WALLTIME:-02:00:00}" "${DEP[@]}"
              --export=ALL,CREDITPFN_CONFIG="$CONFIG",CREDITPFN_SPLIT_INDEX="$k",EVAL_TASKS="$EVAL_TASKS"
              "$EVAL_JOB")
-        submit_array "$ECLUSTER" "$EVAL_CONCURRENCY" "${CMD[@]}"
+        submit_array "$ECLUSTER" "$elimit" "${CMD[@]}"
     done
 fi
 [[ -n "${DRY:-}" ]] && echo 'Preview complete; no jobs submitted.' || echo 'Submission complete; inspect queue and per-trial outcomes.'

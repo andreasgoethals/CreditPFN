@@ -49,9 +49,14 @@ PRECISION_TASKS = len(TRACKS) * MODELS_PER_TRACK
 PRECISION_TABLES = 4
 #: Update-zero loss agreement required between FP32 and the training precision (nats).
 PRECISION_TOLERANCE = (0.02, 0.02)   # absolute + relative to the FP32 loss
-#: Largest inference context the benchmark gives each model (config/eval.yaml caps, bounded
-#: by the largest held-out PD table's outer-fold context: 730,176 x 0.8 x 0.8 rows).
-CAPACITY_ROWS = {"v2": 10_000, "v2.6": 50_000, "v3": 467_312, "tabicl-v2": 467_312}
+#: Largest inference context the benchmark gives each model per task: config/eval.yaml caps,
+#: bounded by the largest table's outer-fold context (0.8 x 0.8 x rows: PD 730,176, LGD 57,932).
+CAPACITY_ROWS = {"pd": {"v2": 10_000, "v2.6": 50_000, "v3": 467_312, "tabicl-v2": 467_312},
+                 "lgd": {"v2": 10_000, "v2.6": 37_076, "v3": 37_076, "tabicl-v2": 37_076}}
+#: Rows of the precision comparison. Agreement of FP32 and the training precision does not need
+#: the full episode (BF16's TabICL failure showed at 1,000 rows), and an FP32 backward at 26,000
+#: rows may not fit next to its own graph.
+PRECISION_ROWS = 8192
 
 
 def receipts() -> Path:
@@ -166,7 +171,7 @@ def capacity(task: int) -> dict:
     family = "tabicl" if model.startswith("tabicl") else "tabpfn"
     if family == "tabpfn" and inference_precision() is not torch.float32:
         raise RuntimeError("Capacity check requires FP32 TabPFN evaluation")
-    rows, features, validation, test = CAPACITY_ROWS[model], 64, 2048, CAPACITY_TEST_ROWS[track]
+    rows, features, validation, test = CAPACITY_ROWS[track][model], 64, 2048, CAPACITY_TEST_ROWS[track]
     rng = np.random.default_rng(518)
     x = pd.DataFrame(rng.normal(size=(rows + validation + test, features)).astype(np.float32))
     y = (x[0] > 0).astype(int).to_numpy() if track == "pd" else x[0].to_numpy()
@@ -271,7 +276,7 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
     device = "cuda"
     use_amp, amp_dtype = _resolve_amp_dtype(cfg, device, family)
     members = training_members(cfg, track, family)
-    rows = training_row_cap(cfg, base, family, members)
+    rows = min(training_row_cap(cfg, base, family, members), PRECISION_ROWS)
     query_fraction = float(cfg.tunable.query_fractions[0])
     objective = str(cfg.train.get("regression_objective", "bar_nll"))
     path = resolve_base_checkpoint(base)
@@ -299,18 +304,21 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
                                                inference_config=inference_config, rng_seed=index, **build)
         batch = batch.to(device)
         row = {"table_index": index, "rows": int(min(rows, len(loaded.y)))}
-        for label, enabled in (("fp32", False), ("training", use_amp)):
-            model.zero_grad(set_to_none=True)
-            with torch.amp.autocast("cuda", enabled=enabled, dtype=amp_dtype):
-                loss = batch_loss(model, batch, criterion=criterion, regression_objective=objective)
-            loss.backward()
-            grads = [p.grad.float().norm() for p in model.parameters() if p.grad is not None]
-            row[f"loss_{label}"] = float(loss.detach())
-            row[f"grad_norm_{label}"] = float(torch.linalg.vector_norm(torch.stack(grads))) if grads else 0.0
+        try:
+            for label, enabled in (("fp32", False), ("training", use_amp)):
+                model.zero_grad(set_to_none=True)
+                with torch.amp.autocast("cuda", enabled=enabled, dtype=amp_dtype):
+                    loss = batch_loss(model, batch, criterion=criterion, regression_objective=objective)
+                loss.backward()
+                grads = [p.grad.float().norm() for p in model.parameters() if p.grad is not None]
+                row[f"loss_{label}"] = float(loss.detach())
+                row[f"grad_norm_{label}"] = float(torch.linalg.vector_norm(torch.stack(grads))) if grads else 0.0
+            absolute, relative = PRECISION_TOLERANCE
+            row["passed"] = bool(np.isfinite(row["loss_training"]) and abs(row["loss_training"] - row["loss_fp32"])
+                                 <= absolute + relative * abs(row["loss_fp32"]))
+        except Exception as exc:  # an out-of-memory or numerical error is the finding, not a crash
+            row.update(passed=False, error=repr(exc)[:500])
         model.zero_grad(set_to_none=True)
-        absolute, relative = PRECISION_TOLERANCE
-        row["passed"] = bool(np.isfinite(row["loss_training"]) and abs(row["loss_training"] - row["loss_fp32"])
-                             <= absolute + relative * abs(row["loss_fp32"]))
         record["tables"].append(row)
         del batch
         torch.cuda.empty_cache()

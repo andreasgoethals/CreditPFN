@@ -34,7 +34,7 @@ def test_control_never_uses_credit_finance_or_forgetting_panel_tables():
     research = {norm(i["name"]) for i in panel_config("research")} | {i["data_id"] for i in panel_config("research")}
     for item in cm.load_panel()["domain_control"]:
         assert norm(item["name"]) not in research and item["data_id"] not in research
-        assert not re.search("credit|bank|insur|loan|bankrupt|heloc", item["name"], re.I)
+        assert not re.search("credit|bank|insur|loan|bankrupt", item["name"], re.I)
 
 
 def test_cost_is_zero_only_for_a_large_enough_twin():

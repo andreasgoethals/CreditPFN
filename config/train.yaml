@@ -86,6 +86,9 @@ train:
   epoch_eval_n_estimators_tabicl: 8
   epoch_eval_every: 5                     # monitor cadence, in epochs
   divergence_patience: 5                  # epochs of flat loss AND flat drift before aborting
+  divergence_patience_updates: 50         # numerical_stopping_only: consecutive failed update attempts
+  #   (non-finite or FP16 overflow) before aborting; counted in attempts, not epochs, so single-table
+  #   runs survive GradScaler's first back-offs.
   divergence_min_progress: 0.7            # only abort loss_const in the first 70% of the step budget:
   #   a flat loss past that is convergence (PD banks ~95% of its loss drop by ~71%), so the trial
   #   trains to completion instead of being discarded. A dead-from-start trial trips at ~1-2%.

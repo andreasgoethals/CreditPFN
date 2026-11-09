@@ -22,6 +22,7 @@ import re
 import socket
 import time
 from collections.abc import Callable
+from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
@@ -645,6 +646,32 @@ def enable_tf32() -> str:
         return "tf32: matmul=on cudnn=on"
     except Exception as exc:                                        # pragma: no cover
         return f"tf32: unchanged ({type(exc).__name__})"
+
+
+@contextmanager
+def strict_fp32():
+    """FP32 matmuls without TF32 for the duration of a monitor, as in the five-fold benchmark
+    (a separate process that never enables TF32). Training keeps TF32 for speed."""
+    previous = (torch.backends.cuda.matmul.allow_tf32, torch.backends.cudnn.allow_tf32)
+    torch.backends.cuda.matmul.allow_tf32 = torch.backends.cudnn.allow_tf32 = False
+    try:
+        yield
+    finally:
+        torch.backends.cuda.matmul.allow_tf32, torch.backends.cudnn.allow_tf32 = previous
+
+
+def no_finite_updates(history, patience_updates: int) -> bool:
+    """True when the latest ``patience_updates`` update attempts all failed (non-finite or FP16
+    overflow skips). Counted in attempts, not epochs: a single-table epoch is one update, so an
+    epoch rule would abort during GradScaler's first few back-offs."""
+    attempts = 0
+    for record in reversed([r for r in history if r.epoch >= 0]):
+        if record.optimizer_steps - record.amp_skipped_steps > 0:
+            return False
+        attempts += max(int(record.optimizer_steps), 1)   # an all-data-skip epoch is one attempt
+        if attempts >= patience_updates:
+            return True
+    return False
 
 
 def make_warmup_cosine_schedule(
@@ -2321,19 +2348,20 @@ def train_one_config(
         """Dispatcher: ensemble eval (sklearn API, n_estimators>1) or the
         cheap single-forward path."""
         if use_ensemble_eval:
-            return evaluate_ensemble_on_split(
-                ckpt_path=ckpt_path,
-                refs=refs,
-                n_estimators=epoch_eval_ne,
-                n_subsample=epoch_eval_n0,
-                query_fraction=query_fraction,
-                seed=seed,
-                device=device,
-                task_type=track_task_type,
-                metric_names=track_metric_names,
-                family=family,
-                tabicl_inference_options=monitor_tabicl_options,
-            )
+            with strict_fp32():
+                return evaluate_ensemble_on_split(
+                    ckpt_path=ckpt_path,
+                    refs=refs,
+                    n_estimators=epoch_eval_ne,
+                    n_subsample=epoch_eval_n0,
+                    query_fraction=query_fraction,
+                    seed=seed,
+                    device=device,
+                    task_type=track_task_type,
+                    metric_names=track_metric_names,
+                    family=family,
+                    tabicl_inference_options=monitor_tabicl_options,
+                )
         result = evaluate_on_split(
             model, refs, criterion=criterion, device=device,
             metric_name=track_metric_names,
@@ -3117,8 +3145,8 @@ def train_one_config(
         )
         if getattr(cfg.train, "numerical_stopping_only", False):
             # Descriptive experiments retain flat/poor trajectories. Only numerical failures stop them.
-            reason = "no_finite_updates" if recent and len(recent) >= diverge_patience and all(
-                r.optimizer_steps - r.amp_skipped_steps == 0 for r in recent) else None
+            reason = ("no_finite_updates" if no_finite_updates(
+                history, int(getattr(cfg.train, "divergence_patience_updates", 50))) else None)
         if reason:
             LOGGER.error(
                 "DIVERGED at epoch=%d after %d-epoch patience window "
