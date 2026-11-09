@@ -7,7 +7,8 @@
 #SBATCH --ntasks=1
 #SBATCH --gpus-per-node=1
 #SBATCH --cpus-per-task=24
-#SBATCH --time=03:00:00
+# Measured 2-3 minutes per case; a short request is backfilled sooner on the busy B200 partition.
+#SBATCH --time=00:30:00
 #SBATCH --output=/dev/null
 #SBATCH --error=/dev/null
 #SBATCH --export=ALL
