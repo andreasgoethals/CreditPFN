@@ -421,7 +421,9 @@ def write_csv_atomic(df: pd.DataFrame, path: Path, **to_csv_kwargs) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_name(f"{path.name}.tmp.{os.getpid()}")
     try:
-        df.to_csv(tmp, **to_csv_kwargs)
+        # LF on every platform: pandas defaults to os.linesep, so Windows wrote CRLF and the same
+        # table hashed differently on the laptop and on VSC.
+        df.to_csv(tmp, **{"lineterminator": "\n", **to_csv_kwargs})
         os.replace(tmp, path)
     finally:
         if tmp.exists():

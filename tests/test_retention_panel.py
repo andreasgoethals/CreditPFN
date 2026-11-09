@@ -98,3 +98,15 @@ def test_load_refs_reads_prepared_research_metadata(tmp_path, monkeypatch):
     monkeypatch.setattr(retention, "panel_config", lambda panel: [item])
     [ref] = load_refs("research", "pd")
     assert ref.dataset_id == item["id"] and ref.task_type == "classification"
+
+
+def test_prepared_csvs_are_platform_independent(tmp_path):
+    """pandas writes os.linesep by default; prepared inputs must hash the same on Windows and VSC."""
+    import inspect
+    import pandas as pd
+    from src.data.preprocessing import write_csv_atomic
+    from src.utils import prepare_retention
+    frame = pd.DataFrame({"a": [1.5, 2.0], "target": [0, 1]})
+    path = write_csv_atomic(frame, tmp_path / "t.csv", index=False)
+    assert b"\r\n" not in path.read_bytes()
+    assert r'lineterminator="\n"' in inspect.getsource(prepare_retention.prepare)

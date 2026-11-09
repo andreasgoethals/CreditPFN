@@ -145,7 +145,8 @@ def prepare(panels=PANELS, root=None, *, supersede_changed=False):
                 processing["unmatched_rows"], processing["unmatched_features"] = len(X), len(X.columns) - 1
                 X, cats = apply_match(X, cats, item["match"], item["track"], seed=int(item["data_id"]))
             path = root / (item["id"] + ".csv.gz")
-            X.to_csv(path, index=False, compression={"method": "gzip", "mtime": 0})
+            # LF and a fixed gzip time: identical bytes on Windows and Linux for the same table.
+            X.to_csv(path, index=False, compression={"method": "gzip", "mtime": 0}, lineterminator="\n")
             meta = dict(item, **details, **processing, panel=panel, source_url=source,
                         file=path.name, rows=len(X), features=len(X.columns)-1,
                         categorical_columns=cats, classes=classes, sha256=file_digest(path))
