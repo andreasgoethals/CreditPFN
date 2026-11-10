@@ -7,6 +7,7 @@ import pandas as pd
 import pytest
 
 
+@pytest.mark.usefixtures("bare_storage_env")
 def test_eval_resume_does_not_borrow_another_split(tmp_path, monkeypatch):
     from src.eval.benchmark import _method_dirname, find_existing_results
     from src.model.base import ModelHandle

@@ -13,6 +13,8 @@ import json
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("bare_storage_env")
+
 from src.utils import run_notebooks as rn
 
 

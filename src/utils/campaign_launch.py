@@ -146,10 +146,10 @@ def submit_experiment0(folder: Path, receipt: Path) -> dict:
     env = _environment(CREDITPFN_EXPERIMENT="experiment0", SPLITS=1, THROTTLE=NO_CAP,
                        GLOBAL_CONCURRENCY=NO_CAP, EVAL_CONCURRENCY=NO_CAP, STAGES="train",
                        EVAL_TASKS=EVAL_TASKS,
-                       # Unmeasured until Experiment 0 itself: generous rails for 250-update
-                       # pilots with up to 50,000-row monitors on ~36 tables, and for the
-                       # reference benchmark (v3/TabICL at a 467,000-row context on the largest table).
-                       WALLTIME="06:00:00", EVAL_WALLTIME="12:00:00")
+                       # 250-update pilots measured 3-10 minutes on the B200 (09-11-2026); short
+                       # requests backfill sooner. The reference benchmark (v3/TabICL at a
+                       # 467,000-row context on the largest table) is still unmeasured.
+                       WALLTIME="01:30:00", EVAL_WALLTIME="12:00:00")
     state = {"pilots": {}, "benchmark": {}, "classical": {}, "recovery": None, "capacity": None,
              "precision": None, "evaluation": None, "summary": None}
     receipt.parent.mkdir(parents=True, exist_ok=True)
@@ -165,9 +165,9 @@ def submit_experiment0(folder: Path, receipt: Path) -> dict:
                                 {**env, "STAGES": "eval", "EVAL_KIND": "classical"})
             state["classical"][track] = re.findall(r"^(\d+)(?:;\w+)?$", out, re.M)
         gpu = "scripts/slurm/pilot_gpu.slurm"
-        state["recovery"] = _sbatch([f"--array=0-{RECOVERY_TASKS - 1}", gpu, "recovery"], env)
+        state["recovery"] = _sbatch([f"--array=0-{RECOVERY_TASKS - 1}", "--time=01:00:00", gpu, "recovery"], env)
         state["capacity"] = _sbatch([f"--array=0-{CAPACITY_TASKS - 1}", gpu, "capacity"], env)
-        state["precision"] = _sbatch([f"--array=0-{PRECISION_TASKS - 1}", gpu, "precision"], env)
+        state["precision"] = _sbatch([f"--array=0-{PRECISION_TASKS - 1}", "--time=01:00:00", gpu, "precision"], env)
         # The evaluation check scores the reference pilots and, for E10, the 2,048-row episode pilot.
         reference = [j for name, jobs in state["pilots"].items()
                      if name.startswith(("reference_", "episode2048_")) for j in jobs]

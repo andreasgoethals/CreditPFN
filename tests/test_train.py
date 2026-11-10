@@ -1059,6 +1059,7 @@ class _DummyClassifier(torch.nn.Module):
         return self.head(test_x)
 
 
+@pytest.mark.usefixtures("bare_storage_env")
 def test_train_one_config_end_to_end_mocked(
     synthetic_processed, monkeypatch, tmp_path,
 ) -> None:

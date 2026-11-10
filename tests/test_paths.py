@@ -16,6 +16,8 @@ from pathlib import Path
 
 import pytest
 
+pytestmark = pytest.mark.usefixtures("bare_storage_env")
+
 from src.utils import paths as _paths_mod
 from src.utils.paths import (
     REPO_ROOT,

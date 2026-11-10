@@ -79,6 +79,21 @@ def _experiment_routing(monkeypatch):
     monkeypatch.delenv("CREDITPFN_EXPERIMENT", raising=False)
 
 
+#: Storage routing a cluster job exports (campaign_cpu.slurm) or VSC sets on every node.
+STORAGE_ENV = ("CREDITPFN_OUTPUT_ROOT", "CREDITPFN_DATA_ROOT", "CREDITPFN_STAGING_ROOT",
+               "TABPFN_STAGING_ROOT", "CREDITPFN_PROJECT_ROOT", "VSC_PROJECT_ROOT",
+               "CREDITPFN_REQUIRE_STAGING", "CREDITPFN_USE_SCRATCH", "CREDITPFN_BASE_CACHE_ROOT",
+               "VSC_DATA", "VSC_HOME", "VSC_SCRATCH", "SLURM_CLUSTER_NAME")
+
+
+@pytest.fixture
+def bare_storage_env(monkeypatch):
+    """A laptop-like environment for tests of path resolution and result files, so they give the
+    same answer inside a cluster job (whose routing variables would otherwise redirect them)."""
+    for name in STORAGE_ENV:
+        monkeypatch.delenv(name, raising=False)
+
+
 @pytest.fixture(autouse=True)
 def _restore_environment():
     """Undo environment changes made by code under test (e.g. entry points that export

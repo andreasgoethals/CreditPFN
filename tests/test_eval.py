@@ -31,6 +31,8 @@ import numpy as np
 import pandas as pd
 import pytest
 
+pytestmark = pytest.mark.usefixtures("bare_storage_env")
+
 from src.eval.benchmark import (
     EvalRow,
     _method_dirname,
