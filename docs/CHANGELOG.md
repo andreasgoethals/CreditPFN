@@ -1,5 +1,10 @@
 # Changelog
 
+## 10-11-2026
+
+- Inference uses 8 views for every model (benchmark, E4/E10/E11 tasks, capacity, runtime acceptance); TabPFN was 32. Ye et al. 2025: 8 vs 16 views +0.01 pp; TabICLv2 App. L.1; TabArena uses 8.
+- Storage-dependent tests isolated from job routing (they leaked fixture files into PROJECT and the DATA checkout); Experiment 0 walltimes set to measured values.
+
 ## 09-11-2026
 
 - Pre-launch review fixes: evaluation arrays reserve only their own scheduler lanes (they serialised every later job); campaign jobs get explicit 24 h walltimes (env-overridable) and Experiment 0 6 h pilots / 12 h benchmark; E4/E11 arrays 12 h; LGD capacity at LGD-sized contexts; precision check at 8,192 rows with failures recorded; monitors run without TF32; numerical stopping counts update attempts (50), not epochs; E4 TabICL fine-tuning mean-imputes like its paired untuned cell; Experiment 0 gate runs the new tests.

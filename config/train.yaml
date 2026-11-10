@@ -82,7 +82,7 @@ train:
                                           # LGD was 8, which forced its row caps down 4x
   n_estimators_finetune_tabicl: 2         # TabICL's own finetuning default, both tracks
   epoch_eval_subsample_samples: 2000      # rows per dataset in the in-loop monitor
-  epoch_eval_n_estimators: 32
+  epoch_eval_n_estimators: 8
   epoch_eval_n_estimators_tabicl: 8
   epoch_eval_every: 5                     # monitor cadence, in epochs
   divergence_patience: 5                  # epochs of flat loss AND flat drift before aborting

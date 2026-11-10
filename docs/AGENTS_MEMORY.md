@@ -1,5 +1,11 @@
 # Agents' memory — runs and dead ends
 
+## 10-11-2026
+
+- **Experiment 0 run 1 (commit `9eb77d8`) cancelled and wiped by request** for a clean run on the 8-view protocol. Evidence kept here: chain record/prepare/acceptance/accept/controller all exit 0 (controller gate 152 passed); 157 pilot trainings finished without failure (PD mean 5.7 min, max 18; LGD mean 3.0, max 9; 250 updates, monitors ~18 s each); all 24 exact-resume checks passed; FP32 capacity LGD v2 191 s / 17 GB, LGD v3 113 s / 3 GB, LGD TabICL 30 s / 73 GB; classical baselines 8 shards, max 2 h 47 min. Its record suite had 15 test-isolation failures (fixed in `bb158b2`).
+- **Tried:** 6 h pilot and 3 h check walltimes on the busy B200 partition. **Result:** 2-3 jobs running while 64 waited. **Why:** long requests cannot backfill between 12 h jobs. **Instead:** measured walltimes (pilots 1.5 h, resume/precision 1 h); running jobs rose to 7 within minutes.
+- wICE feasibility probe `62636465` (gpu_a100_debug) submitted: GPFS access, v2/v2.6 FP32 inference at 8 views and BF16 training memory at 10,000 rows.
+
 ## 09-11-2026
 
 - **Deployed** `4df5c84` to the DATA checkout (pins tfm `8f14e59`, vsc `914ef4e`). Job `11781303` (`runtime_cpu.slurm record`) re-recorded `environment.json` byte-identically (SHA-256 `c9ce4607…`) into `experiment0/manifests/runtime_builds/record20261109`.

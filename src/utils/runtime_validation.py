@@ -27,7 +27,7 @@ REFERENCE_CONFIG = {"pd": "config/experiments/E00_pilots/reference_pd.yaml",
 
 
 #: Fixed evaluation policy for the acceptance cases.
-POLICY = {"max_context_rows": 50000, "inference_views": {"tabpfn": 32, "tabicl": 8},
+POLICY = {"max_context_rows": 50000, "inference_views": {"tabpfn": 8, "tabicl": 8},
           "context_seed": 271828, "query_batch_rows": 4096, "split_seed": 99, "outer_folds": 5,
           "inner_validation_fraction": 0.20}
 

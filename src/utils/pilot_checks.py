@@ -147,7 +147,7 @@ def recovery(task: int, folder: Path = FOLDER) -> dict:
 #: Largest outer test fold the benchmark scores in one call: a fifth of the largest held-out table.
 CAPACITY_TEST_ROWS = {"pd": 146_036, "lgd": 11_587}
 #: Inference views of the benchmark (config/eval.yaml tabpfn_n_estimators / tabicl_n_estimators).
-CAPACITY_VIEWS = {"tabpfn": 32, "tabicl": 8}
+CAPACITY_VIEWS = {"tabpfn": 8, "tabicl": 8}
 
 
 def capacity(task: int) -> dict:

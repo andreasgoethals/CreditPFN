@@ -20,7 +20,7 @@ max_rows_per_model:                       # inference context cap; forward-only,
   tabicl: 1000000
   default: 50000
 
-tabpfn_n_estimators: 32                   # inference ensemble; 2 at training time is a memory limit
+tabpfn_n_estimators: 8                    # inference views for every model (Ye et al. 2025: 8 vs 16 views +0.01 pp; TabICLv2 App. L.1)
 tabicl_n_estimators: 8
 
 hpo:                                      # Optuna budget per classical baseline: exactly n_trials

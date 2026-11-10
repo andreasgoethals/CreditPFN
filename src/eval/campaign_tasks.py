@@ -32,7 +32,7 @@ from src.utils.design import BASES, experiment_by_slug, load_design
 KINDS = ("context", "finetune", "episode_context")
 SLUGS = {"context": "context", "finetune": "target_finetune", "episode_context": "episode_size"}
 FAMILY = {"v2": "tabpfn", "v2.6": "tabpfn", "v3": "tabpfn", "tabicl-v2": "tabicl"}
-INFERENCE_VIEWS = {"tabpfn": 32, "tabicl": 8}
+INFERENCE_VIEWS = {"tabpfn": 8, "tabicl": 8}   # config/eval.yaml: 8 views for every model
 POLICY_SEEDS = {"split_seed": 99, "context_seed": 271828, "inner_validation_fraction": 0.20}
 QUICK = {"context_rows": [32, 512], "epochs": 2}
 

@@ -34,8 +34,12 @@ any comparable real-data corpus would do.
   model that never saw it. Single-source runs (E12) train on one table and evaluate on all others.
 * Final evaluation: five outer folds per held-out table; the fold's training rows are the
   labelled context (20% kept for validation, thresholds and calibration); the original and the
-  CPT model see identical context and test rows. All models are evaluated in FP32. TabPFN v2's
-  context is capped at its 10,000-row limit.
+  CPT model see identical context and test rows. All models are evaluated in FP32 with 8
+  inference views (preprocessing/permutation ensemble members): for TabPFN v2, 8 versus 16
+  views changes performance by 0.01 percentage points (Ye et al. 2025, Fig. 9); TabICLv2 captures
+  most ensembling gains at 8 (Qu et al. 2026, App. L.1); TabArena uses 8 for both families.
+  Training monitors keep the training's 2 views. TabPFN v2's context is capped at its 10,000-row
+  limit.
 * Retention (forgetting): 19 binary and 12 regression TabArena-v0.1 tables below 50,000 rows,
   without the four corpus overlaps and three credit-like tables (`config/retention.yaml`).
 * Domain control (E3): one non-credit twin per credit table from the curated OpenML suites,

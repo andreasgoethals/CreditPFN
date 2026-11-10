@@ -237,3 +237,16 @@ def test_evaluation_arrays_reserve_only_their_own_lanes():
     source = (Path(__file__).resolve().parents[1] / "scripts/slurm/run_experiment.sh").read_text()
     assert '(( EVAL_TASKS < elimit )) && elimit=$EVAL_TASKS' in source
     assert 'submit_array "$ECLUSTER" "$elimit"' in source
+
+
+def test_every_model_uses_eight_inference_views():
+    """8 views for TabPFN and TabICL in the benchmark, the E4/E10/E11 tasks and the capacity check
+    (Ye et al. 2025: 8 vs 16 views +0.01 pp for TabPFN v2; TabICLv2 App. L.1: most gains by 8)."""
+    from omegaconf import OmegaConf
+    from src.eval.campaign_tasks import INFERENCE_VIEWS
+    from src.utils.paths import REPO_ROOT
+    from src.utils.pilot_checks import CAPACITY_VIEWS
+    from src.utils.runtime_validation import POLICY
+    cfg = OmegaConf.load(REPO_ROOT / "config/eval.yaml")
+    assert cfg.tabpfn_n_estimators == cfg.tabicl_n_estimators == 8
+    assert INFERENCE_VIEWS == CAPACITY_VIEWS == POLICY["inference_views"] == {"tabpfn": 8, "tabicl": 8}
