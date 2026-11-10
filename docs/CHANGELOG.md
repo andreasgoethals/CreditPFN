@@ -2,6 +2,7 @@
 
 ## 10-11-2026
 
+- Path autodetect tests point staging at an empty folder; on VSC the real PROJECT root holds data and won (4 failures in the Experiment 0 record suite).
 - Inference uses 8 views for every model (benchmark, E4/E10/E11 tasks, capacity, runtime acceptance); TabPFN was 32. Ye et al. 2025: 8 vs 16 views +0.01 pp; TabICLv2 App. L.1; TabArena uses 8.
 - Storage-dependent tests isolated from job routing (they leaked fixture files into PROJECT and the DATA checkout); Experiment 0 walltimes set to measured values.
 

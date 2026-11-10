@@ -323,6 +323,14 @@ def _seed_raw_csv(root: Path, track: str = "pd") -> None:
     (d / "stub.csv").write_text("dummy,header\n1,2\n", encoding="utf-8")
 
 
+def _no_real_staging(monkeypatch, tmp_path: Path) -> None:
+    """Point staging at an empty folder: with VSC_DATA set, the built-in PROJECT root would be
+    probed first, and on a VSC node it really holds the datasets."""
+    empty = tmp_path / "empty-staging"
+    empty.mkdir(exist_ok=True)
+    monkeypatch.setenv("CREDITPFN_STAGING_ROOT", str(empty))
+
+
 def test_autodetect_prefers_scratch_with_project_subdir(monkeypatch, tmp_path) -> None:
     """Layout A wins over B and C when all three have data."""
     scratch  = tmp_path / "scratch"
@@ -331,6 +339,7 @@ def test_autodetect_prefers_scratch_with_project_subdir(monkeypatch, tmp_path) -
     _seed_raw_csv(scratch)                 # B
     _seed_raw_csv(vsc_data / "CreditPFN")  # C
     monkeypatch.delenv("CREDITPFN_DATA_ROOT", raising=False)
+    _no_real_staging(monkeypatch, tmp_path)
     monkeypatch.setenv("VSC_SCRATCH", str(scratch))
     monkeypatch.setenv("VSC_DATA",    str(vsc_data))
     monkeypatch.setenv("VSC_HOME",    str(tmp_path / "home"))
@@ -345,6 +354,7 @@ def test_autodetect_falls_back_to_scratch_root(monkeypatch, tmp_path) -> None:
     _seed_raw_csv(scratch)                 # B
     _seed_raw_csv(vsc_data / "CreditPFN")  # C — exists too, but loses to B
     monkeypatch.delenv("CREDITPFN_DATA_ROOT", raising=False)
+    _no_real_staging(monkeypatch, tmp_path)
     monkeypatch.setenv("VSC_SCRATCH", str(scratch))
     monkeypatch.setenv("VSC_DATA",    str(vsc_data))
     monkeypatch.setenv("VSC_HOME",    str(tmp_path / "home"))
@@ -359,6 +369,7 @@ def test_autodetect_uses_vsc_data_when_scratch_empty(monkeypatch, tmp_path) -> N
     vsc_data = tmp_path / "data"
     _seed_raw_csv(vsc_data / "CreditPFN")  # only C
     monkeypatch.delenv("CREDITPFN_DATA_ROOT", raising=False)
+    _no_real_staging(monkeypatch, tmp_path)
     monkeypatch.setenv("VSC_SCRATCH", str(scratch))
     monkeypatch.setenv("VSC_DATA",    str(vsc_data))
     monkeypatch.setenv("VSC_HOME",    str(tmp_path / "home"))
@@ -373,6 +384,7 @@ def test_autodetect_detects_lgd_csvs_too(monkeypatch, tmp_path) -> None:
     vsc_data = tmp_path / "data"
     _seed_raw_csv(scratch, track="lgd")  # only LGD CSVs, no PD
     monkeypatch.delenv("CREDITPFN_DATA_ROOT", raising=False)
+    _no_real_staging(monkeypatch, tmp_path)
     monkeypatch.setenv("VSC_SCRATCH", str(scratch))
     monkeypatch.setenv("VSC_DATA",    str(vsc_data))
     monkeypatch.setenv("VSC_HOME",    str(tmp_path / "home"))
