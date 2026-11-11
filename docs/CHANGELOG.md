@@ -1,5 +1,9 @@
 # Changelog
 
+## 11-11-2026
+
+- Experiment 0 precision check also compares gradients (finite, cosine with FP32 >= 0.90, FP16 scaled as GradScaler does): TabICLv2 PD pilots showed gradient norms of 7-80 with non-finite spikes under FP16 while losses agreed.
+
 ## 10-11-2026
 
 - Path autodetect tests point staging at an empty folder; on VSC the real PROJECT root holds data and won (4 failures in the Experiment 0 record suite).

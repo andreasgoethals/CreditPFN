@@ -14,7 +14,8 @@ GPU tasks (one array element each, results in ``experiment0/manifests/campaign2/
 * ``precision`` (8): the update-zero training loss and gradient norm of each original model on
   its four largest training tables at the real episode size, computed by the training loop's own
   ``batch_loss`` in FP32 and in the resolved training precision. The two losses must agree
-  (the first study trained TabICLv2 under BF16, which corrupted its forward).
+  (the first study trained TabICLv2 under BF16, which corrupted its forward) and the two
+  gradients must be finite and point the same way (cosine similarity).
 
 ``summary`` (CPU) audits every pilot (budget, trajectory points, finite monitors, numerical
 skips, timing), and applies the pilot-specific checks: zero-LR state/monitor parity, the
@@ -49,6 +50,9 @@ PRECISION_TASKS = len(TRACKS) * MODELS_PER_TRACK
 PRECISION_TABLES = 4
 #: Update-zero loss agreement required between FP32 and the training precision (nats).
 PRECISION_TOLERANCE = (0.02, 0.02)   # absolute + relative to the FP32 loss
+#: The training-precision gradient must point where the FP32 gradient points. Agreeing losses do
+#: not show this: a forward can match while the backward overflows or loses its small terms.
+PRECISION_GRADIENT_COSINE = 0.90
 #: Largest inference context the benchmark gives each model per task: config/eval.yaml caps,
 #: bounded by the largest table's outer-fold context (0.8 x 0.8 x rows: PD 730,176, LGD 57,932).
 CAPACITY_ROWS = {"pd": {"v2": 10_000, "v2.6": 50_000, "v3": 467_312, "tabicl-v2": 467_312},
@@ -305,17 +309,37 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
         batch = batch.to(device)
         row = {"table_index": index, "rows": int(min(rows, len(loaded.y)))}
         try:
+            reference = None
             for label, enabled in (("fp32", False), ("training", use_amp)):
-                model.zero_grad(set_to_none=True)
-                with torch.amp.autocast("cuda", enabled=enabled, dtype=amp_dtype):
-                    loss = batch_loss(model, batch, criterion=criterion, regression_objective=objective)
-                loss.backward()
-                grads = [p.grad.float().norm() for p in model.parameters() if p.grad is not None]
+                # FP16 trains behind GradScaler: scale the loss as the scaler does (65,536,
+                # halved after an overflow) so the comparison sees the gradients training applies.
+                scale = 65536.0 if enabled and amp_dtype == torch.float16 else 1.0
+                while True:
+                    model.zero_grad(set_to_none=True)
+                    with torch.amp.autocast("cuda", enabled=enabled, dtype=amp_dtype):
+                        loss = batch_loss(model, batch, criterion=criterion, regression_objective=objective)
+                    (loss * scale).backward()
+                    flat = torch.cat([p.grad.detach().double().reshape(-1) / scale
+                                      for p in model.parameters() if p.grad is not None])
+                    if bool(torch.isfinite(flat).all()) or scale <= 1.0:
+                        break
+                    scale /= 2.0
                 row[f"loss_{label}"] = float(loss.detach())
-                row[f"grad_norm_{label}"] = float(torch.linalg.vector_norm(torch.stack(grads))) if grads else 0.0
+                row[f"grad_norm_{label}"] = float(flat.norm())
+                row[f"grad_finite_{label}"] = bool(torch.isfinite(flat).all())
+                if label == "fp32":
+                    reference = flat
+                else:
+                    row["loss_scale_training"] = scale
+                    row["grad_cosine"] = float(torch.nn.functional.cosine_similarity(flat, reference, dim=0))
+                    row["grad_norm_ratio"] = float(flat.norm() / reference.norm().clamp_min(1e-300))
+                del flat
+            reference = None
             absolute, relative = PRECISION_TOLERANCE
             row["passed"] = bool(np.isfinite(row["loss_training"]) and abs(row["loss_training"] - row["loss_fp32"])
-                                 <= absolute + relative * abs(row["loss_fp32"]))
+                                 <= absolute + relative * abs(row["loss_fp32"])
+                                 and row["grad_finite_fp32"] and row["grad_finite_training"]
+                                 and row["grad_cosine"] >= PRECISION_GRADIENT_COSINE)
         except Exception as exc:  # an out-of-memory or numerical error is the finding, not a crash
             row.update(passed=False, error=repr(exc)[:500])
         model.zero_grad(set_to_none=True)
