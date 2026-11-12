@@ -2,6 +2,7 @@
 
 ## 12-11-2026
 
+- Precision check traces TabICLv2 under FP16: loss by episode size, first divergent module, and one component at a time in FP32.
 - E7 (class-balanced PD episodes) cut by decision; E8-E12 renumbered E7-E11: eleven experiments, 744 standard runs. Earlier entries keep the numbers of their day.
 - Precision check compares BF16 and FP16 with FP32 per module and over four accumulated episodes.
 - Reference recipe trains every model in strict FP32 (agreed): mixed-precision gradients disagreed with FP32 on PD; TF32 was accurate but under 10% faster. The precision check now measures FP32 time and memory per table at the real episode size, with and without activation checkpointing.
