@@ -240,7 +240,7 @@ def test_evaluation_arrays_reserve_only_their_own_lanes():
 
 
 def test_every_model_uses_eight_inference_views():
-    """8 views for TabPFN and TabICL in the benchmark, the E4/E10/E11 tasks and the capacity check
+    """8 views for TabPFN and TabICL in the benchmark, the E4/E9/E10 tasks and the capacity check
     (Ye et al. 2025: 8 vs 16 views +0.01 pp for TabPFN v2; TabICLv2 App. L.1: most gains by 8)."""
     from omegaconf import OmegaConf
     from src.eval.campaign_tasks import INFERENCE_VIEWS

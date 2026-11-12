@@ -64,7 +64,7 @@ def test_pilots_cover_every_campaign_mechanism():
     pilots = design.load_design()["experiment0"]["pilots"]
     arms = [p["arm"] for p in pilots.values()]
     keys = {k for a in arms for k in a}
-    assert {"trainable", "exposure", "pd_class_sampling", "grad_clip_norm",
+    assert {"trainable", "exposure", "grad_clip_norm",
             "corpus", "episode_rows", "single_source", "regression_objective", "l2sp_lambda"} <= keys
     assert {"domain_control"} <= {a.get("corpus") for a in arms}
     corpora = {a.get("corpus") for a in arms}

@@ -31,7 +31,7 @@ any comparable real-data corpus would do.
 
 * 17 PD and 8 LGD tables. Each task's tables are split once (seed 1729) into four groups; every
   run trains on three groups and is evaluated on the fourth, so every table is evaluated by a
-  model that never saw it. Single-source runs (E12) train on one table and evaluate on all others.
+  model that never saw it. Single-source runs (E11) train on one table and evaluate on all others.
 * Final evaluation: five outer folds per held-out table; the fold's training rows are the
   labelled context (20% kept for validation, thresholds and calibration); the original and the
   CPT model see identical context and test rows. All models are evaluated in FP32 with 8
@@ -93,7 +93,7 @@ times 2,000, 10,000 and full tables before this is fixed).
 ## Experiments
 
 One arm = 4 models × 4 partitions × the listed tasks. E1 is the shared control of E2, E3 and
-E5–E10 and is never re-run. 760 standard runs plus 100 short single-source runs.
+E5–E9 and is never re-run. 744 standard runs plus 100 short single-source runs.
 
 | RQ | Exp | Question | Change vs the reference | Tasks | Runs |
 |---|---|---|---|---|---|
@@ -103,12 +103,11 @@ E5–E10 and is never re-run. 760 standard runs plus 100 short single-source run
 | 1 | E4 | CPT vs fine-tuning on the target table | per fold: fine-tune the original and the E1 model on the fold's training rows (upstream fine-tuners; lr chosen from 1e-6, 1e-5, 6.5e-5 on the validation split, which also drives early stopping) | PD, LGD | fine-tunes only |
 | 2 | E5 | Update size × anchoring | lr 1e-7, 1e-6, 3e-6, 1e-5 at λ 0.003; λ 0 and 0.03 at lr 3e-6 and 1e-5; λ 0 at the reference rate | PD, LGD | 288 |
 | 2 | E6 | Which weights change | frozen backbone (3e-7, 3e-6); DiagScale (1e-4, 1e-3); LoRA r16 query/value (3e-6, 1e-5); λ 0.003 throughout | PD, LGD | 192 |
-| 3 | E7 | Class-balanced episodes | balanced PD sampling | PD | 16 |
-| 3 | E8 | Seeing every row | full pass, one update per chunk | PD, LGD | 32 |
-| 3 | E9 | Small vs large tables | small tables only (≤10,000 rows) vs the same number of large tables | PD | 32 |
-| 3 | E10 | Episode size | 2,048 / 4,096 / 8,192 / 16,384 (v3, TabICL) rows and the reference size on the large-table corpus; equal updates, rows and compute; matched-context scoring | PD | 72 |
-| 4 | E11 | Context scarcity | evaluation only: original vs E1 with 8 … 50,000 labelled context rows and the full pool, five folds; the fold's validation rows stay labelled for calibration and thresholds, so this is context scarcity rather than total label scarcity | PD, LGD | 0 |
-| 4 | E12 | Which sources help which targets | CPT on one table (2,500 updates, lr 1e-6), scored on every other table | PD, LGD | 100 short |
+| 3 | E7 | Seeing every row | full pass, one update per chunk | PD, LGD | 32 |
+| 3 | E8 | Small vs large tables | small tables only (≤10,000 rows) vs the same number of large tables | PD | 32 |
+| 3 | E9 | Episode size | 2,048 / 4,096 / 8,192 / 16,384 (v3, TabICL) rows and the reference size on the large-table corpus; equal updates, rows and compute; matched-context scoring | PD | 72 |
+| 4 | E10 | Context scarcity | evaluation only: original vs E1 with 8 … 50,000 labelled context rows and the full pool, five folds; the fold's validation rows stay labelled for calibration and thresholds, so this is context scarcity rather than total label scarcity | PD, LGD | 0 |
+| 4 | E11 | Which sources help which targets | CPT on one table (2,500 updates, lr 1e-6), scored on every other table | PD, LGD | 100 short |
 
 ### Design choices and their evidence
 
@@ -127,9 +126,9 @@ E5–E10 and is never re-run. 760 standard runs plus 100 short single-source run
   the test score of every candidate, so the fixed-rate comparison remains available.
 * **Dropped arms.** Muon, the 80/20 context/query split and λ 0.3 were removed on 05-11-2026 to
   spend the budget on a third seed and the LGD domain control.
-* **E9 count-matched**: small-only (4–5 tables per partition) versus the same number of large
+* **E8 count-matched**: small-only (4–5 tables per partition) versus the same number of large
   tables. The two corpora still differ in which tables they contain (features, targets, sources), so
-  E9 compares these selected corpora rather than isolating table size; LGD has only two tables
+  E8 compares these selected corpora rather than isolating table size; LGD has only two tables
   above 10,000 rows.
 * **Monitoring with the training views**: in the first study, PD AUC on the model's *own training
   tables* fell at 1e-5 while training loss fell, which points to a mismatch between training
@@ -144,8 +143,8 @@ averaged over folds) related to table size, features, share of categorical featu
 values, default rate or LGD zero/one mass, the original model's score (headroom) and similarity
 to the training tables (dataset properties and the model's own representation); credit segment;
 discrimination vs calibration; and whether a table's gain exceeds the seed noise of the three
-reference seeds (E1, E2). E12 gives the source→target transfer matrix from the training monitor (one fixed split, up to
-10,000 rows per target table; not a five-fold evaluation); E11 the gain as a function
+reference seeds (E1, E2). E11 gives the source→target transfer matrix from the training monitor (one fixed split, up to
+10,000 rows per target table; not a five-fold evaluation); E10 the gain as a function
 of labelled rows. Heavy
 computation (similarities, the transfer matrix) runs in `src` on VSC; notebooks only call `src`.
 
@@ -155,7 +154,7 @@ Debugging only (`config/design.yaml` `experiment0`, partition 0, 250 updates): z
 (state and monitor parity), reference, monitor sizes 2,000/10,000/50,000, the single-table sanity
 check, learning rates 0, 1e-8, 3e-7 and 1e-5 (dose response), no gradient clipping, bar NLL vs
 window NLL per TabPFN model, frozen, DiagScale and LoRA each with and without L2-SP, full pass,
-balanced, small-only, large-matched, 2,048 and 16,384-row episodes, single-source, domain control
+small-only, large-matched, 2,048 and 16,384-row episodes, single-source, domain control
 (PD and LGD); exact resume for AdamW, DiagScale and LoRA on every model; update-zero training
 loss in FP32 versus the training precision per model; FP32
 inference capacity at each model's largest benchmark context; a mini context curve and E4

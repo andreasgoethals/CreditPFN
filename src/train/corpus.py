@@ -509,7 +509,7 @@ def split_from_cfg(cfg, *, track: str | None = None,
                              + int(corpus.get("fold", 0) or 0))
 
 
-#: Tables with more rows than this are "large" (E9 table size, E10 episode size).
+#: Tables with more rows than this are "large" (E8 table size, E9 episode size).
 SIZE_THRESHOLD = 10000
 SIZE_POLICIES = ("small_only", "large_matched")
 

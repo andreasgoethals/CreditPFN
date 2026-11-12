@@ -42,15 +42,15 @@ def test_run_counts_match_the_agreed_grid():
     for (name, track, index), cfg in d.arm_configs(spec).items():
         bases = cfg["tunable"]["classifier_base_paths" if track == "pd" else "regressor_base_paths"]
         counts[name] = counts.get(name, 0) + len(bases) * int(cfg["corpus"]["n_splits"])
-    assert counts == {"E1": 32, "E2": 64, "E3": 32, "E5": 288, "E6": 192, "E7": 16, "E8": 32,
-                      "E9": 32, "E10": 72, "E12": 100}
-    assert sum(counts.values()) == 860              # 760 standard runs + 100 short transfer runs
+    assert counts == {"E1": 32, "E2": 64, "E3": 32, "E5": 288, "E6": 192, "E7": 32,
+                      "E8": 32, "E9": 72, "E11": 100}
+    assert sum(counts.values()) == 844              # 744 standard runs + 100 short transfer runs
 
 
 def test_numbering_follows_the_research_questions():
     spec = d.load_design()["experiments"]
     numbers = [int(name[1:]) for name in spec]
-    assert numbers == list(range(1, 13))
+    assert numbers == list(range(1, 12))
     rqs = [spec[f"E{i}"]["rq"] for i in numbers]
     assert rqs == sorted(rqs) and set(rqs) == {1, 2, 3, 4}
 
@@ -94,17 +94,17 @@ def test_three_reference_seeds_and_the_rubachev_finetuning_rate():
 def test_transfer_runs_index_every_table_once_and_train_on_one_table():
     spec = d.load_design()
     for track, count in spec["tables"].items():
-        arms = d.experiment_arms("E12", track, spec)
+        arms = d.experiment_arms("E11", track, spec)
         assert [a["single_source"] for a in arms] == list(range(count))
     for (name, _, _), cfg in d.arm_configs(spec).items():
-        if name == "E12":
+        if name == "E11":
             assert cfg["corpus"]["n_folds"] is None and cfg["corpus"]["n_splits"] == 1
             assert cfg["train"]["target_total_steps"] == 2500
             assert cfg["tunable"]["learning_rates"] == [1e-6]
 
 
 def test_episode_size_doubles_and_16384_only_for_large_context_models():
-    arms = d.load_design()["experiments"]["E10"]["arms"]
+    arms = d.load_design()["experiments"]["E9"]["arms"]
     assert [a.get("episode_rows") for a in arms] == [2048, 4096, 8192, 16384, None]   # last: reference size
     assert arms[3]["models"] == ["v3", "tabicl-v2"] and "models" not in arms[-1]
     assert all(a["corpus"] == "tables_above_10000_rows" for a in arms)
@@ -113,7 +113,7 @@ def test_episode_size_doubles_and_16384_only_for_large_context_models():
 def test_generated_configs_resolve_to_valid_training_grids(tmp_path):
     from src.train.config import load_train_config, resolve_grid
     paths = d.materialize(tmp_path)
-    assert len(paths) == 73
+    assert len(paths) == 72
     for path in paths:
         cfg = load_train_config(config_path=str(path))
         assert resolve_grid(cfg, single=False)

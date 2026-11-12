@@ -7696,7 +7696,7 @@ general/03_domain_comparison: 4 figures -> output CreditPFN/figures/general
 RQ1: transfer — training
 
 1. Design
-Each arm changes only the listed settings; E1 is the shared control of E2, E3 and E5-E10.
+Each arm changes only the listed settings; E1 is the shared control of E2, E3 and E5-E9.
 
 Table: Arms of RQ1
 CSV (first column: row index)
@@ -8048,54 +8048,53 @@ rq2/02_results: no figures saved.
 RQ3: training data — training
 
 1. Design
-Each arm changes only the listed settings; E1 is the shared control of E7 and E8. E9 compares its two corpora with each other; E10 trains on the tables above 10,000 rows.
+Each arm changes only the listed settings; E1 is the shared control of E7. E8 compares its two corpora with each other; E9 trains on the tables above 10,000 rows.
 
 Table: Arms of RQ3
 CSV (first column: row index)
 row,experiment,slug,arm,track,change,models,runs
-0,E7,class_sampling,0,pd,pd_class_sampling=balanced,4,16
-1,E8,exposure,0,pd,exposure=full_pass,4,16
-2,E8,exposure,0,lgd,exposure=full_pass,4,16
-3,E9,table_size,0,pd,corpus=small_only,4,16
-4,E9,table_size,1,pd,corpus=large_matched,4,16
-5,E10,episode_size,0,pd,"corpus=tables_above_10000_rows, episode_rows=2048",4,16
-6,E10,episode_size,1,pd,"corpus=tables_above_10000_rows, episode_rows=4096",4,16
-7,E10,episode_size,2,pd,"corpus=tables_above_10000_rows, episode_rows=8192",4,16
-8,E10,episode_size,3,pd,"corpus=tables_above_10000_rows, episode_rows=16384",2,8
-9,E10,episode_size,4,pd,corpus=tables_above_10000_rows,4,16
+0,E7,exposure,0,pd,exposure=full_pass,4,16
+1,E7,exposure,0,lgd,exposure=full_pass,4,16
+2,E8,table_size,0,pd,corpus=small_only,4,16
+3,E8,table_size,1,pd,corpus=large_matched,4,16
+4,E9,episode_size,0,pd,"corpus=tables_above_10000_rows, episode_rows=2048",4,16
+5,E9,episode_size,1,pd,"corpus=tables_above_10000_rows, episode_rows=4096",4,16
+6,E9,episode_size,2,pd,"corpus=tables_above_10000_rows, episode_rows=8192",4,16
+7,E9,episode_size,3,pd,"corpus=tables_above_10000_rows, episode_rows=16384",2,8
+8,E9,episode_size,4,pd,corpus=tables_above_10000_rows,4,16
 
-2. Class balance, exposure and table size (E7, E8, E9)
-No results yet for E7-E9 monitor curves; the figure is drawn once they exist.
+2. Exposure and table size (E7, E8)
+No results yet for E7-E8 monitor curves; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
-Table: PD change at the last monitor point (E1, E7-E9)
+Table: PD change at the last monitor point (E1, E7-E8)
 CSV (first column: row index)
 row
 
 No measurements available for this figure group.
 
-Table: LGD change at the last monitor point (E1, E7-E9)
+Table: LGD change at the last monitor point (E1, E7-E8)
 CSV (first column: row index)
 row
 
-3. Episode size at equal updates and at equal rows (E10)
-No results yet for E10 monitor curves; the figure is drawn once they exist.
+3. Episode size at equal updates and at equal rows (E9)
+No results yet for E9 monitor curves; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
-Table: E10 change at the last monitor point
+Table: E9 change at the last monitor point
 CSV (first column: row index)
 row
 
-Table: E10 change at each rows-processed milestone
+Table: E9 change at each rows-processed milestone
 CSV (first column: row index)
 row
 
 4. Training cost
 No results yet for training cost records; the figure is drawn once they exist.
 
-Table: Training cost per arm and model (E1, E7-E10)
+Table: Training cost per arm and model (E1, E7-E9)
 CSV (first column: row index)
 row
 
@@ -8109,18 +8108,10 @@ rq3/01_training: no figures saved.
 ```
 RQ3: training data — results
 
-1. Effect of each training-data arm (E7-E10)
-No results yet for E7-E10 five-fold gains; the figure is drawn once they exist.
+1. Effect of each training-data arm (E7-E9)
+No results yet for E7-E9 five-fold gains; the figure is drawn once they exist.
 
 No measurements available for this figure group.
-
-Table: PD class_sampling summary per arm and model
-CSV (first column: row index)
-row
-
-Table: PD class_sampling per-table gains
-CSV (first column: row index)
-row
 
 Table: PD exposure summary per arm and model
 CSV (first column: row index)
@@ -8148,14 +8139,6 @@ row
 
 No measurements available for this figure group.
 
-Table: LGD class_sampling summary per arm and model
-CSV (first column: row index)
-row
-
-Table: LGD class_sampling per-table gains
-CSV (first column: row index)
-row
-
 Table: LGD exposure summary per arm and model
 CSV (first column: row index)
 row
@@ -8180,16 +8163,16 @@ Table: LGD episode_size per-table gains
 CSV (first column: row index)
 row
 
-2. Episode size at matched inference context (E10)
-No results yet for E10 matched-context evaluation; the figure is drawn once they exist.
+2. Episode size at matched inference context (E9)
+No results yet for E9 matched-context evaluation; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
-Table: E10 matched-context gains per table
+Table: E9 matched-context gains per table
 CSV (first column: row index)
 row
 
-Table: E10 AUC per arm, model and context size
+Table: E9 AUC per arm, model and context size
 CSV (first column: row index)
 row
 
@@ -8210,10 +8193,10 @@ rq3/02_results: no figures saved.
 ## rq4/01_context_curves
 
 ```
-RQ4: context scarcity (E11)
+RQ4: context scarcity (E10)
 
 1. Context curves
-No results yet for E11 context curves; the figure is drawn once they exist.
+No results yet for E10 context curves; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
@@ -8340,26 +8323,26 @@ Table: LGD gains versus seed noise
 CSV (first column: row index)
 row
 
-4. Which sources help which targets (E12)
-No results yet for E12 transfer monitor; the figure is drawn once they exist.
+4. Which sources help which targets (E11)
+No results yet for E11 transfer monitor; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
-Table: PD E12 change per source, target and model
+Table: PD E11 change per source, target and model
 CSV (first column: row index)
 row
 
-Table: PD E12 mean change per source and model
+Table: PD E11 mean change per source and model
 CSV (first column: row index)
 row
 
 No measurements available for this figure group.
 
-Table: LGD E12 change per source, target and model
+Table: LGD E11 change per source, target and model
 CSV (first column: row index)
 row
 
-Table: LGD E12 mean change per source and model
+Table: LGD E11 mean change per source and model
 CSV (first column: row index)
 row
 

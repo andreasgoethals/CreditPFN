@@ -32,7 +32,7 @@ OUTPUT_DIR_NAME = "output CreditPFN"
 #: Second-campaign output groups, one per experiment slug in config/design.yaml
 #: (tests/test_design.py keeps the two lists identical).
 CAMPAIGN2_GROUPS = ("reference", "seed", "domain_control", "target_finetune", "update_size_anchoring", "scope",
-                    "class_sampling", "exposure", "table_size", "episode_size", "context", "transfer")
+                    "exposure", "table_size", "episode_size", "context", "transfer")
 EXPERIMENTS = ("general", "experiment0", *CAMPAIGN2_GROUPS)
 
 

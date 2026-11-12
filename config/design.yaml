@@ -3,7 +3,7 @@
 # One reference recipe; every experiment changes only the settings listed in its arms.
 # Anything not listed MUST equal the reference; tests/test_design.py fails on undeclared
 # differences. Training runs = models x partitions x tasks x arms. E1 is the shared control of
-# E2, E3 and E5-E10 and is never re-run; generated configs live in config/experiments/ (do not edit).
+# E2, E3 and E5-E9 and is never re-run; generated configs live in config/experiments/ (do not edit).
 
 schema: 2
 models: [v2, v2.6, v3, tabicl-v2]
@@ -109,18 +109,12 @@ experiments:
       - {trainable: lora_qv_r16, learning_rate: 3.0e-6}
       - {trainable: lora_qv_r16, learning_rate: 1.0e-5}
   E7:
-    slug: class_sampling
-    rq: 3
-    question: Do class-balanced training episodes help PD transfer?
-    tasks: [pd]
-    arms: [{pd_class_sampling: balanced}]
-  E8:
     slug: exposure
     rq: 3
     question: Does seeing every row (full passes, one update per chunk) help?
     tasks: [pd, lgd]
     arms: [{exposure: full_pass}]
-  E9:
+  E8:
     slug: table_size
     rq: 3
     question: Small or large training tables, at an equal number of tables?   # compares selected corpora, not table size alone
@@ -128,7 +122,7 @@ experiments:
     arms:
       - {corpus: small_only}
       - {corpus: large_matched}
-  E10:
+  E9:
     slug: episode_size
     rq: 3
     question: Do larger training episodes help, at equal updates, rows seen and compute?
@@ -141,7 +135,7 @@ experiments:
       - {corpus: tables_above_10000_rows}   # reference episode size on this corpus: separates episode size from the corpus restriction
     matched_context_evaluation: [2048, 8192, full]
   # ------------------------------------------------------------ RQ4: when and why
-  E11:
+  E10:
     slug: context
     rq: 4
     kind: inference
@@ -152,7 +146,7 @@ experiments:
     context_rows: [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 50000]
     include_full_available: true
     max_context_rows: {v2: 10000, v2.6: 50000, v3: 50000, tabicl-v2: 50000}
-  E12:
+  E11:
     slug: transfer
     rq: 4
     kind: transfer
@@ -182,7 +176,6 @@ experiment0:
     lora:           {tasks: [pd, lgd], arm: {trainable: lora_qv_r16, learning_rate: 1.0e-5, successful_updates: 250}}
     lora_l0:        {tasks: [pd, lgd], arm: {trainable: lora_qv_r16, learning_rate: 1.0e-5, l2sp_lambda: 0.0, successful_updates: 250}}
     full_pass:      {tasks: [pd, lgd], arm: {exposure: full_pass, successful_updates: 250}}
-    balanced:       {tasks: [pd], arm: {pd_class_sampling: balanced, successful_updates: 250}}
     small_only:     {tasks: [pd], arm: {corpus: small_only, successful_updates: 250}}
     large_matched:  {tasks: [pd], arm: {corpus: large_matched, successful_updates: 250}}
     episode2048:    {tasks: [pd], arm: {corpus: tables_above_10000_rows, episode_rows: 2048, successful_updates: 250}}

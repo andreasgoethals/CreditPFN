@@ -111,14 +111,14 @@ The controller prepares the experiment's plans and submits each arm config throu
 evaluation shards per partition). Before every config it counts the user's queued jobs and stops
 cleanly when the next config would exceed 480; rerunning the same command continues from the
 receipt `output CreditPFN/<slug>/manifests/submission.json`. E1 also queues the classical
-baselines once. E4 (fine-tuning) and E11 (context curves) are evaluation-only arrays over
-`src.eval.campaign_tasks` and refuse to start until every E1 checkpoint exists; E10's
-matched-context evaluation is submitted by rerunning `submit E10` after its training finished.
+baselines once. E4 (fine-tuning) and E10 (context curves) are evaluation-only arrays over
+`src.eval.campaign_tasks` and refuse to start until every E1 checkpoint exists; E9's
+matched-context evaluation is submitted by rerunning `submit E9` after its training finished.
 Campaign jobs request 24 hours for training and evaluation until Experiment 0's audit gives
 measured timings; set `CREDITPFN_TRAIN_WALLTIME` / `CREDITPFN_EVAL_WALLTIME` (HH:MM:SS) then.
 A launcher that fails or times out is recorded as `uncertain` in the receipt and is never resubmitted
 automatically: inspect `squeue`, then delete that entry before rerunning.
-Suggested order: E1 → E2, E3, E7–E10, E12 → E5, E6 (largest) → E4, E11.
+Suggested order: E1 → E2, E3, E7–E9, E11 → E5, E6 (largest) → E4, E10.
 
 ## Measured caps
 

@@ -1,4 +1,4 @@
-"""Second-campaign corpus policies: table size (E9/E10) and single-source transfer (E12)."""
+"""Second-campaign corpus policies: table size (E8/E9) and single-source transfer (E11)."""
 from types import SimpleNamespace
 
 import pytest

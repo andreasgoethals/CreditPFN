@@ -150,7 +150,7 @@ def arm_styles(settings: pd.DataFrame, *, color_by: str = "label", linestyle_by:
         return pd.DataFrame()
     arms = settings.copy()
     is_ref = arms.slug.eq("reference")
-    # An arm without a value for ``color_by`` keeps the reference setting (E10's reference
+    # An arm without a value for ``color_by`` keeps the reference setting (E9's reference
     # episode size) and is drawn like the reference.
     is_ref = is_ref | arms[color_by].isna()
     keys = list(dict.fromkeys(arms.loc[~is_ref, color_by]))
@@ -635,7 +635,7 @@ def arm_gains(table: pd.DataFrame, order: list[str], *, track: str, title: str):
 
 def episode_matched_context(gains: pd.DataFrame, *, title: str):
     """Columns: model. Equal-table mean gain over the original model at the same inference context
-    (2,048 rows, 8,192 rows, the full pool) against the training-episode size of E10."""
+    (2,048 rows, 8,192 rows, the full pool) against the training-episode size of E9."""
     if _empty(gains):
         return None
     models = _models(gains)
@@ -668,7 +668,7 @@ def episode_matched_context(gains: pd.DataFrame, *, title: str):
 def quality_cost(overview: pd.DataFrame, resources: pd.DataFrame, *, title: str):
     """One panel per task: equal-table mean five-fold gain on held-out credit tables against the
     mean wall-clock hours of one training run, per arm and model (reference, full pass and the
-    episode sizes; E10 sizes joined by a line)."""
+    episode sizes; E9 sizes joined by a line)."""
     if _empty(overview) or _empty(resources):
         return None
     merged = overview.merge(resources[["slug", "arm", "track", "model", "mean_hours"]],
@@ -693,8 +693,8 @@ def quality_cost(overview: pd.DataFrame, resources: pd.DataFrame, *, title: str)
         ax.set_xlabel("Hours per training run")
         ax.set_ylabel(f"Held-out credit Δ {SCORE[track]}")
         ax.set_title(TRACK_NAME[track])
-    names = {"reference": "Reference (E1)", "exposure": "Full pass (E8)", "episode_size": "Episode sizes (E10)",
-             "class_sampling": "Balanced classes (E7)", "table_size": "Table-size corpora (E9)"}
+    names = {"reference": "Reference (E1)", "exposure": "Full pass (E7)", "episode_size": "Episode sizes (E9)",
+             "table_size": "Table-size corpora (E8)"}
     _model_proxies(axes[0, 0], _models(merged))
     for slug in [s for s in style.SLUG_MARKERS if s in set(merged.slug)]:
         _proxy_point(axes[0, 0], names[slug], marker=style.SLUG_MARKERS[slug], color=style.COLORS["untuned"],

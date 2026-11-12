@@ -452,7 +452,7 @@ def domain_control_gains(track: str) -> pd.DataFrame:
 
 
 def task_results(kind: str) -> pd.DataFrame:
-    """All finished E4 (``finetune``), E10 (``episode_context``) or E11 (``context``) task CSVs."""
+    """All finished E4 (``finetune``), E9 (``episode_context``) or E10 (``context``) task CSVs."""
     from src.eval.campaign_tasks import SLUGS
     from src.utils.paths import results_dir
     try:
@@ -499,7 +499,7 @@ def finetune_summary(results: pd.DataFrame) -> pd.DataFrame:
 
 
 def context_gain_curve(results: pd.DataFrame, *, common_up_to: int | None = None) -> pd.DataFrame:
-    """E11: CPT minus original at each labelled-context size, per model, averaged within table
+    """E10: CPT minus original at each labelled-context size, per model, averaged within table
     first (tables with all five folds at that size).
 
     Larger sizes exist only for larger tables, so the table population changes along the curve.
@@ -532,7 +532,7 @@ def context_gain_curve(results: pd.DataFrame, *, common_up_to: int | None = None
 
 
 def episode_context_summary(results: pd.DataFrame) -> pd.DataFrame:
-    """E10 at matched inference context: mean AUC per episode-size arm, model and context size."""
+    """E9 at matched inference context: mean AUC per episode-size arm, model and context size."""
     if results.empty or "roc_auc" not in results:
         return pd.DataFrame()
     results = _all_folds(results, ["arm", "model", "context_rows", "dataset_id"])
@@ -542,8 +542,8 @@ def episode_context_summary(results: pd.DataFrame) -> pd.DataFrame:
 
 # ------------------------------------------------------------------- arm settings and labels
 _SLUG_EXPERIMENT = {"reference": "E1", "seed": "E2", "domain_control": "E3", "update_size_anchoring": "E5",
-                    "scope": "E6", "class_sampling": "E7", "exposure": "E8", "table_size": "E9",
-                    "episode_size": "E10", "transfer": "E12"}
+                    "scope": "E6", "exposure": "E7", "table_size": "E8",
+                    "episode_size": "E9", "transfer": "E11"}
 
 
 def _rate(value: float) -> str:
@@ -565,8 +565,6 @@ def arm_label(slug: str, settings: dict) -> str:
     if slug == "scope":
         names = {"frozen_backbone": "Frozen backbone", "diagscale": "DiagScale", "lora_qv_r16": "LoRA"}
         return f"{names.get(scope, scope)}, lr {_rate(settings['learning_rate'])}"
-    if slug == "class_sampling":
-        return "Balanced classes"
     if slug == "exposure":
         return "Full pass"
     if slug == "table_size":
@@ -798,12 +796,12 @@ def finetune_table(results: pd.DataFrame) -> pd.DataFrame:
 
 
 def context_table(results: pd.DataFrame) -> pd.DataFrame:
-    """E11 per track, model, table and labelled-context size (all five folds): original and CPT
+    """E10 per track, model, table and labelled-context size (all five folds): original and CPT
     means and the paired gain. ``full`` marks the size that used the whole available pool
     (capped at the model's context limit) rather than a declared grid size."""
     if results.empty or "context_rows" not in results:
         return pd.DataFrame()
-    grid = set(int(v) for v in load_design()["experiments"]["E11"]["context_rows"])
+    grid = set(int(v) for v in load_design()["experiments"]["E10"]["context_rows"])
     rows = []
     for track, metric in (("pd", "roc_auc"), ("lgd", "r2")):
         sub = results[results.track == track]
@@ -826,7 +824,7 @@ def context_table(results: pd.DataFrame) -> pd.DataFrame:
 
 
 def context_cohort_curve(table: pd.DataFrame) -> pd.DataFrame:
-    """Equal-table means of the E11 table per track, model and grid size. ``fixed_cohort`` is true
+    """Equal-table means of the E10 table per track, model and grid size. ``fixed_cohort`` is true
     up to the largest size every table of that model reached, so the mean there compares the same
     tables throughout; beyond it the population shrinks with the size."""
     if table.empty:
@@ -842,8 +840,8 @@ def context_cohort_curve(table: pd.DataFrame) -> pd.DataFrame:
 
 
 def episode_context_gains(episode: pd.DataFrame, context: pd.DataFrame) -> pd.DataFrame:
-    """E10 at matched inference context: each episode-size model minus the original model scored
-    by E11 with the same context rows of the same fold, per arm, model and table (five folds)."""
+    """E9 at matched inference context: each episode-size model minus the original model scored
+    by E10 with the same context rows of the same fold, per arm, model and table (five folds)."""
     if episode.empty or context.empty or "roc_auc" not in episode or "roc_auc" not in context:
         return pd.DataFrame()
     original = context[(context.track == "pd") & (context.start == "original")][
@@ -857,7 +855,7 @@ def episode_context_gains(episode: pd.DataFrame, context: pd.DataFrame) -> pd.Da
     merged = _all_folds(merged, ["arm", "model", "dataset_id", "context_rows"])
     if merged.empty:
         return pd.DataFrame()
-    grid = set(int(v) for v in load_design()["experiments"]["E10"]["matched_context_evaluation"][:-1])
+    grid = set(int(v) for v in load_design()["experiments"]["E9"]["matched_context_evaluation"][:-1])
     merged["context"] = [str(int(c)) if int(c) in grid else "full" for c in merged.context_rows]
     out = (merged.groupby(["arm", "model", "dataset_id", "context"])
            .agg(gain=("gain", "mean"), context_rows=("context_rows", "mean")).reset_index())
@@ -870,7 +868,7 @@ def episode_context_gains(episode: pd.DataFrame, context: pd.DataFrame) -> pd.Da
     return out
 
 
-# ------------------------------------------------------------------------ E12 transfer
+# ------------------------------------------------------------------------ E11 transfer
 def transfer_sources(track: str) -> dict[int, str]:
     """Single-source arm index -> source table id (tables of the task sorted by id)."""
     try:
@@ -881,7 +879,7 @@ def transfer_sources(track: str) -> dict[int, str]:
 
 
 def transfer_long(frame: pd.DataFrame, track: str) -> pd.DataFrame:
-    """E12: per model, source arm and target table, the monitor change from the first to the last
+    """E11: per model, source arm and target table, the monitor change from the first to the last
     monitor point (AUC for PD, R² for LGD; one fixed split per target, not five-fold)."""
     changes = monitor_table_changes(frame[frame.slug == "transfer"] if not frame.empty else frame,
                                     track, scopes=("test", "ood"))
@@ -896,7 +894,7 @@ def transfer_long(frame: pd.DataFrame, track: str) -> pd.DataFrame:
 
 
 def transfer_matrix(frame: pd.DataFrame, track: str, model: str) -> pd.DataFrame:
-    """E12: source (rows) × held-out credit target (columns) monitor change at the end of CPT."""
+    """E11: source (rows) × held-out credit target (columns) monitor change at the end of CPT."""
     long = transfer_long(frame, track)
     if long.empty:
         return pd.DataFrame()

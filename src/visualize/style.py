@@ -537,8 +537,7 @@ def ordered(names) -> dict:
 #: L2-SP strength as line style where lines connect learning rates (E5 dose response).
 LAMBDA_LINESTYLES = {0.0: "--", 0.003: "-", 0.03: ":"}
 #: Experiment family as marker in the quality-versus-cost view.
-SLUG_MARKERS = {"reference": "o", "exposure": "s", "episode_size": "^", "class_sampling": "P",
-                "table_size": "X"}
+SLUG_MARKERS = {"reference": "o", "exposure": "s", "episode_size": "^", "table_size": "X"}
 #: Vertical space per dataset row in per-table dot plots and per arm row in arm dot plots.
 TABLE_ROW_HEIGHT = 0.16
 ARM_ROW_HEIGHT = 0.26

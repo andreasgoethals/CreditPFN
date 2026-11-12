@@ -1,4 +1,4 @@
-"""E11/E4 task lists cover every held-out table once per model and fold, with no leakage."""
+"""E10/E4 task lists cover every held-out table once per model and fold, with no leakage."""
 import pytest
 
 from src.eval import campaign_tasks as ct

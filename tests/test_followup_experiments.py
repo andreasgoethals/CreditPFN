@@ -16,7 +16,7 @@ from src.model import diagscale as ds
 
 
 def context_policy():
-    """The second-campaign E11 context policy (TabPFN v3), as campaign_tasks builds it."""
+    """The second-campaign E10 context policy (TabPFN v3), as campaign_tasks builds it."""
     from src.eval.campaign_tasks import policy
     from src.utils.design import load_design
     return policy('v3', load_design())

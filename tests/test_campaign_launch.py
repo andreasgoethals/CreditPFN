@@ -55,7 +55,7 @@ def test_evaluation_experiments_require_every_reference_checkpoint(fake, monkeyp
     monkeypatch.setattr(ct, "tasks", lambda *a, **k: [dict(track="pd", model="v2", partition=0)])
     monkeypatch.setattr(ct, "cpt_checkpoint", lambda t, references=None: (_ for _ in ()).throw(FileNotFoundError()))
     with pytest.raises(RuntimeError, match="finish their training"):
-        cl.submit_experiment("E11", budget=1000, queued=lambda: 0)
+        cl.submit_experiment("E10", budget=1000, queued=lambda: 0)
 
 
 def test_evaluation_arrays_restart_indices_and_cover_every_task_once(monkeypatch):

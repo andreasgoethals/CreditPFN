@@ -19,7 +19,7 @@ from src.visualize.reporting import page_text
 from tests import synthetic_campaign2 as syn
 
 ALL = {"reference": 1, "seed": 2, "domain_control": 1, "update_size_anchoring": 8, "scope": 6,
-       "class_sampling": 1, "exposure": 1, "table_size": 2, "episode_size": 4}
+       "exposure": 1, "table_size": 2, "episode_size": 4}
 
 
 @pytest.fixture(autouse=True)
@@ -135,7 +135,7 @@ def test_arm_overview_carries_settings_and_both_table_groups(results):
 
 
 def test_training_data_arms_and_matched_context(results):
-    table = c2.arm_table_gains(["reference", "class_sampling", "exposure", "table_size", "episode_size"], "pd")
+    table = c2.arm_table_gains(["reference", "exposure", "table_size", "episode_size"], "pd")
     order = list(dict.fromkeys(table.label))
     fig, _ = _finished(r2.arm_gains(table, order, track="pd", title="t"))
     assert [t.get_text() for t in fig.axes[0].get_yticklabels()] == order

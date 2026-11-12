@@ -2,6 +2,8 @@
 
 ## 12-11-2026
 
+- E7 (class-balanced PD episodes) cut by decision; E8-E12 renumbered E7-E11: eleven experiments, 744 standard runs. Earlier entries keep the numbers of their day.
+- Precision check compares BF16 and FP16 with FP32 per module and over four accumulated episodes.
 - Reference recipe trains every model in strict FP32 (agreed): mixed-precision gradients disagreed with FP32 on PD; TF32 was accurate but under 10% faster. The precision check now measures FP32 time and memory per table at the real episode size, with and without activation checkpointing.
 - Grid (agreed): E5 adds λ 0 at the reference rate; E10 adds the reference episode size on its corpus; E4 chooses the fine-tuning rate from 1e-6, 1e-5, 6.5e-5 on the validation split. 760 standard runs.
 - Precision check adds a TF32 arm (gradient agreement and full-episode cost).

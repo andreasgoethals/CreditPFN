@@ -385,9 +385,9 @@ then 10k with 400–60k rows. Learning rates change from 8e-4 to 1e-4 to 2e-5; t
 fraction changes from 30–90% to 80%. That staged recipe motivates studying episode size,
 but it does not isolate its effect or establish a credit-CPT optimum.
 
-In the second campaign, E11 compares small-only with count-matched large training tables, and
-E12 varies episode size (2,048 to 16,384 rows) within the pool of tables above 10,000 rows at
-equal updates (`config/design.yaml`). Equal updates do not match compute or rows seen; E12's
+In the second campaign, E8 compares small-only with count-matched large training tables, and
+E9 varies episode size (2,048 to 16,384 rows) within the pool of tables above 10,000 rows at
+equal updates (`config/design.yaml`). Equal updates do not match compute or rows seen; E9's
 row milestones and matched-context evaluation report those separately.
 
 
