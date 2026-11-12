@@ -28,7 +28,11 @@ reference:
   corpus: all_training_tables
   regression_objective: window_nll   # TabPFN LGD; TabICL keeps its native quantile objective
   preprocessing_views: 2
-  training_precision: bf16          # TabICLv2: fp16 + GradScaler (config/train.yaml tabicl_precision)
+  # FP32 for every model and both tasks (12-11-2026). Experiment 0 compared update-zero gradients
+  # with FP32: under BF16 TabPFN v2.6 PD had cosines of 0.72, 0.62 and -0.49 and v3 a corrupted
+  # forward on one table; TabICLv2 under FP16 had 0.10 on one PD table. One precision for all
+  # models keeps model differences from being precision differences.
+  training_precision: fp32
   evaluation_precision: fp32
   seed: 42
   monitor:

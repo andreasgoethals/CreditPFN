@@ -359,42 +359,44 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
         record["tables"].append(row)
         del batch
         torch.cuda.empty_cache()
-    # What one update costs at the REAL episode size in FP32 and in the training precision
-    # (largest training table): the evidence needed to choose a training precision. Not a gate.
+    # What one FP32 update costs at the REAL episode size on each of the four tables, with and
+    # (TabPFN) without activation checkpointing: the evidence for memory and walltime. Not a gate.
     full_rows = training_row_cap(cfg, base, family, members)
-    loaded = _load_processed_csv(refs[0])
     build = dict(n_total_target=full_rows, query_fraction=query_fraction, n_estimators=members)
-    record["full_episode"] = {"rows": int(min(full_rows, len(loaded.y)))}
-    for label, enabled in (("training", use_amp), ("tf32", False), ("fp32", False)):
-        cost = {}
-        _tf32(label == "tf32")
-        try:
-            if family == "tabicl":
-                batch = _build_tabicl_step_batch(loaded, rng=np.random.default_rng(0), epoch_seed=0,
-                                                 replica=0, preprocessing_seed=0, **build).to(device)
-            else:
-                batch = _build_ensemble_step_batch(loaded, rng=np.random.default_rng(0),
-                                                   inference_config=inference_config, rng_seed=0,
-                                                   **build).to(device)
-            seconds = []
-            for _ in range(3):   # the first pass includes warm-up; report the fastest
-                torch.cuda.reset_peak_memory_stats()
-                torch.cuda.synchronize()
-                started = time.monotonic()
-                model.zero_grad(set_to_none=True)
-                with torch.amp.autocast("cuda", enabled=enabled, dtype=amp_dtype):
-                    loss = batch_loss(model, batch, criterion=criterion, regression_objective=objective)
-                loss.backward()
-                torch.cuda.synchronize()
-                seconds.append(time.monotonic() - started)
-            cost = dict(seconds=round(min(seconds), 3), loss=float(loss.detach()),
-                        peak_gb=round(torch.cuda.max_memory_allocated() / 1e9, 1))
-        except Exception as exc:  # out of memory in FP32 is the answer, not a crash
-            cost = dict(error=repr(exc)[:300])
-        record["full_episode"][label] = cost
-        loss = batch = None
-        model.zero_grad(set_to_none=True)
-        torch.cuda.empty_cache()
+    _tf32(False)
+    record["full_episode"] = []
+    for index, ref in enumerate(refs[:PRECISION_TABLES]):
+        loaded = _load_processed_csv(ref)
+        entry = {"table_index": index, "rows": int(min(full_rows, len(loaded.y))),
+                 "features": int(loaded.X.shape[1])}
+        for label in ("fp32",) + (("fp32_checkpointed",) if family == "tabpfn" else ()):
+            try:
+                if family == "tabicl":
+                    batch = _build_tabicl_step_batch(loaded, rng=np.random.default_rng(0), epoch_seed=0,
+                                                     replica=0, preprocessing_seed=0, **build).to(device)
+                else:
+                    batch = _build_ensemble_step_batch(loaded, rng=np.random.default_rng(0),
+                                                       inference_config=inference_config, rng_seed=0,
+                                                       **build).to(device)
+                seconds = []
+                for _ in range(2):   # the first pass includes warm-up; report the faster
+                    torch.cuda.reset_peak_memory_stats()
+                    torch.cuda.synchronize()
+                    started = time.monotonic()
+                    model.zero_grad(set_to_none=True)
+                    loss = batch_loss(model, batch, criterion=criterion, regression_objective=objective,
+                                      activation_checkpointing=label == "fp32_checkpointed")
+                    loss.backward()
+                    torch.cuda.synchronize()
+                    seconds.append(time.monotonic() - started)
+                entry[label] = dict(seconds=round(min(seconds), 3), loss=float(loss.detach()),
+                                    peak_gb=round(torch.cuda.max_memory_allocated() / 1e9, 1))
+            except Exception as exc:  # out of memory is the answer, not a crash
+                entry[label] = dict(error=repr(exc)[:200])
+            loss = batch = None
+            model.zero_grad(set_to_none=True)
+            torch.cuda.empty_cache()
+        record["full_episode"].append(entry)
     record["passed"] = bool(record["tables"]) and all(r["passed"] for r in record["tables"])
     _write(f"precision_{task:02d}.json", record)
     print(json.dumps(record), flush=True)

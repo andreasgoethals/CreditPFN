@@ -921,7 +921,13 @@ def _log_debug_banner(
     if device == "cuda" and torch.cuda.is_available():
         # Free speed on the fp32 ops autocast leaves alone. Measured OFF on both the B200 and
         # the A100, where fp32 runs 24x / 15x slower than bf16.
-        LOGGER.info("%s", enable_tf32())
+        if use_amp:
+            LOGGER.info("%s", enable_tf32())
+        else:
+            # FP32 training is strict FP32: TF32's 10-bit matmuls would save under 10% of an
+            # update (Experiment 0 precision check, 12-11-2026) at a small loss of gradient accuracy.
+            torch.backends.cuda.matmul.allow_tf32 = torch.backends.cudnn.allow_tf32 = False
+            LOGGER.info("tf32: matmul=off cudnn=off (FP32 training)")
         try:
             props = torch.cuda.get_device_properties(0)
             gpu_name = props.name

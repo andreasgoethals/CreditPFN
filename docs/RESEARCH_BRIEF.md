@@ -63,7 +63,7 @@ any comparable real-data corpus would do.
 AdamW at peak learning rate 3e-7, L2-SP 0.003 (no weight decay), 10% warm-up then cosine to 5%,
 gradient clip 1, all weights trainable, 10,000 updates, episodes up to 10,000 rows (v2, v2.6) or
 26,000 (v3, TabICLv2) split 60/40 into context and query, proportional PD sampling, one episode
-per table visit, all training tables, two preprocessing views per episode, BF16 training (TabICLv2: FP16 with loss scaling, its upstream recipe; BF16 corrupts its forward), seed 42.
+per table visit, all training tables, two preprocessing views per episode, FP32 training for every model (mixed-precision gradients disagreed with FP32 in Experiment 0), seed 42.
 
 Monitoring at 0, 50, 100, 150, 200, 250, every 250 updates to 2,500 and every 500 after, plus when 1, 2, 5, 10, 20 and 50
 million rows have been processed (equal-data comparisons). Each point scores the held-out credit
