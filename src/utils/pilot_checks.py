@@ -53,6 +53,8 @@ PRECISION_TOLERANCE = (0.02, 0.02)   # absolute + relative to the FP32 loss
 #: The training-precision gradient must point where the FP32 gradient points. Agreeing losses do
 #: not show this: a forward can match while the backward overflows or loses its small terms.
 PRECISION_GRADIENT_COSINE = 0.90
+#: Episodes summed to see whether precision noise averages out under gradient accumulation.
+PRECISION_ACCUMULATION = 4
 #: Largest inference context the benchmark gives each model per task: config/eval.yaml caps,
 #: bounded by the largest table's outer-fold context (0.8 x 0.8 x rows: PD 730,176, LGD 57,932).
 CAPACITY_ROWS = {"pd": {"v2": 10_000, "v2.6": 50_000, "v3": 467_312, "tabicl-v2": 467_312},
@@ -303,61 +305,94 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
     record = dict(task=task, track=track, base=Path(base).name, family=family,
                   training_dtype=str(amp_dtype).removeprefix("torch.") if use_amp else "float32",
                   episode_rows=rows, members=members, tables=[])
+    training_label = "fp32" if not use_amp else "fp16" if amp_dtype == torch.float16 else "bf16"
+    record["training_label"] = training_label
+    # Candidate precisions, each compared with FP32 on identical batches. TabICLv2 is not run
+    # under BF16 (its forward is corrupted there).
+    candidates = [("fp32", None)] + ([("bf16", torch.bfloat16)] if family == "tabpfn" else []) + [
+        ("fp16", torch.float16)]
+    names = [n for n, p in model.named_parameters() if p.requires_grad]
+    groups = sorted({".".join(n.split(".")[:2]) for n in names})
+
+    def gradient(batch, dtype):
+        """(loss, flat FP64 gradient, loss scale). FP16 trains behind GradScaler: scale the loss
+        as the scaler does (65,536, halved after an overflow)."""
+        scale = 65536.0 if dtype == torch.float16 else 1.0
+        while True:
+            model.zero_grad(set_to_none=True)
+            with torch.amp.autocast("cuda", enabled=dtype is not None, dtype=dtype):
+                loss = batch_loss(model, batch, criterion=criterion, regression_objective=objective)
+            (loss * scale).backward()
+            parts = {n: (p.grad.detach().double().reshape(-1) / scale if p.grad is not None
+                         else torch.zeros(p.numel(), dtype=torch.float64, device=p.device))
+                     for n, p in model.named_parameters() if p.requires_grad}
+            flat = torch.cat([parts[n] for n in names])
+            if bool(torch.isfinite(flat).all()) or scale <= 1.0:
+                return float(loss.detach()), flat, scale
+            scale /= 2.0
+
+    def cosine(a, b):
+        return float(torch.nn.functional.cosine_similarity(a, b, dim=0))
+
+    sizes = [p.numel() for n, p in model.named_parameters() if p.requires_grad]
+    offsets = np.concatenate([[0], np.cumsum(sizes)])
+    spans = {g: [(int(offsets[i]), int(offsets[i + 1])) for i, n in enumerate(names)
+                 if ".".join(n.split(".")[:2]) == g] for g in groups}
+
     for index, ref in enumerate(refs[:PRECISION_TABLES]):
         loaded = _load_processed_csv(ref)
-        build = dict(n_total_target=rows, query_fraction=query_fraction,
-                     n_estimators=members)
-        if family == "tabicl":
-            batch = _build_tabicl_step_batch(loaded, rng=np.random.default_rng(index), epoch_seed=index,
-                                             replica=0, preprocessing_seed=index, **build)
-        else:
-            batch = _build_ensemble_step_batch(loaded, rng=np.random.default_rng(index),
-                                               inference_config=inference_config, rng_seed=index, **build)
-        batch = batch.to(device)
+        build = dict(n_total_target=rows, query_fraction=query_fraction, n_estimators=members)
+
+        def make(seed, loaded=loaded, build=build, index=index):
+            if family == "tabicl":
+                return _build_tabicl_step_batch(loaded, rng=np.random.default_rng(seed), epoch_seed=seed,
+                                                replica=0, preprocessing_seed=index, **build).to(device)
+            return _build_ensemble_step_batch(loaded, rng=np.random.default_rng(seed),
+                                              inference_config=inference_config, rng_seed=seed,
+                                              **build).to(device)
+
         row = {"table_index": index, "rows": int(min(rows, len(loaded.y)))}
         try:
-            reference = None
-            for label, enabled in (("fp32", False), ("training", use_amp), ("tf32", False)):
-                _tf32(label == "tf32")
-                # FP16 trains behind GradScaler: scale the loss as the scaler does (65,536,
-                # halved after an overflow) so the comparison sees the gradients training applies.
-                scale = 65536.0 if enabled and amp_dtype == torch.float16 else 1.0
-                while True:
-                    model.zero_grad(set_to_none=True)
-                    with torch.amp.autocast("cuda", enabled=enabled, dtype=amp_dtype):
-                        loss = batch_loss(model, batch, criterion=criterion, regression_objective=objective)
-                    (loss * scale).backward()
-                    flat = torch.cat([p.grad.detach().double().reshape(-1) / scale
-                                      for p in model.parameters() if p.grad is not None])
-                    if bool(torch.isfinite(flat).all()) or scale <= 1.0:
-                        break
-                    scale /= 2.0
-                row[f"loss_{label}"] = float(loss.detach())
-                row[f"grad_norm_{label}"] = float(flat.norm())
-                row[f"grad_finite_{label}"] = bool(torch.isfinite(flat).all())
-                if label == "fp32":
-                    reference = flat
-                else:
-                    suffix = "" if label == "training" else "_tf32"
-                    if label == "training":
-                        row["loss_scale_training"] = scale
-                    row["grad_cosine" + suffix] = float(
-                        torch.nn.functional.cosine_similarity(flat, reference, dim=0))
-                    row["grad_norm_ratio" + suffix] = float(flat.norm() / reference.norm().clamp_min(1e-300))
-                del flat
-            reference = None
+            sums = {}
+            for draw in range(PRECISION_ACCUMULATION):   # different episodes of the same table
+                batch = make(index + 1000 * draw)
+                reference = None
+                for label, dtype in candidates:
+                    loss, flat, scale = gradient(batch, dtype)
+                    sums[label] = flat if label not in sums else sums[label] + flat
+                    if draw:
+                        continue
+                    row[f"loss_{label}"] = loss
+                    row[f"grad_norm_{label}"] = float(flat.norm())
+                    row[f"grad_finite_{label}"] = bool(torch.isfinite(flat).all())
+                    if label == "fp32":
+                        reference = flat
+                        continue
+                    row[f"loss_scale_{label}"] = scale
+                    row[f"grad_cosine_{label}"] = cosine(flat, reference)
+                    row[f"grad_norm_ratio_{label}"] = float(flat.norm() / reference.norm().clamp_min(1e-300))
+                    # Where the disagreement sits: cosine and share of the FP32 squared norm per module.
+                    total = float(reference.square().sum().clamp_min(1e-300))
+                    row[f"modules_{label}"] = {
+                        g: [round(cosine(torch.cat([flat[a:b] for a, b in spans[g]]),
+                                         torch.cat([reference[a:b] for a, b in spans[g]])), 3),
+                            round(float(sum(reference[a:b].square().sum() for a, b in spans[g])) / total, 4)]
+                        for g in groups}
+                del batch
+            # Does the disagreement average out over several episodes (gradient accumulation)?
+            for label, _ in candidates[1:]:
+                row[f"grad_cosine_{label}_x{PRECISION_ACCUMULATION}"] = cosine(sums[label], sums["fp32"])
             absolute, relative = PRECISION_TOLERANCE
-            row["passed"] = bool(np.isfinite(row["loss_training"]) and abs(row["loss_training"] - row["loss_fp32"])
-                                 <= absolute + relative * abs(row["loss_fp32"])
-                                 and row["grad_finite_fp32"] and row["grad_finite_training"]
-                                 and row["grad_cosine"] >= PRECISION_GRADIENT_COSINE)
+            row["passed"] = bool(
+                np.isfinite(row[f"loss_{training_label}"])
+                and abs(row[f"loss_{training_label}"] - row["loss_fp32"]) <= absolute + relative * abs(row["loss_fp32"])
+                and row["grad_finite_fp32"] and row[f"grad_finite_{training_label}"]
+                and row.get(f"grad_cosine_{training_label}", 1.0) >= PRECISION_GRADIENT_COSINE)
         except Exception as exc:  # an out-of-memory or numerical error is the finding, not a crash
             row.update(passed=False, error=repr(exc)[:500])
-        _tf32(False)
-        loss = flat = reference = None   # noqa: F841 - release graphs and gradients before the next table
+        sums = reference = flat = batch = None   # noqa: F841 - release gradients before the next table
         model.zero_grad(set_to_none=True)
         record["tables"].append(row)
-        del batch
         torch.cuda.empty_cache()
     # What one FP32 update costs at the REAL episode size on each of the four tables, with and
     # (TabPFN) without activation checkpointing: the evidence for memory and walltime. Not a gate.
