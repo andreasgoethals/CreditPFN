@@ -573,6 +573,8 @@ def arm_label(slug: str, settings: dict) -> str:
         return {"small_only": "Small tables only", "large_matched": "Large tables, count-matched"}.get(
             settings.get("corpus"), str(settings.get("corpus")))
     if slug == "episode_size":
+        if settings.get("episode_rows") is None:   # the reference size: 10,000 or 26,000 by model
+            return "Reference episode size"
         return f"Episodes of {int(settings['episode_rows']):,} rows"
     return f"{slug} arm"
 
@@ -861,6 +863,9 @@ def episode_context_gains(episode: pd.DataFrame, context: pd.DataFrame) -> pd.Da
            .agg(gain=("gain", "mean"), context_rows=("context_rows", "mean")).reset_index())
     settings = arm_settings("episode_size", "pd")[["arm", "episode_rows"]]
     out = out.merge(settings, on="arm")
+    # The reference-size arm has no declared episode size: it is each model's reference size.
+    reference = load_design()["reference"]["episode_rows"]
+    out["episode_rows"] = out.episode_rows.astype(float).fillna(out.model.map(reference).astype(float))
     out["model"] = out.model.map(_model_label)
     return out
 

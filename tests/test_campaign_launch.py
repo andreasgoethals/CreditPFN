@@ -29,7 +29,7 @@ def test_submission_stops_at_the_budget_and_resumes(fake):
     first = cl.submit_experiment("E5", budget=130, queued=lambda: next(queued))
     assert len(first["submitted"]) == 3 and len(submitted) == 3
     again = cl.submit_experiment("E5", budget=1000, queued=lambda: 0)
-    assert len(again["submitted"]) == 16 and len(submitted) == 16      # no config twice
+    assert len(again["submitted"]) == 18 and len(submitted) == 18      # no config twice
     assert all(stage == "train eval" for _, stage, _ in submitted)
     assert json.loads((root / "update_size_anchoring.json").read_text())["submitted"]
 

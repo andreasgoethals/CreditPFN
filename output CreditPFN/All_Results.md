@@ -7886,26 +7886,28 @@ row,experiment,slug,arm,track,change,models,runs
 5,E5,update_size_anchoring,5,pd,"learning_rate=3e-06, l2sp_lambda=0.03",4,16
 6,E5,update_size_anchoring,6,pd,"learning_rate=1e-05, l2sp_lambda=0.0",4,16
 7,E5,update_size_anchoring,7,pd,"learning_rate=1e-05, l2sp_lambda=0.03",4,16
-8,E5,update_size_anchoring,0,lgd,learning_rate=1e-07,4,16
-9,E5,update_size_anchoring,1,lgd,learning_rate=1e-06,4,16
-10,E5,update_size_anchoring,2,lgd,learning_rate=3e-06,4,16
-11,E5,update_size_anchoring,3,lgd,learning_rate=1e-05,4,16
-12,E5,update_size_anchoring,4,lgd,"learning_rate=3e-06, l2sp_lambda=0.0",4,16
-13,E5,update_size_anchoring,5,lgd,"learning_rate=3e-06, l2sp_lambda=0.03",4,16
-14,E5,update_size_anchoring,6,lgd,"learning_rate=1e-05, l2sp_lambda=0.0",4,16
-15,E5,update_size_anchoring,7,lgd,"learning_rate=1e-05, l2sp_lambda=0.03",4,16
-16,E6,scope,0,pd,"trainable=frozen_backbone, learning_rate=3e-07",4,16
-17,E6,scope,1,pd,"trainable=frozen_backbone, learning_rate=3e-06",4,16
-18,E6,scope,2,pd,"trainable=diagscale, learning_rate=0.0001",4,16
-19,E6,scope,3,pd,"trainable=diagscale, learning_rate=0.001",4,16
-20,E6,scope,4,pd,"trainable=lora_qv_r16, learning_rate=3e-06",4,16
-21,E6,scope,5,pd,"trainable=lora_qv_r16, learning_rate=1e-05",4,16
-22,E6,scope,0,lgd,"trainable=frozen_backbone, learning_rate=3e-07",4,16
-23,E6,scope,1,lgd,"trainable=frozen_backbone, learning_rate=3e-06",4,16
-24,E6,scope,2,lgd,"trainable=diagscale, learning_rate=0.0001",4,16
-25,E6,scope,3,lgd,"trainable=diagscale, learning_rate=0.001",4,16
-26,E6,scope,4,lgd,"trainable=lora_qv_r16, learning_rate=3e-06",4,16
-27,E6,scope,5,lgd,"trainable=lora_qv_r16, learning_rate=1e-05",4,16
+8,E5,update_size_anchoring,8,pd,l2sp_lambda=0.0,4,16
+9,E5,update_size_anchoring,0,lgd,learning_rate=1e-07,4,16
+10,E5,update_size_anchoring,1,lgd,learning_rate=1e-06,4,16
+11,E5,update_size_anchoring,2,lgd,learning_rate=3e-06,4,16
+12,E5,update_size_anchoring,3,lgd,learning_rate=1e-05,4,16
+13,E5,update_size_anchoring,4,lgd,"learning_rate=3e-06, l2sp_lambda=0.0",4,16
+14,E5,update_size_anchoring,5,lgd,"learning_rate=3e-06, l2sp_lambda=0.03",4,16
+15,E5,update_size_anchoring,6,lgd,"learning_rate=1e-05, l2sp_lambda=0.0",4,16
+16,E5,update_size_anchoring,7,lgd,"learning_rate=1e-05, l2sp_lambda=0.03",4,16
+17,E5,update_size_anchoring,8,lgd,l2sp_lambda=0.0,4,16
+18,E6,scope,0,pd,"trainable=frozen_backbone, learning_rate=3e-07",4,16
+19,E6,scope,1,pd,"trainable=frozen_backbone, learning_rate=3e-06",4,16
+20,E6,scope,2,pd,"trainable=diagscale, learning_rate=0.0001",4,16
+21,E6,scope,3,pd,"trainable=diagscale, learning_rate=0.001",4,16
+22,E6,scope,4,pd,"trainable=lora_qv_r16, learning_rate=3e-06",4,16
+23,E6,scope,5,pd,"trainable=lora_qv_r16, learning_rate=1e-05",4,16
+24,E6,scope,0,lgd,"trainable=frozen_backbone, learning_rate=3e-07",4,16
+25,E6,scope,1,lgd,"trainable=frozen_backbone, learning_rate=3e-06",4,16
+26,E6,scope,2,lgd,"trainable=diagscale, learning_rate=0.0001",4,16
+27,E6,scope,3,lgd,"trainable=diagscale, learning_rate=0.001",4,16
+28,E6,scope,4,lgd,"trainable=lora_qv_r16, learning_rate=3e-06",4,16
+29,E6,scope,5,lgd,"trainable=lora_qv_r16, learning_rate=1e-05",4,16
 
 2. Update size and anchoring (E5)
 No results yet for E5 monitor curves; the figure is drawn once they exist.
@@ -8060,6 +8062,7 @@ row,experiment,slug,arm,track,change,models,runs
 6,E10,episode_size,1,pd,"corpus=tables_above_10000_rows, episode_rows=4096",4,16
 7,E10,episode_size,2,pd,"corpus=tables_above_10000_rows, episode_rows=8192",4,16
 8,E10,episode_size,3,pd,"corpus=tables_above_10000_rows, episode_rows=16384",2,8
+9,E10,episode_size,4,pd,corpus=tables_above_10000_rows,4,16
 
 2. Class balance, exposure and table size (E7, E8, E9)
 No results yet for E7-E9 monitor curves; the figure is drawn once they exist.

@@ -150,6 +150,9 @@ def arm_styles(settings: pd.DataFrame, *, color_by: str = "label", linestyle_by:
         return pd.DataFrame()
     arms = settings.copy()
     is_ref = arms.slug.eq("reference")
+    # An arm without a value for ``color_by`` keeps the reference setting (E10's reference
+    # episode size) and is drawn like the reference.
+    is_ref = is_ref | arms[color_by].isna()
     keys = list(dict.fromkeys(arms.loc[~is_ref, color_by]))
     if color_by == "trainable":
         palette = {k: style.SCOPE_COLORS.get(k, style.color(k)) for k in keys}
