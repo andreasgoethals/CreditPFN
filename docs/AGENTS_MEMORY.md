@@ -1,5 +1,12 @@
 # Agents' memory — runs and dead ends
 
+## 12-11-2026
+
+- **Mixed-precision gradients disagree with FP32 on PD** (Mindwell `11791930`-`11791934`, commit `66cd191`: acceptance chain plus the 8-task precision check, all exit 0; update zero, 8,192 rows, four largest training tables). Cosine between training-precision and FP32 gradients: PD v2 BF16 0.92-0.99 (one table out of memory in FP32); PD v2.6 BF16 0.72, 0.62, -0.49, 0.90; PD v3 BF16 0.97-0.99 on three tables, but on the third table the BF16 loss is 1.51 against 0.50 in FP32 with a gradient norm of 1,854 against 0.31; PD TabICLv2 FP16 0.10, 0.90, 0.84, 0.86, and on the same third table loss 0.79 against 0.50 with the norm 488 times larger. LGD: v2.6 and TabICLv2 >= 0.93 everywhere, v2 and v3 one table each at 0.86-0.87. The loss-only gate had passed these cases except the two corrupted forwards. Training precision is an open recipe decision; Experiment 0 stays unsubmitted until it is taken.
+- **Tried:** submitting the precision array alone after a change under `src/` (`11789506`). **Result:** all 8 tasks failed in 20 s. **Why:** container jobs need a runtime acceptance for the current code identity. **Instead:** chain record, prepare, ten-case GPU acceptance and accept in front of any GPU check (`docs/VSC.md`).
+- **Experiment 0 clean run 2 (commit `8f7768e`) stopped by Andreas** to save credits after 105 pilots completed without failure: 250 updates each, no data skips; TabICLv2 PD lost 4-9 of about 258 attempts to non-finite FP16 gradients; data wait 3-10% of training time; a monitor point cost 18-45 s. wICE probe `62636465` was cancelled before it started.
+- **Tried:** estimating the gain from caching monitor preprocessing. **Result:** a local profile shows the forward pass dominates a monitor point; encoding, checkpoint load and preprocessing are about 1 s per table. **Instead:** fewer monitor points (every 500 updates after 2,500).
+
 ## 10-11-2026
 
 - **Experiment 0 run 1 (commit `9eb77d8`) cancelled and wiped by request** for a clean run on the 8-view protocol. Evidence kept here: chain record/prepare/acceptance/accept/controller all exit 0 (controller gate 152 passed); 157 pilot trainings finished without failure (PD mean 5.7 min, max 18; LGD mean 3.0, max 9; 250 updates, monitors ~18 s each); all 24 exact-resume checks passed; FP32 capacity LGD v2 191 s / 17 GB, LGD v3 113 s / 3 GB, LGD TabICL 30 s / 73 GB; classical baselines 8 shards, max 2 h 47 min. Its record suite had 15 test-isolation failures (fixed in `bb158b2`).

@@ -1,5 +1,10 @@
 # Changelog
 
+## 12-11-2026
+
+- Monitor points every 500 updates after 2,500 (45 to 30 per 10,000-update run); a point is a full inference pass with the GPU otherwise idle.
+- Precision check also records the time and peak memory of one update at the real episode size in FP32 and in the training precision.
+
 ## 11-11-2026
 
 - Experiment 0 precision check also compares gradients (finite, cosine with FP32 >= 0.90, FP16 scaled as GradScaler does): TabICLv2 PD pilots showed gradient norms of 7-80 with non-finite spikes under FP16 while losses agreed.

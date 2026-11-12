@@ -65,7 +65,7 @@ gradient clip 1, all weights trainable, 10,000 updates, episodes up to 10,000 ro
 26,000 (v3, TabICLv2) split 60/40 into context and query, proportional PD sampling, one episode
 per table visit, all training tables, two preprocessing views per episode, BF16 training (TabICLv2: FP16 with loss scaling, its upstream recipe; BF16 corrupts its forward), seed 42.
 
-Monitoring at 0, 50, 100, 150, 200, 250 and every 250 updates, plus when 1, 2, 5, 10, 20 and 50
+Monitoring at 0, 50, 100, 150, 200, 250, every 250 updates to 2,500 and every 500 after, plus when 1, 2, 5, 10, 20 and 50
 million rows have been processed (equal-data comparisons). Each point scores the held-out credit
 tables, the run's own training tables and the retention panel on one fixed context/query split,
 with the same two preprocessing views as training and up to 10,000 rows per table (Experiment 0

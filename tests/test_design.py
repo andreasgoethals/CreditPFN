@@ -27,12 +27,13 @@ def test_reference_recipe_matches_the_agreed_values():
     assert len(ref["tunable"]["classifier_base_paths"]) == 4
 
 
-def test_monitoring_is_dense_early_then_every_250_updates():
+def test_monitoring_is_dense_early_then_every_250_and_500_updates():
     points = d.monitor_updates(10000)
     assert points[:7] == [0, 50, 100, 150, 200, 250, 500]
-    assert points[-1] == 10000 and len(points) == 45
-    assert all(b - a == 250 for a, b in zip(points[5:], points[6:]))
-    assert d.monitor_updates(2500)[-1] == 2500
+    assert points[-1] == 10000 and len(points) == 30
+    assert all(b - a == 250 for a, b in zip(points[5:14], points[6:15])) and points[14] == 2500
+    assert all(b - a == 500 for a, b in zip(points[14:], points[15:]))
+    assert d.monitor_updates(2500) == points[:15] and d.monitor_updates(250) == points[:6]
 
 
 def test_run_counts_match_the_agreed_grid():

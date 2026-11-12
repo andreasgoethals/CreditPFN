@@ -232,7 +232,7 @@ def audit(config: Path, *, null=False) -> dict:
     for (base, mode, frozen), values in timings.items():
         rate = max(v[0] for v in values)
         monitor = max(v[1] for v in values if math.isfinite(v[1])) if any(math.isfinite(v[1]) for v in values) else 0
-        # Candidate horizons with the design's actual monitor schedule (45 points at 10,000
+        # Candidate horizons with the design's actual monitor schedule (30 points at 10,000
         # updates) plus the six processed-row milestones; 30% margin and 10 minutes of setup.
         from src.utils.design import monitor_updates
         estimates = {str(steps): math.ceil((steps * rate + (len(monitor_updates(steps)) + 6) * monitor + 600)

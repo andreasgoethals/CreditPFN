@@ -63,9 +63,14 @@ def load_design(path: Path = DESIGN) -> dict:
 
 
 def monitor_updates(budget: int) -> list[int]:
-    """0, 50, 100, 150, 200, 250, then every 250 updates up to and including the budget."""
+    """0, 50, 100, 150, 200, 250, every 250 updates to 2,500, then every 500 to the budget.
+
+    A monitor point is a full inference pass over every monitored table with the GPU otherwise
+    idle (about 45 s for TabPFN v2 in Experiment 0). The first study's curves were flat after
+    2,500 updates, so the later part of a run is sampled at half the density."""
     points = [0, 50, 100, 150, 200, 250]
-    points += list(range(500, budget + 1, 250))
+    points += list(range(500, min(budget, 2500) + 1, 250))
+    points += list(range(3000, budget + 1, 500))
     return sorted(set(p for p in points if p <= budget) | {budget})
 
 
