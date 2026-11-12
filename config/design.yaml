@@ -70,9 +70,11 @@ experiments:
     question: Is CPT worth it compared with fine-tuning on the target table, and do the two stack?
     source: E1
     starts: [original, cpt]       # original and CPT models without fine-tuning come from the benchmark
-    # learning rate: the geometric midpoint of the two most frequent tuned winners in Rubachev et al.
-    # 2025 (2.3e-5 and 1.8e-4, each in 11 of 49 tuned configurations), itself a point of their grid.
-    recipe: {epochs: 30, learning_rate: 6.5e-5, early_stopping_patience: 8, validation_fraction: 0.20}
+    # Learning rate chosen per table, fold and start on the inner validation rows (log loss for PD,
+    # RMSE for LGD): 6.5e-5 is the geometric midpoint of the two most frequent tuned winners in
+    # Rubachev et al. 2025; 1e-6 is Ning et al. 2026's TabPFN-3 rate; 1e-5 lies between (Tanna et
+    # al. 2026 report TabICL collapsing at 1e-5 and above). One fixed rate would favour some models.
+    recipe: {epochs: 30, learning_rates: [1.0e-6, 1.0e-5, 6.5e-5], early_stopping_patience: 8, validation_fraction: 0.20}
     outer_folds: 5
   # ------------------------------------------------------- RQ2: controlling weight change
   E5:
@@ -89,6 +91,7 @@ experiments:
       - {learning_rate: 3.0e-6, l2sp_lambda: 0.03}
       - {learning_rate: 1.0e-5, l2sp_lambda: 0.0}
       - {learning_rate: 1.0e-5, l2sp_lambda: 0.03}
+      - {l2sp_lambda: 0.0}     # anchoring off at the reference rate: what L2-SP does in the reference itself
   E6:
     slug: scope
     rq: 2
@@ -131,6 +134,7 @@ experiments:
       - {corpus: tables_above_10000_rows, episode_rows: 4096}
       - {corpus: tables_above_10000_rows, episode_rows: 8192}
       - {corpus: tables_above_10000_rows, episode_rows: 16384, models: [v3, tabicl-v2]}
+      - {corpus: tables_above_10000_rows}   # reference episode size on this corpus: separates episode size from the corpus restriction
     matched_context_evaluation: [2048, 8192, full]
   # ------------------------------------------------------------ RQ4: when and why
   E11:

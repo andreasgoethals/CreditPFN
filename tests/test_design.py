@@ -42,9 +42,9 @@ def test_run_counts_match_the_agreed_grid():
     for (name, track, index), cfg in d.arm_configs(spec).items():
         bases = cfg["tunable"]["classifier_base_paths" if track == "pd" else "regressor_base_paths"]
         counts[name] = counts.get(name, 0) + len(bases) * int(cfg["corpus"]["n_splits"])
-    assert counts == {"E1": 32, "E2": 64, "E3": 32, "E5": 256, "E6": 192, "E7": 16, "E8": 32,
-                      "E9": 32, "E10": 56, "E12": 100}
-    assert sum(counts.values()) == 812              # 712 standard runs + 100 short transfer runs
+    assert counts == {"E1": 32, "E2": 64, "E3": 32, "E5": 288, "E6": 192, "E7": 16, "E8": 32,
+                      "E9": 32, "E10": 72, "E12": 100}
+    assert sum(counts.values()) == 860              # 760 standard runs + 100 short transfer runs
 
 
 def test_numbering_follows_the_research_questions():
@@ -78,15 +78,17 @@ def test_lora_keeps_the_reference_l2sp_on_the_effective_update():
 
 def test_update_size_grid_cells():
     arms = d.load_design()["experiments"]["E5"]["arms"]
-    cells = {(a["learning_rate"], a.get("l2sp_lambda", 0.003)) for a in arms}
+    cells = {(a["learning_rate"], a.get("l2sp_lambda", 0.003)) for a in arms if "learning_rate" in a}
     assert cells == {(1e-7, .003), (1e-6, .003), (3e-6, .003), (1e-5, .003),
                      (3e-6, 0.0), (3e-6, .03), (1e-5, 0.0), (1e-5, .03)}
+    # ...plus anchoring off at the reference rate itself.
+    assert arms[-1] == {"l2sp_lambda": 0.0}
 
 
 def test_three_reference_seeds_and_the_rubachev_finetuning_rate():
     spec = d.load_design()["experiments"]
     assert [a["seed"] for a in spec["E2"]["arms"]] == [43, 44]
-    assert spec["E4"]["recipe"]["learning_rate"] == 6.5e-5
+    assert spec["E4"]["recipe"]["learning_rates"] == [1e-6, 1e-5, 6.5e-5]
 
 
 def test_transfer_runs_index_every_table_once_and_train_on_one_table():
@@ -103,15 +105,15 @@ def test_transfer_runs_index_every_table_once_and_train_on_one_table():
 
 def test_episode_size_doubles_and_16384_only_for_large_context_models():
     arms = d.load_design()["experiments"]["E10"]["arms"]
-    assert [a["episode_rows"] for a in arms] == [2048, 4096, 8192, 16384]
-    assert arms[-1]["models"] == ["v3", "tabicl-v2"]
+    assert [a.get("episode_rows") for a in arms] == [2048, 4096, 8192, 16384, None]   # last: reference size
+    assert arms[3]["models"] == ["v3", "tabicl-v2"] and "models" not in arms[-1]
     assert all(a["corpus"] == "tables_above_10000_rows" for a in arms)
 
 
 def test_generated_configs_resolve_to_valid_training_grids(tmp_path):
     from src.train.config import load_train_config, resolve_grid
     paths = d.materialize(tmp_path)
-    assert len(paths) == 70
+    assert len(paths) == 73
     for path in paths:
         cfg = load_train_config(config_path=str(path))
         assert resolve_grid(cfg, single=False)

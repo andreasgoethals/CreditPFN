@@ -1,7 +1,8 @@
 """Evaluation tasks over held-out tables, one model, table and outer fold per task:
 
 * ``context`` (E11): original and E1 model at nested labelled-context sizes;
-* ``finetune`` (E4): fine-tuning on the target fold from the original and from the E1 model;
+* ``finetune`` (E4): fine-tuning on the target fold from the original and from the E1 model,
+  at the candidate learning rate with the best inner-validation score;
 * ``episode_context`` (E10): each episode-size model at fixed contexts of 2,048 and 8,192 rows and
   the full fold, so the effect of training-episode size can be read at matched inference context
   (the original model's scores at these sizes come from ``context``, same rows).
@@ -142,7 +143,7 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
     if kind != "episode_context":
         starts = {"original": resolve_base_checkpoint(BASES[task["track"]][task["model"]]), **starts}
     recipe = {k: experiment_by_slug("target_finetune", design)[1]["recipe"][k]
-              for k in ("epochs", "learning_rate", "early_stopping_patience")}
+              for k in ("epochs", "learning_rates", "early_stopping_patience")}
     if quick:
         recipe["epochs"] = QUICK["epochs"]
     identity = task_identity(kind, task, rules, recipe if kind == "finetune" else None, quick, starts)
@@ -177,9 +178,26 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
             used = context[: rules["max_context_rows"]]
             metrics, packed = score_cell(data, used, validation, test, path, family, rules, device=device)
             keep(dict(start=start, finetuned=False, context_rows=len(used), **metrics), _unpack(packed))
-            metrics, out = finetune_cell(data, context, validation, test, path, family, recipe=recipe,
-                                         views=INFERENCE_VIEWS[family], device=device,
-                                         max_context_rows=rules["max_context_rows"])
+            # One fine-tuning per candidate rate; the rate with the best inner-validation score
+            # is the cell's result. Test rows never take part in the choice.
+            candidates = {}
+            for rate in recipe["learning_rates"]:
+                fixed = {"epochs": recipe["epochs"], "learning_rate": float(rate),
+                         "early_stopping_patience": recipe["early_stopping_patience"]}
+                candidates[float(rate)] = finetune_cell(
+                    data, context, validation, test, path, family, recipe=fixed,
+                    views=INFERENCE_VIEWS[family], device=device,
+                    max_context_rows=rules["max_context_rows"])
+            scores = {rate: validation_score(data.task_type, data.y[validation], out["validation_prediction"])
+                      for rate, (_, out) in candidates.items()}
+            chosen = min(scores, key=lambda rate: (scores[rate], rate))
+            metrics, out = candidates[chosen]
+            primary = "roc_auc" if data.task_type == "classification" else "rmse"
+            metrics = {**metrics, "selection_metric": "validation_log_loss" if data.task_type == "classification"
+                       else "validation_rmse",
+                       **{f"validation_score_lr{rate:g}": score for rate, score in scores.items()},
+                       **{f"test_{primary}_lr{rate:g}": float(m[primary]) for rate, (m, _) in candidates.items()},
+                       "fit_seconds": sum(float(m["fit_seconds"]) for m, _ in candidates.values())}
             keep(dict(start=start, finetuned=True, **metrics),
                  dict(context=used, validation=validation, test=test, target=data.y[test],
                       prediction=out["prediction"], validation_target=data.y[validation],
@@ -198,6 +216,16 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
     write_json(receipt, dict(task=task, rows=len(frame), identity=identity, predictions=stored.name))
     print(json.dumps(dict(kind=kind, index=index, rows=len(frame))), flush=True)
     return target
+
+
+def validation_score(task_type: str, y, prediction) -> float:
+    """Lower is better: log loss (PD) or RMSE (LGD) on the inner validation rows."""
+    y = np.asarray(y)
+    prediction = np.asarray(prediction, dtype=float)
+    if task_type == "classification":
+        positive = np.clip(prediction[:, 1] if prediction.ndim == 2 else prediction, 1e-7, 1 - 1e-7)
+        return float(-np.mean(np.where(y == 1, np.log(positive), np.log1p(-positive))))
+    return float(np.sqrt(np.mean((prediction - y) ** 2)))
 
 
 def _unpack(packed: bytes) -> dict:

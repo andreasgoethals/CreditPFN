@@ -2,6 +2,8 @@
 
 ## 12-11-2026
 
+- Grid (agreed): E5 adds λ 0 at the reference rate; E10 adds the reference episode size on its corpus; E4 chooses the fine-tuning rate from 1e-6, 1e-5, 6.5e-5 on the validation split. 760 standard runs.
+- Precision check adds a TF32 arm (gradient agreement and full-episode cost).
 - Monitor points every 500 updates after 2,500 (45 to 30 per 10,000-update run); a point is a full inference pass with the GPU otherwise idle.
 - Precision check also records the time and peak memory of one update at the real episode size in FP32 and in the training precision.
 

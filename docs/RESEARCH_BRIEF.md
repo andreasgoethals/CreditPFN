@@ -93,20 +93,20 @@ times 2,000, 10,000 and full tables before this is fixed).
 ## Experiments
 
 One arm = 4 models × 4 partitions × the listed tasks. E1 is the shared control of E2, E3 and
-E5–E10 and is never re-run. 712 standard runs plus 100 short single-source runs.
+E5–E10 and is never re-run. 760 standard runs plus 100 short single-source runs.
 
 | RQ | Exp | Question | Change vs the reference | Tasks | Runs |
 |---|---|---|---|---|---|
 | 1 | E1 | Transfer and its development | none | PD, LGD | 32 |
 | 1 | E2 | Training randomness | seeds 43 and 44 (with E1: three seeds) | PD, LGD | 64 |
 | 1 | E3 | Domain specificity | CPT on the matched non-credit twins of the partition's credit training tables | PD, LGD | 32 |
-| 1 | E4 | CPT vs fine-tuning on the target table | per fold: fine-tune the original and the E1 model on the fold's training rows (upstream fine-tuners, lr 6.5e-5, early stopping on the validation split) | PD, LGD | fine-tunes only |
-| 2 | E5 | Update size × anchoring | lr 1e-7, 1e-6, 3e-6, 1e-5 at λ 0.003; λ 0 and 0.03 at lr 3e-6 and 1e-5 | PD, LGD | 256 |
+| 1 | E4 | CPT vs fine-tuning on the target table | per fold: fine-tune the original and the E1 model on the fold's training rows (upstream fine-tuners; lr chosen from 1e-6, 1e-5, 6.5e-5 on the validation split, which also drives early stopping) | PD, LGD | fine-tunes only |
+| 2 | E5 | Update size × anchoring | lr 1e-7, 1e-6, 3e-6, 1e-5 at λ 0.003; λ 0 and 0.03 at lr 3e-6 and 1e-5; λ 0 at the reference rate | PD, LGD | 288 |
 | 2 | E6 | Which weights change | frozen backbone (3e-7, 3e-6); DiagScale (1e-4, 1e-3); LoRA r16 query/value (3e-6, 1e-5); λ 0.003 throughout | PD, LGD | 192 |
 | 3 | E7 | Class-balanced episodes | balanced PD sampling | PD | 16 |
 | 3 | E8 | Seeing every row | full pass, one update per chunk | PD, LGD | 32 |
 | 3 | E9 | Small vs large tables | small tables only (≤10,000 rows) vs the same number of large tables | PD | 32 |
-| 3 | E10 | Episode size | 2,048 / 4,096 / 8,192 / 16,384 (v3, TabICL) rows on the large-table corpus; equal updates, rows and compute; matched-context scoring | PD | 56 |
+| 3 | E10 | Episode size | 2,048 / 4,096 / 8,192 / 16,384 (v3, TabICL) rows and the reference size on the large-table corpus; equal updates, rows and compute; matched-context scoring | PD | 72 |
 | 4 | E11 | Context scarcity | evaluation only: original vs E1 with 8 … 50,000 labelled context rows and the full pool, five folds; the fold's validation rows stay labelled for calibration and thresholds, so this is context scarcity rather than total label scarcity | PD, LGD | 0 |
 | 4 | E12 | Which sources help which targets | CPT on one table (2,500 updates, lr 1e-6), scored on every other table | PD, LGD | 100 short |
 
@@ -119,11 +119,12 @@ E5–E10 and is never re-run. 712 standard runs plus 100 short single-source run
   falling at larger rates; dense monitoring shows every shorter horizon.
 * **Frozen backbone at the same rates as full updates** so that scope is the only difference;
   per-dataset tuning as in Rubachev et al. 2025 is impossible without target labels.
-* **E4 fine-tuning rate 6.5e-5.** Rubachev et al. tune the rate per dataset over ten log-spaced
-  values from 5e-6 to 5e-4; in their 49 tuned configurations the two most frequent winners are
-  2.3e-5 and 1.8e-4 (11 each). E4 uses their geometric midpoint, 6.5e-5, itself a point of that
-  grid. Different subsamples of one dataset choose rates up to 20 times apart, so the optimum is
-  flat or noisy and per-table tuning would mostly fit noise.
+* **E4 fine-tuning rates 1e-6, 1e-5 and 6.5e-5, chosen on the validation split** (12-11-2026).
+  Rubachev et al. tune the rate per dataset over ten log-spaced values from 5e-6 to 5e-4; their
+  two most frequent winners are 2.3e-5 and 1.8e-4, with geometric midpoint 6.5e-5. Ning et al.
+  2026 fine-tune TabPFN-3 at 1e-6 and Tanna et al. 2026 report TabICL collapsing at 1e-5 and
+  above, so one fixed rate would favour some models. Each cell records the validation score and
+  the test score of every candidate, so the fixed-rate comparison remains available.
 * **Dropped arms.** Muon, the 80/20 context/query split and λ 0.3 were removed on 05-11-2026 to
   spend the budget on a third seed and the LGD domain control.
 * **E9 count-matched**: small-only (4–5 tables per partition) versus the same number of large

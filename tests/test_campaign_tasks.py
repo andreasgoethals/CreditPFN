@@ -92,7 +92,7 @@ def test_matched_context_tasks_cover_every_episode_arm_and_its_models(all_tasks)
     per_arm = {}
     for t in tasks:
         per_arm.setdefault(t["arm"], set()).add(t["model"])
-    assert per_arm[3] == {"v3", "tabicl-v2"} and all(len(per_arm[a]) == 4 for a in (0, 1, 2))
+    assert per_arm[3] == {"v3", "tabicl-v2"} and all(len(per_arm[a]) == 4 for a in (0, 1, 2, 4))
     assert all(t["track"] == "pd" for t in tasks)
     from src.utils.design import load_design
     rules = ct.policy("v3", load_design(), kind="episode_context")

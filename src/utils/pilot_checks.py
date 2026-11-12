@@ -258,6 +258,13 @@ def evaluation(task: int, folder: Path = FOLDER) -> dict:
 
 
 # ------------------------------------------------------- training precision (GPU)
+def _tf32(enabled: bool) -> None:
+    """FP32 storage with 10-bit-mantissa matrix multiplies (tensor cores) on or off."""
+    import torch
+    torch.backends.cuda.matmul.allow_tf32 = bool(enabled)
+    torch.backends.cudnn.allow_tf32 = bool(enabled)
+
+
 def precision(task: int, folder: Path = FOLDER) -> dict:
     """Update-zero training loss in FP32 versus the resolved training precision."""
     import torch
@@ -310,7 +317,8 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
         row = {"table_index": index, "rows": int(min(rows, len(loaded.y)))}
         try:
             reference = None
-            for label, enabled in (("fp32", False), ("training", use_amp)):
+            for label, enabled in (("fp32", False), ("training", use_amp), ("tf32", False)):
+                _tf32(label == "tf32")
                 # FP16 trains behind GradScaler: scale the loss as the scaler does (65,536,
                 # halved after an overflow) so the comparison sees the gradients training applies.
                 scale = 65536.0 if enabled and amp_dtype == torch.float16 else 1.0
@@ -330,9 +338,12 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
                 if label == "fp32":
                     reference = flat
                 else:
-                    row["loss_scale_training"] = scale
-                    row["grad_cosine"] = float(torch.nn.functional.cosine_similarity(flat, reference, dim=0))
-                    row["grad_norm_ratio"] = float(flat.norm() / reference.norm().clamp_min(1e-300))
+                    suffix = "" if label == "training" else "_tf32"
+                    if label == "training":
+                        row["loss_scale_training"] = scale
+                    row["grad_cosine" + suffix] = float(
+                        torch.nn.functional.cosine_similarity(flat, reference, dim=0))
+                    row["grad_norm_ratio" + suffix] = float(flat.norm() / reference.norm().clamp_min(1e-300))
                 del flat
             reference = None
             absolute, relative = PRECISION_TOLERANCE
@@ -342,6 +353,8 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
                                  and row["grad_cosine"] >= PRECISION_GRADIENT_COSINE)
         except Exception as exc:  # an out-of-memory or numerical error is the finding, not a crash
             row.update(passed=False, error=repr(exc)[:500])
+        _tf32(False)
+        loss = flat = reference = None   # noqa: F841 - release graphs and gradients before the next table
         model.zero_grad(set_to_none=True)
         record["tables"].append(row)
         del batch
@@ -352,8 +365,9 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
     loaded = _load_processed_csv(refs[0])
     build = dict(n_total_target=full_rows, query_fraction=query_fraction, n_estimators=members)
     record["full_episode"] = {"rows": int(min(full_rows, len(loaded.y)))}
-    for label, enabled in (("training", use_amp), ("fp32", False)):
+    for label, enabled in (("training", use_amp), ("tf32", False), ("fp32", False)):
         cost = {}
+        _tf32(label == "tf32")
         try:
             if family == "tabicl":
                 batch = _build_tabicl_step_batch(loaded, rng=np.random.default_rng(0), epoch_seed=0,

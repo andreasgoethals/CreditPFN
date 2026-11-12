@@ -27,7 +27,7 @@ method authority is [RESEARCH_BRIEF.md](docs/RESEARCH_BRIEF.md); operations are 
 | RQ3 Training data: which tables, how much of each, episode size, class balance | E7 balanced PD sampling · E8 full pass · E9 small vs large tables · E10 episode size |
 | RQ4 When and why: which target tables gain, what they share, which sources help, context scarcity | E11 labelled-context curves · E12 single-source transfer matrix · per-table analysis |
 
-712 standard training runs plus 100 short single-source runs; E1 is the shared control of E2,
+760 standard training runs plus 100 short single-source runs; E1 is the shared control of E2,
 E3 and E5–E10. Every model is evaluated in FP32 on complete five-fold test sets; forgetting is measured
 on 19 binary and 12 regression TabArena tables; baselines are CatBoost and logistic/linear
 regression. TabPFN LGD trains with a 5-bucket window NLL (robust to the v2.6 regressor's
