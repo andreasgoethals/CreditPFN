@@ -409,9 +409,8 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
                     if name in seen or not torch.is_tensor(tensor) or not tensor.is_floating_point():
                         return
                     flat = tensor.detach().reshape(-1)
-                    index = torch.linspace(0, flat.numel() - 1, min(flat.numel(), 8192),
-                                           device=flat.device).long()
-                    seen[name] = (flat[index].double(), int((~torch.isfinite(flat)).sum()))
+                    sample = flat[::max(1, flat.numel() // 8192)][:8192]   # integer stride: exact
+                    seen[name] = (sample.double(), int((~torch.isfinite(flat)).sum()))
                 return keep
 
             for name, module in model.named_modules():
