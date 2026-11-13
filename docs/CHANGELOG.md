@@ -1,5 +1,12 @@
 # Changelog
 
+## 13-11-2026
+
+- Training precision (agreed): FP16 autocast with loss scaling for every model; TabICLv2's column embedder runs in FP32 (`tabicl_model.column_embedder_in_fp32`), which restores FP32 gradients at about half the cost of full FP32.
+- XGBoost added as a second tuned boosting baseline (agreed).
+- Analysis: hierarchical-bootstrap intervals for mean gains, difference in differences for the domain control (E1 minus E3), CPT against fine-tuning cost table, precision-agreement figure.
+- Figures are drawn for Springer LNCS (122-mm text block, at most 96 mm high) instead of A4.
+
 ## 12-11-2026
 
 - Precision check traces TabICLv2 under FP16: loss by episode size, first divergent module, and one component at a time in FP32.

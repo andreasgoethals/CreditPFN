@@ -863,3 +863,36 @@ def test_training_batch_mean_imputes_like_tabicl_inference() -> None:
                                     replica=0, preprocessing_seed=0, row_indices=np.arange(60))
     X = captured["X"]
     assert np.allclose(X[:, 0], np.tile([10.0, 20.0, 30.0], 20)) and np.all(X[:, 1] == 0)
+
+
+def test_column_embedder_in_fp32_keeps_outputs_state_and_survives_deepcopy():
+    import copy
+
+    import torch
+
+    from src.train.tabicl_model import column_embedder_in_fp32
+
+    class Col(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.linear = torch.nn.Linear(3, 3)
+
+        def forward(self, x, y=None):
+            assert not torch.is_autocast_enabled("cuda")
+            return self.linear(x)
+
+    class Model(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.col_embedder, self.out = Col(), torch.nn.Linear(3, 1)
+
+        def forward(self, x):
+            return self.out(self.col_embedder(x, y=x))
+
+    model, x = Model(), torch.randn(4, 3)
+    before, keys = model(x), list(model.state_dict())
+    assert column_embedder_in_fp32(model) and column_embedder_in_fp32(model)   # idempotent
+    assert torch.equal(model(x), before) and list(model.state_dict()) == keys
+    clone = copy.deepcopy(model)
+    assert type(clone.col_embedder).__name__ == "ColFP32" and torch.equal(clone(x), before)
+    assert not column_embedder_in_fp32(torch.nn.Linear(2, 2))

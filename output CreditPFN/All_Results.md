@@ -21,6 +21,15 @@ Table: Density roughness
 CSV (first column: row index)
 row
 
+3. Training precision against FP32
+No results yet for precision check; the figure is drawn once they exist.
+
+No measurements available for this figure group.
+
+Table: Update-zero loss and gradient agreement with FP32
+CSV (first column: row index)
+row
+
 experiment0/01_campaign2_checks: no figures saved.
 ```
 
@@ -7535,7 +7544,8 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 198,0.99,0.99854227
 199,0.995,0.99854227
 200,1,1
-Panel 2: Point masses at the bounds / points 1
+Panel 2: Point masses at the
+bounds / points 1
 CSV (first column: row index)
 row,Share of rows at the minimum target,Share of rows at the maximum target
 0,0.21886,0.51686
@@ -7546,7 +7556,8 @@ row,Share of rows at the minimum target,Share of rows at the maximum target
 5,0.11417323,0.080677415
 6,0.014750311,0.0031988626
 7,0.0014577259,0.058309038
-Panel 2: Point masses at the bounds / points 2
+Panel 2: Point masses at the
+bounds / points 2
 CSV (first column: row index)
 row,Share of rows at the minimum target,Share of rows at the maximum target
 0,2e-05,2e-05
@@ -7557,7 +7568,8 @@ row,Share of rows at the minimum target,Share of rows at the maximum target
 5,6.2492188e-05,6.2492188e-05
 6,0.0087080149,0.0099520171
 7,0.0014577259,0.0014577259
-Panel 2: Point masses at the bounds / points 3
+Panel 2: Point masses at the
+bounds / points 3
 CSV (first column: row index)
 row,Share of rows at the minimum target,Share of rows at the maximum target
 0,0.0011025358,0.0011025358
@@ -7578,7 +7590,8 @@ Two components; the distance tests in A4 and B4 use all properties.
 
 Figure: embedding
 First two principal components of the standardised feature and target properties of every table, for PD with the binary non-credit tables (left) and LGD with the regression non-credit tables (right). Each point is one table: credit corpus, matched non-credit control corpus (E3) and non-credit retention panel. Axis labels give the share of property variance per component.
-Panel 1: PD versus binary non-credit / points 1
+Panel 1: PD versus binary non-
+credit / points 1
 CSV (first column: row index)
 row,PC1 (25% of variance),PC2 (23%)
 0,-1.7731068,3.0095745
@@ -7598,7 +7611,8 @@ row,PC1 (25% of variance),PC2 (23%)
 14,0.67270904,-0.12900384
 15,-1.7842263,0.10885823
 16,2.9333394,0.9711826
-Panel 1: PD versus binary non-credit / points 2
+Panel 1: PD versus binary non-
+credit / points 2
 CSV (first column: row index)
 row,PC1 (25% of variance),PC2 (23%)
 0,1.0484694,-0.66960677
@@ -7618,7 +7632,8 @@ row,PC1 (25% of variance),PC2 (23%)
 14,-2.002526,-1.3432651
 15,-3.0209929,0.71252833
 16,1.2399055,-1.3816721
-Panel 1: PD versus binary non-credit / points 3
+Panel 1: PD versus binary non-
+credit / points 3
 CSV (first column: row index)
 row,PC1 (25% of variance),PC2 (23%)
 0,0.74978386,-0.34831896
@@ -7640,8 +7655,8 @@ row,PC1 (25% of variance),PC2 (23%)
 16,-0.18568111,-1.5125735
 17,-0.62207429,-1.1248786
 18,-1.4984684,-0.7897604
-Panel 2: LGD versus regression non-
-credit / points 1
+Panel 2: LGD versus regression
+non-credit / points 1
 CSV (first column: row index)
 row,PC1 (19% of variance),PC2 (17%)
 0,4.4306562,4.1346102
@@ -7652,8 +7667,8 @@ row,PC1 (19% of variance),PC2 (17%)
 5,2.4001507,-0.28289048
 6,0.49779535,-1.1630283
 7,1.4297404,-1.2470269
-Panel 2: LGD versus regression non-
-credit / points 2
+Panel 2: LGD versus regression
+non-credit / points 2
 CSV (first column: row index)
 row,PC1 (19% of variance),PC2 (17%)
 0,-1.1766704,0.60992711
@@ -7664,8 +7679,8 @@ row,PC1 (19% of variance),PC2 (17%)
 5,-0.84664925,0.22694694
 6,0.32900397,-2.9607403
 7,-0.14553464,-0.73964596
-Panel 2: LGD versus regression non-
-credit / points 3
+Panel 2: LGD versus regression
+non-credit / points 3
 CSV (first column: row index)
 row,PC1 (19% of variance),PC2 (17%)
 0,-1.8073287,-0.21009879
@@ -7789,6 +7804,16 @@ Table: LGD gains at three seeds
 CSV (first column: row index)
 row
 
+No measurements available for this figure group.
+
+Table: PD mean gain with 95% bootstrap interval (E1)
+CSV (first column: row index)
+row
+
+Table: LGD mean gain with 95% bootstrap interval (E1)
+CSV (first column: row index)
+row
+
 2. Transfer against forgetting
 No results yet for E1 retention gains; the figure is drawn once they exist.
 
@@ -7820,11 +7845,11 @@ No results yet for baseline comparison; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
-Table: PD scores relative to CatBoost per table (with the linear baseline)
+Table: PD scores relative to CatBoost per table (with the XGBoost and linear baselines)
 CSV (first column: row index)
 row
 
-Table: LGD scores relative to CatBoost per table (with the linear baseline)
+Table: LGD scores relative to CatBoost per table (with the XGBoost and linear baselines)
 CSV (first column: row index)
 row
 
@@ -7849,6 +7874,16 @@ Table: LGD E3 versus E1 per model
 CSV (first column: row index)
 row
 
+No measurements available for this figure group.
+
+Table: PD credit minus non-credit CPT gain with 95% bootstrap interval
+CSV (first column: row index)
+row
+
+Table: LGD credit minus non-credit CPT gain with 95% bootstrap interval
+CSV (first column: row index)
+row
+
 6. CPT versus fine-tuning on the target table (E4)
 No results yet for E4 fine-tuning; the figure is drawn once they exist.
 
@@ -7859,6 +7894,10 @@ CSV (first column: row index)
 row
 
 Table: E4 per table
+CSV (first column: row index)
+row
+
+Table: GPU hours: CPT (E1, paid once) against fine-tuning per target table (E4)
 CSV (first column: row index)
 row
 

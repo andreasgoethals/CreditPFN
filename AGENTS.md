@@ -135,7 +135,7 @@ Newest first, dates `DD-MM-YYYY`.
   from renamed notebooks. This shared publication tree deliberately overrides the template's per-notebook folders.
   The notebook displays each figure inline.
 - Use `style.figsize(style.WIDTH_FULL)` or `style.figsize(style.WIDTH_HALF)`: every figure is drawn
-  at the width it will occupy in the **A4 paper** (160 mm full width, 77 mm single column), and never
+  at the width it will occupy in the **Springer LNCS paper** (ECML PKDD; 122 mm full width, 58 mm side by side), and never
   rescaled afterwards. On 03-11-2026 the user replaced the ICML US Letter geometry chosen on
   30-09-2026 with this A4 article geometry, matching the template.
 - Title, caption and legend complement each other: the title names what is compared, the caption

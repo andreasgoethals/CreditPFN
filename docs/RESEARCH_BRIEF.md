@@ -51,7 +51,7 @@ any comparable real-data corpus would do.
   are deliberately not matched. Where no comparable table is as large (the biggest PD tables), the
   twin has fewer rows; training episodes are capped at 10,000-26,000 rows, so this mainly reduces
   row diversity across visits.
-* Baselines: CatBoost and logistic (PD) / linear (LGD) regression, 50 seeded Optuna trials
+* Baselines: CatBoost, XGBoost and logistic (PD) / linear (LGD) regression, 50 seeded Optuna trials
   without a time limit.
 * Metrics. PD: AUC, log loss, Brier, ECE, calibration slope and intercept, calibration-in-the-
   large and bias. LGD: RMSE, normalised RMSE, R², MAE, bias, NLL, CRPS (from TabPFN's bucket distribution, with its two half-normal tails approximated as uniform bins; from the
@@ -63,7 +63,7 @@ any comparable real-data corpus would do.
 AdamW at peak learning rate 3e-7, L2-SP 0.003 (no weight decay), 10% warm-up then cosine to 5%,
 gradient clip 1, all weights trainable, 10,000 updates, episodes up to 10,000 rows (v2, v2.6) or
 26,000 (v3, TabICLv2) split 60/40 into context and query, proportional PD sampling, one episode
-per table visit, all training tables, two preprocessing views per episode, FP32 training for every model (mixed-precision gradients disagreed with FP32 in Experiment 0), seed 42.
+per table visit, all training tables, two preprocessing views per episode, FP16 autocast with loss scaling for every model (the precision of both upstream fine-tuners; TabICLv2's column embedder stays in FP32, without which its loss or gradient was wrong on large PD tables; BF16 gradients disagreed with FP32 for TabPFN v2.6 and v3 in Experiment 0), seed 42.
 
 Monitoring at 0, 50, 100, 150, 200, 250, every 250 updates to 2,500 and every 500 after, plus when 1, 2, 5, 10, 20 and 50
 million rows have been processed (equal-data comparisons). Each point scores the held-out credit
@@ -135,6 +135,16 @@ E5–E9 and is never re-run. 744 standard runs plus 100 short single-source runs
   episodes (10,000–26,000 rows, 2 views) and the monitor (≤2,000 rows, 4 views). The monitor now
   uses 2 views and larger contexts; Experiment 0 includes a single-table sanity check (the
   trained table's own score must improve).
+
+## Uncertainty and the domain-control contrast
+
+Every reported mean gain carries a 95% percentile interval from a hierarchical bootstrap (2,000 draws) that
+resamples the held-out tables and, within each drawn table, its five folds: the table is the unit of
+generalisation and the folds are repeated measurements of it (`campaign2.bootstrap_interval`). The domain
+control is reported as a difference in differences: the gain of credit CPT (E1) minus the gain of CPT on the
+matched non-credit twins (E3), fold by fold on identical rows, with the same interval. Cost is reported as
+GPU hours of CPT (paid once) against fine-tuning per target table (E4). The update-zero agreement of
+mixed-precision gradients with FP32 (Experiment 0) is reported as a figure.
 
 ## RQ4 analysis (after training, from saved predictions)
 

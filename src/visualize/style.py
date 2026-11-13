@@ -1,6 +1,6 @@
 """Shared CreditPFN figure sizes, typography, colors and markers.
 
-Figures are drawn at their final A4 publication width. Notebooks call apply()
+Figures are drawn at their final publication width (Springer LNCS, 122-mm text block). Notebooks call apply()
 and use these definitions rather than choosing their own sizes or colors.
 """
 
@@ -13,8 +13,8 @@ import matplotlib as mpl
 import numpy as np
 
 # ---------------------------------------------------------------------------
-# FIGURE SIZES — A4 article geometry: a 160-mm text block and two 77-mm columns
-# separated by 6 mm.
+# FIGURE SIZES — Springer LNCS geometry (ECML PKDD): a 122-mm text block; two figures side by
+# side are 58 mm each, separated by 6 mm.
 #
 # DRAW AT FINAL WIDTH, and never rescale a figure in the document. Rescaling carries the text with
 # it: 9pt squeezed to 70% arrives as 6.3pt, under the ~7pt floor where small print stops being
@@ -22,14 +22,14 @@ import numpy as np
 # ---------------------------------------------------------------------------
 
 _MM = 1 / 25.4
-WIDTH_FULL = round(160 * _MM, 3)
-WIDTH_HALF = round(77 * _MM, 3)
-WIDTH_THIRD = round((160 - 12) / 3 * _MM, 3)
+WIDTH_FULL = round(122 * _MM, 3)
+WIDTH_HALF = round(58 * _MM, 3)
+WIDTH_THIRD = round((122 - 12) / 3 * _MM, 3)
 
 #: A full-height figure leaves no room for its caption
 #: and pushes every surrounding paragraph onto another page. Half a page is the practical ceiling,
 #: and `figsize` clamps to it rather than letting a tall panel grid silently overflow.
-MAX_HEIGHT = 4.80   # 122 mm
+MAX_HEIGHT = 3.80   # 96 mm, half of the 193-mm LNCS text height
 BAR_LABEL_PAD = 3
 LOG_BAR_LIMIT_FACTOR = 4
 EXPOSURE_LABEL_PAD = 5
@@ -63,7 +63,7 @@ def figsize(width: float = WIDTH_FULL, ratio: float = GOLDEN) -> tuple[float, fl
 _FONT_STACK = ["Source Sans 3", "Segoe UI", "Helvetica", "Arial", "DejaVu Sans"]
 
 _RC = {
-    # A4 full text width by default, so a figure saved without thinking about it is already the
+    # Full text width by default, so a figure saved without thinking about it is already the
     # right size for the page.
     "figure.figsize": figsize(),
     "figure.dpi": 110,
@@ -191,7 +191,7 @@ COLORS: dict[str, str] = {
 CMAP_SEQUENTIAL = "viridis"
 CMAP_DIVERGING = "RdBu"          # blue: positive effects (improvement); red: deterioration
 
-# Bounded pages keep long dataset and recipe lists legible at the final A4 width.
+# Bounded pages keep long dataset and recipe lists legible at the final text width.
 PAGE_ROWS = 12
 SIMPLE_PAGE_ROWS = 20
 PAGE_COLUMNS = 8

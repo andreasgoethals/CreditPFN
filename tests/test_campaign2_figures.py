@@ -121,6 +121,48 @@ def test_rq1_result_figures_render(results):
     assert len(fig.axes) == 8
 
 
+def test_bootstrap_intervals_cover_the_mean_and_respect_the_table_as_unit(results):
+    frame = pd.DataFrame([dict(test_dataset_id=t, fold_idx=f, gain=0.01 * t + 0.001 * f)
+                          for t in range(6) for f in range(5)])
+    interval = c2.bootstrap_interval(frame, "gain")
+    assert interval["tables"] == 6 and interval["low"] < interval["mean"] < interval["high"]
+    assert np.isclose(interval["mean"], frame.gain.mean())
+    assert c2.bootstrap_interval(frame, "gain") == interval                      # seeded
+    partial = c2.bootstrap_interval(frame[~((frame.test_dataset_id == 0) & (frame.fold_idx == 4))], "gain")
+    assert partial["tables"] == 5                                                # incomplete table leaves
+    one = c2.bootstrap_interval(frame.assign(gain=0.5), "gain")
+    assert one["low"] == one["high"] == 0.5
+    intervals = {t: c2.gain_intervals("reference", t) for t in ("pd", "lgd")}
+    assert set(intervals["pd"].model) == set(syn.BASES) and set(intervals["pd"].credit) == {True, False}
+    assert ((intervals["pd"].low <= intervals["pd"]["mean"]) & (intervals["pd"]["mean"] <= intervals["pd"].high)).all()
+    _, text = _finished(r2.gain_forest(intervals, title="t"))
+    assert "excludes_zero" in text
+    controls = {t: c2.domain_control_intervals(t) for t in ("pd", "lgd")}
+    per_table = c2.domain_control_gains("pd").groupby("model").credit_minus_noncredit.mean()
+    assert np.allclose(controls["pd"].set_index("model").credit_minus_noncredit.sort_index(), per_table.sort_index())
+    _finished(r2.gain_forest(controls, title="t", value="credit_minus_noncredit"))
+
+
+def test_precision_agreement_and_cost_tables():
+    summary = {"precision": {"0": {"track": "pd", "base": "tabpfn-v2.6-classifier-v2.6_default.ckpt", "tables": [
+        {"table_index": 0, "rows": 8192, "loss_fp32": 0.5, "loss_bf16": 0.5, "grad_cosine_bf16": 0.72,
+         "loss_fp16": 0.5, "grad_cosine_fp16": 0.98},
+        {"table_index": 1, "rows": 8192, "loss_fp32": 0.4, "error": "out of memory"}]}}}
+    agreement = c2.precision_agreement(summary)
+    assert len(agreement) == 2 and set(agreement.precision) == set(c2.PRECISION_LABELS.values())
+    fig, text = _finished(r2.precision_heatmap(agreement, title="t"))
+    assert "0.72" in {t.get_text() for ax in fig.axes for t in ax.texts}
+    assert c2.precision_agreement(None).empty and r2.precision_heatmap(pd.DataFrame(), title="t") is None
+    resources = pd.DataFrame([dict(slug="reference", arm=0, track="pd", model="tabpfn-v2", hours_without_monitor=h)
+                              for h in (1.0, 3.0)])
+    finetune = pd.DataFrame([dict(track="pd", model="tabpfn-v2", dataset_id=d, fold=f, start="original",
+                                  finetuned=True, fit_seconds=360.0) for d in ("a", "b") for f in range(5)])
+    cost = c2.cost_comparison(resources, finetune)
+    assert cost.cpt_hours_total.iloc[0] == 4.0 and np.isclose(cost.finetune_hours_per_table.iloc[0], 0.5)
+    assert np.isclose(cost.tables_to_break_even.iloc[0], 8.0)
+    assert c2.cost_comparison(pd.DataFrame(), finetune).empty
+
+
 # ---------------------------------------------------------------------------- RQ2 / RQ3
 def test_arm_overview_carries_settings_and_both_table_groups(results):
     overview = c2.arms_overview(["reference", "update_size_anchoring", "scope"], "pd")

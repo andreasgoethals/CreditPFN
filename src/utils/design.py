@@ -74,12 +74,16 @@ def monitor_updates(budget: int) -> list[int]:
     return sorted(set(p for p in points if p <= budget) | {budget})
 
 
-def _mixed_precision(ref: dict) -> bool:
-    """bf16: BF16 autocast for TabPFN and FP16 with loss scaling for TabICLv2. fp32: every model."""
+def _precision(ref: dict) -> dict:
+    """Training precision of every model. fp16: FP16 autocast with loss scaling (both upstream
+    fine-tuners); TabICLv2 keeps its column embedder in FP32. bf16: BF16 for TabPFN, FP16 for
+    TabICLv2. fp32: no autocast."""
     precision = str(ref["training_precision"])
-    if precision not in ("bf16", "fp32"):
-        raise ValueError(f"training_precision must be bf16 or fp32, not {precision!r}")
-    return precision == "bf16"
+    if precision not in ("fp16", "bf16", "fp32"):
+        raise ValueError(f"training_precision must be fp16, bf16 or fp32, not {precision!r}")
+    mixed = precision != "fp32"
+    return {"amp": mixed, "amp_dtype": precision if mixed else "auto",
+            "tabicl_precision": "fp16" if mixed else "fp32"}
 
 
 def reference_config(track: str, design: dict | None = None) -> dict:
@@ -114,7 +118,7 @@ def reference_config(track: str, design: dict | None = None) -> dict:
                   "epoch_eval_n_estimators_tabicl": int(ref["monitor"]["preprocessing_views"]),
                   "recovery_every_updates": 500, "dataloader_workers": 4, "prefetch_factor": 2,
                   "step_log_interval": 100, "grad_clip_norm": float(ref["grad_clip_norm"]),
-                  "amp": _mixed_precision(ref), "tabicl_precision": "fp16" if _mixed_precision(ref) else "fp32",
+                  **_precision(ref),
                   "max_rows_per_step": None},
         "tunable": {"learning_rates": [float(ref["learning_rate"])],
                     "l2sp_lambdas": [float(ref["l2sp_lambda"])],

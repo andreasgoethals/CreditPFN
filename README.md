@@ -29,7 +29,7 @@ method authority is [RESEARCH_BRIEF.md](docs/RESEARCH_BRIEF.md); operations are 
 
 744 standard training runs plus 100 short single-source runs; E1 is the shared control of E2,
 E3 and E5–E9. Every model is evaluated in FP32 on complete five-fold test sets; forgetting is measured
-on 19 binary and 12 regression TabArena tables; baselines are CatBoost and logistic/linear
+on 19 binary and 12 regression TabArena tables; baselines are CatBoost, XGBoost and logistic/linear
 regression. TabPFN LGD trains with a 5-bucket window NLL (robust to the v2.6 regressor's
 comb-shaped density); LoRA and DiagScale use L2-SP on their effective weight change.
 
@@ -57,7 +57,7 @@ From this repository in Windows PowerShell:
 The local `.venv` matches the cluster container's exact pins (`config/runtime/`,
 `tests/test_environment_parity.py`). Notebooks live in `notebooks/{rq1,rq2,rq3,rq4,experiment0,general}`,
 contain no functions or classes, call `src/` only and end with a complete text summary. Figures are
-A4-width PDFs in `output CreditPFN/figures/<group>/`; `output CreditPFN/All_Results.md` collects
+LNCS-width (122 mm) PDFs in `output CreditPFN/figures/<group>/`; `output CreditPFN/All_Results.md` collects
 the summaries.
 
 ## Repository boundaries

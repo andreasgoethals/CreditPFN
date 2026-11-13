@@ -441,6 +441,7 @@ def baseline_position(frames: dict, *, title: str):
                                     original_minus_catboost=values[:, 0].mean(),
                                     cpt_minus_catboost=values[:, 1].mean(),
                                     linear_minus_catboost=sub.linear_vs_catboost.mean(),
+                                    xgboost_minus_catboost=sub.xgboost_vs_catboost.mean(),
                                     original_beats_catboost=int((values[:, 0] > 0).sum()),
                                     cpt_beats_catboost=int((values[:, 1] > 0).sum())))
             ax.axhline(0, color=style.COLORS["catboost"], linewidth=0.9)
@@ -502,6 +503,83 @@ def metric_profile_heatmap(profiles: dict, *, title: str):
     fig.colorbar(image, ax=axes[:, 0].tolist(), label="Share of tables improved", shrink=0.85)
     fig.suptitle(title)
     return _report(fig, **{f"{TRACK_NAME[t]} metric profile": profiles[t] for t in tracks})
+
+
+def gain_forest(intervals: dict, *, title: str, value: str = "mean", xlabel: str | None = None):
+    """One panel per task: per model, the equal-table mean gain with its 95% hierarchical-bootstrap
+    interval, on the held-out credit tables (filled) and, when present, the retention tables
+    (hollow). Also draws ``domain_control_intervals`` (``value="credit_minus_noncredit"``)."""
+    tracks = _tracks(intervals)
+    if not tracks:
+        return None
+    fig, axes = plt.subplots(1, len(tracks), squeeze=False, sharey=True,
+                             figsize=style.figsize(style.WIDTH_FULL, 0.42))
+    models = _models(pd.concat([intervals[t] for t in tracks]))
+    hollow = False
+    for ax, track in zip(axes[0], tracks):
+        frame = intervals[track]
+        if "arm" in frame:
+            frame = frame[frame.arm == 0]
+        for i, model in enumerate(models):
+            for _, row in frame[frame.model == model].iterrows():
+                credit = bool(row.get("credit", True))
+                hollow = hollow or not credit
+                y = i + (0.0 if "credit" not in frame else (-0.16 if credit else 0.16))
+                color = style.model_color(model)
+                ax.plot([row.low, row.high], [y, y], color=color, linewidth=style.MEAN_CURVE_LINE)
+                ax.scatter([row[value]], [y], s=style.POINT_SIZE, zorder=3, linewidths=0.8,
+                           edgecolors=color, facecolors=color if credit else style.HOLLOW_FACE)
+        _zero(ax, "x")
+        ax.set_yticks(range(len(models)), models)
+        ax.set_ylim(len(models) - 0.5, -0.5)
+        ax.set_title(TRACK_NAME[track])
+        ax.set_xlabel(xlabel or f"Change of {SCORE[track]}")
+    _proxy_point(axes[0, 0], "Held-out credit tables", color=style.COLORS["mean"], s=style.POINT_SIZE)
+    if hollow:
+        _proxy_point(axes[0, 0], "Non-credit retention tables", facecolors=style.HOLLOW_FACE,
+                     edgecolors=style.COLORS["mean"], s=style.POINT_SIZE)
+    _proxy_line(axes[0, 0], "95% bootstrap interval", color=style.COLORS["mean"], linewidth=style.MEAN_CURVE_LINE)
+    axes[0, 0].legend()
+    fig.suptitle(title)
+    return _report(fig, **{f"{TRACK_NAME[t]} intervals": intervals[t] for t in tracks})
+
+
+def precision_heatmap(agreement: pd.DataFrame, *, title: str):
+    """Columns: candidate training precision. Rows: task and model; cells: the largest training
+    tables. Colour and text: cosine between the candidate and the FP32 gradient at update zero on
+    the identical episode (1 = same direction)."""
+    if _empty(agreement):
+        return None
+    precisions = list(dict.fromkeys(agreement.precision))
+    rows = [(t, m) for t in TRACKS for m in _models(agreement[agreement.track == t])]
+    ranks = sorted(agreement.table_rank.unique())
+    fig, axes = plt.subplots(1, len(precisions), squeeze=False, sharey=True,
+                             figsize=(style.WIDTH_FULL, _height(len(rows), style.ARM_ROW_HEIGHT)))
+    cmap = plt.get_cmap(style.CMAP_SHARE)
+    image = None
+    for ax, precision in zip(axes[0], precisions):
+        grid = np.full((len(rows), len(ranks)), np.nan)
+        sub = agreement[agreement.precision == precision]
+        for i, (track, model) in enumerate(rows):
+            for j, rank in enumerate(ranks):
+                cell = sub[(sub.track == track) & (sub.model == model) & (sub.table_rank == rank)]
+                if cell.empty or pd.isna(cell.gradient_cosine.iloc[0]):
+                    continue
+                grid[i, j] = cell.gradient_cosine.iloc[0]
+                red, green, blue, _ = cmap((grid[i, j] + 1) / 2)
+                ink = style.GRID_TEXT_LIGHT if .299 * red + .587 * green + .114 * blue < .5 else style.GRID_TEXT_DARK
+                ax.text(j, i, f"{grid[i, j]:.2f}", ha="center", va="center",
+                        fontsize=style.ANNOTATION_SIZE, color=ink)
+        image = ax.imshow(np.ma.masked_invalid(grid), cmap=cmap, vmin=-1, vmax=1, aspect="auto")
+        ax.set_xticks(range(len(ranks)), [str(r) for r in ranks])
+        ax.set_yticks(range(len(rows)), [f"{TRACK_NAME[t]} · {m}" for t, m in rows])
+        ax.set_xlabel("Training table (by size)")
+        ax.tick_params(length=0)
+        ax.grid(False)
+        ax.set_title(precision)
+    fig.colorbar(image, ax=axes[0].tolist(), label="Cosine with the FP32 gradient", shrink=0.85)
+    fig.suptitle(title)
+    return _report(fig, precision_agreement=agreement)
 
 
 # ------------------------------------------------------------------- RQ2 figures

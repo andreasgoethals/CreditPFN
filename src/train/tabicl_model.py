@@ -68,6 +68,39 @@ def relax_attention_backend() -> str:
         return f"unchanged ({type(exc).__name__})"
 
 
+_FP32_CLASSES: dict[type, type] = {}
+
+
+def column_embedder_in_fp32(model: torch.nn.Module) -> bool:
+    """Run TabICLv2's column embedder outside autocast; the rest of the model keeps FP16.
+
+    Under FP16 autocast the first column-attention layer already differs from FP32 by 15-26%.
+    On large credit tables that corrupts the training loss (0.50 nats in FP32, 2.46 in FP16 at
+    26,000 rows) or the gradient (cosine 0.10 with FP32). With this component in FP32 the
+    update-zero gradients match FP32 (cosine 1.00 on eight tables, Mindwell 13-11-2026) at about
+    half the cost of full FP32. Upstream code is not edited: the module's class is replaced by a
+    subclass whose ``forward`` disables autocast, which survives ``copy.deepcopy`` and leaves the
+    ``state_dict`` unchanged. Returns whether a column embedder was found."""
+    for name, module in model.named_modules():
+        if name.split(".")[-1] != "col_embedder":
+            continue
+        cls = type(module)
+        if getattr(cls, "_creditpfn_fp32", False):
+            return True
+        if cls not in _FP32_CLASSES:
+            def forward(self, *args, __base=cls, **kwargs):
+                def cast(value):
+                    return value.float() if torch.is_tensor(value) and value.is_floating_point() else value
+                with torch.amp.autocast("cuda", enabled=False):
+                    return __base.forward(self, *[cast(a) for a in args],
+                                          **{k: cast(v) for k, v in kwargs.items()})
+            _FP32_CLASSES[cls] = type(cls.__name__ + "FP32", (cls,),
+                                      {"forward": forward, "_creditpfn_fp32": True})
+        module.__class__ = _FP32_CLASSES[cls]
+        return True
+    return False
+
+
 def load_tabicl_for_training(
     checkpoint_path: str | Path,
     *,

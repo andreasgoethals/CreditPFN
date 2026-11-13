@@ -178,7 +178,7 @@ def test_benchmark_check_requires_every_model_table_and_fold(monkeypatch):
         pytest.skip(f"credit registry unavailable: {exc}")
     models = ([(f"tabpfn-trained[cpt2e0_reference_s00_pd_m{i}]", "tabpfn-trained") for i in range(4)]
               + [(f"tabpfn-untuned[m{i}]", "tabpfn-untuned") for i in range(4)]
-              + [("catboost", "baseline"), ("logreg", "baseline")])
+              + [("catboost", "baseline"), ("xgboost", "baseline"), ("logreg", "baseline")])
     rows = [dict(model_name=n, model_source=s, test_dataset_id=t, fold_idx=f, status="OK")
             for n, s in models for t in held_out for f in range(5)]
     monkeypatch.setattr(campaign2, "_results_frames", lambda slug, track: pd.DataFrame(rows))

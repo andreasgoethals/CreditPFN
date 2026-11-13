@@ -807,7 +807,8 @@ def _resolve_amp_dtype(cfg, device: str, family: str = "tabpfn") -> tuple[bool, 
     exponent range, so large TabPFN regression gradients do not repeatedly
     overflow and force ``GradScaler`` to discard optimizer steps.
 
-    TabICLv2: FP16 with ``GradScaler``, upstream's own fine-tuning recipe
+    TabICLv2: FP16 with ``GradScaler``, upstream's own fine-tuning recipe, with the column
+    embedder kept in FP32 (``tabicl_model.column_embedder_in_fp32``)
     (``tabicl._finetune``). BF16's 8-bit mantissa corrupts its column embedder:
     the first study's TabICL runs started at 1.2 nats (TabPFN 0.48) with every
     update clipped, and an update-zero forward on a credit table measured
@@ -2191,6 +2192,10 @@ def train_one_config(
     )
 
     use_amp, amp_dtype = _resolve_amp_dtype(cfg, device, family)
+    if family == "tabicl" and use_amp:
+        from src.train.tabicl_model import column_embedder_in_fp32
+        LOGGER.info("TabICLv2 column embedder in FP32 under FP16 autocast: %s",
+                    column_embedder_in_fp32(model))
     # Dynamic loss scaling is useful for FP16 but unnecessary for BF16, whose
     # exponent range matches FP32. Keeping it disabled for BF16 also makes an
     # optimizer step's success/failure unambiguous.

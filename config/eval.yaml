@@ -4,7 +4,7 @@ train_cfg_path: config/train.yaml         # where the trained-checkpoint roster 
 seed: 99                                 # fixed across training-seed repetitions
 
 baselines:
-  enabled: [catboost, logreg, linreg, tabpfn-untuned, tabicl-untuned]   # second campaign: CatBoost + logistic/linear only
+  enabled: [catboost, xgboost, logreg, linreg, tabpfn-untuned, tabicl-untuned]   # CatBoost, XGBoost and logistic/linear regression
 
 cv:
   n_folds: 5                              # outer CV folds per dataset

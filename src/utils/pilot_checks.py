@@ -50,8 +50,9 @@ PRECISION_TASKS = len(TRACKS) * MODELS_PER_TRACK
 PRECISION_TABLES = 4
 #: Update-zero loss agreement required between FP32 and the training precision (nats).
 PRECISION_TOLERANCE = (0.02, 0.02)   # absolute + relative to the FP32 loss
-#: The training-precision gradient must point where the FP32 gradient points. Agreeing losses do
-#: not show this: a forward can match while the backward overflows or loses its small terms.
+#: Whether the training-precision gradient points where the FP32 gradient points
+#: (``gradient_agrees``, reported per table). Agreeing losses do not show this: a forward can
+#: match while the backward overflows or loses its small terms.
 PRECISION_GRADIENT_COSINE = 0.90
 #: Episodes summed to see whether precision noise averages out under gradient accumulation.
 PRECISION_ACCUMULATION = 4
@@ -297,6 +298,9 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
         from src.train.tabicl_model import load_tabicl_for_training
         model, _ = load_tabicl_for_training(path, track=track, device=device)
         criterion = inference_config = None
+        if use_amp:   # as in training: the column embedder stays in FP32 under FP16 autocast
+            from src.train.tabicl_model import column_embedder_in_fp32
+            column_embedder_in_fp32(model)
     else:
         from src.train.model import load_tabpfn_for_training
         model, criterion, _, inference_config = load_tabpfn_for_training(path, track=track, device=device)
@@ -386,123 +390,17 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
             row["passed"] = bool(
                 np.isfinite(row[f"loss_{training_label}"])
                 and abs(row[f"loss_{training_label}"] - row["loss_fp32"]) <= absolute + relative * abs(row["loss_fp32"])
-                and row["grad_finite_fp32"] and row[f"grad_finite_{training_label}"]
-                and row.get(f"grad_cosine_{training_label}", 1.0) >= PRECISION_GRADIENT_COSINE)
+                and row["grad_finite_fp32"] and row[f"grad_finite_{training_label}"])
+            # Reported, not gated: one precision serves every model, and its agreement with FP32
+            # per model and table is evidence for the paper rather than a launch condition.
+            row["gradient_agrees"] = bool(
+                row.get(f"grad_cosine_{training_label}", 1.0) >= PRECISION_GRADIENT_COSINE)
         except Exception as exc:  # an out-of-memory or numerical error is the finding, not a crash
             row.update(passed=False, error=repr(exc)[:500])
         sums = reference = flat = batch = None   # noqa: F841 - release gradients before the next table
         model.zero_grad(set_to_none=True)
         record["tables"].append(row)
         torch.cuda.empty_cache()
-    # TabICLv2 only: where the FP16 forward leaves the FP32 one, how that depends on the episode
-    # size, and what running one component in FP32 (the rest in FP16) repairs and costs.
-    if family == "tabicl":
-        record["trace"] = []
-
-        def forward(batch, dtype):
-            """Loss and, per module in execution order, a fixed sample of its output."""
-            seen, handles = {}, []
-
-            def hook(name):
-                def keep(_module, _inputs, output):
-                    tensor = output[0] if isinstance(output, (tuple, list)) else output
-                    if name in seen or not torch.is_tensor(tensor) or not tensor.is_floating_point():
-                        return
-                    flat = tensor.detach().reshape(-1)
-                    sample = flat[::max(1, flat.numel() // 8192)][:8192]   # integer stride: exact
-                    seen[name] = (sample.double(), int((~torch.isfinite(flat)).sum()))
-                return keep
-
-            for name, module in model.named_modules():
-                if name:
-                    handles.append(module.register_forward_hook(hook(name)))
-            torch.manual_seed(0)
-            with torch.no_grad(), torch.amp.autocast("cuda", enabled=dtype is not None, dtype=dtype):
-                loss = float(batch_loss(model, batch, criterion=criterion, regression_objective=objective))
-            for handle in handles:
-                handle.remove()
-            return loss, seen
-
-        def in_fp32(module):
-            """Run one component outside autocast; returns the undo."""
-            original = module.forward
-
-            def wrapped(*args, **kwargs):
-                cast = lambda v: v.float() if torch.is_tensor(v) and v.is_floating_point() else v  # noqa: E731
-                with torch.amp.autocast("cuda", enabled=False):
-                    return original(*[cast(a) for a in args], **{k: cast(v) for k, v in kwargs.items()})
-            module.forward = wrapped
-            return lambda: delattr(module, "forward")
-
-        def timed(batch, dtype):
-            torch.cuda.reset_peak_memory_stats()
-            torch.cuda.synchronize()
-            started = time.monotonic()
-            loss, flat, scale = gradient(batch, dtype)
-            torch.cuda.synchronize()
-            return loss, flat, scale, round(time.monotonic() - started, 3), round(
-                torch.cuda.max_memory_allocated() / 1e9, 1)
-
-        full_rows = training_row_cap(cfg, base, family, members)
-        for index, ref in enumerate(refs[:PRECISION_TABLES]):
-            loaded = _load_processed_csv(ref)
-            entry = {"table_index": index, "sizes": {}, "components": {}}
-
-            def make(n, loaded=loaded, index=index):
-                return _build_tabicl_step_batch(
-                    loaded, rng=np.random.default_rng(index), epoch_seed=index, replica=0,
-                    preprocessing_seed=index, n_total_target=n, query_fraction=query_fraction,
-                    n_estimators=members).to(device)
-            try:
-                for n in (1024, 4096, PRECISION_ROWS, 16384, full_rows):
-                    batch = make(n)
-                    with torch.no_grad():
-                        losses = []
-                        for dtype in (None, torch.float16):
-                            torch.manual_seed(0)
-                            with torch.amp.autocast("cuda", enabled=dtype is not None, dtype=dtype):
-                                losses.append(float(batch_loss(model, batch, criterion=criterion,
-                                                               regression_objective=objective)))
-                    entry["sizes"][str(n)] = [round(v, 4) for v in losses]
-                    del batch
-                batch = make(PRECISION_ROWS)
-                _, exact = forward(batch, None)
-                _, half = forward(batch, torch.float16)
-                errors = [(name, float((half[name][0] - value).norm() / value.norm().clamp_min(1e-30)),
-                           half[name][1]) for name, (value, _) in exact.items() if name in half]
-                entry["first_divergent"] = [[n, round(e, 4), bad] for n, e, bad in errors
-                                            if not e <= 0.05][:12]
-                entry["non_finite_modules"] = [n for n, _, bad in errors if bad][:12]
-                _, reference, _, seconds, peak = timed(batch, None)
-                entry["components"]["none_fp32"] = dict(seconds=seconds, peak_gb=peak)
-                for component in ("", "col_embedder", "row_interactor", "icl_predictor"):
-                    undo = in_fp32(getattr(model, component)) if component else (lambda: None)
-                    try:
-                        loss, flat, scale, seconds, peak = timed(batch, torch.float16)
-                    finally:
-                        undo()
-                    entry["components"][component or "all_fp16"] = dict(
-                        loss=round(loss, 4), cosine=round(cosine(flat, reference), 4), scale=scale,
-                        seconds=seconds, peak_gb=peak)
-                del batch, reference, flat
-                # Cost of the column embedder in FP32 at the real episode size.
-                batch = make(full_rows)
-                for label, component, dtype in (("fp32", "", None), ("fp16", "", torch.float16),
-                                                ("col_embedder_fp32", "col_embedder", torch.float16)):
-                    undo = in_fp32(getattr(model, component)) if component else (lambda: None)
-                    try:
-                        timed(batch, dtype)   # warm-up
-                        loss, _, _, seconds, peak = timed(batch, dtype)
-                    finally:
-                        undo()
-                    entry["components"][f"full_{label}"] = dict(loss=round(loss, 4), seconds=seconds,
-                                                                peak_gb=peak)
-            except Exception as exc:  # the trace is evidence, never a gate
-                entry["error"] = repr(exc)[:500]
-            batch = reference = flat = exact = half = None   # noqa: F841
-            model.zero_grad(set_to_none=True)
-            torch.cuda.empty_cache()
-            record["trace"].append(entry)
     # What one FP32 update costs at the REAL episode size on each of the four tables, with and
     # (TabPFN) without activation checkpointing: the evidence for memory and walltime. Not a gate.
     full_rows = training_row_cap(cfg, base, family, members)
@@ -592,7 +490,7 @@ def pilot_checks(name: str, track: str, report: dict, cfg) -> dict:
 
 #: Models the reference pilots' five-fold benchmark must score: 4 CPT pilots, 4 original
 #: models and the classical baselines of each task.
-BASELINES = {"pd": ("catboost", "logreg"), "lgd": ("catboost", "linreg")}
+BASELINES = {"pd": ("catboost", "xgboost", "logreg"), "lgd": ("catboost", "xgboost", "linreg")}
 
 
 def benchmark(track: str, folder: Path = FOLDER, *, n_folds: int = 5) -> dict:

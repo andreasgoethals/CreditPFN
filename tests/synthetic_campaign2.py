@@ -58,7 +58,7 @@ def results(slug: str, track: str, arms: int = 1, seed: int = 0, *, baselines: b
                                      **{k: float(v[0]) for k, v in _scores(rng, track, 1, level + arm_shift).items()}))
             if slug == "reference" and baselines and model == "TabPFN v2":
                 for fold in range(5):
-                    for name, delta in (("catboost", 0.002), ("logreg" if track == "pd" else "linreg", -0.03)):
+                    for name, delta in (("catboost", 0.002), ("xgboost", 0.001), ("logreg" if track == "pd" else "linreg", -0.03)):
                         rows.append(dict(model_name=name, model_source="baseline", test_dataset_id=table,
                                          fold_idx=fold, status="OK",
                                          **{k: float(v[0]) for k, v in _scores(rng, track, 1, level + delta).items()}))

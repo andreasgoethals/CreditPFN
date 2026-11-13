@@ -251,13 +251,14 @@ def metric_profile(metrics: pd.DataFrame, *, credit: bool = True) -> pd.DataFram
                  mean_change=("change", "mean")).reset_index())
 
 
-BASELINE_NAMES = {"catboost": "CatBoost", "logreg": "Linear", "linreg": "Linear"}
+BASELINE_NAMES = {"catboost": "CatBoost", "xgboost": "XGBoost", "logreg": "Linear", "linreg": "Linear"}
 
 
 def baseline_comparison(track: str) -> pd.DataFrame:
     """Per model and table (E1 reference, arm 0): the original and the CPT model's five-fold score
-    minus tuned CatBoost's on the same folds, and the linear baseline's score minus CatBoost's.
-    Positive: better than CatBoost. Only tables where all four are scored on all five folds."""
+    minus tuned CatBoost's on the same folds, and the linear and (when scored) XGBoost baselines'
+    scores minus CatBoost's. Positive: better than CatBoost. Only tables where all are scored on
+    all five folds."""
     metric, _, _ = TRACK_METRIC[track]
     frame = _results_frames("reference", track)
     if frame.empty or metric not in frame:
@@ -278,15 +279,19 @@ def baseline_comparison(track: str) -> pd.DataFrame:
         subset=[metric, metric + "_original", "CatBoost", "Linear"])
     if merged.empty:
         return pd.DataFrame()
+    if "XGBoost" not in merged:
+        merged["XGBoost"] = np.nan
     merged = merged.assign(original_vs_catboost=merged[metric + "_original"] - merged.CatBoost,
                            cpt_vs_catboost=merged[metric] - merged.CatBoost,
-                           linear_vs_catboost=merged.Linear - merged.CatBoost)
+                           linear_vs_catboost=merged.Linear - merged.CatBoost,
+                           xgboost_vs_catboost=merged.XGBoost - merged.CatBoost)
     out = (merged.groupby(["model", "test_dataset_id", "credit"])
            .agg(original=(metric + "_original", "mean"), cpt=(metric, "mean"),
                 catboost=("CatBoost", "mean"), linear=("Linear", "mean"),
                 original_vs_catboost=("original_vs_catboost", "mean"),
                 cpt_vs_catboost=("cpt_vs_catboost", "mean"),
                 linear_vs_catboost=("linear_vs_catboost", "mean"),
+                xgboost=("XGBoost", "mean"), xgboost_vs_catboost=("xgboost_vs_catboost", "mean"),
                 folds=("fold_idx", "nunique")).reset_index())
     return out[out.folds == N_FOLDS].reset_index(drop=True)
 
@@ -449,6 +454,129 @@ def domain_control_gains(track: str) -> pd.DataFrame:
                                          on=["model", "test_dataset_id"], suffixes=("_credit", "_noncredit"))
     merged["credit_minus_noncredit"] = merged.gain_credit - merged.gain_noncredit
     return merged
+
+
+#: Draws of the hierarchical bootstrap behind every reported interval.
+BOOTSTRAP_DRAWS = 2000
+
+
+def bootstrap_interval(frame: pd.DataFrame, value: str, *, table: str = "test_dataset_id",
+                       fold: str = "fold_idx", draws: int = BOOTSTRAP_DRAWS, level: float = 0.95,
+                       seed: int = 0) -> dict:
+    """Equal-table mean of ``value`` with a hierarchical-bootstrap percentile interval.
+
+    The table is the unit of generalisation and its folds are repeated measurements of it, so a
+    draw resamples the tables with replacement and then the folds within every drawn table. Only
+    tables with all five folds enter. Few tables give a wide interval, as they should."""
+    empty = dict(tables=0, mean=np.nan, low=np.nan, high=np.nan)
+    if frame.empty or value not in frame:
+        return empty
+    matrix = frame.pivot_table(index=table, columns=fold, values=value)
+    matrix = matrix[matrix.notna().sum(axis=1) == N_FOLDS].to_numpy(dtype=float)
+    if not len(matrix):
+        return empty
+    rng = np.random.default_rng(seed)
+    tables, folds = matrix.shape
+    drawn_tables = rng.integers(tables, size=(draws, tables))
+    drawn_folds = rng.integers(folds, size=(draws, tables, folds))
+    means = matrix[drawn_tables[:, :, None], drawn_folds].mean(axis=(1, 2))
+    tail = (1 - level) / 2
+    return dict(tables=int(tables), mean=float(matrix.mean()), low=float(np.quantile(means, tail)),
+                high=float(np.quantile(means, 1 - tail)))
+
+
+def gain_intervals(slug: str, track: str) -> pd.DataFrame:
+    """Per arm, model and table group (credit, retention): equal-table mean five-fold gain (CPT
+    minus original) with its 95% hierarchical-bootstrap interval, and whether it excludes zero."""
+    metric, _, _ = TRACK_METRIC[track]
+    merged = _paired(slug, track, [metric])
+    if merged.empty:
+        return pd.DataFrame()
+    merged["gain"] = merged[metric] - merged[metric + "_original"]
+    rows = [dict(arm=arm, model=model, credit=credit, **bootstrap_interval(group, "gain"))
+            for (arm, model, credit), group in merged.groupby(["arm", "model", "credit"])]
+    out = pd.DataFrame(rows)
+    out = out[out.tables > 0].reset_index(drop=True)
+    out["excludes_zero"] = (out.low > 0) | (out.high < 0)
+    return out
+
+
+def domain_control_intervals(track: str) -> pd.DataFrame:
+    """Difference in differences per model on the held-out credit tables: gain of credit CPT (E1)
+    minus gain of CPT on the matched non-credit twins (E3), fold by fold on identical rows, with
+    its 95% hierarchical-bootstrap interval. Positive: credit data helped more."""
+    metric, _, _ = TRACK_METRIC[track]
+    credit, control = _paired("reference", track, [metric]), _paired("domain_control", track, [metric])
+    if credit.empty or control.empty:
+        return pd.DataFrame()
+    keys = ["model", "test_dataset_id", "fold_idx"]
+    for frame in (credit, control):
+        frame["gain"] = frame[metric] - frame[metric + "_original"]
+    merged = credit[credit.credit & (credit.arm == 0)][[*keys, "gain"]].merge(
+        control[control.credit & (control.arm == 0)][[*keys, "gain"]], on=keys,
+        suffixes=("_credit", "_noncredit"))
+    if merged.empty:
+        return pd.DataFrame()
+    merged["difference"] = merged.gain_credit - merged.gain_noncredit
+    rows = []
+    for model, group in merged.groupby("model"):
+        interval = bootstrap_interval(group, "difference")
+        rows.append(dict(model=model, tables=interval["tables"],
+                         gain_credit=bootstrap_interval(group, "gain_credit")["mean"],
+                         gain_noncredit=bootstrap_interval(group, "gain_noncredit")["mean"],
+                         credit_minus_noncredit=interval["mean"], low=interval["low"], high=interval["high"]))
+    out = pd.DataFrame(rows)
+    out = out[out.tables > 0].reset_index(drop=True)
+    out["excludes_zero"] = (out.low > 0) | (out.high < 0)
+    return out
+
+
+PRECISION_LABELS = {"bf16": "BF16", "fp16": "FP16 with loss scaling"}
+
+
+def precision_agreement(summary: dict | None) -> pd.DataFrame:
+    """Experiment 0 precision check, one row per task, model, training table and candidate
+    precision: update-zero loss in FP32 and in the candidate, and the cosine between the two
+    gradients on the identical episode. ``table_rank`` orders the training tables by size."""
+    rows = []
+    for record in ((summary or {}).get("precision") or {}).values():
+        if not isinstance(record, dict) or "tables" not in record:
+            continue
+        model = _model_label(str(record.get("base", "")))
+        for table in record["tables"]:
+            for key, label in PRECISION_LABELS.items():
+                if f"grad_cosine_{key}" not in table:
+                    continue
+                rows.append(dict(track=record.get("track"), model=model,
+                                 table_rank=int(table["table_index"]) + 1, rows=table.get("rows"),
+                                 precision=label, loss_fp32=table.get("loss_fp32"),
+                                 loss=table.get(f"loss_{key}"), gradient_cosine=table[f"grad_cosine_{key}"],
+                                 gradient_norm_ratio=table.get(f"grad_norm_ratio_{key}")))
+    return pd.DataFrame(rows)
+
+
+def cost_comparison(resources: pd.DataFrame, finetune: pd.DataFrame) -> pd.DataFrame:
+    """GPU hours per task and model: CPT with the reference recipe (E1, all partitions, paid once
+    for every future table) against fine-tuning on a target table (E4, original start, per table:
+    all candidate rates, summed over the five folds)."""
+    rows = []
+    if not resources.empty:
+        cpt = resources[(resources.slug == "reference") & (resources.arm == 0)]
+        for (track, model), group in cpt.groupby(["track", "model"]):
+            rows.append(dict(track=track, model=_model_label(model), cpt_runs=len(group),
+                             cpt_hours_per_run=float(group.hours_without_monitor.mean()),
+                             cpt_hours_total=float(group.hours_without_monitor.sum())))
+    out = pd.DataFrame(rows)
+    if finetune.empty or "fit_seconds" not in finetune or out.empty:
+        return out
+    tuned = finetune[finetune.finetuned.astype(bool) & (finetune.start == "original")]
+    per_table = (tuned.groupby(["track", "model", "dataset_id"]).fit_seconds.sum() / 3600).reset_index()
+    per_table["model"] = per_table.model.map(_model_label)
+    per_model = per_table.groupby(["track", "model"]).fit_seconds.agg(
+        finetune_tables="size", finetune_hours_per_table="mean").reset_index()
+    out = out.merge(per_model, on=["track", "model"], how="left")
+    out["tables_to_break_even"] = out.cpt_hours_total / out.finetune_hours_per_table
+    return out
 
 
 def task_results(kind: str) -> pd.DataFrame:

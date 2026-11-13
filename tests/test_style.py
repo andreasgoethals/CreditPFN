@@ -1,4 +1,4 @@
-"""Publication geometry follows the A4 article layout, with print-safe exports."""
+"""Publication geometry follows the Springer LNCS layout, with print-safe exports."""
 
 from __future__ import annotations
 
@@ -7,18 +7,18 @@ import matplotlib as mpl
 from src.visualize import style
 
 
-def test_figsize_uses_the_a4_widths_and_clamps_the_height() -> None:
-    """Every figure is drawn at the width it will occupy on an A4 page (160-mm text block, 77-mm
-    columns), and never taller than half of it — a full-height figure leaves no room for its caption."""
+def test_figsize_uses_the_lncs_widths_and_clamps_the_height() -> None:
+    """Every figure is drawn at the width it will occupy on an LNCS page (122-mm text block, 58 mm
+    side by side), and never taller than half of it — a full-height figure leaves no room for its caption."""
     assert style.figsize(style.WIDTH_HALF)[0] == style.WIDTH_HALF
     assert style.WIDTH_THIRD < style.WIDTH_HALF < style.WIDTH_FULL
-    assert round(style.WIDTH_FULL * 25.4) == 160 and round(style.WIDTH_HALF * 25.4) == 77
+    assert round(style.WIDTH_FULL * 25.4) == 122 and round(style.WIDTH_HALF * 25.4) == 58
     w, h = style.figsize()
     assert h < w
     assert style.figsize(style.WIDTH_FULL, ratio=3.0)[1] == style.MAX_HEIGHT
 
 
-def test_apply_defaults_to_the_full_a4_width() -> None:
+def test_apply_defaults_to_the_full_text_width() -> None:
     """So a figure saved without thinking about its size is already right for the page."""
     style.apply()
     assert tuple(mpl.rcParams["figure.figsize"]) == style.figsize()

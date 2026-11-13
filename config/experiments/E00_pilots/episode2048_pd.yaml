@@ -56,8 +56,9 @@ train:
   prefetch_factor: 2
   step_log_interval: 100
   grad_clip_norm: 1.0
-  amp: false
-  tabicl_precision: fp32
+  amp: true
+  amp_dtype: fp16
+  tabicl_precision: fp16
   max_rows_per_step: 2048
 tunable:
   learning_rates:
