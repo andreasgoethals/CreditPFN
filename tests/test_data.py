@@ -565,3 +565,24 @@ def test_exploration_resolves_paths_from_cfg() -> None:
     paths = _resolve_paths(cfg)
     assert paths["processed"].name == "processed"
     assert paths["manifest_pd"].name == "manifest_pd.csv"
+
+
+def test_no_processed_table_keeps_identifiers_or_numbers_stored_as_text():
+    """A categorical feature that is nearly unique per row is an identifier, and one whose values
+    are all numbers (or percentages) has lost its order: both defects once sat in LGD tables."""
+    processed = REPO / "data" / "processed"
+    files = sorted(processed.glob("*/*.csv"))
+    if not files:
+        pytest.skip("processed data not built")
+    problems = []
+    for path in files:
+        frame = pd.read_csv(path, low_memory=False)
+        for column in frame.columns[frame.dtypes == object]:
+            values = frame[column].dropna().astype(str)
+            if len(values) < 200:
+                continue
+            if values.nunique() > 0.5 * len(values):
+                problems.append(f"{path.parent.name}/{path.stem[:4]}: near-unique text column")
+            elif pd.to_numeric(values.str.strip().str.rstrip("%"), errors="coerce").notna().mean() > 0.95                     and values.nunique() > 20:
+                problems.append(f"{path.parent.name}/{path.stem[:4]}: numeric column stored as text")
+    assert not problems, problems

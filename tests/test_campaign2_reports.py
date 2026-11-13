@@ -61,8 +61,8 @@ def test_gain_correlations_use_credit_tables_only():
 
 def test_design_table_counts_match_the_design():
     table = c2.design_table()
-    assert table.runs.sum() == 844
-    assert set(table.experiment) == {f"E{i}" for i in range(1, 12)}
+    assert table.runs.sum() == 888
+    assert set(table.experiment) == {f"E{i}" for i in range(1, 13)}
 
 
 def test_endpoint_gains_read_metric_csvs_and_require_all_five_folds(monkeypatch, tmp_path):

@@ -29,7 +29,7 @@ train:
   context_sampling: stratified
   adaptation_mode: diagscale
   regression_objective: window_nll
-  target_total_steps: 10000
+  target_total_steps: 2500
   epochs: 50
   max_epochs_for_step_budget: 8000
   numerical_stopping_only: true
@@ -50,21 +50,6 @@ train:
   - 2000
   - 2250
   - 2500
-  - 3000
-  - 3500
-  - 4000
-  - 4500
-  - 5000
-  - 5500
-  - 6000
-  - 6500
-  - 7000
-  - 7500
-  - 8000
-  - 8500
-  - 9000
-  - 9500
-  - 10000
   trajectory_rows:
   - 1000000
   - 2000000

@@ -172,7 +172,7 @@ row,track,dataset_id,raw_rows,post_rows,raw_features,post_features
 18,lgd,PropLGD2,4637,4637,52,52
 19,lgd,PropLGD3,2545,2545,2,2
 20,lgd,PropLGD4,762,762,255,64
-21,lgd,PropLGD5,594,594,256,64
+21,lgd,PropLGD5,594,594,255,64
 22,lgd,Freddie Mac,16002,16002,20,20
 23,lgd,LendingClub (LGD),5627,5627,17,17
 24,lgd,SBA Loans Case (LGD),686,686,24,22
@@ -1133,7 +1133,7 @@ row,dataset_id,group,rows,log10_rows,features,categorical_share,missing_share,me
 3,PropLGD4,credit,762,2.881955,64,0.453125,0.11052329,0.18487132,0.028571429,0.74285714,0.29872992,0.27423596,True,0.10498688,0.11942257,0.82864447,0.82944236,0.57480315
 4,PropLGD5,credit,594,2.7737864,64,0.28125,0.0022622054,0.6175059,0,0.13043478,0.49557349,0.3142164,True,0.11616162,0.15993266,0.7662113,0.885298,0.64478114
 5,0006.lgd_freddie,credit,16002,4.2041743,20,0.4,0.011726659,3.4498232,0.58333333,0.91666667,0.30982067,0.27789345,True,0.11417323,0.080677415,0.14869096,0.53793099,0.8047744
-6,0007.lgd_lendingclub,credit,5627,3.7502769,17,0.41176471,0.0032929468,1.153646,0.3,0.8,0.8109659,0.20665268,True,0.014750311,0.0031988626,-0.46428165,0.55014532,0.98080682
+6,0007.lgd_lendingclub,credit,5627,3.7502769,17,0.29411765,0.0032929468,0.99467717,0.25,0.66666667,0.8109659,0.24322959,True,0.014750311,0.0031988626,-0.46428165,0.55014532,0.98080682
 7,0008.SBA_loans_case,credit,686,2.8363241,22,0.18181818,0.0033130135,2.9788263,0.61111111,0.94444444,0.39016772,0.28078988,True,0.0014577259,0.058309038,-0.14118521,0.50009723,0.92419825
 8,openml_46954,retention,907,2.9576073,6,0,0,0.71122052,0.16666667,0.33333333,0.66901672,0.36878275,False,0.0011025358,0.0011025358,0.2513561,0.28970457,0.91179713
 9,openml_46917,retention,1030,3.0128372,8,0,0,0.52348127,0.125,0.125,0.59601954,0.3826192,False,0.00097087379,0.00097087379,0.41692228,0.4355688,0.91067961
@@ -1167,16 +1167,16 @@ row,property,credit_median,noncredit_median,cliffs_delta,mann_whitney_p
 2,share_at_min,0.10958005,0.00070636008,0.91875,0.00020489318
 3,missing_share,0.0075198363,0,0.575,0.0086507855
 4,target_bimodality,0.6886201,0.46809786,0.5,0.042843469
-5,categorical_share,0.340625,0.042948718,0.3375,0.16760494
-6,median_abs_skew,1.9708463,1.0411389,0.3,0.23748361
-7,unique_share,0.73146382,0.39291082,0.275,0.28059219
+5,categorical_share,0.28768382,0.042948718,0.30625,0.21145366
+6,unique_share,0.73146382,0.39291082,0.275,0.28059219
+7,median_abs_skew,1.9708463,1.0411389,0.2625,0.30393246
 8,features,21,10.5,0.25,0.318897
-9,integer_share,0.62142857,0.38888889,0.24375,0.3333941
-10,target_skew,0.35223143,0.52645215,-0.225,0.38114736
+9,target_skew,0.35223143,0.52645215,-0.225,0.38114736
+10,integer_share,0.58333333,0.38888889,0.21875,0.38658054
 11,max_abs_spearman,0.41922239,0.56520584,-0.1625,0.53268406
 12,top5_abs_spearman,0.27934167,0.33593409,-0.1625,0.53268406
 13,log10_rows,3.5359624,3.6988299,-0.15625,0.54130383
-14,heavy_tail_share,0.3375,0.14583333,0.15,0.55665754
+14,heavy_tail_share,0.3125,0.14583333,0.15,0.55665754
 
 Figure: lgd_properties
 LGD. Every LGD credit table, regression non-credit retention table and matched non-credit control table (the E3 twins, subsampled to the shape of their credit tables), per property (panels). Points are tables with horizontal jitter; bars mark group medians. Tables above 50,000 rows are subsampled to 50,000 rows for the property computation.
@@ -1494,7 +1494,7 @@ row,x,y
 3,-0.10766611,0.453125
 4,0.0555947,0.28125
 5,-0.058234436,0.4
-6,0.067481556,0.41176471
+6,0.067481556,0.29411765
 7,-0.012686295,0.18181818
 Panel 9: Categorical share / points 3
 CSV (first column: row index)
@@ -1569,7 +1569,7 @@ row,x,y
 3,-0.007632937,0.18487132
 4,0.1164116,0.6175059
 5,0.064501941,3.4498232
-6,-0.065944238,1.153646
+6,-0.065944238,0.99467717
 7,0.085648726,2.9788263
 Panel 11: Median |skew| of
 features / points 3
@@ -1609,7 +1609,7 @@ row,x,y
 3,-0.034664064,0.028571429
 4,0.080975997,0
 5,-0.019446742,0.58333333
-6,0.028281635,0.3
+6,0.028281635,0.25
 7,-0.11924529,0.61111111
 Panel 12: Share heavy-tailed
 features / points 3
@@ -1649,7 +1649,7 @@ row,x,y
 3,0.018479226,0.74285714
 4,-0.15611311,0.13043478
 5,0.068157962,0.91666667
-6,0.069360218,0.8
+6,0.069360218,0.66666667
 7,0.046734408,0.94444444
 Panel 13: Share integer
 features / points 3
@@ -1728,7 +1728,7 @@ row,x,y
 3,-0.10269994,0.27423596
 4,0.079431768,0.3142164
 5,-0.13226198,0.27789345
-6,-0.023726003,0.20665268
+6,-0.023726003,0.24322959
 7,-0.033039396,0.28078988
 Panel 15: Top-5 |Spearman| / points 3
 CSV (first column: row index)
@@ -1763,17 +1763,17 @@ Properties ordered from most to least homogeneous among credit tables relative t
 Table: LGD: spread of each property
 CSV (first column: row index)
 row,property,credit_iqr,noncredit_iqr,credit_to_noncredit_ratio
-0,top5_abs_spearman,0.036022259,0.16548939,0.21767111
+0,top5_abs_spearman,0.034492043,0.16548939,0.20842449
 1,unique_share,0.29666781,0.75213377,0.39443491
-2,integer_share,0.35071839,0.56973039,0.61558659
+2,integer_share,0.30786125,0.56973039,0.54036304
 3,max_abs_spearman,0.23182315,0.31986118,0.72476176
 4,target_skew,1.0037789,1.1921275,0.84200632
 5,log10_rows,0.993204,1.1337567,0.87602919
 6,target_bimodality,0.30783696,0.29875601,1.0303959
-7,categorical_share,0.28303682,0.23333333,1.2130149
-8,median_abs_skew,2.0769646,1.130232,1.8376445
-9,features,40.25,21.75,1.8505747
-10,heavy_tail_share,0.56884921,0.30605742,1.8586355
+7,categorical_share,0.27421329,0.23333333,1.1751998
+8,features,40.25,21.75,1.8505747
+9,heavy_tail_share,0.56884921,0.30605742,1.8586355
+10,median_abs_skew,2.1961912,1.130232,1.9431331
 11,share_at_max,0.078135403,0.0012210476,63.990466
 12,share_at_min,0.11097589,0.0012968014,85.576633
 13,missing_share,0.038367469,0,unavailable
@@ -1785,8 +1785,8 @@ Distance tests and nearest neighbours; the projection of both tasks is in part C
 Table: LGD: domain distance tests
 CSV (first column: row index)
 row,properties,credit_tables,noncredit_tables,mean_within_credit,mean_credit_to_noncredit,difference,permutation_p
-0,all,8,20,5.3533013,5.9330657,0.57976436,0.078184363
-1,table,8,20,4.0486643,4.0748476,0.026183298,0.46090782
+0,all,8,20,5.3428846,5.9134894,0.57060483,0.081783643
+1,table,8,20,4.0247432,4.0475081,0.022764886,0.4615077
 2,target,8,20,3.183348,4.045348,0.86200002,0.014197161
 
 Table: LGD: nearest table
@@ -7659,42 +7659,42 @@ Panel 2: LGD versus regression
 non-credit / points 1
 CSV (first column: row index)
 row,PC1 (19% of variance),PC2 (17%)
-0,4.4306562,4.1346102
-1,1.9418891,-2.9964594
-2,2.2337044,1.8557094
-3,2.5628387,-0.77768181
-4,2.1292085,0.18116036
-5,2.4001507,-0.28289048
-6,0.49779535,-1.1630283
-7,1.4297404,-1.2470269
+0,4.4955023,4.0312922
+1,1.9083654,-3.05471
+2,2.2612913,1.8115026
+3,2.5717785,-0.8670003
+4,2.1447804,0.10041093
+5,2.3974907,-0.29630026
+6,0.22037692,-0.80411445
+7,1.4065506,-1.2166103
 Panel 2: LGD versus regression
 non-credit / points 2
 CSV (first column: row index)
 row,PC1 (19% of variance),PC2 (17%)
-0,-1.1766704,0.60992711
-1,-0.26870899,-0.43614362
-2,-1.7324246,0.82390955
-3,-0.80735325,-3.3421076
-4,2.3208995,-1.1658361
-5,-0.84664925,0.22694694
-6,0.32900397,-2.9607403
-7,-0.14553464,-0.73964596
+0,-1.1408357,0.58685802
+1,-0.2570235,-0.50372317
+2,-1.7277887,0.88240159
+3,-0.8304745,-3.4129883
+4,2.3470986,-1.1975088
+5,-0.82604713,0.22178002
+6,0.2851284,-3.0373333
+7,-0.14593505,-0.68386954
 Panel 2: LGD versus regression
 non-credit / points 3
 CSV (first column: row index)
 row,PC1 (19% of variance),PC2 (17%)
-0,-1.8073287,-0.21009879
-1,-1.6383057,0.12626658
-2,-0.62185931,-0.75128231
-3,-0.9904852,0.41850582
-4,-1.2420719,-0.10525307
-5,-0.94016655,0.28768942
-6,-1.7873345,1.6028481
-7,-1.8133752,0.71665418
-8,-1.0172201,0.97144491
-9,-1.7282306,0.19433205
-10,-0.74523045,1.7792038
-11,-0.96693749,2.2489862
+0,-1.8197278,-0.14986008
+1,-1.6403606,0.16771093
+2,-0.62667178,-0.73287271
+3,-0.98783127,0.47484535
+4,-1.2462735,-0.089722369
+5,-0.9156371,0.28375755
+6,-1.7552177,1.6229435
+7,-1.7806747,0.67864401
+8,-1.0045817,1.010563
+9,-1.7031458,0.11121823
+10,-0.7041644,1.7935413
+11,-0.92597204,2.2691442
 
 general/03_domain_comparison: 4 figures -> output CreditPFN/figures/general
   01  pd_properties
@@ -7947,6 +7947,8 @@ row,experiment,slug,arm,track,change,models,runs
 27,E6,scope,3,lgd,"trainable=diagscale, learning_rate=0.001",4,16
 28,E6,scope,4,lgd,"trainable=lora_qv_r16, learning_rate=3e-06",4,16
 29,E6,scope,5,lgd,"trainable=lora_qv_r16, learning_rate=1e-05",4,16
+30,E12,precision,0,pd,training_precision=bf16,2,8
+31,E12,precision,1,pd,training_precision=fp32,1,4
 
 2. Update size and anchoring (E5)
 No results yet for E5 monitor curves; the figure is drawn once they exist.
@@ -7989,7 +7991,7 @@ row
 4. Training cost
 No results yet for training cost records; the figure is drawn once they exist.
 
-Table: Training cost per arm and model (E1, E5, E6)
+Table: Training cost per arm and model (E1, E5, E6, E12)
 CSV (first column: row index)
 row
 
@@ -8076,6 +8078,21 @@ Table: LGD scope metric profile per arm
 CSV (first column: row index)
 row
 
+4. Training precision (E12)
+No results yet for E12 results; the figure is drawn once they exist.
+
+Table: PD five-fold effect per training precision and model (E1 reference: FP16; E12)
+CSV (first column: row index)
+row
+
+Table: PD E12 mean gain with 95% bootstrap interval
+CSV (first column: row index)
+row
+
+Table: PD E12 per-table gains
+CSV (first column: row index)
+row
+
 rq2/02_results: no figures saved.
 ```
 
@@ -8093,14 +8110,16 @@ Table: Arms of RQ3
 CSV (first column: row index)
 row,experiment,slug,arm,track,change,models,runs
 0,E7,exposure,0,pd,exposure=full_pass,4,16
-1,E7,exposure,0,lgd,exposure=full_pass,4,16
-2,E8,table_size,0,pd,corpus=small_only,4,16
-3,E8,table_size,1,pd,corpus=large_matched,4,16
-4,E9,episode_size,0,pd,"corpus=tables_above_10000_rows, episode_rows=2048",4,16
-5,E9,episode_size,1,pd,"corpus=tables_above_10000_rows, episode_rows=4096",4,16
-6,E9,episode_size,2,pd,"corpus=tables_above_10000_rows, episode_rows=8192",4,16
-7,E9,episode_size,3,pd,"corpus=tables_above_10000_rows, episode_rows=16384",2,8
-8,E9,episode_size,4,pd,corpus=tables_above_10000_rows,4,16
+1,E7,exposure,1,pd,successful_updates=10000,4,16
+2,E7,exposure,0,lgd,exposure=full_pass,4,16
+3,E7,exposure,1,lgd,successful_updates=10000,4,16
+4,E8,table_size,0,pd,corpus=small_only,4,16
+5,E8,table_size,1,pd,corpus=large_matched,4,16
+6,E9,episode_size,0,pd,"corpus=tables_above_10000_rows, episode_rows=2048",4,16
+7,E9,episode_size,1,pd,"corpus=tables_above_10000_rows, episode_rows=4096",4,16
+8,E9,episode_size,2,pd,"corpus=tables_above_10000_rows, episode_rows=8192",4,16
+9,E9,episode_size,3,pd,"corpus=tables_above_10000_rows, episode_rows=16384",2,8
+10,E9,episode_size,4,pd,corpus=tables_above_10000_rows,4,16
 
 2. Exposure and table size (E7, E8)
 No results yet for E7-E8 monitor curves; the figure is drawn once they exist.
@@ -8321,20 +8340,20 @@ row,test_dataset_id,rows,features,categorical_share,missing_share,zero_share,one
 3,PropLGD4,762,64,0.453125,0.11052329,0.10498688,0.11942257
 4,PropLGD5,594,64,0.28125,0.0022622054,0.11616162,0.15993266
 5,0006.lgd_freddie,16002,20,0.4,0.011726659,0.11417323,0.080677415
-6,0007.lgd_lendingclub,5627,17,0.41176471,0.0032929468,0.014750311,0.0031988626
+6,0007.lgd_lendingclub,5627,17,0.29411765,0.0032929468,0.014750311,0.0031988626
 7,0008.SBA_loans_case,686,22,0.18181818,0.0033130135,0,0.058309038
 
 Table: LGD distance to the CPT training tables
 CSV (first column: row index)
 row,test_dataset_id,partition,nearest,mean
-0,PropLGD2,0,1.7210569,2.7172571
-1,PropLGD3,0,2.5727894,4.0049773
-2,PropLGD1,1,4.804543,5.2395175
-3,0006.lgd_freddie,1,1.6509185,2.7255891
-4,PropLGD5,2,2.076625,3.2067822
-5,0007.lgd_lendingclub,2,1.6509185,2.9028968
-6,PropLGD4,3,2.3155367,3.9631226
-7,0008.SBA_loans_case,3,1.9441722,2.897101
+0,PropLGD2,0,1.9200914,2.7681444
+1,PropLGD3,0,2.5909228,3.9624578
+2,PropLGD1,1,4.8278036,5.2239091
+3,0006.lgd_freddie,1,1.7624285,2.7598514
+4,PropLGD5,2,2.0833567,3.2222232
+5,0007.lgd_lendingclub,2,1.5959069,2.8068683
+6,PropLGD4,3,2.3156082,4.0008937
+7,0008.SBA_loans_case,3,1.5959069,2.8548342
 
 2. Gains against table properties (E1)
 With 17 PD and 8 LGD tables these are descriptive correlations, not causal effects.

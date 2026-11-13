@@ -55,7 +55,7 @@ PRECISION_TOLERANCE = (0.02, 0.02)   # absolute + relative to the FP32 loss
 #: match while the backward overflows or loses its small terms.
 PRECISION_GRADIENT_COSINE = 0.90
 #: Episodes summed to see whether precision noise averages out under gradient accumulation.
-PRECISION_ACCUMULATION = 4
+PRECISION_ACCUMULATION = 1
 #: Largest inference context the benchmark gives each model per task: config/eval.yaml caps,
 #: bounded by the largest table's outer-fold context (0.8 x 0.8 x rows: PD 730,176, LGD 57,932).
 CAPACITY_ROWS = {"pd": {"v2": 10_000, "v2.6": 50_000, "v3": 467_312, "tabicl-v2": 467_312},
@@ -343,7 +343,7 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
     spans = {g: [(int(offsets[i]), int(offsets[i + 1])) for i, n in enumerate(names)
                  if ".".join(n.split(".")[:2]) == g] for g in groups}
 
-    for index, ref in enumerate(refs[:PRECISION_TABLES]):
+    for index, ref in enumerate(refs):   # every training table of the partition, largest first
         loaded = _load_processed_csv(ref)
         build = dict(n_total_target=rows, query_fraction=query_fraction, n_estimators=members)
 
@@ -383,9 +383,6 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
                             round(float(sum(reference[a:b].square().sum() for a, b in spans[g])) / total, 4)]
                         for g in groups}
                 del batch
-            # Does the disagreement average out over several episodes (gradient accumulation)?
-            for label, _ in candidates[1:]:
-                row[f"grad_cosine_{label}_x{PRECISION_ACCUMULATION}"] = cosine(sums[label], sums["fp32"])
             absolute, relative = PRECISION_TOLERANCE
             row["passed"] = bool(
                 np.isfinite(row[f"loss_{training_label}"])

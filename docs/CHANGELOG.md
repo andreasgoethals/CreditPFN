@@ -2,6 +2,10 @@
 
 ## 13-11-2026
 
+- Fix: LGD table 0005 no longer keeps the client identifier `spm`; LGD table 0007 parses `int_rate` and `revol_util` percentages as numbers. Processed data must be rebuilt.
+- Experiment 0 precision check covers every training table of the partition; pilots `bf16` and `fp32` added for E12.
+- Grid (agreed): reference budget 2,500 updates; E7 gains a 10,000-update arm; new E12 (numerical control, PD): BF16 for TabPFN v2.6/v3 and FP32 for TabICLv2 against the FP16 reference. 788 standard runs plus 100 single-source runs.
+- VSC: stale Experiment 0 output, pilot checkpoints and `$VSC_DATA/CreditPFN-probes` deleted; DATA checkout and submodules in sync.
 - Training precision (agreed): FP16 autocast with loss scaling for every model; TabICLv2's column embedder runs in FP32 (`tabicl_model.column_embedder_in_fp32`), which restores FP32 gradients at about half the cost of full FP32.
 - XGBoost added as a second tuned boosting baseline (agreed).
 - Analysis: hierarchical-bootstrap intervals for mean gains, difference in differences for the domain control (E1 minus E3), CPT against fine-tuning cost table, precision-agreement figure.

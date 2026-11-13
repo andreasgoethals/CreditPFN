@@ -671,7 +671,7 @@ def episode_context_summary(results: pd.DataFrame) -> pd.DataFrame:
 # ------------------------------------------------------------------- arm settings and labels
 _SLUG_EXPERIMENT = {"reference": "E1", "seed": "E2", "domain_control": "E3", "update_size_anchoring": "E5",
                     "scope": "E6", "exposure": "E7", "table_size": "E8",
-                    "episode_size": "E9", "transfer": "E11"}
+                    "episode_size": "E9", "transfer": "E11", "precision": "E12"}
 
 
 def _rate(value: float) -> str:
@@ -694,7 +694,11 @@ def arm_label(slug: str, settings: dict) -> str:
         names = {"frozen_backbone": "Frozen backbone", "diagscale": "DiagScale", "lora_qv_r16": "LoRA"}
         return f"{names.get(scope, scope)}, lr {_rate(settings['learning_rate'])}"
     if slug == "exposure":
-        return "Full pass"
+        if settings.get("exposure") == "full_pass":
+            return "Full pass"
+        return f"{int(settings['successful_updates']):,} updates"
+    if slug == "precision":
+        return {"bf16": "BF16", "fp32": "FP32", "fp16": "FP16"}[settings["training_precision"]]
     if slug == "table_size":
         return {"small_only": "Small tables only", "large_matched": "Large tables, count-matched"}.get(
             settings.get("corpus"), str(settings.get("corpus")))
@@ -724,6 +728,8 @@ def arm_settings(slug: str, track: str) -> pd.DataFrame:
                         pd_class_sampling=arm.get("pd_class_sampling", ref["pd_class_sampling"]),
                         exposure=arm.get("exposure", ref["exposure"]),
                         seed=int(arm.get("seed", ref["seed"])),
+                        successful_updates=int(arm.get("successful_updates", ref["successful_updates"])),
+                        training_precision=arm.get("training_precision", ref["training_precision"]),
                         models=",".join(arm.get("models", design["models"])))
         rows.append(dict(slug=slug, experiment=name, arm=index, track=track, **settings,
                          label=arm_label(slug, settings)))

@@ -13,7 +13,7 @@ start_job_log() {
     export CREDITPFN_EXPERIMENT="$group"
     # Second-campaign slugs mirror src/utils/paths.py CAMPAIGN2_GROUPS (tested).
     case "$group" in
-        general|experiment0|reference|seed|domain_control|target_finetune|update_size_anchoring|scope|exposure|table_size|episode_size|context|transfer) ;;
+        general|experiment0|reference|seed|domain_control|target_finetune|update_size_anchoring|scope|exposure|table_size|episode_size|context|transfer|precision) ;;
         *) echo "Invalid output group: $group" >&2; return 2 ;;
     esac
     local scope="$group"

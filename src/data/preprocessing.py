@@ -1065,8 +1065,9 @@ def _fix_base_model(df: pd.DataFrame) -> pd.DataFrame:
 @_register_fix("0005.base_modelisation")
 def _fix_base_modelisation(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
+    # `spm` is a client identifier too (581 distinct values in 594 rows).
     df = df.drop(columns=[c for c in ["Ident_cliej_spm", "ID_CONC_ORIGIN_CDL",
-                                       "id_crc", "id_unique"]
+                                       "id_crc", "id_unique", "spm"]
                           if c in df.columns])
     leakage = [
         "lgd_5_sscout_ligne", "lgd_corr", "lgd_defaut_nt", "lgd_3class",
@@ -1101,6 +1102,12 @@ def _fix_lgd_lendingclub(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     df = df.drop(columns=[c for c in ["addr_state", "purpose", "id"]
                           if c in df.columns])
+    # Percentages arrive as text ("15.27%"); left as text they become categories with hundreds
+    # of levels and lose their order.
+    for column in ("int_rate", "revol_util"):
+        if column in df.columns and not pd.api.types.is_numeric_dtype(df[column]):
+            df[column] = pd.to_numeric(
+                df[column].astype(str).str.strip().str.rstrip("%"), errors="coerce")
 
     target = DATASET_METADATA["0007.lgd_lendingclub"]["target_column"]
     if target in df.columns:

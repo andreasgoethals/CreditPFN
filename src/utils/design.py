@@ -43,10 +43,12 @@ DEVIATION_PATHS = {
     "regression_objective": "train.regression_objective",
     "single_source": "corpus.single_source",
     "grad_clip_norm": "train.grad_clip_norm",
+    "training_precision": "train.amp",
 }
 #: Paths a deviation legitimately changes as a consequence (bookkeeping, not science).
 CONSEQUENCES = {
     "seed": ("experiment.training_seeds",),
+    "training_precision": ("train.amp_dtype", "train.tabicl_precision"),
     "successful_updates": ("train.trajectory_steps",),
     "single_source": ("corpus.n_folds", "corpus.n_splits", "corpus.fold"),
     "corpus": ("corpus.train_size_policy", "corpus.train_source"),
@@ -195,6 +197,8 @@ def apply_arm(cfg: dict, arm: dict, track: str) -> dict:
             cfg["train"]["regression_objective"] = str(value)
         elif key == "grad_clip_norm":
             cfg["train"]["grad_clip_norm"] = None if value is None else float(value)
+        elif key == "training_precision":
+            cfg["train"].update(_precision({"training_precision": value}))
     return cfg
 
 

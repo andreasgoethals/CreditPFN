@@ -771,7 +771,7 @@ def quality_cost(overview: pd.DataFrame, resources: pd.DataFrame, *, title: str)
         ax.set_xlabel("Hours per training run")
         ax.set_ylabel(f"Held-out credit Δ {SCORE[track]}")
         ax.set_title(TRACK_NAME[track])
-    names = {"reference": "Reference (E1)", "exposure": "Full pass (E7)", "episode_size": "Episode sizes (E9)",
+    names = {"reference": "Reference (E1)", "exposure": "Exposure (E7)", "episode_size": "Episode sizes (E9)",
              "table_size": "Table-size corpora (E8)"}
     _model_proxies(axes[0, 0], _models(merged))
     for slug in [s for s in style.SLUG_MARKERS if s in set(merged.slug)]:

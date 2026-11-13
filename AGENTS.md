@@ -117,14 +117,14 @@ Newest first, dates `DD-MM-YYYY`.
 
 - A notebook contains **no `def` and no `class`** — logic goes in `src/` — and its **last code
   cell prints a text summary**, section by section, in the notebook's own section order.
-- Notebooks follow the four RQs and eleven experiments of `config/design.yaml`:
+- Notebooks follow the four RQs and twelve experiments of `config/design.yaml`:
   RQ1 E1 reference, E2 seeds, E3 matched non-credit domain control, E4 CPT vs target
-  fine-tuning; RQ2 E5 update size × L2-SP, E6 trainable scope; RQ3 E7 full
-  pass, E8 small vs large tables, E9 episode size; RQ4 E10 context scarcity (context curves),
+  fine-tuning; RQ2 E5 update size × L2-SP, E6 trainable scope, E12 training precision (numerical control);
+  RQ3 E7 exposure (full pass, 10,000 updates), E8 small vs large tables, E9 episode size; RQ4 E10 context scarcity (context curves),
   E11 single-source transfer matrix and the per-table analysis.
   Experiment 0 owns validation (`experiment0/`); corpus notebooks use `general/`. Folders are
   `rq1/`–`rq3/` (one `01_training` and one `02_results` notebook each), `rq4/`, `experiment0/`
-  and `general/`. E1 is the shared control of E2, E3 and E5–E9: never count it twice. Combine
+  and `general/`. E1 is the shared control of E2, E3, E5–E9 and E12: never count it twice. Combine
   experiments in a figure when their quantities and comparison units agree; retain
   individual-table evidence.
 - **Never pick a colour or a size.** `src/visualize/style.py` owns both, so every notebook here
@@ -168,7 +168,7 @@ anything is finished.
   deleted and no code serves it any more.
   `config/design.yaml` is the grid authority: one reference recipe plus declared deviations,
   materialized by `src/utils/design.py` into `config/experiments/E00_pilots/` (Experiment 0) and
-  `config/experiments/E<NN>_<slug>/` (E1–E11). Never hand-edit a generated config;
+  `config/experiments/E<NN>_<slug>/` (E1–E12). Never hand-edit a generated config;
   `tests/test_design.py` fails on undeclared differences or stale files. Raise open decisions
   with Andreas in chat, not in planning documents.
 - **Check which environment you are in.** Locally `.venv/Scripts/python.exe` (Python 3.13, pinned

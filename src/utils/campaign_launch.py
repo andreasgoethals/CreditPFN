@@ -328,7 +328,7 @@ def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("action", choices=("prepare", "submit-experiment0", "submit"))
     parser.add_argument("target", nargs="?", default=str(REPO_ROOT / "config/experiments/E00_pilots"),
-                        help="folder for prepare/submit-experiment0; experiment number (E1..E11) for submit")
+                        help="folder for prepare/submit-experiment0; experiment number (E1..E12) for submit")
     args = parser.parse_args(argv)
     if args.action == "prepare":
         prepare(Path(args.target))

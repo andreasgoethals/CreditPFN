@@ -23,12 +23,12 @@ method authority is [RESEARCH_BRIEF.md](docs/RESEARCH_BRIEF.md); operations are 
 | RQ | Experiments |
 |---|---|
 | RQ1 Transfer: does CPT help on unseen credit tables, how does it develop, how much is randomness, is it domain-specific, is it worth it versus target fine-tuning? | E1 reference · E2 seeds · E3 matched non-credit domain control · E4 CPT vs per-table fine-tuning |
-| RQ2 Weight change: update size, anchoring and trainable scope versus forgetting | E5 learning rate × L2-SP · E6 frozen / DiagScale / LoRA |
-| RQ3 Training data: which tables, how much of each, episode size | E7 full pass · E8 small vs large tables · E9 episode size |
+| RQ2 Weight change: update size, anchoring and trainable scope versus forgetting | E5 learning rate × L2-SP · E6 frozen / DiagScale / LoRA · E12 training precision (numerical control) |
+| RQ3 Training data: which tables, how much of each, episode size | E7 exposure (full pass, 10,000 updates) · E8 small vs large tables · E9 episode size |
 | RQ4 When and why: which target tables gain, what they share, which sources help, context scarcity | E10 labelled-context curves · E11 single-source transfer matrix · per-table analysis |
 
-744 standard training runs plus 100 short single-source runs; E1 is the shared control of E2,
-E3 and E5–E9. Every model is evaluated in FP32 on complete five-fold test sets; forgetting is measured
+788 standard training runs plus 100 single-source runs; E1 is the shared control of E2,
+E3, E5–E9 and E12. Every model is evaluated in FP32 on complete five-fold test sets; forgetting is measured
 on 19 binary and 12 regression TabArena tables; baselines are CatBoost, XGBoost and logistic/linear
 regression. TabPFN LGD trains with a 5-bucket window NLL (robust to the v2.6 regressor's
 comb-shaped density); LoRA and DiagScale use L2-SP on their effective weight change.

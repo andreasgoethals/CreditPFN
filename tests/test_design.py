@@ -17,7 +17,7 @@ def test_reference_recipe_matches_the_agreed_values():
     assert ref["optimizer"] == {"name": "adamw", "weight_decay": 0.0, "l2sp_lambda": 0.003}
     assert ref["tunable"]["query_fractions"] == [0.40]
     assert ref["train"]["context_sampling"] == "stratified"          # proportional PD sampling
-    assert ref["train"]["target_total_steps"] == 10000
+    assert ref["train"]["target_total_steps"] == 2500
     assert ref["train"]["max_rows_per_step"] is None                 # model maxima from data.yaml
     assert ref["tunable"]["epoch_pass_modes"] == ["one_sample"]
     assert ref["train"]["regression_objective"] == "window_nll"
@@ -42,17 +42,30 @@ def test_run_counts_match_the_agreed_grid():
     for (name, track, index), cfg in d.arm_configs(spec).items():
         bases = cfg["tunable"]["classifier_base_paths" if track == "pd" else "regressor_base_paths"]
         counts[name] = counts.get(name, 0) + len(bases) * int(cfg["corpus"]["n_splits"])
-    assert counts == {"E1": 32, "E2": 64, "E3": 32, "E5": 288, "E6": 192, "E7": 32,
-                      "E8": 32, "E9": 72, "E11": 100}
-    assert sum(counts.values()) == 844              # 744 standard runs + 100 short transfer runs
+    assert counts == {"E1": 32, "E2": 64, "E3": 32, "E5": 288, "E6": 192, "E7": 64,
+                      "E8": 32, "E9": 72, "E11": 100, "E12": 12}
+    assert sum(counts.values()) == 888              # 788 standard runs + 100 single-source runs
 
 
 def test_numbering_follows_the_research_questions():
     spec = d.load_design()["experiments"]
     numbers = [int(name[1:]) for name in spec]
-    assert numbers == list(range(1, 12))
-    rqs = [spec[f"E{i}"]["rq"] for i in numbers]
+    assert numbers == list(range(1, 13))
+    rqs = [spec[f"E{i}"]["rq"] for i in numbers[:-1]]
     assert rqs == sorted(rqs) and set(rqs) == {1, 2, 3, 4}
+    assert spec["E12"]["slug"] == "precision" and spec["E12"]["rq"] == 2   # numerical control, reported with RQ2
+
+
+def test_precision_arms_change_only_the_precision():
+    arms = d.load_design()["experiments"]["E12"]["arms"]
+    assert [(a["training_precision"], a["models"]) for a in arms] == [("bf16", ["v2.6", "v3"]), ("fp32", ["tabicl-v2"])]
+    reference = d.reference_config("pd")["train"]
+    assert (reference["amp"], reference["amp_dtype"], reference["tabicl_precision"]) == (True, "fp16", "fp16")
+    bf16 = d.apply_arm(d.reference_config("pd"), arms[0], "pd")["train"]
+    fp32 = d.apply_arm(d.reference_config("pd"), arms[1], "pd")["train"]
+    assert (bf16["amp"], bf16["amp_dtype"]) == (True, "bf16")
+    assert (fp32["amp"], fp32["tabicl_precision"]) == (False, "fp32")
+    assert d.load_design()["experiments"]["E7"]["arms"] == [{"exposure": "full_pass"}, {"successful_updates": 10000}]
 
 
 def test_unknown_deviations_are_refused():
@@ -113,7 +126,7 @@ def test_episode_size_doubles_and_16384_only_for_large_context_models():
 def test_generated_configs_resolve_to_valid_training_grids(tmp_path):
     from src.train.config import load_train_config, resolve_grid
     paths = d.materialize(tmp_path)
-    assert len(paths) == 72
+    assert len(paths) == 76
     for path in paths:
         cfg = load_train_config(config_path=str(path))
         assert resolve_grid(cfg, single=False)

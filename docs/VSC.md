@@ -118,7 +118,7 @@ Campaign jobs request 24 hours for training and evaluation until Experiment 0's 
 measured timings; set `CREDITPFN_TRAIN_WALLTIME` / `CREDITPFN_EVAL_WALLTIME` (HH:MM:SS) then.
 A launcher that fails or times out is recorded as `uncertain` in the receipt and is never resubmitted
 automatically: inspect `squeue`, then delete that entry before rerunning.
-Suggested order: E1 → E2, E3, E7–E9, E11 → E5, E6 (largest) → E4, E10.
+Suggested order: E1 → E2, E3, E7–E9, E11, E12 → E5, E6 (largest) → E4, E10.
 
 ## Measured caps
 

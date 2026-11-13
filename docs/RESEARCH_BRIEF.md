@@ -61,7 +61,7 @@ any comparable real-data corpus would do.
 ## Reference recipe
 
 AdamW at peak learning rate 3e-7, L2-SP 0.003 (no weight decay), 10% warm-up then cosine to 5%,
-gradient clip 1, all weights trainable, 10,000 updates, episodes up to 10,000 rows (v2, v2.6) or
+gradient clip 1, all weights trainable, 2,500 updates, episodes up to 10,000 rows (v2, v2.6) or
 26,000 (v3, TabICLv2) split 60/40 into context and query, proportional PD sampling, one episode
 per table visit, all training tables, two preprocessing views per episode, FP16 autocast with loss scaling for every model (the precision of both upstream fine-tuners; TabICLv2's column embedder stays in FP32, without which its loss or gradient was wrong on large PD tables; BF16 gradients disagreed with FP32 for TabPFN v2.6 and v3 in Experiment 0), seed 42.
 
@@ -93,7 +93,7 @@ times 2,000, 10,000 and full tables before this is fixed).
 ## Experiments
 
 One arm = 4 models × 4 partitions × the listed tasks. E1 is the shared control of E2, E3 and
-E5–E9 and is never re-run. 744 standard runs plus 100 short single-source runs.
+E5–E9 and E12 and is never re-run. 788 standard runs plus 100 single-source runs.
 
 | RQ | Exp | Question | Change vs the reference | Tasks | Runs |
 |---|---|---|---|---|---|
@@ -103,11 +103,12 @@ E5–E9 and is never re-run. 744 standard runs plus 100 short single-source runs
 | 1 | E4 | CPT vs fine-tuning on the target table | per fold: fine-tune the original and the E1 model on the fold's training rows (upstream fine-tuners; lr chosen from 1e-6, 1e-5, 6.5e-5 on the validation split, which also drives early stopping) | PD, LGD | fine-tunes only |
 | 2 | E5 | Update size × anchoring | lr 1e-7, 1e-6, 3e-6, 1e-5 at λ 0.003; λ 0 and 0.03 at lr 3e-6 and 1e-5; λ 0 at the reference rate | PD, LGD | 288 |
 | 2 | E6 | Which weights change | frozen backbone (3e-7, 3e-6); DiagScale (1e-4, 1e-3); LoRA r16 query/value (3e-6, 1e-5); λ 0.003 throughout | PD, LGD | 192 |
-| 3 | E7 | Seeing every row | full pass, one update per chunk | PD, LGD | 32 |
+| 3 | E7 | More exposure | full pass (one update per chunk); 10,000 updates instead of 2,500 | PD, LGD | 64 |
 | 3 | E8 | Small vs large tables | small tables only (≤10,000 rows) vs the same number of large tables | PD | 32 |
 | 3 | E9 | Episode size | 2,048 / 4,096 / 8,192 / 16,384 (v3, TabICL) rows and the reference size on the large-table corpus; equal updates, rows and compute; matched-context scoring | PD | 72 |
 | 4 | E10 | Context scarcity | evaluation only: original vs E1 with 8 … 50,000 labelled context rows and the full pool, five folds; the fold's validation rows stay labelled for calibration and thresholds, so this is context scarcity rather than total label scarcity | PD, LGD | 0 |
-| 4 | E11 | Which sources help which targets | CPT on one table (2,500 updates, lr 1e-6), scored on every other table | PD, LGD | 100 short |
+| 4 | E11 | Which sources help which targets | CPT on one table (2,500 updates, lr 1e-6), scored on every other table | PD, LGD | 100 |
+| 2 | E12 | Numerical control: does the training precision change the outcome | BF16 for TabPFN v2.6 and v3; strict FP32 for TabICLv2 (reference: FP16 with loss scaling) | PD | 12 |
 
 ### Design choices and their evidence
 
