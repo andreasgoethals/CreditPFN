@@ -542,7 +542,8 @@ def precision_agreement(summary: dict | None) -> pd.DataFrame:
     for record in ((summary or {}).get("precision") or {}).values():
         if not isinstance(record, dict) or "tables" not in record:
             continue
-        model = _model_label(str(record.get("base", "")))
+        base = re.search(r"(tabpfn-v[0-9.]+?)(?=-|$)|(tabicl)", str(record.get("base", "")))
+        model = _model_label(base.group(0) if base else str(record.get("base", "")))
         for table in record["tables"]:
             for key, label in PRECISION_LABELS.items():
                 if f"grad_cosine_{key}" not in table:
@@ -704,7 +705,7 @@ def arm_label(slug: str, settings: dict) -> str:
             settings.get("corpus"), str(settings.get("corpus")))
     if slug == "episode_size":
         if settings.get("episode_rows") is None:   # the reference size: 10,000 or 26,000 by model
-            return "Reference episode size"
+            return "Reference size, large tables"
         return f"Episodes of {int(settings['episode_rows']):,} rows"
     return f"{slug} arm"
 

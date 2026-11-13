@@ -120,21 +120,22 @@ def plot_corpus_overview(data: pd.DataFrame, partitions: pd.DataFrame) -> list[P
         axes[3].barh(sub.y, sub.target, color=color, height=style.BAR_HEIGHT)
     axes[0].set_xscale("log")
     axes[1].set_xscale("log")
-    axes[0].set_xlabel("Rows (log scale)")
-    axes[1].set_xlabel("Predictors (log scale)")
+    axes[0].set_xlabel("Rows")
+    axes[1].set_xlabel("Predictors")
     from matplotlib.ticker import FixedLocator, FormatStrFormatter, NullFormatter
-    axes[1].xaxis.set_major_locator(FixedLocator([2, 5, 10, 20, 50]))
+    axes[1].xaxis.set_major_locator(FixedLocator([2, 10, 50]))
     axes[1].xaxis.set_major_formatter(FormatStrFormatter("%g"))
     axes[1].xaxis.set_minor_formatter(NullFormatter())
-    axes[2].set_xlabel("Missing cells (%)")
+    axes[2].set_xlabel("Missing (%)")
     axes[2].set_xlim(0, max(5.0, float(np.nanmax(frame.missing * 100)) * 1.1))
-    axes[3].set_xlabel("Default rate / mean LGD")
+    axes[3].set_xlabel("Target mean")
     axes[3].set_xlim(0, 1)
+    axes[3].set_xticks([0, 0.5, 1], ["0", "0.5", "1"])
     for ax in axes:
         ax.grid(axis="x", alpha=0.25)
     axes[0].set_yticks(ypos, labels)
     axes[0].legend()
-    fig.suptitle("Credit corpus: size, predictors, missingness and target")
+    fig.suptitle("The credit corpus: size, predictors, missing cells and target")
     tables = frame[["track", "dataset_id", "partition", "rows", "features", "missing", "target"]]
     return [Page("corpus_overview", fig,
                  "Every processed credit table, PD (17) above LGD (8), each block ordered by decreasing row count; "
@@ -221,7 +222,7 @@ def plot_exposure(data: pd.DataFrame) -> list[Page]:
     groups = {t: data[data.track.eq(t)].sort_values("rows", ascending=False) for t in tracks}
     fig, axes = plt.subplots(len(tracks), 1, squeeze=False, figsize=(style.WIDTH_FULL, min(
         style.MAX_HEIGHT, style.FIGURE_BAND + style.TABLE_ROW_HEIGHT * (len(data) + 3))),
-        gridspec_kw=dict(height_ratios=[max(len(groups[t]), 2) for t in tracks]))
+        gridspec_kw=dict(height_ratios=[max(len(groups[t]), 2) + 1.5 for t in tracks]))
     for ax, track in zip(axes[:, 0], tracks):
         group = groups[track]
         y = np.arange(len(group))
@@ -246,7 +247,7 @@ def plot_exposure(data: pd.DataFrame) -> list[Page]:
     cap = int(data.illustrative_row_cap.iloc[0])
     axes[-1, 0].set_xlabel(f"Share of optimizer updates (chunks of {cap:,} rows)")
     axes[0, 0].legend()
-    fig.suptitle("Optimizer-update share per table: one sample versus full pass")
+    fig.suptitle("Share of updates per table: one sample versus full pass")
     return [Page("planned_exposure", fig,
                  f"Planned share of optimizer updates per credit table if every processed table of the task were in "
                  f"the corpus: one sampled episode per table visit (circles, equal shares) versus a full pass over "

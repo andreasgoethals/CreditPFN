@@ -34,7 +34,7 @@ def embedding_figure(embeddings: dict, title: str):
         _scatter(ax, emb, "pc1", "pc2")
         ax.set_xlabel(f"PC1 ({emb.pc1_explained.iloc[0]:.0%} of variance)")
         ax.set_ylabel(f"PC2 ({emb.pc2_explained.iloc[0]:.0%})")
-        ax.set_title("PD versus binary non-credit" if track == "pd" else "LGD versus regression non-credit")
+        ax.set_title("PD and binary tables" if track == "pd" else "LGD and regression tables")
     axes[0, 0].legend()
     fig.suptitle(title)
     return fig
@@ -53,11 +53,16 @@ def property_figure(properties: pd.DataFrame, track: str, names=None):
             ax.scatter(i + rng.uniform(-style.JITTER_WIDTH, style.JITTER_WIDTH, len(values)), values,
                        s=style.TABLE_POINT_SIZE, color=style.DOMAIN_COLORS[group], alpha=style.POINT_ALPHA)
             ax.hlines(values.median(), i - 0.3, i + 0.3, color=style.DOMAIN_COLORS[group], lw=style.MEAN_CURVE_LINE)
-        ax.set_xticks(range(len(groups)), [style.DOMAIN_LABELS[g].split()[0] if g == "credit" else
-                                           ("Retention" if g == "retention" else "Control") for g in groups])
+        ax.set_xticks([])   # the legend decodes the three groups: twelve cramped tick rows do not
+        ax.set_xlim(-0.6, len(groups) - 0.4)
         ax.set_title(LABELS.get(name, name), fontsize=style.ANNOTATION_SIZE)
     for ax in axes.ravel()[len(names):]:
         ax.set_visible(False)
+    for group in groups:
+        axes[0, 0].scatter([], [], s=style.TABLE_POINT_SIZE, color=style.DOMAIN_COLORS[group],
+                           label=style.DOMAIN_LABELS[group])
+    axes[0, 0].plot([], [], color=style.COLORS["mean"], lw=style.MEAN_CURVE_LINE, label="Median")
+    axes[0, 0].legend()
     fig.suptitle(("PD" if track == "pd" else "LGD") + " tables versus non-credit tables, per property")
     return fig
 
@@ -72,12 +77,12 @@ def target_figure(tables_lgd: list[dict], properties_lgd: pd.DataFrame):
         axes[0].plot(grid, ecdf, color=style.DOMAIN_COLORS[t["group"]],
                      lw=style.TABLE_CURVE_LINE * (1.6 if credit else 1), alpha=0.9 if credit else 0.45,
                      zorder=3 if credit else 2)
-    axes[0].set_xlabel("Target, rescaled to [0, 1] per table")
+    axes[0].set_xlabel("Target, rescaled to [0, 1]")
     axes[0].set_ylabel("Cumulative share of rows")
     axes[0].set_title("Target per table")
     _scatter(axes[1], properties_lgd, "share_at_min", "share_at_max")
-    axes[1].set_xlabel("Share of rows at the minimum target")
-    axes[1].set_ylabel("Share of rows at the maximum target")
+    axes[1].set_xlabel("Share of rows at the minimum")
+    axes[1].set_ylabel("Share at the maximum")
     axes[1].set_title("Point masses at the bounds")
     axes[1].legend(frameon=False, fontsize=style.ANNOTATION_SIZE, loc="upper right")
     fig.suptitle("LGD targets versus non-credit regression targets")

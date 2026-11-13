@@ -50,7 +50,6 @@ def test_every_figure_returns_none_without_evidence():
     assert r2.arm_trajectories([dict(curves=empty, x="successful_updates", ylabel="y")], empty, title="t") is None
     assert r2.table_gains(empty, track="pd", title="t") is None
     assert r2.transfer_and_retention({"pd": empty, "lgd": empty}, title="t") is None
-    assert r2.domain_control({"pd": empty}, title="t") is None
     assert r2.finetune_conditions(empty, title="t") is None
     assert r2.baseline_position({"pd": empty}, title="t") is None
     assert r2.metric_profile_heatmap({"pd": empty}, title="t") is None
@@ -59,7 +58,7 @@ def test_every_figure_returns_none_without_evidence():
     assert r2.arm_gains(empty, ["Reference"], track="pd", title="t") is None
     assert r2.episode_matched_context(empty, title="t") is None
     assert r2.quality_cost(empty, empty, title="t") is None
-    assert r2.context_curves(empty, empty, track="pd", title="t") is None
+    assert r2.context_curves(empty, empty, title="t") is None
     assert r2.gain_vs_properties(empty, track="pd", title="t") is None
     assert r2.transfer_heatmaps(empty, track="pd", title="t") is None
 
@@ -108,9 +107,9 @@ def test_metric_profile_orients_improvements(results):
 def test_rq1_result_figures_render(results):
     gains = {t: c2.endpoint_gains("reference", t) for t in ("pd", "lgd")}
     _finished(r2.transfer_and_retention(gains, title="t"))
-    controls = {t: c2.domain_control_gains(t) for t in ("pd", "lgd")}
-    fig, _ = _finished(r2.domain_control(controls, title="t"))
-    assert len(fig.axes) == 2
+    intervals = {t: c2.gain_intervals("reference", t) for t in ("pd", "lgd")}
+    fig, text = _finished(r2.transfer_and_retention(gains, intervals, title="t"))
+    assert len(fig.axes) == 2 and "interval_low" in text
     baselines = {t: c2.baseline_comparison(t) for t in ("pd", "lgd")}
     assert (baselines["pd"].folds == 5).all() and set(baselines["pd"].model) == set(syn.BASES)
     _finished(r2.baseline_position(baselines, title="t"))
@@ -150,9 +149,10 @@ def test_precision_agreement_and_cost_tables():
         {"table_index": 1, "rows": 8192, "loss_fp32": 0.4, "error": "out of memory"}]}}}
     agreement = c2.precision_agreement(summary)
     assert len(agreement) == 2 and set(agreement.precision) == set(c2.PRECISION_LABELS.values())
-    fig, text = _finished(r2.precision_heatmap(agreement, title="t"))
-    assert "0.72" in {t.get_text() for ax in fig.axes for t in ax.texts}
-    assert c2.precision_agreement(None).empty and r2.precision_heatmap(pd.DataFrame(), title="t") is None
+    assert set(agreement.model) == {"TabPFN v2.6"}          # checkpoint file name -> model label
+    fig, text = _finished(r2.precision_agreement(agreement, title="t"))
+    assert "below_threshold" in text and len(fig.axes) == 1
+    assert c2.precision_agreement(None).empty and r2.precision_agreement(pd.DataFrame(), title="t") is None
     resources = pd.DataFrame([dict(slug="reference", arm=0, track="pd", model="tabpfn-v2", hours_without_monitor=h)
                               for h in (1.0, 3.0)])
     finetune = pd.DataFrame([dict(track="pd", model="tabpfn-v2", dataset_id=d, fold=f, start="original",
@@ -173,7 +173,7 @@ def test_arm_overview_carries_settings_and_both_table_groups(results):
     assert (overview.credit_tables == 16).all() and (overview.retention_tables == 19).all()
     _finished(r2.dose_response(overview, track="pd", title="t"))
     fig, _ = _finished(r2.tradeoff(overview, track="pd", title="t"))
-    assert len([ax for ax in fig.axes if ax.get_visible()]) == 4
+    assert len([ax for ax in fig.axes if ax.get_visible()]) == 4 and fig.axes[2].get_xlabel()
 
 
 def test_training_data_arms_and_matched_context(results):
@@ -235,8 +235,8 @@ def test_context_curve_fixed_cohort_and_full_pool():
     cohort = curve[curve.fixed_cohort]
     assert (cohort.tables == cohort.all_tables).all()
     assert curve[~curve.fixed_cohort].tables.lt(curve[~curve.fixed_cohort].all_tables).all()
-    fig, _ = _finished(r2.context_curves(table, curve, track="pd", title="t"))
-    assert fig.axes[4].get_xscale() == "log"
+    fig, _ = _finished(r2.context_curves(table, curve, title="t"))
+    assert fig.axes[0].get_xscale() == "log"
 
 
 def test_transfer_matrix_and_property_scatter(results):

@@ -1834,7 +1834,7 @@ Figure: lgd_targets
 Left: empirical distribution function of each table target after per-table min-max rescaling. Right: share of rows exactly at the minimum and at the maximum target value. Colours mark credit LGD tables and non-credit regression tables.
 Panel 1: Target per table / series 1
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.21886
 1,0.005,0.21942
 2,0.01,0.22008
@@ -2038,7 +2038,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 2
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.036230321
 1,0.005,0.038171231
 2,0.01,0.040112141
@@ -2242,7 +2242,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 3
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.28605108
 1,0.005,0.34027505
 2,0.01,0.38231827
@@ -2446,7 +2446,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 4
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.10498688
 1,0.005,0.12729659
 2,0.01,0.167979
@@ -2650,7 +2650,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 5
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.11616162
 1,0.005,0.12626263
 2,0.01,0.16498316
@@ -2854,7 +2854,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 6
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.11417323
 1,0.005,0.11967254
 2,0.01,0.12404699
@@ -3058,7 +3058,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 7
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.014750311
 1,0.005,0.016882886
 2,0.01,0.016882886
@@ -3262,7 +3262,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 8
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.0014577259
 1,0.005,0.0014577259
 2,0.01,0.0029154519
@@ -3466,7 +3466,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 9
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.0011025358
 1,0.005,0.0011025358
 2,0.01,0.0011025358
@@ -3670,7 +3670,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 10
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.00097087379
 1,0.005,0.00097087379
 2,0.01,0.00097087379
@@ -3874,7 +3874,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 11
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.00074738416
 1,0.005,0.014947683
 2,0.01,0.049327354
@@ -4078,7 +4078,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 12
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.00066533599
 1,0.005,0.00066533599
 2,0.01,0.00066533599
@@ -4282,7 +4282,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 13
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.00065019506
 1,0.005,0.00065019506
 2,0.01,0.00065019506
@@ -4486,7 +4486,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 14
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.00017415535
 1,0.005,0.00017415535
 2,0.01,0.00017415535
@@ -4690,7 +4690,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 15
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.0046175158
 1,0.005,0.0046175158
 2,0.01,0.0046175158
@@ -4894,7 +4894,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 16
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.00029036005
 1,0.005,0.0037020906
 2,0.01,0.0097996516
@@ -5098,7 +5098,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 17
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.00019379845
 1,0.005,0.00019379845
 2,0.01,0.00019379845
@@ -5302,7 +5302,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 18
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,4.7030052e-05
 1,0.005,0.04486667
 2,0.01,0.091097211
@@ -5506,7 +5506,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 19
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.016457284
 1,0.005,0.016457284
 2,0.01,0.016457284
@@ -5710,7 +5710,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 20
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.0059479554
 1,0.005,0.0059479554
 2,0.01,0.0059479554
@@ -5914,7 +5914,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 21
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,2e-05
 1,0.005,0.14724
 2,0.01,0.29884
@@ -6118,7 +6118,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 22
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.00022522523
 1,0.005,0.1045045
 2,0.01,0.11914414
@@ -6322,7 +6322,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 23
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.00039292731
 1,0.005,0.00039292731
 2,0.01,0.00039292731
@@ -6526,7 +6526,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 24
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.001312336
 1,0.005,0.001312336
 2,0.01,0.0039370079
@@ -6730,7 +6730,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 25
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.0016835017
 1,0.005,0.58922559
 2,0.01,0.65993266
@@ -6934,7 +6934,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 26
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,6.2492188e-05
 1,0.005,0.00012498438
 2,0.01,0.00018747657
@@ -7138,7 +7138,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 27
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.0087080149
 1,0.005,0.0090634441
 2,0.01,0.0090634441
@@ -7342,7 +7342,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 200,1,1
 Panel 1: Target per table / series 28
 CSV (first column: row index)
-row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
+row,"Target, rescaled to [0, 1]",Cumulative share of rows
 0,0,0.0014577259
 1,0.005,0.0043731778
 2,0.01,0.0072886297
@@ -7547,7 +7547,7 @@ row,"Target, rescaled to [0, 1] per table",Cumulative share of rows
 Panel 2: Point masses at the
 bounds / points 1
 CSV (first column: row index)
-row,Share of rows at the minimum target,Share of rows at the maximum target
+row,Share of rows at the minimum,Share at the maximum
 0,0.21886,0.51686
 1,0.036230321,0.037092948
 2,0.28605108,0.056188605
@@ -7559,7 +7559,7 @@ row,Share of rows at the minimum target,Share of rows at the maximum target
 Panel 2: Point masses at the
 bounds / points 2
 CSV (first column: row index)
-row,Share of rows at the minimum target,Share of rows at the maximum target
+row,Share of rows at the minimum,Share at the maximum
 0,2e-05,2e-05
 1,0.00022522523,0.0031531532
 2,0.00039292731,0.00039292731
@@ -7571,7 +7571,7 @@ row,Share of rows at the minimum target,Share of rows at the maximum target
 Panel 2: Point masses at the
 bounds / points 3
 CSV (first column: row index)
-row,Share of rows at the minimum target,Share of rows at the maximum target
+row,Share of rows at the minimum,Share at the maximum
 0,0.0011025358,0.0011025358
 1,0.00097087379,0.00097087379
 2,0.00074738416,0.00074738416
@@ -7590,8 +7590,7 @@ Two components; the distance tests in A4 and B4 use all properties.
 
 Figure: embedding
 First two principal components of the standardised feature and target properties of every table, for PD with the binary non-credit tables (left) and LGD with the regression non-credit tables (right). Each point is one table: credit corpus, matched non-credit control corpus (E4) and non-credit retention panel. Axis labels give the share of property variance per component.
-Panel 1: PD versus binary non-
-credit / points 1
+Panel 1: PD and binary tables / points 1
 CSV (first column: row index)
 row,PC1 (25% of variance),PC2 (23%)
 0,-1.7731068,3.0095745
@@ -7611,8 +7610,7 @@ row,PC1 (25% of variance),PC2 (23%)
 14,0.67270904,-0.12900384
 15,-1.7842263,0.10885823
 16,2.9333394,0.9711826
-Panel 1: PD versus binary non-
-credit / points 2
+Panel 1: PD and binary tables / points 2
 CSV (first column: row index)
 row,PC1 (25% of variance),PC2 (23%)
 0,1.0484694,-0.66960677
@@ -7632,8 +7630,7 @@ row,PC1 (25% of variance),PC2 (23%)
 14,-2.002526,-1.3432651
 15,-3.0209929,0.71252833
 16,1.2399055,-1.3816721
-Panel 1: PD versus binary non-
-credit / points 3
+Panel 1: PD and binary tables / points 3
 CSV (first column: row index)
 row,PC1 (25% of variance),PC2 (23%)
 0,0.74978386,-0.34831896
@@ -7655,8 +7652,8 @@ row,PC1 (25% of variance),PC2 (23%)
 16,-0.18568111,-1.5125735
 17,-0.62207429,-1.1248786
 18,-1.4984684,-0.7897604
-Panel 2: LGD versus regression
-non-credit / points 1
+Panel 2: LGD and regression
+tables / points 1
 CSV (first column: row index)
 row,PC1 (19% of variance),PC2 (16%)
 0,4.5804539,4.1799191
@@ -7667,8 +7664,8 @@ row,PC1 (19% of variance),PC2 (16%)
 5,2.4011179,-0.34411856
 6,0.19417214,-0.67782156
 7,1.3814474,-1.3838073
-Panel 2: LGD versus regression
-non-credit / points 2
+Panel 2: LGD and regression
+tables / points 2
 CSV (first column: row index)
 row,PC1 (19% of variance),PC2 (16%)
 0,-1.1322926,0.54030018
@@ -7679,8 +7676,8 @@ row,PC1 (19% of variance),PC2 (16%)
 5,-0.75819161,0.33323808
 6,-0.054591791,-1.5595386
 7,-0.11536784,-0.97630988
-Panel 2: LGD versus regression
-non-credit / points 3
+Panel 2: LGD and regression
+tables / points 3
 CSV (first column: row index)
 row,PC1 (19% of variance),PC2 (16%)
 0,-1.8286656,-0.16284974
@@ -7808,8 +7805,6 @@ Table: LGD gains at three seeds
 CSV (first column: row index)
 row
 
-No measurements available for this figure group.
-
 Table: PD mean gain with 95% bootstrap interval (E1)
 CSV (first column: row index)
 row
@@ -7818,7 +7813,7 @@ Table: LGD mean gain with 95% bootstrap interval (E1)
 CSV (first column: row index)
 row
 
-2. Transfer against forgetting
+2. Transfer against forgetting, with uncertainty
 No results yet for E1 retention gains; the figure is drawn once they exist.
 
 No measurements available for this figure group.
@@ -7859,8 +7854,6 @@ row
 
 5. Credit versus matched non-credit CPT (E4)
 No results yet for E4 domain control; the figure is drawn once they exist.
-
-No measurements available for this figure group.
 
 Table: PD E4 versus E1 per table
 CSV (first column: row index)
@@ -8279,8 +8272,6 @@ row
 Table: PD per table and size
 CSV (first column: row index)
 row
-
-No measurements available for this figure group.
 
 Table: LGD equal-table curve per size (fixed_cohort marks the plotted range)
 CSV (first column: row index)

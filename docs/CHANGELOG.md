@@ -2,6 +2,7 @@
 
 ## 13-11-2026
 
+- Figures revised for the 122-mm LNCS width and a smaller set: bootstrap intervals drawn on the credit/retention figure (separate interval figure removed), domain-control scatter removed in favour of the E1-minus-E4 difference with interval, context curves show the gain only for both tasks in one figure, transfer matrix uses numbered tables with a key, precision agreement is a per-table strip plot, trade-off figure is 2x2; overlapping tick and axis labels fixed in the corpus and domain figures.
 - Grid reordered by research question (agreed): precision control is E3 in RQ1 (next to the seeds) and covers PD and LGD; former E3-E11 are E4-E12. 800 standard runs plus 100 single-source runs. Earlier entries keep the numbers of their day.
 - Fix: LGD table 0005 no longer keeps the client identifier `spm`; LGD table 0007 parses `int_rate` and `revol_util` percentages as numbers. Processed data must be rebuilt.
 - Experiment 0 precision check covers every training table of the partition; pilots `bf16` and `fp32` added for E12.

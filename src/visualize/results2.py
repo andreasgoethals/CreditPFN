@@ -13,6 +13,7 @@ they were tables. Monitor curves are equal-table means of one fixed context/quer
 from __future__ import annotations
 
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
 import numpy as np
 import pandas as pd
 
@@ -257,6 +258,7 @@ def table_gains(gains: pd.DataFrame, seeds: pd.DataFrame | None = None, *, track
         ax.axvline(sub.gain.mean(), color=color, linestyle="--", linewidth=0.9)
         _zero(ax, "x")
         ax.set_title(model)
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=3))
         ax.set_xlabel(f"Δ {SCORE[track]}")
         ax.grid(axis="x", alpha=0.25)
     axes[0, 0].set_yticks(range(len(order)), [display_name(t) for t in order])
@@ -276,16 +278,18 @@ def table_gains(gains: pd.DataFrame, seeds: pd.DataFrame | None = None, *, track
                    seed_gains=pd.concat(used) if used else None)
 
 
-def transfer_and_retention(gains: dict, *, title: str):
+def transfer_and_retention(gains: dict, intervals: dict | None = None, *, title: str):
     """One panel per task. Per model: per-table five-fold gains on held-out credit tables (filled,
-    left) and on the non-credit retention panel (hollow, right), with equal-table means."""
+    left) and on the non-credit retention panel (hollow, right), with equal-table means and, when
+    ``intervals`` (``campaign2.gain_intervals``) is given, their 95% hierarchical-bootstrap interval."""
     tracks = [t for t in _tracks(gains) if not gains[t][gains[t].complete & (gains[t].arm == 0)].empty]
     if not tracks:
         return None
-    fig, axes = plt.subplots(1, len(tracks), squeeze=False, figsize=style.figsize(style.WIDTH_FULL, 0.42))
-    tables = []
+    fig, axes = plt.subplots(1, len(tracks), squeeze=False, figsize=style.figsize(style.WIDTH_FULL, 0.46))
+    tables, drawn = [], False
     for ax, track in zip(axes[0], tracks):
         g = gains[track][gains[track].complete & (gains[track].arm == 0)]
+        ci = None if intervals is None or _empty(intervals.get(track)) else intervals[track]
         models = _models(g)
         for i, model in enumerate(models):
             color = style.model_color(model)
@@ -300,12 +304,21 @@ def transfer_and_retention(gains: dict, *, title: str):
                 else:
                     ax.scatter(x, v, s=style.TABLE_MARKER_SIZE, facecolors=style.HOLLOW_FACE,
                                edgecolors=color, linewidths=0.6)
+                row = dict(track=track, model=model,
+                           tables="held-out credit" if credit else "non-credit retention",
+                           n=len(v), mean_gain=v.mean(), median_gain=float(np.median(v)),
+                           improved=int((v > 0).sum()))
+                if ci is not None:
+                    hit = ci[(ci.model == model) & (ci.credit == credit) & (ci.arm == 0)]
+                    if len(hit):
+                        low, high = float(hit.low.iloc[0]), float(hit.high.iloc[0])
+                        ax.plot([i + offset] * 2, [low, high], color=style.COLORS["mean"], linewidth=1.3,
+                                solid_capstyle="butt", zorder=3)
+                        row.update(interval_low=low, interval_high=high)
+                        drawn = True
                 ax.scatter([i + offset], [v.mean()], marker=style.MEAN_MARKER, s=style.MEAN_MARKER_SIZE,
                            color=color, edgecolors=style.COLORS["mean"], linewidths=0.6, zorder=4)
-                tables.append(dict(track=track, model=model,
-                                   tables="held-out credit" if credit else "non-credit retention",
-                                   n=len(v), mean_gain=v.mean(), median_gain=float(np.median(v)),
-                                   improved=int((v > 0).sum())))
+                tables.append(row)
         _zero(ax)
         ax.set_xticks(range(len(models)), models, rotation=20, ha="right")
         ax.set_xlim(-0.6, len(models) - 0.4)
@@ -317,47 +330,13 @@ def transfer_and_retention(gains: dict, *, title: str):
                  s=style.TABLE_MARKER_SIZE)
     _proxy_point(axes[0, 0], "Equal-table mean", marker=style.MEAN_MARKER, color=style.COLORS["untuned"],
                  edgecolors=ref, s=style.MEAN_MARKER_SIZE)
+    if drawn:
+        _proxy_line(axes[0, 0], "95% bootstrap interval of the mean", color=ref, linewidth=1.3)
     axes[0, 0].legend()
     fig.suptitle(title)
     return _report(fig, summary=pd.DataFrame(tables),
                    per_table=pd.concat([gains[t][gains[t].complete & (gains[t].arm == 0)].assign(track=t)
                                         for t in tracks]))
-
-
-def domain_control(controls: dict, *, title: str):
-    """One panel per task: per held-out credit table and model, the gain of CPT on the matched
-    non-credit twins (E4, vertical) against CPT on the credit tables (E1, horizontal)."""
-    tracks = _tracks(controls)
-    if not tracks:
-        return None
-    fig, axes = plt.subplots(1, len(tracks), squeeze=False, figsize=style.figsize(style.WIDTH_FULL, 0.47))
-    models_seen = []
-    for ax, track in zip(axes[0], tracks):
-        c = controls[track]
-        for model in _models(c):
-            s = c[c.model == model]
-            ax.scatter(s.gain_credit, s.gain_noncredit, s=style.POINT_SIZE, color=style.model_color(model),
-                       alpha=style.FILLED_ALPHA, linewidths=0)
-            models_seen.append(model)
-        values = np.r_[c.gain_credit.to_numpy(), c.gain_noncredit.to_numpy()]
-        low, high = float(np.nanmin(values)), float(np.nanmax(values))
-        pad = 0.08 * max(high - low, 1e-6)
-        low, high = min(low, 0) - pad, max(high, 0) + pad
-        ax.plot([low, high], [low, high], color=style.COLORS["annotation"], linewidth=0.7)
-        _zero(ax)
-        _zero(ax, "x")
-        ax.set_xlim(low, high)
-        ax.set_ylim(low, high)
-        ax.set_aspect("equal", adjustable="box")
-        ax.set_xlabel(f"Δ {SCORE[track]}, CPT on credit tables (E1)")
-        ax.set_ylabel(f"Δ {SCORE[track]}, CPT on non-credit twins (E4)")
-        ax.set_title(TRACK_NAME[track])
-    _model_proxies(axes[0, 0], [m for m in style.MODEL_ORDER if m in models_seen])
-    _proxy_line(axes[0, 0], "Equal gain (y = x)", color=style.COLORS["annotation"], linewidth=0.7)
-    axes[0, 0].legend()
-    fig.suptitle(title)
-    return _report(fig, **{f"{TRACK_NAME[t]} per table": controls[t][
-        ["model", "test_dataset_id", "gain_credit", "gain_noncredit", "credit_minus_noncredit"]] for t in tracks})
 
 
 def finetune_conditions(table: pd.DataFrame, *, title: str):
@@ -544,42 +523,46 @@ def gain_forest(intervals: dict, *, title: str, value: str = "mean", xlabel: str
     return _report(fig, **{f"{TRACK_NAME[t]} intervals": intervals[t] for t in tracks})
 
 
-def precision_heatmap(agreement: pd.DataFrame, *, title: str):
-    """Columns: candidate training precision. Rows: task and model; cells: the largest training
-    tables. Colour and text: cosine between the candidate and the FP32 gradient at update zero on
-    the identical episode (1 = same direction)."""
+def precision_agreement(agreement: pd.DataFrame, *, title: str, threshold: float = 0.9):
+    """One panel per task. Rows: base model; one point per training table: the cosine between the
+    mixed-precision and the FP32 gradient at update zero on the identical episode (1 = same
+    direction). Colour and marker: candidate precision; the dashed line marks ``threshold``."""
     if _empty(agreement):
         return None
+    tracks = [t for t in TRACKS if t in set(agreement.track)]
     precisions = list(dict.fromkeys(agreement.precision))
-    rows = [(t, m) for t in TRACKS for m in _models(agreement[agreement.track == t])]
-    ranks = sorted(agreement.table_rank.unique())
-    fig, axes = plt.subplots(1, len(precisions), squeeze=False, sharey=True,
-                             figsize=(style.WIDTH_FULL, _height(len(rows), style.ARM_ROW_HEIGHT)))
-    cmap = plt.get_cmap(style.CMAP_SHARE)
-    image = None
-    for ax, precision in zip(axes[0], precisions):
-        grid = np.full((len(rows), len(ranks)), np.nan)
-        sub = agreement[agreement.precision == precision]
-        for i, (track, model) in enumerate(rows):
-            for j, rank in enumerate(ranks):
-                cell = sub[(sub.track == track) & (sub.model == model) & (sub.table_rank == rank)]
-                if cell.empty or pd.isna(cell.gradient_cosine.iloc[0]):
-                    continue
-                grid[i, j] = cell.gradient_cosine.iloc[0]
-                red, green, blue, _ = cmap((grid[i, j] + 1) / 2)
-                ink = style.GRID_TEXT_LIGHT if .299 * red + .587 * green + .114 * blue < .5 else style.GRID_TEXT_DARK
-                ax.text(j, i, f"{grid[i, j]:.2f}", ha="center", va="center",
-                        fontsize=style.ANNOTATION_SIZE, color=ink)
-        image = ax.imshow(np.ma.masked_invalid(grid), cmap=cmap, vmin=-1, vmax=1, aspect="auto")
-        ax.set_xticks(range(len(ranks)), [str(r) for r in ranks])
-        ax.set_yticks(range(len(rows)), [f"{TRACK_NAME[t]} · {m}" for t, m in rows])
-        ax.set_xlabel("Training table (by size)")
-        ax.tick_params(length=0)
-        ax.grid(False)
-        ax.set_title(precision)
-    fig.colorbar(image, ax=axes[0].tolist(), label="Cosine with the FP32 gradient", shrink=0.85)
+    palette = style.ordered(precisions)
+    markers = dict(zip(precisions, ("v", "o", "s", "^")))
+    fig, axes = plt.subplots(1, len(tracks), squeeze=False, sharex=True, sharey=True,
+                             figsize=style.figsize(style.WIDTH_FULL, 0.42))
+    models = _models(agreement)
+    offsets = np.linspace(-0.18, 0.18, len(precisions)) if len(precisions) > 1 else [0.0]
+    for ax, track in zip(axes[0], tracks):
+        sub = agreement[agreement.track == track].dropna(subset=["gradient_cosine"])
+        for i, model in enumerate(models):
+            for offset, precision in zip(offsets, precisions):
+                v = sub[(sub.model == model) & (sub.precision == precision)].gradient_cosine.to_numpy()
+                if len(v):
+                    ax.scatter(v, i + offset + _jitter(len(v), seed=i) * 0.5, s=style.TABLE_MARKER_SIZE * 1.4,
+                               color=palette[precision], marker=markers[precision], alpha=style.FILLED_ALPHA,
+                               linewidths=0)
+        ax.axvline(threshold, color=style.COLORS["mean"], linestyle="--", linewidth=0.8)
+        ax.axvline(1.0, **style.ZERO_LINE)
+        ax.set_yticks(range(len(models)), models)
+        ax.set_ylim(len(models) - 0.5, -0.5)
+        ax.set_xlim(min(-0.05, float(agreement.gradient_cosine.min()) - 0.05), 1.04)
+        ax.set_title(TRACK_NAME[track])
+        ax.set_xlabel("Cosine with the FP32 gradient")
+    for precision in precisions:
+        _proxy_point(axes[0, 0], precision, color=palette[precision], marker=markers[precision],
+                     s=style.TABLE_MARKER_SIZE * 1.4)
+    _proxy_line(axes[0, 0], f"Cosine {threshold:g}", color=style.COLORS["mean"], linestyle="--", linewidth=0.8)
+    axes[0, 0].legend()
     fig.suptitle(title)
-    return _report(fig, precision_agreement=agreement)
+    summary = (agreement.groupby(["track", "model", "precision"]).gradient_cosine
+               .agg(tables="count", minimum="min", median="median",
+                    below_threshold=lambda v: int((v < threshold).sum())).reset_index())
+    return _report(fig, precision_summary=summary, precision_agreement=agreement)
 
 
 # ------------------------------------------------------------------- RQ2 figures
@@ -637,9 +620,13 @@ def tradeoff(overview: pd.DataFrame, *, track: str, title: str):
     models = _models(o)
     rates = sorted(o.learning_rate.unique())
     size = dict(zip(rates, np.linspace(*style.SIZE_RANGE, len(rates)))) if len(rates) > 1 else {rates[0]: 20}
-    fig, axes = plt.subplots(1, len(models), squeeze=False,
-                             figsize=style.figsize(style.WIDTH_FULL, 0.42))
-    for ax, model in zip(axes[0], models):
+    ncols = 2 if len(models) > 1 else 1
+    nrows = int(np.ceil(len(models) / ncols))
+    fig, axes = plt.subplots(nrows, ncols, squeeze=False,
+                             figsize=(style.WIDTH_FULL, _height(nrows, style.ROW_HEIGHT * 1.25)))
+    for ax in axes.ravel()[len(models):]:
+        ax.set_visible(False)
+    for ax, model in zip(axes.ravel(), models):
         sub = o[o.model == model]
         for (scope, lam), s in sub.groupby(["trainable", "l2sp_lambda"]):
             s = s.sort_values("learning_rate")
@@ -650,11 +637,14 @@ def tradeoff(overview: pd.DataFrame, *, track: str, title: str):
                        marker=marker, edgecolors="none", alpha=style.FILLED_ALPHA, zorder=3)
         _zero(ax)
         _zero(ax, "x")
-        from matplotlib.ticker import MaxNLocator
-        ax.xaxis.set_major_locator(MaxNLocator(nbins=3))
+        ax.xaxis.set_major_locator(MaxNLocator(nbins=4))
+        ax.yaxis.set_major_locator(MaxNLocator(nbins=4))
         ax.set_title(model)
-        ax.set_xlabel(f"Held-out credit Δ {SCORE[track]}")
-    axes[0, 0].set_ylabel(f"Retention panel Δ {SCORE[track]}")
+    for k, ax in enumerate(axes.ravel()[:len(models)]):
+        if k + ncols >= len(models):
+            ax.set_xlabel(f"Held-out credit Δ {SCORE[track]}")
+        if k % ncols == 0:
+            ax.set_ylabel(f"Retention Δ {SCORE[track]}")
     for scope in [s for s in style.SCOPE_COLORS if s in set(o.trainable)]:
         _proxy_point(axes[0, 0], style.SCOPE_NAMES[scope], color=style.SCOPE_COLORS[scope], marker="s"
                      if scope != "all" else "o", s=20)
@@ -730,12 +720,12 @@ def episode_matched_context(gains: pd.DataFrame, *, title: str):
             ax.plot(s.episode_rows, s["mean"], color=palette[context], marker="o", markersize=3, linewidth=1.0)
         _zero(ax)
         ax.set_xscale("log", base=2)
-        ax.set_xticks(sorted(gains.episode_rows.unique()), [f"{int(v):,}" for v in sorted(gains.episode_rows.unique())],
-                      rotation=30)
+        ticks = [v for v in sorted(gains.episode_rows.unique()) if float(np.log2(v)).is_integer()]
+        ax.set_xticks(ticks, [f"{int(v) // 1024}k" for v in ticks])
         ax.minorticks_off()
         ax.set_title(model)
-        ax.set_xlabel("Training episode rows")
-    axes[0, 0].set_ylabel("Δ AUC vs original")
+        ax.set_xlabel("Episode rows")
+    axes[0, 0].set_ylabel("Δ AUC (CPT − original)")
     for context in contexts:
         _proxy_line(axes[0, 0], names[context], color=palette[context], marker="o", markersize=3)
     axes[0, 0].legend()
@@ -784,40 +774,35 @@ def quality_cost(overview: pd.DataFrame, resources: pd.DataFrame, *, title: str)
 
 
 # ------------------------------------------------------------------- RQ4 figures
-def context_curves(table: pd.DataFrame, curve: pd.DataFrame, *, track: str, title: str):
-    """Columns: model. Top: equal-table mean score of the original (dashed) and the CPT model
-    (solid) against the labelled context rows, over the tables that reach every plotted size.
-    Bottom: per-table gain (thin grey, up to each table's largest size) and the same fixed-cohort
-    equal-table mean gain."""
+def context_curves(table: pd.DataFrame, curve: pd.DataFrame, *, title: str):
+    """Rows: task; columns: model. Per-table gain of the CPT model over the original at each number
+    of labelled context rows (thin grey, up to each table's largest size) and the equal-table mean
+    over the tables that reach every plotted size (the fixed cohort)."""
     if _empty(table) or _empty(curve):
         return None
-    t = table[(table.track == track) & ~table.full]
-    cv = curve[(curve.track == track) & curve.fixed_cohort]
-    if t.empty or cv.empty:
+    t = table[~table.full]
+    cv = curve[curve.fixed_cohort]
+    tracks = [k for k in TRACKS if k in set(t.track) and k in set(cv.track)]
+    if not tracks:
         return None
     models = _models(t)
-    fig, axes = plt.subplots(2, len(models), sharex=True, sharey="row", squeeze=False,
-                             figsize=(style.WIDTH_FULL, _height(2, style.ROW_HEIGHT * 1.3)))
-    for c, model in enumerate(models):
-        color = style.model_color(model)
-        m = cv[cv.model == model].sort_values("context_rows")
-        top, bottom = axes[0, c], axes[1, c]
-        for start in ("original", "cpt"):
-            top.plot(m.context_rows, m[start], color=color, linestyle=style.START_LINESTYLES[start],
-                     linewidth=1.1)
-        for _, s in t[t.model == model].groupby("dataset_id"):
-            s = s.sort_values("context_rows")
-            bottom.plot(s.context_rows, s.gain, color=style.CONNECTOR_COLOR, linewidth=style.TABLE_CURVE_LINE)
-        bottom.plot(m.context_rows, m.gain, color=color, linewidth=style.MEAN_CURVE_LINE)
-        _zero(bottom)
-        bottom.set_xscale("log")
-        bottom.set_xlabel("Labelled context rows")
-        top.set_title(model)
-    axes[0, 0].set_ylabel(SCORE[track])
-    axes[1, 0].set_ylabel(f"Δ {SCORE[track]} (CPT − original)")
-    for start in ("original", "cpt"):
-        _proxy_line(axes[0, 0], style.START_LABELS[start], color=style.COLORS["mean"],
-                    linestyle=style.START_LINESTYLES[start])
+    fig, axes = plt.subplots(len(tracks), len(models), sharex=True, sharey="row", squeeze=False,
+                             figsize=(style.WIDTH_FULL, _height(len(tracks), style.ROW_HEIGHT * 1.25)))
+    for r, track in enumerate(tracks):
+        for c, model in enumerate(models):
+            ax = axes[r, c]
+            for _, s in t[(t.track == track) & (t.model == model)].groupby("dataset_id"):
+                s = s.sort_values("context_rows")
+                ax.plot(s.context_rows, s.gain, color=style.CONNECTOR_COLOR, linewidth=style.TABLE_CURVE_LINE)
+            m = cv[(cv.track == track) & (cv.model == model)].sort_values("context_rows")
+            ax.plot(m.context_rows, m.gain, color=style.model_color(model), linewidth=style.MEAN_CURVE_LINE)
+            _zero(ax)
+            ax.set_xscale("log")
+            if r == 0:
+                ax.set_title(model)
+        axes[r, 0].set_ylabel(f"{TRACK_NAME[track]}: Δ {SCORE[track]}")
+    for ax in axes[-1]:
+        ax.set_xlabel("Context rows")
     _proxy_line(axes[0, 0], "Single table", color=style.CONNECTOR_COLOR, linewidth=style.TABLE_CURVE_LINE)
     _proxy_line(axes[0, 0], "Equal-table mean, fixed cohort", color=style.COLORS["mean"],
                 linewidth=style.MEAN_CURVE_LINE)
@@ -842,7 +827,7 @@ def gain_vs_properties(merged: pd.DataFrame, *, track: str, title: str, properti
                   if p in merged and merged[p].notna().any()]
     if not properties:
         return None
-    columns = 3
+    columns = 2 if len(properties) <= 4 else 3
     nrows = int(np.ceil(len(properties) / columns))
     fig, axes = plt.subplots(nrows, columns, sharey=True, squeeze=False,
                              figsize=(style.WIDTH_FULL, _height(nrows, style.ROW_HEIGHT * 1.25)))
@@ -879,6 +864,8 @@ def transfer_heatmaps(long: pd.DataFrame, *, track: str, title: str):
     targets = sorted(sub.target.unique())
     values = sub.change.to_numpy(dtype=float)
     extent = max(float(np.nanmax(np.abs(values))) if np.isfinite(values).any() else 0.0, 1e-6)
+    # Tables are numbered in id order; the key travels with the figure's report tables.
+    codes = {t: str(i + 1) for i, t in enumerate(sorted(set(sources) | set(targets)))}
     ncols = 2 if len(models) > 1 else 1
     nrows = int(np.ceil(len(models) / ncols))
     fig, axes = plt.subplots(nrows, ncols, squeeze=False, figsize=(style.WIDTH_FULL, style.MAX_HEIGHT))
@@ -894,16 +881,17 @@ def transfer_heatmaps(long: pd.DataFrame, *, track: str, title: str):
         ax.grid(False)
         ax.set_title(model)
         row, col = divmod(k, ncols)
-        ax.set_yticks(range(len(sources)), [display_name(s) for s in sources] if col == 0 else [])
-        ax.set_xticks(range(len(targets)), [display_name(t) for t in targets] if row == nrows - 1 or
-                      k + ncols >= len(models) else [], rotation=90)
-        ax.tick_params(length=0)
+        ax.set_yticks(range(len(sources)), [codes[s] for s in sources] if col == 0 else [])
+        ax.set_xticks(range(len(targets)), [codes[t] for t in targets] if row == nrows - 1 or
+                      k + ncols >= len(models) else [])
+        ax.tick_params(length=0, labelsize=style.ANNOTATION_SIZE - 1)
         if col == 0:
-            ax.set_ylabel("Source table")
+            ax.set_ylabel("Source table (number)")
         if row == nrows - 1:
-            ax.set_xlabel("Target table")
+            ax.set_xlabel("Target table (number)")
     for ax in axes.ravel()[len(models):]:
         ax.set_visible(False)
     fig.colorbar(image, ax=axes.ravel().tolist(), label=f"Δ {SCORE[track]} (monitor)", shrink=0.8)
     fig.suptitle(title)
-    return _report(fig, transfer=sub[["model", "source", "target", "change"]])
+    key = pd.DataFrame([dict(number=int(n), table=display_name(t)) for t, n in codes.items()])
+    return _report(fig, table_numbers=key, transfer=sub[["model", "source", "target", "change"]])
