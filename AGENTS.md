@@ -118,13 +118,14 @@ Newest first, dates `DD-MM-YYYY`.
 - A notebook contains **no `def` and no `class`** — logic goes in `src/` — and its **last code
   cell prints a text summary**, section by section, in the notebook's own section order.
 - Notebooks follow the four RQs and twelve experiments of `config/design.yaml`:
-  RQ1 E1 reference, E2 seeds, E3 matched non-credit domain control, E4 CPT vs target
-  fine-tuning; RQ2 E5 update size × L2-SP, E6 trainable scope, E12 training precision (numerical control);
-  RQ3 E7 exposure (full pass, 10,000 updates), E8 small vs large tables, E9 episode size; RQ4 E10 context scarcity (context curves),
-  E11 single-source transfer matrix and the per-table analysis.
+  RQ1 E1 reference, E2 seeds, E3 training precision (numerical control), E4 matched non-credit
+  domain control, E5 CPT vs target fine-tuning; RQ2 E6 update size × L2-SP, E7 trainable scope;
+  RQ3 E8 exposure (full pass, 10,000 updates), E9 small vs large tables, E10 episode size;
+  RQ4 E11 context scarcity (context curves), E12 single-source transfer matrix and the
+  per-table analysis.
   Experiment 0 owns validation (`experiment0/`); corpus notebooks use `general/`. Folders are
   `rq1/`–`rq3/` (one `01_training` and one `02_results` notebook each), `rq4/`, `experiment0/`
-  and `general/`. E1 is the shared control of E2, E3, E5–E9 and E12: never count it twice. Combine
+  and `general/`. E1 is the shared control of E2–E4 and E6–E10: never count it twice. Combine
   experiments in a figure when their quantities and comparison units agree; retain
   individual-table evidence.
 - **Never pick a colour or a size.** `src/visualize/style.py` owns both, so every notebook here
@@ -209,7 +210,7 @@ anything is finished.
 - **Entry points:** `scripts/{data,train,eval}_pipeline.py` and `scripts/probe_row_cap.py`,
   submitted through `scripts/slurm/`: `campaign_cpu.slurm` (Experiment 0 controller, per-experiment
   submission, summary), `pilot_gpu.slurm`, `run_experiment.sh` (train/eval chains over `train_pd`/`train_lgd`
-  and `eval_pd`/`eval_lgd`/`eval_classical`), `campaign_eval_gpu.slurm` (E4 fine-tuning and E10
+  and `eval_pd`/`eval_lgd`/`eval_classical`), `campaign_eval_gpu.slurm` (E5 fine-tuning and E11
   context curves via `src/eval/campaign_tasks.py`), `runtime_{build,cpu,gpu}.slurm`, `data.slurm`
   and `probe_row_cap.slurm`. Everything else is a utility under `src/utils/`, run with `python -m`.
 

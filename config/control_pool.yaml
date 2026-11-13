@@ -1,4 +1,4 @@
-# Candidate non-credit tables for the matched domain control (E3). Source: the curated OpenML
+# Candidate non-credit tables for the matched domain control (E4). Source: the curated OpenML
 # suites TabArena-v0.1 (study 457), OpenML-CC18 (99), OpenML-CTR23 (353), the AutoML Benchmark
 # (271 classification, 269 regression) and the Grinsztajn et al. benchmark (334-337); metadata
 # (rows, features, categorical features) from OpenML's dataset qualities, retrieved 05-11-2026.

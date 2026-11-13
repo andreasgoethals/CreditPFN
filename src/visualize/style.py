@@ -491,15 +491,15 @@ SCOPE_LINESTYLES = {"test": "-", "train": "--", "ood": ":"}
 SCOPE_ALPHA = {"test": 1.0, "train": 0.75, "ood": 0.75}
 SEED_BAND_ALPHA = 0.22
 
-#: L2-SP strength (E5) as marker shape; the reference strength is the filled circle.
+#: L2-SP strength (E6) as marker shape; the reference strength is the filled circle.
 LAMBDA_MARKERS = {0.0: "v", 0.003: "o", 0.03: "^"}
-#: Trainable scope (E6, plus the full-weight reference) as colour in the trade-off figure.
+#: Trainable scope (E7, plus the full-weight reference) as colour in the trade-off figure.
 SCOPE_COLORS = {"all": "#000000", "frozen_backbone": "#7F7F7F", "diagscale": "#56B4E9",
                 "lora_qv_r16": "#D55E00"}
 SCOPE_NAMES = {"all": "All weights", "frozen_backbone": "Frozen backbone", "diagscale": "DiagScale",
                "lora_qv_r16": "LoRA r16 (query, value)"}
 
-#: E4 conditions relative to the original model without fine-tuning.
+#: E5 conditions relative to the original model without fine-tuning.
 CONDITION_LABELS = {"cpt": "CPT: continued pretraining only", "finetune": "FT: original fine-tuned on the fold",
                     "cpt_finetune": "CPT+FT: CPT model fine-tuned on the fold"}
 CONDITION_TICKS = {"cpt": "CPT", "finetune": "FT", "cpt_finetune": "CPT+FT"}
@@ -534,7 +534,7 @@ def ordered(names) -> dict:
     low, high = ORDERED_RANGE
     steps = np.linspace(low, high, max(len(names), 2))[:len(names)] if len(names) > 1 else [low]
     return {name: mpl.colors.to_hex(cmap(step)) for name, step in zip(names, steps)}
-#: L2-SP strength as line style where lines connect learning rates (E5 dose response).
+#: L2-SP strength as line style where lines connect learning rates (E6 dose response).
 LAMBDA_LINESTYLES = {0.0: "--", 0.003: "-", 0.03: ":"}
 #: Experiment family as marker in the quality-versus-cost view.
 SLUG_MARKERS = {"reference": "o", "exposure": "s", "episode_size": "^", "table_size": "X"}
@@ -546,5 +546,5 @@ SIZE_RANGE = (8, 46)
 #: Categorical colours for experiment arms drawn inside one model's panel. They avoid the four
 #: model hues, so a colour never means "TabPFN v3" in one figure and "full pass" in another.
 ARM_PALETTE = ("#D55E00", "#56B4E9", "#882255", "#7F7F7F", "#44AA99", "#332288", "#999933", "#AA4499")
-#: Two learning rates of one trainable scope (E6): the lower dashed, the higher solid.
+#: Two learning rates of one trainable scope (E7): the lower dashed, the higher solid.
 RATE_LINESTYLES = ("--", "-")

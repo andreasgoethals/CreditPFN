@@ -509,7 +509,7 @@ def split_from_cfg(cfg, *, track: str | None = None,
                              + int(corpus.get("fold", 0) or 0))
 
 
-#: Tables with more rows than this are "large" (E8 table size, E9 episode size).
+#: Tables with more rows than this are "large" (E9 table size, E10 episode size).
 SIZE_THRESHOLD = 10000
 SIZE_POLICIES = ("small_only", "large_matched")
 
@@ -545,7 +545,7 @@ TRAIN_SOURCES = ("domain_control",)
 
 
 def training_source_split(split: CorpusSplit, source: str, track: str) -> CorpusSplit:
-    """Domain control (E3): replace each credit training table by its matched non-credit twin.
+    """Domain control (E4): replace each credit training table by its matched non-credit twin.
 
     The partition trains on the twins of exactly its own credit training tables (same number of
     tables, matched rows and features; ``src.data.control_matching``). The held-out credit

@@ -3,7 +3,7 @@
 # One reference recipe; every experiment changes only the settings listed in its arms.
 # Anything not listed MUST equal the reference; tests/test_design.py fails on undeclared
 # differences. Training runs = models x partitions x tasks x arms. E1 is the shared control of
-# E2, E3, E5-E9 and E12 and is never re-run; generated configs live in config/experiments/ (do not edit).
+# E2-E4 and E6-E10 and is never re-run; generated configs live in config/experiments/ (do not edit).
 
 schema: 2
 models: [v2, v2.6, v3, tabicl-v2]
@@ -20,7 +20,7 @@ reference:
   min_lr_fraction: 0.05
   grad_clip_norm: 1.0
   trainable: all
-  successful_updates: 2500   # monitored densely; E7 carries a 10,000-update arm
+  successful_updates: 2500   # monitored densely; E8 carries a 10,000-update arm
   episode_rows: {v2: 10000, v2.6: 10000, v3: 26000, tabicl-v2: 26000}
   query_fraction: 0.40       # 60/40 context/query, as Real-TabPFN
   pd_class_sampling: proportional
@@ -47,7 +47,7 @@ reference:
 baselines: [catboost, xgboost, linear]     # CatBoost, XGBoost and logistic (PD) / linear (LGD) regression
 
 experiments:
-  # ---------------------------------------------------------------- RQ1: transfer
+  # ---------------------------------------------------------------- RQ1: transfer and its validity
   E1:
     slug: reference
     rq: 1
@@ -61,6 +61,18 @@ experiments:
     tasks: [pd, lgd]
     arms: [{seed: 43}, {seed: 44}]   # with E1 (seed 42): three seeds of the reference
   E3:
+    slug: precision
+    rq: 1
+    question: Does the training precision change what CPT learns, beyond changing the update-zero gradient?
+    tasks: [pd, lgd]
+    # The reference is FP16 with loss scaling. BF16 gradients disagreed with FP32 at update zero for
+    # TabPFN v2.6 and v3; TabICLv2 is compared with strict FP32 (it fits in memory; BF16 is refused
+    # for it). FP32 does not fit for TabPFN on wide PD tables at the reference episode size.
+    # LGD is included as the contrast: its BF16 gradients agreed with FP32 far better than PD's.
+    arms:
+      - {training_precision: bf16, models: [v2.6, v3]}
+      - {training_precision: fp32, models: [tabicl-v2]}
+  E4:
     slug: domain_control
     rq: 1
     question: Is the transfer domain-specific, or would CPT on comparable non-credit real tables do the same?
@@ -68,7 +80,7 @@ experiments:
     # Each credit training table is replaced by its matched non-credit twin (same number of tables,
     # matched rows, features and categorical features; config/domain_control.yaml).
     arms: [{corpus: domain_control}]
-  E4:
+  E5:
     slug: target_finetune
     rq: 1
     kind: finetune
@@ -82,7 +94,7 @@ experiments:
     recipe: {epochs: 30, learning_rates: [1.0e-6, 1.0e-5, 6.5e-5], early_stopping_patience: 8, validation_fraction: 0.20}
     outer_folds: 5
   # ------------------------------------------------------- RQ2: controlling weight change
-  E5:
+  E6:
     slug: update_size_anchoring
     rq: 2
     question: How do update size and anchoring trade transfer against forgetting?
@@ -97,7 +109,7 @@ experiments:
       - {learning_rate: 1.0e-5, l2sp_lambda: 0.0}
       - {learning_rate: 1.0e-5, l2sp_lambda: 0.03}
       - {l2sp_lambda: 0.0}     # anchoring off at the reference rate: what L2-SP does in the reference itself
-  E6:
+  E7:
     slug: scope
     rq: 2
     question: Which parameters should change?
@@ -109,7 +121,8 @@ experiments:
       - {trainable: diagscale, learning_rate: 1.0e-3}
       - {trainable: lora_qv_r16, learning_rate: 3.0e-6}
       - {trainable: lora_qv_r16, learning_rate: 1.0e-5}
-  E7:
+  # ------------------------------------------------------------- RQ3: training data
+  E8:
     slug: exposure
     rq: 3
     question: Does more exposure help, as every row per visit (full passes, one update per chunk) or as four times as many updates?
@@ -117,7 +130,7 @@ experiments:
     arms:
       - {exposure: full_pass}
       - {successful_updates: 10000}
-  E8:
+  E9:
     slug: table_size
     rq: 3
     question: Small or large training tables, at an equal number of tables?   # compares selected corpora, not table size alone
@@ -125,7 +138,7 @@ experiments:
     arms:
       - {corpus: small_only}
       - {corpus: large_matched}
-  E9:
+  E10:
     slug: episode_size
     rq: 3
     question: Do larger training episodes help, at equal updates, rows seen and compute?
@@ -138,7 +151,7 @@ experiments:
       - {corpus: tables_above_10000_rows}   # reference episode size on this corpus: separates episode size from the corpus restriction
     matched_context_evaluation: [2048, 8192, full]
   # ------------------------------------------------------------ RQ4: when and why
-  E10:
+  E11:
     slug: context
     rq: 4
     kind: inference
@@ -149,7 +162,7 @@ experiments:
     context_rows: [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 50000]
     include_full_available: true
     max_context_rows: {v2: 10000, v2.6: 50000, v3: 50000, tabicl-v2: 50000}
-  E11:
+  E12:
     slug: transfer
     rq: 4
     kind: transfer
@@ -158,18 +171,6 @@ experiments:
     successful_updates: 2500
     learning_rate: 1.0e-6    # one table moves little at 3e-7; 1e-6 was neutral on held-out tables in the first study
     evaluation: the training monitor on every other table of the task and the retention panel (one fixed split, up to 10,000 rows per table, two views), start versus end; no five-fold evaluation
-  # ------------------------------------------------- numerical control (reported with RQ2)
-  E12:
-    slug: precision
-    rq: 2
-    question: Does the training precision change what CPT learns, beyond changing the update-zero gradient?
-    tasks: [pd]
-    # The reference is FP16 with loss scaling. BF16 gradients disagreed with FP32 at update zero for
-    # TabPFN v2.6 and v3; TabICLv2 is compared with strict FP32 (it fits in memory; BF16 is refused
-    # for it). FP32 does not fit for TabPFN on wide PD tables at the reference episode size.
-    arms:
-      - {training_precision: bf16, models: [v2.6, v3]}
-      - {training_precision: fp32, models: [tabicl-v2]}
 
 # Experiment 0 (debugging only): mechanics, timing, memory and sanity, never a scientific result.
 experiment0:
@@ -182,7 +183,7 @@ experiment0:
     sanity_single:  {tasks: [pd, lgd], arm: {single_source: 0, learning_rate: 1.0e-5, successful_updates: 250}}
     lr1e5:          {tasks: [pd, lgd], arm: {learning_rate: 1.0e-5, successful_updates: 250}}
     lr1e8:          {tasks: [pd, lgd], arm: {learning_rate: 1.0e-8, successful_updates: 250}}   # dose response 0 / 1e-8 / 3e-7 / 1e-5
-    l2sp0:          {tasks: [pd, lgd], arm: {learning_rate: 1.0e-5, l2sp_lambda: 0.0, successful_updates: 250}}   # E5's unanchored full-weight arms
+    l2sp0:          {tasks: [pd, lgd], arm: {learning_rate: 1.0e-5, l2sp_lambda: 0.0, successful_updates: 250}}   # E6's unanchored full-weight arms
     noclip:         {tasks: [pd, lgd], arm: {grad_clip_norm: null, successful_updates: 250}}      # clipping was active on nearly every LGD update
     bar_nll:        {tasks: [lgd], arm: {regression_objective: bar_nll, models: [v2, v2.6, v3], successful_updates: 250}}
     frozen:         {tasks: [pd, lgd], arm: {trainable: frozen_backbone, learning_rate: 3.0e-6, successful_updates: 250}}
@@ -197,8 +198,8 @@ experiment0:
     episode16384:   {tasks: [pd], arm: {corpus: tables_above_10000_rows, episode_rows: 16384, models: [v3, tabicl-v2], successful_updates: 250}}
     transfer:       {tasks: [pd, lgd], arm: {single_source: 1, learning_rate: 1.0e-6, successful_updates: 250}}
     domain_control: {tasks: [pd, lgd], arm: {corpus: domain_control, successful_updates: 250}}
-    bf16:           {tasks: [pd], arm: {training_precision: bf16, models: [v2.6, v3], successful_updates: 250}}
-    fp32:           {tasks: [pd], arm: {training_precision: fp32, models: [tabicl-v2], successful_updates: 250}}
+    bf16:           {tasks: [pd, lgd], arm: {training_precision: bf16, models: [v2.6, v3], successful_updates: 250}}
+    fp32:           {tasks: [pd, lgd], arm: {training_precision: fp32, models: [tabicl-v2], successful_updates: 250}}
   recovery:          # interrupted at `interrupt_after`, resumed, compared with an uninterrupted twin
     successful_updates: 100
     interrupt_after: 60

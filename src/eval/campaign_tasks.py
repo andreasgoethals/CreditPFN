@@ -1,9 +1,9 @@
 """Evaluation tasks over held-out tables, one model, table and outer fold per task:
 
-* ``context`` (E10): original and E1 model at nested labelled-context sizes;
-* ``finetune`` (E4): fine-tuning on the target fold from the original and from the E1 model,
+* ``context`` (E11): original and E1 model at nested labelled-context sizes;
+* ``finetune`` (E5): fine-tuning on the target fold from the original and from the E1 model,
   at the candidate learning rate with the best inner-validation score;
-* ``episode_context`` (E9): each episode-size model at fixed contexts of 2,048 and 8,192 rows and
+* ``episode_context`` (E10): each episode-size model at fixed contexts of 2,048 and 8,192 rows and
   the full fold, so the effect of training-episode size can be read at matched inference context
   (the original model's scores at these sizes come from ``context``, same rows).
 

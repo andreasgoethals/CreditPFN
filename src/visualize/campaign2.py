@@ -443,7 +443,7 @@ def seed_noise(track: str) -> pd.DataFrame:
 
 
 def domain_control_gains(track: str) -> pd.DataFrame:
-    """E3 versus E1, per held-out credit table and model: gain of credit CPT, of CPT on the matched
+    """E4 versus E1, per held-out credit table and model: gain of credit CPT, of CPT on the matched
     non-credit twins, and their difference. Positive: the credit data helped more than comparable
     non-credit data."""
     credit, control = endpoint_gains("reference", track), endpoint_gains("domain_control", track)
@@ -503,7 +503,7 @@ def gain_intervals(slug: str, track: str) -> pd.DataFrame:
 
 def domain_control_intervals(track: str) -> pd.DataFrame:
     """Difference in differences per model on the held-out credit tables: gain of credit CPT (E1)
-    minus gain of CPT on the matched non-credit twins (E3), fold by fold on identical rows, with
+    minus gain of CPT on the matched non-credit twins (E4), fold by fold on identical rows, with
     its 95% hierarchical-bootstrap interval. Positive: credit data helped more."""
     metric, _, _ = TRACK_METRIC[track]
     credit, control = _paired("reference", track, [metric]), _paired("domain_control", track, [metric])
@@ -557,7 +557,7 @@ def precision_agreement(summary: dict | None) -> pd.DataFrame:
 
 def cost_comparison(resources: pd.DataFrame, finetune: pd.DataFrame) -> pd.DataFrame:
     """GPU hours per task and model: CPT with the reference recipe (E1, all partitions, paid once
-    for every future table) against fine-tuning on a target table (E4, original start, per table:
+    for every future table) against fine-tuning on a target table (E5, original start, per table:
     all candidate rates, summed over the five folds)."""
     rows = []
     if not resources.empty:
@@ -580,7 +580,7 @@ def cost_comparison(resources: pd.DataFrame, finetune: pd.DataFrame) -> pd.DataF
 
 
 def task_results(kind: str) -> pd.DataFrame:
-    """All finished E4 (``finetune``), E9 (``episode_context``) or E10 (``context``) task CSVs."""
+    """All finished E5 (``finetune``), E10 (``episode_context``) or E11 (``context``) task CSVs."""
     from src.eval.campaign_tasks import SLUGS
     from src.utils.paths import results_dir
     try:
@@ -600,7 +600,7 @@ def _all_folds(frame: pd.DataFrame, keys: list[str]) -> pd.DataFrame:
 
 
 def finetune_summary(results: pd.DataFrame) -> pd.DataFrame:
-    """E4 per model and start (original, CPT): the untuned and the fine-tuned score on identical
+    """E5 per model and start (original, CPT): the untuned and the fine-tuned score on identical
     rows and their paired difference, averaged within table first (tables with all five folds)."""
     if results.empty or "finetuned" not in results:
         return pd.DataFrame()
@@ -627,7 +627,7 @@ def finetune_summary(results: pd.DataFrame) -> pd.DataFrame:
 
 
 def context_gain_curve(results: pd.DataFrame, *, common_up_to: int | None = None) -> pd.DataFrame:
-    """E10: CPT minus original at each labelled-context size, per model, averaged within table
+    """E11: CPT minus original at each labelled-context size, per model, averaged within table
     first (tables with all five folds at that size).
 
     Larger sizes exist only for larger tables, so the table population changes along the curve.
@@ -660,7 +660,7 @@ def context_gain_curve(results: pd.DataFrame, *, common_up_to: int | None = None
 
 
 def episode_context_summary(results: pd.DataFrame) -> pd.DataFrame:
-    """E9 at matched inference context: mean AUC per episode-size arm, model and context size."""
+    """E10 at matched inference context: mean AUC per episode-size arm, model and context size."""
     if results.empty or "roc_auc" not in results:
         return pd.DataFrame()
     results = _all_folds(results, ["arm", "model", "context_rows", "dataset_id"])
@@ -669,9 +669,9 @@ def episode_context_summary(results: pd.DataFrame) -> pd.DataFrame:
 
 
 # ------------------------------------------------------------------- arm settings and labels
-_SLUG_EXPERIMENT = {"reference": "E1", "seed": "E2", "domain_control": "E3", "update_size_anchoring": "E5",
-                    "scope": "E6", "exposure": "E7", "table_size": "E8",
-                    "episode_size": "E9", "transfer": "E11", "precision": "E12"}
+_SLUG_EXPERIMENT = {"reference": "E1", "seed": "E2", "domain_control": "E4", "update_size_anchoring": "E6",
+                    "scope": "E7", "exposure": "E8", "table_size": "E9",
+                    "episode_size": "E10", "transfer": "E12", "precision": "E3"}
 
 
 def _rate(value: float) -> str:
@@ -900,7 +900,7 @@ def _model_label(value) -> str:
 
 
 def finetune_table(results: pd.DataFrame) -> pd.DataFrame:
-    """E4 per track, model and table (all five folds): the original model without fine-tuning,
+    """E5 per track, model and table (all five folds): the original model without fine-tuning,
     CPT without fine-tuning, fine-tuning from the original and fine-tuning from CPT, each as a
     mean over the paired folds, and each condition's change relative to the original model."""
     if results.empty or "finetuned" not in results:
@@ -930,12 +930,12 @@ def finetune_table(results: pd.DataFrame) -> pd.DataFrame:
 
 
 def context_table(results: pd.DataFrame) -> pd.DataFrame:
-    """E10 per track, model, table and labelled-context size (all five folds): original and CPT
+    """E11 per track, model, table and labelled-context size (all five folds): original and CPT
     means and the paired gain. ``full`` marks the size that used the whole available pool
     (capped at the model's context limit) rather than a declared grid size."""
     if results.empty or "context_rows" not in results:
         return pd.DataFrame()
-    grid = set(int(v) for v in load_design()["experiments"]["E10"]["context_rows"])
+    grid = set(int(v) for v in load_design()["experiments"]["E11"]["context_rows"])
     rows = []
     for track, metric in (("pd", "roc_auc"), ("lgd", "r2")):
         sub = results[results.track == track]
@@ -958,7 +958,7 @@ def context_table(results: pd.DataFrame) -> pd.DataFrame:
 
 
 def context_cohort_curve(table: pd.DataFrame) -> pd.DataFrame:
-    """Equal-table means of the E10 table per track, model and grid size. ``fixed_cohort`` is true
+    """Equal-table means of the E11 table per track, model and grid size. ``fixed_cohort`` is true
     up to the largest size every table of that model reached, so the mean there compares the same
     tables throughout; beyond it the population shrinks with the size."""
     if table.empty:
@@ -974,8 +974,8 @@ def context_cohort_curve(table: pd.DataFrame) -> pd.DataFrame:
 
 
 def episode_context_gains(episode: pd.DataFrame, context: pd.DataFrame) -> pd.DataFrame:
-    """E9 at matched inference context: each episode-size model minus the original model scored
-    by E10 with the same context rows of the same fold, per arm, model and table (five folds)."""
+    """E10 at matched inference context: each episode-size model minus the original model scored
+    by E11 with the same context rows of the same fold, per arm, model and table (five folds)."""
     if episode.empty or context.empty or "roc_auc" not in episode or "roc_auc" not in context:
         return pd.DataFrame()
     original = context[(context.track == "pd") & (context.start == "original")][
@@ -989,7 +989,7 @@ def episode_context_gains(episode: pd.DataFrame, context: pd.DataFrame) -> pd.Da
     merged = _all_folds(merged, ["arm", "model", "dataset_id", "context_rows"])
     if merged.empty:
         return pd.DataFrame()
-    grid = set(int(v) for v in load_design()["experiments"]["E9"]["matched_context_evaluation"][:-1])
+    grid = set(int(v) for v in load_design()["experiments"]["E10"]["matched_context_evaluation"][:-1])
     merged["context"] = [str(int(c)) if int(c) in grid else "full" for c in merged.context_rows]
     out = (merged.groupby(["arm", "model", "dataset_id", "context"])
            .agg(gain=("gain", "mean"), context_rows=("context_rows", "mean")).reset_index())
@@ -1002,7 +1002,7 @@ def episode_context_gains(episode: pd.DataFrame, context: pd.DataFrame) -> pd.Da
     return out
 
 
-# ------------------------------------------------------------------------ E11 transfer
+# ------------------------------------------------------------------------ E12 transfer
 def transfer_sources(track: str) -> dict[int, str]:
     """Single-source arm index -> source table id (tables of the task sorted by id)."""
     try:
@@ -1013,7 +1013,7 @@ def transfer_sources(track: str) -> dict[int, str]:
 
 
 def transfer_long(frame: pd.DataFrame, track: str) -> pd.DataFrame:
-    """E11: per model, source arm and target table, the monitor change from the first to the last
+    """E12: per model, source arm and target table, the monitor change from the first to the last
     monitor point (AUC for PD, R² for LGD; one fixed split per target, not five-fold)."""
     changes = monitor_table_changes(frame[frame.slug == "transfer"] if not frame.empty else frame,
                                     track, scopes=("test", "ood"))
@@ -1028,7 +1028,7 @@ def transfer_long(frame: pd.DataFrame, track: str) -> pd.DataFrame:
 
 
 def transfer_matrix(frame: pd.DataFrame, track: str, model: str) -> pd.DataFrame:
-    """E11: source (rows) × held-out credit target (columns) monitor change at the end of CPT."""
+    """E12: source (rows) × held-out credit target (columns) monitor change at the end of CPT."""
     long = transfer_long(frame, track)
     if long.empty:
         return pd.DataFrame()

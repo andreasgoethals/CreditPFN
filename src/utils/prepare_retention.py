@@ -30,7 +30,7 @@ def sanitize_frame(X: pd.DataFrame, y, item: dict, cats: list[str]):
     cfg = OmegaConf.load(REPO_ROOT / "config" / "data.yaml")
     cfg.sanitize.lgd_target_clip.enabled = False
     if "match" in item:
-        # E3 twins keep every clean column here: control_matching.apply_match then selects the
+        # E4 twins keep every clean column here: control_matching.apply_match then selects the
         # credit table's number of categorical and numeric features (never more than the cap).
         cfg.sanitize.max_columns = 10**9
     nums = [c for c in X if c not in cats]
@@ -140,7 +140,7 @@ def prepare(panels=PANELS, root=None, *, supersede_changed=False):
                 raise ValueError(f"Unknown retention preprocessing: {item['preprocessing']}")
             else:
                 X["target"] = y
-            if "match" in item:   # E3 twin: subsample to its credit table's rows and feature types
+            if "match" in item:   # E4 twin: subsample to its credit table's rows and feature types
                 from src.data.control_matching import apply_match
                 processing["unmatched_rows"], processing["unmatched_features"] = len(X), len(X.columns) - 1
                 X, cats = apply_match(X, cats, item["match"], item["track"], seed=int(item["data_id"]))

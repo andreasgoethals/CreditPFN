@@ -90,7 +90,7 @@ def code_identity(root: Path | None = None, *, stage: str = "train") -> str:
         # orchestration and submitters. Shared numerical metrics remain covered.
         folders = ("src/train",)
         # The training monitor scores through the benchmark's encoder, wrappers and scorer, and
-        # the E3 control corpus is the generated twin panel.
+        # the E4 control corpus is the generated twin panel.
         files = ("scripts/train_pipeline.py", "src/eval/metrics.py", "src/eval/benchmark.py",
                  "src/eval/dataset_loader.py", "src/data/control_matching.py", "config/domain_control.yaml",
                  "scripts/data_pipeline.py", "src/data/__init__.py", "src/data/preprocessing.py",

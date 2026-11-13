@@ -2,6 +2,7 @@
 
 ## 13-11-2026
 
+- Grid reordered by research question (agreed): precision control is E3 in RQ1 (next to the seeds) and covers PD and LGD; former E3-E11 are E4-E12. 800 standard runs plus 100 single-source runs. Earlier entries keep the numbers of their day.
 - Fix: LGD table 0005 no longer keeps the client identifier `spm`; LGD table 0007 parses `int_rate` and `revol_util` percentages as numbers. Processed data must be rebuilt.
 - Experiment 0 precision check covers every training table of the partition; pilots `bf16` and `fp32` added for E12.
 - Grid (agreed): reference budget 2,500 updates; E7 gains a 10,000-update arm; new E12 (numerical control, PD): BF16 for TabPFN v2.6/v3 and FP32 for TabICLv2 against the FP16 reference. 788 standard runs plus 100 single-source runs.

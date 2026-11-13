@@ -61,7 +61,7 @@ def test_gain_correlations_use_credit_tables_only():
 
 def test_design_table_counts_match_the_design():
     table = c2.design_table()
-    assert table.runs.sum() == 888
+    assert table.runs.sum() == 900
     assert set(table.experiment) == {f"E{i}" for i in range(1, 13)}
 
 

@@ -120,7 +120,7 @@ def trajectories(slug: str, track: str, arms: int = 1, seed: int = 0, *, updates
 
 
 def transfer_trajectories(track: str, seed: int = 0) -> pd.DataFrame:
-    """E11: one short run per source table (arm = source index) scoring every other table."""
+    """E12: one short run per source table (arm = source index) scoring every other table."""
     rng = np.random.default_rng(seed)
     metric = METRIC[track]
     tables = CREDIT[track]
@@ -139,7 +139,7 @@ def transfer_trajectories(track: str, seed: int = 0) -> pd.DataFrame:
 
 
 def finetune(seed: int = 0) -> pd.DataFrame:
-    """E4 task rows: per track, model (design name), table and fold, both starts with and without
+    """E5 task rows: per track, model (design name), table and fold, both starts with and without
     fine-tuning, as ``task_results('finetune')`` returns them."""
     rng = np.random.default_rng(seed)
     rows = []
@@ -156,14 +156,14 @@ def finetune(seed: int = 0) -> pd.DataFrame:
 
 
 def context(seed: int = 0, kind: str = "context") -> pd.DataFrame:
-    """E10 (``context``) or E9 (``episode_context``) task rows with nested context sizes."""
+    """E11 (``context``) or E10 (``episode_context``) task rows with nested context sizes."""
     from src.utils.design import load_design
     design = load_design()
     rng = np.random.default_rng(seed)
     rows = []
     if kind == "context":
-        grid = [int(v) for v in design["experiments"]["E10"]["context_rows"]]
-        caps = design["experiments"]["E10"]["max_context_rows"]
+        grid = [int(v) for v in design["experiments"]["E11"]["context_rows"]]
+        caps = design["experiments"]["E11"]["max_context_rows"]
         for track in ("pd", "lgd"):
             for name in DESIGN_NAMES.values():
                 for i, table in enumerate(CREDIT[track]):
@@ -177,8 +177,8 @@ def context(seed: int = 0, kind: str = "context") -> pd.DataFrame:
                                                  context_rows=size, available_context=available,
                                                  **{METRIC[track]: base + shift + rng.normal(0, .002)}))
         return pd.DataFrame(rows)
-    sizes = design["experiments"]["E9"]["arms"]
-    caps = design["experiments"]["E10"]["max_context_rows"]
+    sizes = design["experiments"]["E10"]["arms"]
+    caps = design["experiments"]["E11"]["max_context_rows"]
     for arm, spec in enumerate(sizes):
         models = spec.get("models", design["models"])
         for name in DESIGN_NAMES.values():

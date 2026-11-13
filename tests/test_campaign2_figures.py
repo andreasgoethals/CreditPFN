@@ -74,7 +74,7 @@ def test_loaders_stay_empty_without_evidence(monkeypatch):
     assert c2.finetune_table(pd.DataFrame()).empty and c2.context_table(pd.DataFrame()).empty
     assert c2.select(pd.DataFrame(), slug="reference").empty
     assert c2.join(pd.DataFrame(), pd.DataFrame(), on=["slug"]).empty
-    assert "No results yet for E5" in c2.evidence_note("E5", pd.DataFrame())
+    assert "No results yet for E6" in c2.evidence_note("E6", pd.DataFrame())
 
 
 # ---------------------------------------------------------------------------- RQ1 results

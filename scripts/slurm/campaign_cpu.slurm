@@ -44,7 +44,7 @@ case "$action" in
         python -m src.utils.campaign_launch prepare config/experiments/E00_pilots
         python -m src.utils.campaign_launch submit-experiment0 config/experiments/E00_pilots ;;
     submit)
-        python -m src.utils.campaign_launch submit "${2:?experiment number, e.g. E5}" ;;
+        python -m src.utils.campaign_launch submit "${2:?experiment number, e.g. E6}" ;;
     summary)
         python -m src.utils.pilot_checks summary ;;
     *) echo 'Unknown campaign action'; exit 2 ;;

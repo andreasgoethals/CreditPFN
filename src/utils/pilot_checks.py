@@ -8,9 +8,9 @@ GPU tasks (one array element each, results in ``experiment0/manifests/campaign2/
 * ``capacity`` (8): the benchmark's own FP32 scoring path for each original model at its largest
   context and the largest test fold, on a synthetic table with the widest feature count; records
   time and peak memory.
-* ``evaluation`` (8): the real E4 fine-tuning and E10 context-curve runner
+* ``evaluation`` (8): the real E5 fine-tuning and E11 context-curve runner
   (``src.eval.campaign_tasks``) in quick mode on the reference pilot, smallest held-out table;
-  for PD also E9's matched-context scoring on the ``episode2048`` pilot.
+  for PD also E10's matched-context scoring on the ``episode2048`` pilot.
 * ``precision`` (8): the update-zero training loss and gradient norm of each original model on
   its four largest training tables at the real episode size, computed by the training loop's own
   ``batch_loss`` in FP32 and in the resolved training precision. The two losses must agree
@@ -216,7 +216,7 @@ def capacity(task: int) -> dict:
 
 # ---------------------------------------------- context curve + target fine-tuning (GPU)
 def evaluation(task: int, folder: Path = FOLDER) -> dict:
-    """E4 fine-tuning and E10 context curves through their real runner, on the reference pilot.
+    """E5 fine-tuning and E11 context curves through their real runner, on the reference pilot.
 
     For one model and track, the smallest held-out table (fold 0) is run by
     ``campaign_tasks.run`` in quick mode for both kinds, exactly as the campaign arrays will run

@@ -1,11 +1,11 @@
-"""Matched non-credit control corpus for the domain-control experiment (E3).
+"""Matched non-credit control corpus for the domain-control experiment (E4).
 
 Every credit table gets one non-credit twin from ``config/control_pool.yaml``, chosen by an
 optimal one-to-one assignment (Hungarian algorithm) that minimises the shortfall of the twin
 against the credit table in rows, features and feature types (categorical vs numeric), with a
 small penalty for excess size. Preparation then subsamples each twin to its credit table's row
 count (stratified for PD) and to its number of categorical and numeric features, so the control
-matches table by table wherever the twin is large enough. In each partition E3 trains on the
+matches table by table wherever the twin is large enough. In each partition E4 trains on the
 twins of exactly that partition's credit training tables (``corpus.training_source_split``):
 same number of tables, matched rows and features. The target is deliberately NOT matched: class
 balance and the LGD target shape are part of what makes a table a credit table.
@@ -109,7 +109,7 @@ def render(panel: dict) -> str:
              "# credit tables. Do not edit; regenerate with `python -m src.data.control_matching --write`.",
              "# One non-credit twin per credit table (`match.twin` is the credit registry number);",
              "# preparation subsamples each twin to `match.rows` rows and `match.features` features of",
-             "# which `match.categorical` categorical, where the twin has them. Used only as E3 training data.",
+             "# which `match.categorical` categorical, where the twin has them. Used only as E4 training data.",
              "domain_control:"]
     for item in panel["domain_control"]:
         m = item["match"]

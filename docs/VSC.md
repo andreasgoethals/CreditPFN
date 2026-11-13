@@ -64,7 +64,7 @@ array (container vs Conda on the same B200, original checkpoints, plus FP32 capa
 1. Edit and test locally (`python -m pytest -q`; notebooks when plotting changes).
 2. Commit and push. On VSC: `git pull --ff-only` in the clean DATA checkout, verify the commit
    and the submodule pins. Never patch VSC source; never change files used by queued jobs.
-3. On the login node, prepare the retention panel and the E3 control twins once (downloads with
+3. On the login node, prepare the retention panel and the E4 control twins once (downloads with
    recorded checksums; the twins include 1-2 million-row tables, so allow about 30 minutes):
    `python -m src.utils.prepare_retention --supersede-changed` (in the Conda comparator env).
 4. Submit acceptance and the campaign controller as one dependency chain (below).
@@ -100,10 +100,10 @@ squeue -M mindwell -u "$USER" -o "%.20i %.28j %.12T %.12M %.40R"
 
 Mindwell's default QoS allows **500 queued jobs per user**; every array element counts, other
 projects of the same user included. Arrays hold at most 1,001 elements. One pass of all training
-experiments would queue about 1,800 jobs (E5 alone 640), so experiments are submitted separately:
+experiments would queue about 1,800 jobs (E6 alone 640), so experiments are submitted separately:
 
 ```bash
-sbatch --export=ALL,CREDITPFN_RUNTIME_VERSION=env20261029f scripts/slurm/campaign_cpu.slurm submit E5
+sbatch --export=ALL,CREDITPFN_RUNTIME_VERSION=env20261029f scripts/slurm/campaign_cpu.slurm submit E6
 ```
 
 The controller prepares the experiment's plans and submits each arm config through
@@ -111,14 +111,14 @@ The controller prepares the experiment's plans and submits each arm config throu
 evaluation shards per partition). Before every config it counts the user's queued jobs and stops
 cleanly when the next config would exceed 480; rerunning the same command continues from the
 receipt `output CreditPFN/<slug>/manifests/submission.json`. E1 also queues the classical
-baselines once. E4 (fine-tuning) and E10 (context curves) are evaluation-only arrays over
-`src.eval.campaign_tasks` and refuse to start until every E1 checkpoint exists; E9's
-matched-context evaluation is submitted by rerunning `submit E9` after its training finished.
+baselines once. E5 (fine-tuning) and E11 (context curves) are evaluation-only arrays over
+`src.eval.campaign_tasks` and refuse to start until every E1 checkpoint exists; E10's
+matched-context evaluation is submitted by rerunning `submit E10` after its training finished.
 Campaign jobs request 24 hours for training and evaluation until Experiment 0's audit gives
 measured timings; set `CREDITPFN_TRAIN_WALLTIME` / `CREDITPFN_EVAL_WALLTIME` (HH:MM:SS) then.
 A launcher that fails or times out is recorded as `uncertain` in the receipt and is never resubmitted
 automatically: inspect `squeue`, then delete that entry before rerunning.
-Suggested order: E1 → E2, E3, E7–E9, E11, E12 → E5, E6 (largest) → E4, E10.
+Suggested order: E1 → E2, E4, E8–E10, E12, E3 → E6, E7 (largest) → E5, E11.
 
 ## Measured caps
 

@@ -1,4 +1,4 @@
-"""E4 target fine-tuning: upstream fine-tuners run end to end and never see test labels."""
+"""E5 target fine-tuning: upstream fine-tuners run end to end and never see test labels."""
 from pathlib import Path
 
 import numpy as np

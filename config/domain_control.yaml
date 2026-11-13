@@ -2,7 +2,7 @@
 # credit tables. Do not edit; regenerate with `python -m src.data.control_matching --write`.
 # One non-credit twin per credit table (`match.twin` is the credit registry number);
 # preparation subsamples each twin to `match.rows` rows and `match.features` features of
-# which `match.categorical` categorical, where the twin has them. Used only as E3 training data.
+# which `match.categorical` categorical, where the twin has them. Used only as E4 training data.
 domain_control:
   - {id: openml_44121, track: pd, source: openml, data_id: 44121, name: covertype, preprocessing: credit_sanitize, match: {twin: '0001', rows: 150000, features: 10, categorical: 0}}
   - {id: openml_1486, track: pd, source: openml, data_id: 1486, name: nomao, preprocessing: credit_sanitize, match: {twin: '0002', rows: 30000, features: 23, categorical: 0}}
@@ -27,7 +27,7 @@ domain_control:
   - {id: openml_42563, track: lgd, source: openml, data_id: 42563, name: house_prices_nominal, preprocessing: credit_sanitize, match: {twin: '0004', rows: 762, features: 64, categorical: 29}}
   - {id: openml_43071, track: lgd, source: openml, data_id: 43071, name: MIP-2016-regression, preprocessing: credit_sanitize, match: {twin: '0005', rows: 594, features: 64, categorical: 18}}
   - {id: openml_44992, track: lgd, source: openml, data_id: 44992, name: fps_benchmark, preprocessing: credit_sanitize, match: {twin: '0006', rows: 16002, features: 20, categorical: 8}}
-  - {id: openml_42727, track: lgd, source: openml, data_id: 42727, name: colleges, preprocessing: credit_sanitize, match: {twin: '0007', rows: 5627, features: 17, categorical: 7}}
+  - {id: openml_42727, track: lgd, source: openml, data_id: 42727, name: colleges, preprocessing: credit_sanitize, match: {twin: '0007', rows: 5627, features: 17, categorical: 5}}
   - {id: openml_42570, track: lgd, source: openml, data_id: 42570, name: Mercedes_Benz_Greener_Manufacturing, preprocessing: credit_sanitize, match: {twin: '0008', rows: 686, features: 22, categorical: 4}}
 match_cost:   # shortfall of each twin against its credit table (0 = fully matched)
   pd: {'0001': 0.0665, '0002': 0.0396, '0003': 0.7964, '0004': 0.0934, '0005': 0.0934, '0006': 0.7672, '0007': 0.3316, '0008': 0.0739, '0009': 0.706, '0010': 0.1745, '0011': 0.3472, '0012': 1.3261, '0013': 0.1891, '0014': 1.1789, '0015': 0.1593, '0016': 0.3439, '0017': 0.1335}

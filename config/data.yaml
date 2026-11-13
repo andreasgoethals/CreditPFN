@@ -28,7 +28,7 @@ finetuning:
     v3: null
     v2.6: null
     default: null
-  context_sampling: stratified            # fallback: proportional PD class sampling (LGD uniform); "balanced" is an E6 arm
+  context_sampling: stratified            # fallback: proportional PD class sampling (LGD uniform); "balanced" is an E7 arm
   query_fraction: 0.4                     # 60/40 context/query, the reference split
 
 sanitize:

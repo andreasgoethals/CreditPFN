@@ -397,7 +397,7 @@ row,property,credit_median,noncredit_median,cliffs_delta,mann_whitney_p
 9,heavy_tail_share,0.41666667,0.37916667,0.015570934,0.93585626
 
 Figure: pd_properties
-PD. Every PD credit table, binary non-credit retention table and matched non-credit control table (the E3 twins, subsampled to the shape of their credit tables), per property (panels). Points are tables with horizontal jitter; bars mark group medians. Tables above 50,000 rows are subsampled to 50,000 rows for the property computation.
+PD. Every PD credit table, binary non-credit retention table and matched non-credit control table (the E4 twins, subsampled to the shape of their credit tables), per property (panels). Points are tables with horizontal jitter; bars mark group medians. Tables above 50,000 rows are subsampled to 50,000 rows for the property computation.
 Panel 1: Minority-class rate / points 1
 CSV (first column: row index)
 row,x,y
@@ -1153,7 +1153,7 @@ row,dataset_id,group,rows,log10_rows,features,categorical_share,missing_share,me
 23,openml_42563,domain_control,762,2.881955,64,0.453125,0.036950459,1.4730768,0.37142857,1,0.81278373,0.70694953,False,0.001312336,0.001312336,1.9399539,0.4765907,0.58267717
 24,openml_43071,domain_control,594,2.7737864,64,0.015625,0,10.146622,0.95238095,0.34920635,0.17946749,0.17305212,False,0.0016835017,0.0050505051,1.4963656,0.99275399,0.90572391
 25,openml_44992,domain_control,16002,4.2041743,20,0.4,0.05271841,0.6510501,0.083333333,0.91666667,0.39153087,0.25589319,False,6.2492188e-05,6.2492188e-05,1.0614617,0.47748353,0.15548056
-26,openml_42727,domain_control,5627,3.7502769,17,0.41176471,0.34123292,0.77013171,0.2,0.7,0.7120617,0.65798299,True,0.0087080149,0.0099520171,0.028471973,0.43597851,0.69024347
+26,openml_42727,domain_control,5627,3.7502769,17,0.29411765,0.27414044,0.90898675,0,0.5,0.69345169,0.60926275,True,0.0087080149,0.0099520171,0.028471973,0.43597851,0.69024347
 27,openml_42570,domain_control,686,2.8363241,22,0.18181818,0,2.1353206,0.44444444,1,0.24923525,0.16962424,False,0.0014577259,0.0014577259,1.0045972,0.36247425,0.90524781
 
 B2. Where LGD tables differ
@@ -1167,19 +1167,19 @@ row,property,credit_median,noncredit_median,cliffs_delta,mann_whitney_p
 2,share_at_min,0.10958005,0.00070636008,0.91875,0.00020489318
 3,missing_share,0.0075198363,0,0.575,0.0086507855
 4,target_bimodality,0.6886201,0.46809786,0.5,0.042843469
-5,categorical_share,0.28768382,0.042948718,0.30625,0.21145366
+5,categorical_share,0.28768382,0.042948718,0.325,0.18422193
 6,unique_share,0.73146382,0.39291082,0.275,0.28059219
 7,median_abs_skew,1.9708463,1.0411389,0.2625,0.30393246
 8,features,21,10.5,0.25,0.318897
-9,target_skew,0.35223143,0.52645215,-0.225,0.38114736
-10,integer_share,0.58333333,0.38888889,0.21875,0.38658054
-11,max_abs_spearman,0.41922239,0.56520584,-0.1625,0.53268406
+9,integer_share,0.58333333,0.38888889,0.24375,0.332996
+10,target_skew,0.35223143,0.52645215,-0.225,0.38114736
+11,heavy_tail_share,0.3125,0.11805556,0.175,0.48890357
 12,top5_abs_spearman,0.27934167,0.33593409,-0.1625,0.53268406
 13,log10_rows,3.5359624,3.6988299,-0.15625,0.54130383
-14,heavy_tail_share,0.3125,0.14583333,0.15,0.55665754
+14,max_abs_spearman,0.41922239,0.56520584,-0.15,0.56613853
 
 Figure: lgd_properties
-LGD. Every LGD credit table, regression non-credit retention table and matched non-credit control table (the E3 twins, subsampled to the shape of their credit tables), per property (panels). Points are tables with horizontal jitter; bars mark group medians. Tables above 50,000 rows are subsampled to 50,000 rows for the property computation.
+LGD. Every LGD credit table, regression non-credit retention table and matched non-credit control table (the E4 twins, subsampled to the shape of their credit tables), per property (panels). Points are tables with horizontal jitter; bars mark group medians. Tables above 50,000 rows are subsampled to 50,000 rows for the property computation.
 Panel 1: Target within [0, 1] / points 1
 CSV (first column: row index)
 row,x,y
@@ -1520,7 +1520,7 @@ row,x,y
 3,2.132381,0.453125
 4,1.8608865,0.015625
 5,2.1071962,0.4
-6,1.9621807,0.41176471
+6,1.9621807,0.29411765
 7,1.9441746,0.18181818
 Panel 10: Missing share / points 1
 CSV (first column: row index)
@@ -1536,18 +1536,18 @@ row,x,y
 Panel 10: Missing share / points 3
 CSV (first column: row index)
 row,y category,x,y
-0,0.0,1.0957428,0
-1,0.0,0.94313175,0
-2,0.0,1.0949245,0
-3,0.0,0.9121051,0
-4,0.0,0.95593854,0
-5,0.0,0.9735834,0
-6,0.0,1.0132512,0
-7,0.0,0.87603637,0
-8,0.0,0.9702233,0
-9,0.0,0.84009622,0
-10,0.0,1.0782018,0
-11,0.0,1.1126003,0
+0,0.00,1.0957428,0
+1,0.00,0.94313175,0
+2,0.00,1.0949245,0
+3,0.00,0.9121051,0
+4,0.00,0.95593854,0
+5,0.00,0.9735834,0
+6,0.00,1.0132512,0
+7,0.00,0.87603637,0
+8,0.00,0.9702233,0
+9,0.00,0.84009622,0
+10,0.00,1.0782018,0
+11,0.00,1.1126003,0
 Panel 10: Missing share / points 5
 CSV (first column: row index)
 row,x,y
@@ -1557,7 +1557,7 @@ row,x,y
 3,2.1541851,0.036950459
 4,2.110013,0
 5,1.9757141,0.05271841
-6,2.1535004,0.34123292
+6,2.1535004,0.27414044
 7,2.151675,0
 Panel 11: Median |skew| of
 features / points 1
@@ -1597,7 +1597,7 @@ row,x,y
 3,2.0676758,1.4730768
 4,2.0220883,10.146622
 5,2.1043063,0.6510501
-6,2.0102914,0.77013171
+6,2.0102914,0.90898675
 7,2.1002381,2.1353206
 Panel 12: Share heavy-tailed
 features / points 1
@@ -1637,7 +1637,7 @@ row,x,y
 3,1.9037755,0.37142857
 4,2.0038956,0.95238095
 5,1.8476842,0.083333333
-6,1.8922778,0.2
+6,1.8922778,0
 7,2.122694,0.44444444
 Panel 13: Share integer
 features / points 1
@@ -1677,7 +1677,7 @@ row,x,y
 3,1.916462,1
 4,2.1029734,0.34920635
 5,2.0271945,0.91666667
-6,1.9925083,0.7
+6,1.9925083,0.5
 7,1.921968,1
 Panel 14: Max |Spearman|
 feature–target / points 1
@@ -1717,7 +1717,7 @@ row,x,y
 3,1.9893707,0.81278373
 4,2.1036806,0.17946749
 5,2.0578196,0.39153087
-6,2.107822,0.7120617
+6,2.107822,0.69345169
 7,2.0824309,0.24923525
 Panel 15: Top-5 |Spearman| / points 1
 CSV (first column: row index)
@@ -1754,7 +1754,7 @@ row,x,y
 3,2.1078551,0.70694953
 4,2.0890394,0.17305212
 5,2.1243168,0.25589319
-6,2.0420773,0.65798299
+6,2.0420773,0.60926275
 7,1.9540367,0.16962424
 
 B3. What LGD tables share
@@ -1765,14 +1765,14 @@ CSV (first column: row index)
 row,property,credit_iqr,noncredit_iqr,credit_to_noncredit_ratio
 0,top5_abs_spearman,0.034492043,0.16548939,0.20842449
 1,unique_share,0.29666781,0.75213377,0.39443491
-2,integer_share,0.30786125,0.56973039,0.54036304
-3,max_abs_spearman,0.23182315,0.31986118,0.72476176
+2,integer_share,0.30786125,0.54473039,0.56516261
+3,max_abs_spearman,0.23182315,0.31937209,0.72587166
 4,target_skew,1.0037789,1.1921275,0.84200632
 5,log10_rows,0.993204,1.1337567,0.87602919
 6,target_bimodality,0.30783696,0.29875601,1.0303959
-7,categorical_share,0.27421329,0.23333333,1.1751998
-8,features,40.25,21.75,1.8505747
-9,heavy_tail_share,0.56884921,0.30605742,1.8586355
+7,categorical_share,0.27421329,0.22352941,1.2267437
+8,heavy_tail_share,0.56884921,0.33284314,1.7090609
+9,features,40.25,21.75,1.8505747
 10,median_abs_skew,2.1961912,1.130232,1.9431331
 11,share_at_max,0.078135403,0.0012210476,63.990466
 12,share_at_min,0.11097589,0.0012968014,85.576633
@@ -1785,8 +1785,8 @@ Distance tests and nearest neighbours; the projection of both tasks is in part C
 Table: LGD: domain distance tests
 CSV (first column: row index)
 row,properties,credit_tables,noncredit_tables,mean_within_credit,mean_credit_to_noncredit,difference,permutation_p
-0,all,8,20,5.3428846,5.9134894,0.57060483,0.081783643
-1,table,8,20,4.0247432,4.0475081,0.022764886,0.4615077
+0,all,8,20,5.3814863,5.9309878,0.54950157,0.085982803
+1,table,8,20,4.0712115,4.0738016,0.0025901273,0.47670466
 2,target,8,20,3.183348,4.045348,0.86200002,0.014197161
 
 Table: LGD: nearest table
@@ -1818,7 +1818,7 @@ row,dataset_id,domain,nearest,nearest_domain,same_domain
 23,openml_42563,non-credit,openml_46907,non-credit,True
 24,openml_43071,non-credit,PropLGD2,credit,False
 25,openml_44992,non-credit,openml_46928,non-credit,True
-26,openml_42727,non-credit,0007.lgd_lendingclub,credit,False
+26,openml_42727,non-credit,PropLGD4,credit,False
 27,openml_42570,non-credit,0008.SBA_loans_case,credit,False
 
 Table: LGD: share whose nearest table is from the same domain
@@ -7589,7 +7589,7 @@ C1. Projection of table properties
 Two components; the distance tests in A4 and B4 use all properties.
 
 Figure: embedding
-First two principal components of the standardised feature and target properties of every table, for PD with the binary non-credit tables (left) and LGD with the regression non-credit tables (right). Each point is one table: credit corpus, matched non-credit control corpus (E3) and non-credit retention panel. Axis labels give the share of property variance per component.
+First two principal components of the standardised feature and target properties of every table, for PD with the binary non-credit tables (left) and LGD with the regression non-credit tables (right). Each point is one table: credit corpus, matched non-credit control corpus (E4) and non-credit retention panel. Axis labels give the share of property variance per component.
 Panel 1: PD versus binary non-
 credit / points 1
 CSV (first column: row index)
@@ -7658,43 +7658,43 @@ row,PC1 (25% of variance),PC2 (23%)
 Panel 2: LGD versus regression
 non-credit / points 1
 CSV (first column: row index)
-row,PC1 (19% of variance),PC2 (17%)
-0,4.4955023,4.0312922
-1,1.9083654,-3.05471
-2,2.2612913,1.8115026
-3,2.5717785,-0.8670003
-4,2.1447804,0.10041093
-5,2.3974907,-0.29630026
-6,0.22037692,-0.80411445
-7,1.4065506,-1.2166103
+row,PC1 (19% of variance),PC2 (16%)
+0,4.5804539,4.1799191
+1,1.8151706,-3.1868209
+2,2.3012099,1.7792282
+3,2.63399,-0.85051413
+4,2.1575637,-0.0021661855
+5,2.4011179,-0.34411856
+6,0.19417214,-0.67782156
+7,1.3814474,-1.3838073
 Panel 2: LGD versus regression
 non-credit / points 2
 CSV (first column: row index)
-row,PC1 (19% of variance),PC2 (17%)
-0,-1.1408357,0.58685802
-1,-0.2570235,-0.50372317
-2,-1.7277887,0.88240159
-3,-0.8304745,-3.4129883
-4,2.3470986,-1.1975088
-5,-0.82604713,0.22178002
-6,0.2851284,-3.0373333
-7,-0.14593505,-0.68386954
+row,PC1 (19% of variance),PC2 (16%)
+0,-1.1322926,0.54030018
+1,-0.28793677,-0.54695883
+2,-1.6995165,0.82883204
+3,-0.91507136,-3.313361
+4,2.3499556,-2.131397
+5,-0.75819161,0.33323808
+6,-0.054591791,-1.5595386
+7,-0.11536784,-0.97630988
 Panel 2: LGD versus regression
 non-credit / points 3
 CSV (first column: row index)
-row,PC1 (19% of variance),PC2 (17%)
-0,-1.8197278,-0.14986008
-1,-1.6403606,0.16771093
-2,-0.62667178,-0.73287271
-3,-0.98783127,0.47484535
-4,-1.2462735,-0.089722369
-5,-0.9156371,0.28375755
-6,-1.7552177,1.6229435
-7,-1.7806747,0.67864401
-8,-1.0045817,1.010563
-9,-1.7031458,0.11121823
-10,-0.7041644,1.7935413
-11,-0.92597204,2.2691442
+row,PC1 (19% of variance),PC2 (16%)
+0,-1.8286656,-0.16284974
+1,-1.6395588,0.10891335
+2,-0.59963634,-0.78466462
+3,-0.942658,0.35011198
+4,-1.2672024,0.037282419
+5,-0.87960314,0.19389475
+6,-1.7052296,1.6290438
+7,-1.7711681,0.74850742
+8,-0.99226478,1.0369883
+9,-1.7484593,0.23501366
+10,-0.62730715,1.7372305
+11,-0.8503595,2.1818245
 
 general/03_domain_comparison: 4 figures -> output CreditPFN/figures/general
   01  pd_properties
@@ -7711,7 +7711,7 @@ general/03_domain_comparison: 4 figures -> output CreditPFN/figures/general
 RQ1: transfer — training
 
 1. Design
-Each arm changes only the listed settings; E1 is the shared control of E2, E3 and E5-E9.
+Each arm changes only the listed settings; E1 is the shared control of E2, E4 and E6-E10.
 
 Table: Arms of RQ1
 CSV (first column: row index)
@@ -7722,9 +7722,13 @@ row,experiment,slug,arm,track,change,models,runs,tasks
 3,E2,seed,1,pd,seed=44,4,16,unavailable
 4,E2,seed,0,lgd,seed=43,4,16,unavailable
 5,E2,seed,1,lgd,seed=44,4,16,unavailable
-6,E3,domain_control,0,pd,corpus=domain_control,4,16,unavailable
-7,E3,domain_control,0,lgd,corpus=domain_control,4,16,unavailable
-8,E4,target_finetune,—,unavailable,"Is CPT worth it compared with fine-tuning on the target table, and do the two stack?",unavailable,0,"PD, LGD"
+6,E3,precision,0,pd,training_precision=bf16,2,8,unavailable
+7,E3,precision,1,pd,training_precision=fp32,1,4,unavailable
+8,E3,precision,0,lgd,training_precision=bf16,2,8,unavailable
+9,E3,precision,1,lgd,training_precision=fp32,1,4,unavailable
+10,E4,domain_control,0,pd,corpus=domain_control,4,16,unavailable
+11,E4,domain_control,0,lgd,corpus=domain_control,4,16,unavailable
+12,E5,target_finetune,—,unavailable,"Is CPT worth it compared with fine-tuning on the target table, and do the two stack?",unavailable,0,"PD, LGD"
 
 2. How transfer develops, and how much is seed noise (E1, E2)
 No results yet for E1 monitor curves; the figure is drawn once they exist.
@@ -7739,19 +7743,19 @@ Table: Seed range of the held-out credit mean (E1 and E2)
 CSV (first column: row index)
 row
 
-3. Credit versus matched non-credit CPT (E3)
-No results yet for E3 monitor curves; the figure is drawn once they exist.
+3. Credit versus matched non-credit CPT (E4)
+No results yet for E4 monitor curves; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
-Table: Held-out credit change at the last monitor point (E1, E3)
+Table: Held-out credit change at the last monitor point (E1, E4)
 CSV (first column: row index)
 row
 
 4. Training cost
 No results yet for training cost records; the figure is drawn once they exist.
 
-Table: Training cost per arm and model (E1, E2, E3)
+Table: Training cost per arm and model (E1, E2, E4)
 CSV (first column: row index)
 row
 
@@ -7853,24 +7857,24 @@ Table: LGD scores relative to CatBoost per table (with the XGBoost and linear ba
 CSV (first column: row index)
 row
 
-5. Credit versus matched non-credit CPT (E3)
-No results yet for E3 domain control; the figure is drawn once they exist.
+5. Credit versus matched non-credit CPT (E4)
+No results yet for E4 domain control; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
-Table: PD E3 versus E1 per table
+Table: PD E4 versus E1 per table
 CSV (first column: row index)
 row
 
-Table: PD E3 versus E1 per model
+Table: PD E4 versus E1 per model
 CSV (first column: row index)
 row
 
-Table: LGD E3 versus E1 per table
+Table: LGD E4 versus E1 per table
 CSV (first column: row index)
 row
 
-Table: LGD E3 versus E1 per model
+Table: LGD E4 versus E1 per model
 CSV (first column: row index)
 row
 
@@ -7884,20 +7888,47 @@ Table: LGD credit minus non-credit CPT gain with 95% bootstrap interval
 CSV (first column: row index)
 row
 
-6. CPT versus fine-tuning on the target table (E4)
-No results yet for E4 fine-tuning; the figure is drawn once they exist.
+6. CPT versus fine-tuning on the target table (E5)
+No results yet for E5 fine-tuning; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
-Table: E4 summary per model and start
+Table: E5 summary per model and start
 CSV (first column: row index)
 row
 
-Table: E4 per table
+Table: E5 per table
 CSV (first column: row index)
 row
 
-Table: GPU hours: CPT (E1, paid once) against fine-tuning per target table (E4)
+Table: GPU hours: CPT (E1, paid once) against fine-tuning per target table (E5)
+CSV (first column: row index)
+row
+
+7. Training precision (E3)
+No results yet for E3 results; the figure is drawn once they exist.
+
+Table: PD five-fold effect per training precision and model (E1 reference: FP16; E3)
+CSV (first column: row index)
+row
+
+Table: PD E3 mean gain with 95% bootstrap interval
+CSV (first column: row index)
+row
+
+Table: PD E3 per-table gains
+CSV (first column: row index)
+row
+
+Table: LGD five-fold effect per training precision and model (E1 reference: FP16; E3)
+CSV (first column: row index)
+row
+
+Table: LGD E3 mean gain with 95% bootstrap interval
+CSV (first column: row index)
+row
+
+Table: LGD E3 per-table gains
 CSV (first column: row index)
 row
 
@@ -7917,68 +7948,47 @@ Each arm changes only the listed settings; E1 is the shared control.
 Table: Arms of RQ2
 CSV (first column: row index)
 row,experiment,slug,arm,track,change,models,runs
-0,E5,update_size_anchoring,0,pd,learning_rate=1e-07,4,16
-1,E5,update_size_anchoring,1,pd,learning_rate=1e-06,4,16
-2,E5,update_size_anchoring,2,pd,learning_rate=3e-06,4,16
-3,E5,update_size_anchoring,3,pd,learning_rate=1e-05,4,16
-4,E5,update_size_anchoring,4,pd,"learning_rate=3e-06, l2sp_lambda=0.0",4,16
-5,E5,update_size_anchoring,5,pd,"learning_rate=3e-06, l2sp_lambda=0.03",4,16
-6,E5,update_size_anchoring,6,pd,"learning_rate=1e-05, l2sp_lambda=0.0",4,16
-7,E5,update_size_anchoring,7,pd,"learning_rate=1e-05, l2sp_lambda=0.03",4,16
-8,E5,update_size_anchoring,8,pd,l2sp_lambda=0.0,4,16
-9,E5,update_size_anchoring,0,lgd,learning_rate=1e-07,4,16
-10,E5,update_size_anchoring,1,lgd,learning_rate=1e-06,4,16
-11,E5,update_size_anchoring,2,lgd,learning_rate=3e-06,4,16
-12,E5,update_size_anchoring,3,lgd,learning_rate=1e-05,4,16
-13,E5,update_size_anchoring,4,lgd,"learning_rate=3e-06, l2sp_lambda=0.0",4,16
-14,E5,update_size_anchoring,5,lgd,"learning_rate=3e-06, l2sp_lambda=0.03",4,16
-15,E5,update_size_anchoring,6,lgd,"learning_rate=1e-05, l2sp_lambda=0.0",4,16
-16,E5,update_size_anchoring,7,lgd,"learning_rate=1e-05, l2sp_lambda=0.03",4,16
-17,E5,update_size_anchoring,8,lgd,l2sp_lambda=0.0,4,16
-18,E6,scope,0,pd,"trainable=frozen_backbone, learning_rate=3e-07",4,16
-19,E6,scope,1,pd,"trainable=frozen_backbone, learning_rate=3e-06",4,16
-20,E6,scope,2,pd,"trainable=diagscale, learning_rate=0.0001",4,16
-21,E6,scope,3,pd,"trainable=diagscale, learning_rate=0.001",4,16
-22,E6,scope,4,pd,"trainable=lora_qv_r16, learning_rate=3e-06",4,16
-23,E6,scope,5,pd,"trainable=lora_qv_r16, learning_rate=1e-05",4,16
-24,E6,scope,0,lgd,"trainable=frozen_backbone, learning_rate=3e-07",4,16
-25,E6,scope,1,lgd,"trainable=frozen_backbone, learning_rate=3e-06",4,16
-26,E6,scope,2,lgd,"trainable=diagscale, learning_rate=0.0001",4,16
-27,E6,scope,3,lgd,"trainable=diagscale, learning_rate=0.001",4,16
-28,E6,scope,4,lgd,"trainable=lora_qv_r16, learning_rate=3e-06",4,16
-29,E6,scope,5,lgd,"trainable=lora_qv_r16, learning_rate=1e-05",4,16
-30,E12,precision,0,pd,training_precision=bf16,2,8
-31,E12,precision,1,pd,training_precision=fp32,1,4
+0,E6,update_size_anchoring,0,pd,learning_rate=1e-07,4,16
+1,E6,update_size_anchoring,1,pd,learning_rate=1e-06,4,16
+2,E6,update_size_anchoring,2,pd,learning_rate=3e-06,4,16
+3,E6,update_size_anchoring,3,pd,learning_rate=1e-05,4,16
+4,E6,update_size_anchoring,4,pd,"learning_rate=3e-06, l2sp_lambda=0.0",4,16
+5,E6,update_size_anchoring,5,pd,"learning_rate=3e-06, l2sp_lambda=0.03",4,16
+6,E6,update_size_anchoring,6,pd,"learning_rate=1e-05, l2sp_lambda=0.0",4,16
+7,E6,update_size_anchoring,7,pd,"learning_rate=1e-05, l2sp_lambda=0.03",4,16
+8,E6,update_size_anchoring,8,pd,l2sp_lambda=0.0,4,16
+9,E6,update_size_anchoring,0,lgd,learning_rate=1e-07,4,16
+10,E6,update_size_anchoring,1,lgd,learning_rate=1e-06,4,16
+11,E6,update_size_anchoring,2,lgd,learning_rate=3e-06,4,16
+12,E6,update_size_anchoring,3,lgd,learning_rate=1e-05,4,16
+13,E6,update_size_anchoring,4,lgd,"learning_rate=3e-06, l2sp_lambda=0.0",4,16
+14,E6,update_size_anchoring,5,lgd,"learning_rate=3e-06, l2sp_lambda=0.03",4,16
+15,E6,update_size_anchoring,6,lgd,"learning_rate=1e-05, l2sp_lambda=0.0",4,16
+16,E6,update_size_anchoring,7,lgd,"learning_rate=1e-05, l2sp_lambda=0.03",4,16
+17,E6,update_size_anchoring,8,lgd,l2sp_lambda=0.0,4,16
+18,E7,scope,0,pd,"trainable=frozen_backbone, learning_rate=3e-07",4,16
+19,E7,scope,1,pd,"trainable=frozen_backbone, learning_rate=3e-06",4,16
+20,E7,scope,2,pd,"trainable=diagscale, learning_rate=0.0001",4,16
+21,E7,scope,3,pd,"trainable=diagscale, learning_rate=0.001",4,16
+22,E7,scope,4,pd,"trainable=lora_qv_r16, learning_rate=3e-06",4,16
+23,E7,scope,5,pd,"trainable=lora_qv_r16, learning_rate=1e-05",4,16
+24,E7,scope,0,lgd,"trainable=frozen_backbone, learning_rate=3e-07",4,16
+25,E7,scope,1,lgd,"trainable=frozen_backbone, learning_rate=3e-06",4,16
+26,E7,scope,2,lgd,"trainable=diagscale, learning_rate=0.0001",4,16
+27,E7,scope,3,lgd,"trainable=diagscale, learning_rate=0.001",4,16
+28,E7,scope,4,lgd,"trainable=lora_qv_r16, learning_rate=3e-06",4,16
+29,E7,scope,5,lgd,"trainable=lora_qv_r16, learning_rate=1e-05",4,16
 
-2. Update size and anchoring (E5)
-No results yet for E5 monitor curves; the figure is drawn once they exist.
-
-No measurements available for this figure group.
-
-Table: PD E5 change at the last monitor point
-CSV (first column: row index)
-row
-
-Table: PD E5 relative weight change at the last monitor point
-CSV (first column: row index)
-row
-
-No measurements available for this figure group.
-
-Table: LGD E5 change at the last monitor point
-CSV (first column: row index)
-row
-
-Table: LGD E5 relative weight change at the last monitor point
-CSV (first column: row index)
-row
-
-3. Trainable scope (E6)
+2. Update size and anchoring (E6)
 No results yet for E6 monitor curves; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
 Table: PD E6 change at the last monitor point
+CSV (first column: row index)
+row
+
+Table: PD E6 relative weight change at the last monitor point
 CSV (first column: row index)
 row
 
@@ -7988,10 +7998,29 @@ Table: LGD E6 change at the last monitor point
 CSV (first column: row index)
 row
 
+Table: LGD E6 relative weight change at the last monitor point
+CSV (first column: row index)
+row
+
+3. Trainable scope (E7)
+No results yet for E7 monitor curves; the figure is drawn once they exist.
+
+No measurements available for this figure group.
+
+Table: PD E7 change at the last monitor point
+CSV (first column: row index)
+row
+
+No measurements available for this figure group.
+
+Table: LGD E7 change at the last monitor point
+CSV (first column: row index)
+row
+
 4. Training cost
 No results yet for training cost records; the figure is drawn once they exist.
 
-Table: Training cost per arm and model (E1, E5, E6, E12)
+Table: Training cost per arm and model (E1, E6, E7)
 CSV (first column: row index)
 row
 
@@ -8005,31 +8034,31 @@ rq2/01_training: no figures saved.
 ```
 RQ2: controlling weight change — results
 
-1. Learning rate and L2-SP (E5)
-No results yet for E5 five-fold gains; the figure is drawn once they exist.
+1. Learning rate and L2-SP (E6)
+No results yet for E6 five-fold gains; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
-Table: PD E5 summary per arm and model
+Table: PD E6 summary per arm and model
 CSV (first column: row index)
 row
 
-Table: PD E5 per-table gains
+Table: PD E6 per-table gains
 CSV (first column: row index)
 row
 
 No measurements available for this figure group.
 
-Table: LGD E5 summary per arm and model
+Table: LGD E6 summary per arm and model
 CSV (first column: row index)
 row
 
-Table: LGD E5 per-table gains
+Table: LGD E6 per-table gains
 CSV (first column: row index)
 row
 
-2. Transfer against forgetting across recipes (E1, E5, E6)
-No results yet for E5 and E6 arm overview; the figure is drawn once they exist.
+2. Transfer against forgetting across recipes (E1, E6, E7)
+No results yet for E6 and E7 arm overview; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
@@ -8043,14 +8072,14 @@ Table: LGD arm overview (credit and retention means)
 CSV (first column: row index)
 row
 
-3. Trainable scope in detail (E6) and calibration per arm
+3. Trainable scope in detail (E7) and calibration per arm
 Tables only; the figures above summarise the same gains.
 
-Table: PD E6 summary per arm and model
+Table: PD E7 summary per arm and model
 CSV (first column: row index)
 row
 
-Table: PD E6 per-table gains
+Table: PD E7 per-table gains
 CSV (first column: row index)
 row
 
@@ -8062,11 +8091,11 @@ Table: PD scope metric profile per arm
 CSV (first column: row index)
 row
 
-Table: LGD E6 summary per arm and model
+Table: LGD E7 summary per arm and model
 CSV (first column: row index)
 row
 
-Table: LGD E6 per-table gains
+Table: LGD E7 per-table gains
 CSV (first column: row index)
 row
 
@@ -8075,21 +8104,6 @@ CSV (first column: row index)
 row
 
 Table: LGD scope metric profile per arm
-CSV (first column: row index)
-row
-
-4. Training precision (E12)
-No results yet for E12 results; the figure is drawn once they exist.
-
-Table: PD five-fold effect per training precision and model (E1 reference: FP16; E12)
-CSV (first column: row index)
-row
-
-Table: PD E12 mean gain with 95% bootstrap interval
-CSV (first column: row index)
-row
-
-Table: PD E12 per-table gains
 CSV (first column: row index)
 row
 
@@ -8104,55 +8118,55 @@ rq2/02_results: no figures saved.
 RQ3: training data — training
 
 1. Design
-Each arm changes only the listed settings; E1 is the shared control of E7. E8 compares its two corpora with each other; E9 trains on the tables above 10,000 rows.
+Each arm changes only the listed settings; E1 is the shared control of E8. E9 compares its two corpora with each other; E10 trains on the tables above 10,000 rows.
 
 Table: Arms of RQ3
 CSV (first column: row index)
 row,experiment,slug,arm,track,change,models,runs
-0,E7,exposure,0,pd,exposure=full_pass,4,16
-1,E7,exposure,1,pd,successful_updates=10000,4,16
-2,E7,exposure,0,lgd,exposure=full_pass,4,16
-3,E7,exposure,1,lgd,successful_updates=10000,4,16
-4,E8,table_size,0,pd,corpus=small_only,4,16
-5,E8,table_size,1,pd,corpus=large_matched,4,16
-6,E9,episode_size,0,pd,"corpus=tables_above_10000_rows, episode_rows=2048",4,16
-7,E9,episode_size,1,pd,"corpus=tables_above_10000_rows, episode_rows=4096",4,16
-8,E9,episode_size,2,pd,"corpus=tables_above_10000_rows, episode_rows=8192",4,16
-9,E9,episode_size,3,pd,"corpus=tables_above_10000_rows, episode_rows=16384",2,8
-10,E9,episode_size,4,pd,corpus=tables_above_10000_rows,4,16
+0,E8,exposure,0,pd,exposure=full_pass,4,16
+1,E8,exposure,1,pd,successful_updates=10000,4,16
+2,E8,exposure,0,lgd,exposure=full_pass,4,16
+3,E8,exposure,1,lgd,successful_updates=10000,4,16
+4,E9,table_size,0,pd,corpus=small_only,4,16
+5,E9,table_size,1,pd,corpus=large_matched,4,16
+6,E10,episode_size,0,pd,"corpus=tables_above_10000_rows, episode_rows=2048",4,16
+7,E10,episode_size,1,pd,"corpus=tables_above_10000_rows, episode_rows=4096",4,16
+8,E10,episode_size,2,pd,"corpus=tables_above_10000_rows, episode_rows=8192",4,16
+9,E10,episode_size,3,pd,"corpus=tables_above_10000_rows, episode_rows=16384",2,8
+10,E10,episode_size,4,pd,corpus=tables_above_10000_rows,4,16
 
-2. Exposure and table size (E7, E8)
-No results yet for E7-E8 monitor curves; the figure is drawn once they exist.
+2. Exposure and table size (E8, E9)
+No results yet for E8-E9 monitor curves; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
-Table: PD change at the last monitor point (E1, E7-E8)
+Table: PD change at the last monitor point (E1, E8-E9)
 CSV (first column: row index)
 row
 
 No measurements available for this figure group.
 
-Table: LGD change at the last monitor point (E1, E7-E8)
+Table: LGD change at the last monitor point (E1, E8-E9)
 CSV (first column: row index)
 row
 
-3. Episode size at equal updates and at equal rows (E9)
-No results yet for E9 monitor curves; the figure is drawn once they exist.
+3. Episode size at equal updates and at equal rows (E10)
+No results yet for E10 monitor curves; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
-Table: E9 change at the last monitor point
+Table: E10 change at the last monitor point
 CSV (first column: row index)
 row
 
-Table: E9 change at each rows-processed milestone
+Table: E10 change at each rows-processed milestone
 CSV (first column: row index)
 row
 
 4. Training cost
 No results yet for training cost records; the figure is drawn once they exist.
 
-Table: Training cost per arm and model (E1, E7-E9)
+Table: Training cost per arm and model (E1, E8-E10)
 CSV (first column: row index)
 row
 
@@ -8166,8 +8180,8 @@ rq3/01_training: no figures saved.
 ```
 RQ3: training data — results
 
-1. Effect of each training-data arm (E7-E9)
-No results yet for E7-E9 five-fold gains; the figure is drawn once they exist.
+1. Effect of each training-data arm (E8-E10)
+No results yet for E8-E10 five-fold gains; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
@@ -8221,16 +8235,16 @@ Table: LGD episode_size per-table gains
 CSV (first column: row index)
 row
 
-2. Episode size at matched inference context (E9)
-No results yet for E9 matched-context evaluation; the figure is drawn once they exist.
+2. Episode size at matched inference context (E10)
+No results yet for E10 matched-context evaluation; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
-Table: E9 matched-context gains per table
+Table: E10 matched-context gains per table
 CSV (first column: row index)
 row
 
-Table: E9 AUC per arm, model and context size
+Table: E10 AUC per arm, model and context size
 CSV (first column: row index)
 row
 
@@ -8251,10 +8265,10 @@ rq3/02_results: no figures saved.
 ## rq4/01_context_curves
 
 ```
-RQ4: context scarcity (E10)
+RQ4: context scarcity (E11)
 
 1. Context curves
-No results yet for E10 context curves; the figure is drawn once they exist.
+No results yet for E11 context curves; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
@@ -8381,26 +8395,26 @@ Table: LGD gains versus seed noise
 CSV (first column: row index)
 row
 
-4. Which sources help which targets (E11)
-No results yet for E11 transfer monitor; the figure is drawn once they exist.
+4. Which sources help which targets (E12)
+No results yet for E12 transfer monitor; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
-Table: PD E11 change per source, target and model
+Table: PD E12 change per source, target and model
 CSV (first column: row index)
 row
 
-Table: PD E11 mean change per source and model
+Table: PD E12 mean change per source and model
 CSV (first column: row index)
 row
 
 No measurements available for this figure group.
 
-Table: LGD E11 change per source, target and model
+Table: LGD E12 change per source, target and model
 CSV (first column: row index)
 row
 
-Table: LGD E11 mean change per source and model
+Table: LGD E12 mean change per source and model
 CSV (first column: row index)
 row
 

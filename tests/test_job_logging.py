@@ -21,7 +21,7 @@ def _env(tmp_path, **extra):
     return env
 
 
-@pytest.mark.parametrize("config", ["E00_pilots/reference_pd.yaml", "E07_exposure/pd_a0.yaml"])
+@pytest.mark.parametrize("config", ["E00_pilots/reference_pd.yaml", "E08_exposure/pd_a0.yaml"])
 def test_generated_config_selects_its_log_folder(tmp_path, config):
     from omegaconf import OmegaConf
     path = ROOT / "config/experiments" / config

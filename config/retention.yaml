@@ -1,5 +1,5 @@
 # Non-credit TabArena panels. `research` measures forgetting (never trained on);
-# The matched domain-control training corpus (E3) is generated separately: config/domain_control.yaml.
+# The matched domain-control training corpus (E4) is generated separately: config/domain_control.yaml.
 #
 # research: every TabArena-v0.1 table (OpenML curated versions, study 457) with fewer than
 # 50,000 rows that is binary classification (track pd) or regression (track lgd), excluding

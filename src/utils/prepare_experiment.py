@@ -120,7 +120,7 @@ def prepare(config: Path, *, write: bool = False, check: bool = False) -> dict:
                 raise ValueError("A complete phase cannot end halfway through a dataset partition")
             tests = [d for p in group for d in p["test"]]
             # The held-out folds partition the track's credit registry, whatever the training
-            # corpus is (size policies filter it; the E3 control replaces it with twins).
+            # corpus is (size policies filter it; the E4 control replaces it with twins).
             from src.train.corpus import build_dataset_pool
             universe = {r.dataset_id for r in build_dataset_pool(str(current.track))}
             if len(tests) != len(set(tests)) or set(tests) != universe:

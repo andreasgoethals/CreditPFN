@@ -36,11 +36,11 @@ Planned share of optimizer updates per credit table if every processed table of 
 
 **[general__03_domain_comparison__01_pd_properties](general/general__03_domain_comparison__01_pd_properties.pdf)** — `pd_properties`
 
-PD. Every PD credit table, binary non-credit retention table and matched non-credit control table (the E3 twins, subsampled to the shape of their credit tables), per property (panels). Points are tables with horizontal jitter; bars mark group medians. Tables above 50,000 rows are subsampled to 50,000 rows for the property computation.
+PD. Every PD credit table, binary non-credit retention table and matched non-credit control table (the E4 twins, subsampled to the shape of their credit tables), per property (panels). Points are tables with horizontal jitter; bars mark group medians. Tables above 50,000 rows are subsampled to 50,000 rows for the property computation.
 
 **[general__03_domain_comparison__02_lgd_properties](general/general__03_domain_comparison__02_lgd_properties.pdf)** — `lgd_properties`
 
-LGD. Every LGD credit table, regression non-credit retention table and matched non-credit control table (the E3 twins, subsampled to the shape of their credit tables), per property (panels). Points are tables with horizontal jitter; bars mark group medians. Tables above 50,000 rows are subsampled to 50,000 rows for the property computation.
+LGD. Every LGD credit table, regression non-credit retention table and matched non-credit control table (the E4 twins, subsampled to the shape of their credit tables), per property (panels). Points are tables with horizontal jitter; bars mark group medians. Tables above 50,000 rows are subsampled to 50,000 rows for the property computation.
 
 **[general__03_domain_comparison__03_lgd_targets](general/general__03_domain_comparison__03_lgd_targets.pdf)** — `lgd_targets`
 
@@ -48,7 +48,7 @@ Left: empirical distribution function of each table target after per-table min-m
 
 **[general__03_domain_comparison__04_embedding](general/general__03_domain_comparison__04_embedding.pdf)** — `embedding`
 
-First two principal components of the standardised feature and target properties of every table, for PD with the binary non-credit tables (left) and LGD with the regression non-credit tables (right). Each point is one table: credit corpus, matched non-credit control corpus (E3) and non-credit retention panel. Axis labels give the share of property variance per component.
+First two principal components of the standardised feature and target properties of every table, for PD with the binary non-credit tables (left) and LGD with the regression non-credit tables (right). Each point is one table: credit corpus, matched non-credit control corpus (E4) and non-credit retention panel. Axis labels give the share of property variance per component.
 
 ## rq1/01_training
 

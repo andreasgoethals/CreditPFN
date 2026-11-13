@@ -25,10 +25,10 @@ def fake(monkeypatch, tmp_path):
 
 def test_submission_stops_at_the_budget_and_resumes(fake):
     submitted, root = fake
-    queued = iter([0, 40, 80, 120, 160])            # E5 has 16 configs of 40 jobs each
-    first = cl.submit_experiment("E5", budget=130, queued=lambda: next(queued))
+    queued = iter([0, 40, 80, 120, 160])            # E6 has 16 configs of 40 jobs each
+    first = cl.submit_experiment("E6", budget=130, queued=lambda: next(queued))
     assert len(first["submitted"]) == 3 and len(submitted) == 3
-    again = cl.submit_experiment("E5", budget=1000, queued=lambda: 0)
+    again = cl.submit_experiment("E6", budget=1000, queued=lambda: 0)
     assert len(again["submitted"]) == 18 and len(submitted) == 18      # no config twice
     assert all(stage == "train eval" for _, stage, _ in submitted)
     assert json.loads((root / "update_size_anchoring.json").read_text())["submitted"]
@@ -55,7 +55,7 @@ def test_evaluation_experiments_require_every_reference_checkpoint(fake, monkeyp
     monkeypatch.setattr(ct, "tasks", lambda *a, **k: [dict(track="pd", model="v2", partition=0)])
     monkeypatch.setattr(ct, "cpt_checkpoint", lambda t, references=None: (_ for _ in ()).throw(FileNotFoundError()))
     with pytest.raises(RuntimeError, match="finish their training"):
-        cl.submit_experiment("E10", budget=1000, queued=lambda: 0)
+        cl.submit_experiment("E11", budget=1000, queued=lambda: 0)
 
 
 def test_evaluation_arrays_restart_indices_and_cover_every_task_once(monkeypatch):
@@ -94,11 +94,11 @@ def test_failed_launch_is_recorded_as_uncertain_and_never_resubmitted(fake, monk
         return f"Submitted train array {calls['n']} on mindwell (x)\n"
     monkeypatch.setattr(cl, "_run_launcher", flaky)
     with pytest.raises(cl.UncertainSubmission):
-        cl.submit_experiment("E5", budget=1000, queued=lambda: 0)
+        cl.submit_experiment("E6", budget=1000, queued=lambda: 0)
     state = json.loads((root / "update_size_anchoring.json").read_text())
     assert len(state["submitted"]) == 1 and list(state["uncertain"].values())[0]["job_ids"] == ["123"]
     with pytest.raises(RuntimeError, match="inspect squeue"):
-        cl.submit_experiment("E5", budget=1000, queued=lambda: 0)
+        cl.submit_experiment("E6", budget=1000, queued=lambda: 0)
     assert calls["n"] == 2                                     # nothing launched twice
 
 

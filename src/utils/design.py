@@ -244,7 +244,7 @@ PILOT_DIR = "checkpoints/trained/experiment0"
 
 
 def experiment_folder(name: str, design: dict | None = None) -> Path:
-    """``config/experiments/E<NN>_<slug>`` for an experiment number such as ``E5``."""
+    """``config/experiments/E<NN>_<slug>`` for an experiment number such as ``E6``."""
     design = design or load_design()
     return CONFIG_ROOT / f"E{int(name[1:]):02d}_{design['experiments'][name]['slug']}"
 

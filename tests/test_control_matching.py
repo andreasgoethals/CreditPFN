@@ -1,4 +1,4 @@
-"""The matched non-credit control corpus of E3."""
+"""The matched non-credit control corpus of E4."""
 import re
 from types import SimpleNamespace as NS
 
@@ -110,8 +110,8 @@ def test_twins_respect_the_download_bound():
         assert candidate["rows"] * candidate["features"] <= cm.MAX_CELLS
 
 
-@pytest.mark.parametrize("config", ["E03_domain_control/pd_a0.yaml", "E03_domain_control/lgd_a0.yaml",
-                                    "E08_table_size/pd_a0.yaml", "E08_table_size/pd_a1.yaml"])
+@pytest.mark.parametrize("config", ["E04_domain_control/pd_a0.yaml", "E04_domain_control/lgd_a0.yaml",
+                                    "E09_table_size/pd_a0.yaml", "E09_table_size/pd_a1.yaml"])
 def test_modified_training_corpora_still_prepare(config):
     """Folds partition the credit registry even when the training corpus is replaced or filtered."""
     from pathlib import Path

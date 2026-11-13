@@ -1,4 +1,4 @@
-"""E4: fine-tuning on the target table, starting from the original or the CPT checkpoint.
+"""E5: fine-tuning on the target table, starting from the original or the CPT checkpoint.
 
 Each cell takes one outer fold of one held-out table: the fold's training rows minus a fixed
 20% validation split are both the fine-tuning data and the inference context, the validation
