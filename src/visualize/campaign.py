@@ -1,4 +1,10 @@
-"""Notebook page objects: a figure, its paper caption and its tables, saved and displayed in order."""
+"""Notebook page objects: a figure, its paper caption and its tables, saved and displayed in order.
+
+Springer LNCS (ECML PKDD) figures carry no figure-level title: the caption below the figure does
+that job. A title passed to ``fig.suptitle`` is therefore taken OUT of the figure before layout,
+kept as the page's ``title``, shown above the inline figure and recorded beside the caption, so
+the notebook preview and the exported PDF are the same drawing. Panel titles stay.
+"""
 from __future__ import annotations
 
 from dataclasses import dataclass, field
@@ -19,8 +25,14 @@ class Page:
     caption: str
     tables: dict = field(default_factory=dict)
     provenance: dict = field(default_factory=dict)
+    title: str = ""
 
     def __post_init__(self):
+        suptitle = getattr(self.figure, "_suptitle", None)
+        if suptitle is not None:
+            self.title = self.title or suptitle.get_text()
+            suptitle.remove()
+            self.figure._suptitle = None
         style.finish_figure(self.figure)
         # Keep the object for explicit inline display/export without accumulating
         # pyplot managers (or implicit duplicate notebook renders) across pages.
@@ -40,9 +52,8 @@ def show(sink, pages, *, track=None):
             if track not in ("pd", "lgd"):
                 raise ValueError("Figure track must be pd or lgd")
             page.name = f"{track}_{page.name}"
-            title = page.figure._suptitle
-            if title is not None and not title.get_text().startswith(track.upper()):
-                title.set_text(f"{track.upper()}: {title.get_text()}")
+            if page.title and not page.title.startswith(track.upper()):
+                page.title = f"{track.upper()}: {page.title}"
             if not page.caption.startswith(track.upper()):
                 page.caption = f"{track.upper()}. {page.caption}"
         if not page.caption.strip():
@@ -50,6 +61,9 @@ def show(sink, pages, *, track=None):
         if getattr(sink, "report", None) is not None:
             sink.report._pending.append(page_text(page))
         metadata = {"provenance": page.provenance} if page.provenance else {}
+        if page.title:
+            metadata["title"] = page.title
+            display(Markdown(f"**{page.title}**"))
         sink.save(page.figure, page.name, caption=page.caption, **metadata)
         display(page.figure)
         display(Markdown(page.caption))

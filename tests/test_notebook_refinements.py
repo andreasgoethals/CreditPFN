@@ -98,15 +98,18 @@ def test_track_scopes_export_name_title_and_caption(monkeypatch):
     import IPython.display
     monkeypatch.setattr(IPython.display,"display",lambda *args: None)
     saved=[]
-    sink=SimpleNamespace(save=lambda figure,name,caption,**metadata: saved.append((name,caption)))
+    saved_titles=[]
+    sink=SimpleNamespace(save=lambda figure,name,caption,**metadata: (saved.append((name,caption)),
+                                                                    saved_titles.append(metadata.get("title"))))
     for track in ("pd","lgd"):
         fig,ax=plt.subplots()
         fig.suptitle("Optimizer check")
         ax.plot([1,2],[3,4])
         cp.show(sink,[cp.Page("same_name",fig,"Recorded values.")],track=track)
-        assert fig._suptitle.get_text().startswith(track.upper())
+        assert fig._suptitle is None     # LNCS: the title is recorded beside the caption, not drawn
     assert [name for name,_ in saved] == ["pd_same_name","lgd_same_name"]
     assert [caption for _,caption in saved] == ["PD. Recorded values.","LGD. Recorded values."]
+    assert saved_titles == ["PD: Optimizer check","LGD: Optimizer check"]
 
 
 def test_exposure_merges_equal_markers_and_labels_step_share_ratio():

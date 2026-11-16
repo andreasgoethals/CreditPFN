@@ -242,3 +242,61 @@ def test_crps_rejects_invalid_inputs():
         crps_piecewise_uniform(np.ones((1, 2)) / 2, np.array([1., 0., 2.]), np.zeros(1))
     with pytest.raises(ValueError):
         crps_from_quantiles(np.zeros((1, 9)), (.05, .1, .25, .4, .5, .6, .75, .9, .95), np.zeros(1))
+
+
+# ------------------------------------------------------------------ credit-scoring measures
+def _scored(n=800, prevalence=0.15, seed=0):
+    rng = np.random.default_rng(seed)
+    y = (rng.random(n) < prevalence).astype(int)
+    p = 1 / (1 + np.exp(-(rng.normal(0, 1, n) + 1.2 * y - 1.5)))
+    return p, y
+
+
+def test_emp_equals_brute_force_integration_and_its_perfect_classifier_bound():
+    from sklearn.metrics import roc_curve
+
+    from src.eval.metrics import EMP_P0, EMP_P1, EMP_ROI, expected_maximum_profit
+    for seed, prevalence in ((0, 0.1), (1, 0.4), (2, 0.05)):
+        p, y = _scored(prevalence=prevalence, seed=seed)
+        fpr, tpr, _ = roc_curve(y, p)
+        lam = np.linspace(0, 1, 100_001)
+        profit = np.max(np.outer(lam, y.mean() * tpr) - EMP_ROI * (1 - y.mean()) * fpr, axis=1)
+        brute = (1 - EMP_P0 - EMP_P1) * np.trapezoid(profit, lam) + EMP_P1 * profit[-1]
+        assert expected_maximum_profit(p, y)[0] == pytest.approx(brute, abs=1e-8)
+    y = np.array([0] * 80 + [1] * 20)
+    emp, rejected = expected_maximum_profit(y.astype(float), y)
+    assert emp == pytest.approx(0.2 * (EMP_P1 + (1 - EMP_P0 - EMP_P1) / 2))   # π_d · E[λ]
+    assert rejected == pytest.approx(0.2 * (1 - EMP_P0))
+    assert expected_maximum_profit(np.full(100, 0.3), y) == (0.0, 0.0)          # no ranking, no profit
+
+
+def test_h_measure_matches_numerical_integration_and_bounds():
+    from scipy.stats import beta
+    from sklearn.metrics import roc_curve
+
+    from src.eval.metrics import h_measure
+    p, y = _scored(prevalence=0.2, seed=3)
+    fpr, tpr, _ = roc_curve(y, p)
+    c = np.linspace(0, 1, 100_001)
+    pi = y.mean()
+    loss = np.min(np.outer(c, pi * (1 - tpr)) + np.outer(1 - c, (1 - pi) * fpr), axis=1)
+    worst = np.minimum(c * pi, (1 - c) * (1 - pi))
+    w = beta.pdf(c, 2, 2)
+    assert h_measure(p, y) == pytest.approx(1 - np.trapezoid(loss * w, c) / np.trapezoid(worst * w, c), abs=1e-7)
+    y = np.array([0] * 80 + [1] * 20)
+    assert h_measure(y.astype(float), y) == pytest.approx(1.0)
+    assert h_measure(np.full(100, 0.3), y) == pytest.approx(0.0, abs=1e-12)
+
+
+def test_classification_metrics_carry_the_credit_scoring_measures():
+    from sklearn.metrics import roc_auc_score
+
+    from src.eval.metrics import _classification_metrics
+    p, y = _scored(seed=4)
+    proba = np.column_stack([1 - p, p])
+    out = _classification_metrics(proba, y, proba, y, n_classes_seen=2)
+    assert out["gini"] == pytest.approx(2 * roc_auc_score(y, p) - 1)
+    assert 0 < out["ks"] < 1 and 0 < out["h_measure"] < 1 and out["emp"] > 0
+    assert 0 < out["emp_rejection_rate"] < 1
+    one_class = _classification_metrics(proba, np.zeros_like(y), proba, y, n_classes_seen=2)
+    assert np.isnan(one_class["emp"]) and np.isnan(one_class["ks"])

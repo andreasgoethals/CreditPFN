@@ -52,10 +52,17 @@ any comparable real-data corpus would do.
   row diversity across visits.
 * Baselines: CatBoost, XGBoost and logistic (PD) / linear (LGD) regression, 50 seeded Optuna trials
   without a time limit.
-* Metrics. PD: AUC, log loss, Brier, ECE, calibration slope and intercept, calibration-in-the-
-  large and bias. LGD: RMSE, normalised RMSE, R², MAE, bias, NLL, CRPS (from TabPFN's bucket distribution, with its two half-normal tails approximated as uniform bins; from the
-  distributions, quantile-based otherwise), pinball loss and 80% interval coverage. Results are
+* Metrics. PD: AUC, Gini, KS, H-measure (Beta(2, 2) costs; Hand 2009), expected maximum profit
+  (EMP, Verbraken et al. 2014, with the share of applicants it rejects), PR-AUC, log loss, Brier,
+  ECE, calibration slope and intercept, calibration-in-the-large and bias, and thresholded
+  measures at the F1-optimal validation threshold. LGD: RMSE, normalised RMSE, R², MAE, bias,
+  Pearson, Spearman and Kendall correlation, NLL, CRPS (from TabPFN's bucket distribution, with
+  its two half-normal tails approximated as uniform bins; quantile-based otherwise), pinball loss
+  and 80% interval coverage. `src/eval/metrics.py`; LITERATURE.md gives the sources. Results are
   averaged within a table before aggregation; LGD aggregates use R²/normalised RMSE.
+* Cost. Every training run records its wall-clock time without monitoring; every E5 cell the
+  fine-tuning time of each candidate rate, the inference time and the GPU model; E6 cells the
+  fit and prediction time per context size.
 
 ## Reference recipe
 
@@ -100,7 +107,7 @@ E2–E4 and E8–E12 and is never re-run. 800 standard runs plus 100 single-sour
 | 1 | E2 | Training randomness | seeds 43 and 44 (with E1: three seeds) | PD, LGD | 64 |
 | 1 | E3 | Numerical control: does the training precision change the outcome | BF16 for TabPFN v2.6 and v3; strict FP32 for TabICLv2 (reference: FP16 with loss scaling) | PD, LGD | 24 |
 | 1 | E4 | Domain specificity | CPT on the matched non-credit twins of the partition's credit training tables | PD, LGD | 32 |
-| 1 | E5 | CPT vs fine-tuning on the target table | per fold: fine-tune the original and the E1 model on the fold's training rows (upstream fine-tuners; lr chosen from 1e-6, 1e-5, 6.5e-5 on the validation split, which also drives early stopping) | PD, LGD | fine-tunes only |
+| 1 | E5 | CPT vs fine-tuning on the target table | per fold: fine-tune the original and the E1 model on the fold's training rows (upstream fine-tuners, ≤30 epochs; lr chosen from 1e-6, 1e-5, 6.5e-5 by validation log loss or RMSE; early stopping, patience 8, on the fine-tuners' default validation metric: AUC for PD, MSE for LGD) | PD, LGD | fine-tunes only |
 | 2 | E6 | Context scarcity | evaluation only: original vs E1, and E4 (non-credit CPT) on the same rows, with 8 … 50,000 labelled context rows and the full pool, five folds; the fold's validation rows stay labelled for calibration and thresholds, so this is context scarcity rather than total label scarcity | PD, LGD | 0 |
 | 2 | E7 | Which sources help which targets | CPT on one table (2,500 updates, lr 1e-6), scored on every other table | PD, LGD | 100 |
 | 3 | E8 | Update size × anchoring | lr 1e-7, 1e-6, 3e-6, 1e-5 at λ 0.003; λ 0 and 0.03 at lr 3e-6 and 1e-5; λ 0 at the reference rate | PD, LGD | 288 |
@@ -136,6 +143,23 @@ E2–E4 and E8–E12 and is never re-run. 800 standard runs plus 100 single-sour
   uses 2 views and larger contexts; Experiment 0 includes a single-table sanity check (the
   trained table's own score must improve).
 
+## Primary comparison
+
+Fixed before any campaign result is opened (`config/design.yaml` `analysis.primary`): the
+reference CPT model (E1, seed 42) against the original model on the held-out credit tables, per
+task and base model, on a ranking measure and a proper score — PD AUC and Brier score, LGD R² and
+CRPS. Each is the equal-table mean five-fold improvement with a 95% hierarchical-bootstrap
+interval and a two-sided bootstrap p-value; the 16 p-values (2 tasks × 2 outcomes × 4 models) are
+Holm-adjusted at α 0.05. A comparison is *equivalent* when its 90% interval lies inside ± the
+equivalence margin (two one-sided tests). The margins (smallest change that matters per metric)
+are still open and must be fixed before the E1-E4 results are opened. Everything else is
+secondary and descriptive: reported with intervals, not tested for significance.
+
+**Positive controls.** The monitor of each run's own training tables shows whether CPT learns
+what it trains on (`campaign2.positive_control`); without that, missing transfer says nothing about
+the domain. In E7, source-target pairs from the same lender (`corpus.SAME_SOURCE`) are the pairs
+most likely to transfer and are marked separately.
+
 ## Uncertainty and the domain-control contrast
 
 Every reported mean gain carries a 95% percentile interval from a hierarchical bootstrap (2,000 draws) that
@@ -143,7 +167,10 @@ resamples the held-out tables and, within each drawn table, its five folds: the 
 generalisation and the folds are repeated measurements of it (`campaign2.bootstrap_interval`). The domain
 control is reported as a difference in differences: the gain of credit CPT (E1) minus the gain of CPT on the
 matched non-credit twins (E4), fold by fold on identical rows, with the same interval. Cost is reported as
-GPU hours of CPT (paid once) against fine-tuning per target table (E5). The update-zero agreement of
+GPU hours of CPT (paid once) against fine-tuning per target table (E5, all candidate rates), with
+inference seconds per 1,000 rows. E5 ends in a recommendation table: per task, labelled-row band
+(<1,000; 1,000-10,000; ≥10,000) and model, the mean change of CPT, FT and CPT+FT, how often each
+option scored best, and its cost. The update-zero agreement of
 mixed-precision gradients with FP32 (Experiment 0) is reported as a figure.
 
 ## RQ2 analysis (after training, from saved predictions)
@@ -185,6 +212,10 @@ upstream-parity inputs required.
 
 Twenty-five tables give limited power for table-level explanations; effects in the first study
 were small (≤0.005 AUC), so results are reported with per-table paired differences and seed noise
-rather than single means. Partitions were drawn once (seed 1729); tables drawn from the same
+rather than single means. Seven tables are proprietary (PD 2, LGD 5); the public tables alone can
+be re-analysed from the saved predictions. TabPFN v2, v3 and TabICLv2 are pretrained on synthetic
+data only; for TabPFN v2.6 no primary source states the training data, so its prior exposure to
+public credit or retention tables cannot be excluded (LITERATURE.md). Evaluation is IID within
+each table: no out-of-time split. Partitions were drawn once (seed 1729); tables drawn from the same
 lender's loans sit in one partition (`corpus.SAME_SOURCE`: the two LendingClub PD tables). DiagScale's L2-SP is an exact weight-change penalty only for
 v2/v2.6. The window objective deviates slightly from Real-TabPFN's bar NLL.

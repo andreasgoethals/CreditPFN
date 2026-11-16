@@ -95,6 +95,7 @@ def score_cell(data, context, validation, test, path, family, cfg, *, device="cu
                 raise RuntimeError("Requested TabICL FP32 policy was not applied")
         fit_seconds = time.monotonic() - started
         prediction = predict_all(estimator, c, data.task_type, cfg["query_batch_rows"])
+        predict_seconds = time.monotonic() - started - fit_seconds
         val_prediction = predict_all(estimator, b, data.task_type, cfg["query_batch_rows"])
     if len(prediction) != len(test) or not np.isfinite(prediction).all() or not np.isfinite(val_prediction).all():
         raise RuntimeError("Missing or nonfinite predictions; cell not recorded as successful")
@@ -102,6 +103,7 @@ def score_cell(data, context, validation, test, path, family, cfg, *, device="cu
                proba_val=val_prediction, y_val=data.y[validation], n_classes_seen=len(np.unique(data.y[context])))
                if data.task_type == "classification" else
                _regression_metrics(pred_test=prediction, y_test=data.y[test], neg_nll=None))
-    metrics.update(fit_seconds=fit_seconds, elapsed_seconds=time.monotonic()-started)
+    metrics.update(fit_seconds=fit_seconds, predict_seconds=predict_seconds,
+                   elapsed_seconds=time.monotonic() - started)
     return metrics, _pack(context=context, validation=validation, test=test, target=data.y[test],
                           prediction=prediction, validation_target=data.y[validation], validation_prediction=val_prediction)

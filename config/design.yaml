@@ -45,6 +45,17 @@ reference:
 
 baselines: [catboost, xgboost, linear]     # CatBoost, XGBoost and logistic (PD) / linear (LGD) regression
 
+# Pre-specified confirmatory analysis (RESEARCH_BRIEF "Primary endpoint"); everything else is
+# secondary. E1 (seed 42) vs the original model on the held-out credit tables, five folds,
+# hierarchical bootstrap over tables and folds, Holm over tasks x outcomes x models (16 tests).
+analysis:
+  primary:
+    outcomes: {pd: [roc_auc, brier_score], lgd: [r2, crps]}   # ranking + a proper score per task
+    alpha: 0.05
+    # Smallest change that matters, in metric units; null until fixed, which must happen before
+    # the E1-E4 results are opened. Equivalence: the 90% interval lies inside +-margin.
+    equivalence_margin: {roc_auc: null, brier_score: null, r2: null, crps: null}
+
 experiments:
   # ---------------------------------------------------------------- RQ1: does domain CPT pay off?
   E1:

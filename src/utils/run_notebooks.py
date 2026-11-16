@@ -278,7 +278,8 @@ def write_captions(notebooks: tuple[str, ...]) -> Path:
             continue
         for e in entries:
             relative = (notebook_figures_dir(name) / (e['stem'] + '.pdf')).relative_to(figures_dir()).as_posix()
-            lines.append(f"**[{e['stem']}]({relative})** — `{e['name']}`")
+            lines.append(f"**[{e['stem']}]({relative})** — `{e['name']}`"
+                         + (f" — {e['title']}" if e.get("title") else ""))
             lines.append("")
             lines.append(e["caption"] or "> MISSING CAPTION. Add one at the `save()` call.")
             lines.append("")

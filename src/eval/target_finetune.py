@@ -106,6 +106,7 @@ def finetune_cell(data, context, validation, test, path, family, *, recipe=None,
             estimator.fit(a, y_context, X_val=b, y_val=y_val)
         fit_seconds = time.monotonic() - started
         prediction = _predict(estimator, c, data.task_type)
+        predict_seconds = time.monotonic() - started - fit_seconds
         val_prediction = _predict(estimator, b, data.task_type)
     if len(prediction) != len(test) or not np.isfinite(prediction).all() or not np.isfinite(val_prediction).all():
         raise RuntimeError("Missing or non-finite fine-tuned predictions")
@@ -113,7 +114,7 @@ def finetune_cell(data, context, validation, test, path, family, *, recipe=None,
                                        y_val=y_val, n_classes_seen=len(np.unique(y_context)))
                if data.task_type == "classification" else
                _regression_metrics(pred_test=prediction, y_test=data.y[test], neg_nll=None))
-    metrics.update(fit_seconds=fit_seconds, context_rows=int(len(context)),
+    metrics.update(fit_seconds=fit_seconds, predict_seconds=predict_seconds, context_rows=int(len(context)),
                    validation_rows=int(len(validation)), test_rows=int(len(test)),
                    recipe_epochs=int(recipe["epochs"]), recipe_learning_rate=float(recipe["learning_rate"]))
     return metrics, {"prediction": prediction, "validation_prediction": val_prediction}

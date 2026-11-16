@@ -20,33 +20,33 @@ _No figures produced._
 
 ## general/02_processed_data
 
-**[general__02_processed_data__01_corpus_overview](general/general__02_processed_data__01_corpus_overview.pdf)** — `corpus_overview`
+**[general__02_processed_data__01_corpus_overview](general/general__02_processed_data__01_corpus_overview.pdf)** — `corpus_overview` — The credit corpus: size, predictors, missing cells and target
 
 Every processed credit table, PD (17) above LGD (8), each block ordered by decreasing row count; P1–P4 is the dataset partition in which the table is held out from continued pretraining. Rows and predictors use logarithmic axes; missing predictor cells exclude the target; the last panel shows the minority-class (default) rate for PD and the mean loss rate for LGD, both on a zero-based axis.
 
-**[general__02_processed_data__02_lgd_distributions](general/general__02_processed_data__02_lgd_distributions.pdf)** — `lgd_distributions`
+**[general__02_processed_data__02_lgd_distributions](general/general__02_processed_data__02_lgd_distributions.pdf)** — `lgd_distributions` — LGD target distribution per table
 
 Processed LGD target of each of the 8 LGD tables: 30-bin histograms of the fraction of rows, with dotted lines at the table's mean and median. Values follow the registered preprocessing, including the [0, 1] clip; tables are not pooled and vertical scales differ between panels.
 
-**[general__02_processed_data__03_planned_exposure](general/general__02_processed_data__03_planned_exposure.pdf)** — `planned_exposure`
+**[general__02_processed_data__03_planned_exposure](general/general__02_processed_data__03_planned_exposure.pdf)** — `planned_exposure` — Share of updates per table: one sample versus full pass
 
 Planned share of optimizer updates per credit table if every processed table of the task were in the corpus: one sampled episode per table visit (circles, equal shares) versus a full pass over disjoint chunks of 10,000 context-plus-query rows (squares, one update per chunk). Labels give the table's rows and the full-pass share divided by the one-sample share (blue above one, red below; colour does not mean better or worse). Illustration only: runs train on three of four partitions, TabPFN v3 and TabICLv2 use 26,000-row episodes, and a run stops at its update budget.
 
 ## general/03_domain_comparison
 
-**[general__03_domain_comparison__01_pd_properties](general/general__03_domain_comparison__01_pd_properties.pdf)** — `pd_properties`
+**[general__03_domain_comparison__01_pd_properties](general/general__03_domain_comparison__01_pd_properties.pdf)** — `pd_properties` — PD tables versus non-credit tables, per property
 
 PD. Every PD credit table, binary non-credit retention table and matched non-credit control table (the E4 twins, subsampled to the shape of their credit tables), per property (panels). Points are tables with horizontal jitter; bars mark group medians. Tables above 50,000 rows are subsampled to 50,000 rows for the property computation.
 
-**[general__03_domain_comparison__02_lgd_properties](general/general__03_domain_comparison__02_lgd_properties.pdf)** — `lgd_properties`
+**[general__03_domain_comparison__02_lgd_properties](general/general__03_domain_comparison__02_lgd_properties.pdf)** — `lgd_properties` — LGD tables versus non-credit tables, per property
 
 LGD. Every LGD credit table, regression non-credit retention table and matched non-credit control table (the E4 twins, subsampled to the shape of their credit tables), per property (panels). Points are tables with horizontal jitter; bars mark group medians. Tables above 50,000 rows are subsampled to 50,000 rows for the property computation.
 
-**[general__03_domain_comparison__03_lgd_targets](general/general__03_domain_comparison__03_lgd_targets.pdf)** — `lgd_targets`
+**[general__03_domain_comparison__03_lgd_targets](general/general__03_domain_comparison__03_lgd_targets.pdf)** — `lgd_targets` — LGD targets versus non-credit regression targets
 
 Left: empirical distribution function of each table target after per-table min-max rescaling. Right: share of rows exactly at the minimum and at the maximum target value. Colours mark credit LGD tables and non-credit regression tables.
 
-**[general__03_domain_comparison__04_embedding](general/general__03_domain_comparison__04_embedding.pdf)** — `embedding`
+**[general__03_domain_comparison__04_embedding](general/general__03_domain_comparison__04_embedding.pdf)** — `embedding` — Credit and non-credit tables in property space
 
 First two principal components of the standardised feature and target properties of every table, for PD with the binary non-credit tables (left) and LGD with the regression non-credit tables (right). Each point is one table: credit corpus, matched non-credit control corpus (E4) and non-credit retention panel. Axis labels give the share of property variance per component.
 

@@ -208,13 +208,17 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
                        else "validation_rmse",
                        **{f"validation_score_lr{rate:g}": score for rate, score in scores.items()},
                        **{f"test_{primary}_lr{rate:g}": float(m[primary]) for rate, (m, _) in candidates.items()},
+                       **{f"fit_seconds_lr{rate:g}": float(m["fit_seconds"]) for rate, (m, _) in candidates.items()},
+                       # Cost of the cell = every candidate's fine-tuning (the rate search is part of it).
+                       "selected_fit_seconds": float(metrics["fit_seconds"]),
                        "fit_seconds": sum(float(m["fit_seconds"]) for m, _ in candidates.values())}
             keep(dict(start=start, finetuned=True, **metrics),
                  dict(context=used, validation=validation, test=test, target=data.y[test],
                       prediction=out["prediction"], validation_target=data.y[validation],
                       validation_prediction=out["validation_prediction"]))
     frame = pd.DataFrame(rows).assign(**task, test_rows=len(test), validation_rows=len(validation),
-                                      available_context=len(context), quick=quick)
+                                      available_context=len(context), quick=quick,
+                                      device_name=_device_name(device))
     # Row i of the metrics owns the arrays "i__<name>" (indices, targets, predictions).
     stored = target.with_name(target.name.replace(".csv.gz", ".predictions.npz"))
     pending = stored.with_suffix(".pending")
@@ -227,6 +231,14 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
     write_json(receipt, dict(task=task, rows=len(frame), identity=identity, predictions=stored.name))
     print(json.dumps(dict(kind=kind, index=index, rows=len(frame))), flush=True)
     return target
+
+
+def _device_name(device: str) -> str:
+    """The accelerator the timings were measured on (GPU hours are only comparable per device)."""
+    if str(device).startswith("cuda"):
+        import torch
+        return torch.cuda.get_device_name(torch.device(device))
+    return "cpu"
 
 
 def validation_score(task_type: str, y, prediction) -> float:

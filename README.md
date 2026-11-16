@@ -6,7 +6,7 @@ loss-given-default regression. Four base models: TabPFN v2, v2.6 and v3, and Tab
 asks whether CPT on real credit datasets improves predictions on *unseen* credit datasets, how the
 adaptation recipe changes that, what is forgotten on non-credit tables, and when and why it works.
 
-## Status (04-11-2026): second campaign, before Experiment 0
+## Status (16-11-2026): second campaign, Experiment 0 running
 
 The first study (896 runs) is complete and archived locally in `archive/study-2026-11.zip`
 (gitignored; `archive/study-2026-09.zip` holds the September run). Its main lessons: the reference
@@ -30,7 +30,10 @@ method authority is [RESEARCH_BRIEF.md](docs/RESEARCH_BRIEF.md); operations are 
 E2–E4 and E8–E12. Every model is evaluated in FP32 on complete five-fold test sets; forgetting is measured
 on 19 binary and 12 regression TabArena tables; baselines are CatBoost, XGBoost and logistic/linear
 regression. TabPFN LGD trains with a 5-bucket window NLL (robust to the v2.6 regressor's
-comb-shaped density); LoRA and DiagScale use L2-SP on their effective weight change.
+comb-shaped density); LoRA and DiagScale use L2-SP on their effective weight change. One
+comparison is pre-specified as primary (E1 against the original model; PD AUC and Brier, LGD R²
+and CRPS; Holm over 16 tests); PD is also scored with the credit-scoring measures KS, H-measure
+and expected maximum profit.
 
 ## Storage and workflow
 
@@ -56,8 +59,9 @@ From this repository in Windows PowerShell:
 The local `.venv` matches the cluster container's exact pins (`config/runtime/`,
 `tests/test_environment_parity.py`). Notebooks live in `notebooks/{rq1,rq2,rq3,experiment0,general}`,
 contain no functions or classes, call `src/` only and end with a complete text summary. Figures are
-LNCS-width (122 mm) PDFs in `output CreditPFN/figures/<group>/`; `output CreditPFN/All_Results.md` collects
-the summaries.
+LNCS-width (122 mm) PDFs in `output CreditPFN/figures/<group>/`, without a figure-level title (the
+caption carries it; the title is kept beside the caption in `CAPTIONS.md`);
+`output CreditPFN/All_Results.md` collects the summaries.
 
 ## Repository boundaries
 

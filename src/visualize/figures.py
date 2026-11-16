@@ -151,7 +151,8 @@ class FigureSaver:
         """Where the most recent `save` wrote, for the rare caller that needs it."""
         return self.folder / f"{self.entries[-1]['stem']}.pdf" if self.entries else None
 
-    def save(self, fig: plt.Figure, name: str, *, caption: str = "", provenance: dict | None = None) -> None:
+    def save(self, fig: plt.Figure, name: str, *, caption: str = "", provenance: dict | None = None,
+             title: str = "") -> None:
         """Write a notebook-prefixed, numbered PDF and record the caption.
 
         The figure is left open so it still displays in Jupyter — that inline render is the only
@@ -166,6 +167,8 @@ class FigureSaver:
         _guard(path, self.folder)
         fig.savefig(path, format="pdf", dpi=DPI)
         entry = {"index": index, "stem": stem, "name": name, "caption": caption.strip()}
+        if title:
+            entry["title"] = title.strip()   # what is compared; not drawn (LNCS: the caption leads)
         if provenance:
             entry["provenance"] = provenance
         self.entries.append(entry)

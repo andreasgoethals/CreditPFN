@@ -38,6 +38,7 @@ EXPOSURE_LIMIT_FACTOR = 1.30
 GOLDEN = 0.618      # height = width * GOLDEN, unless the data wants otherwise
 TABLE_CURVE_LINE = 0.55
 MEAN_CURVE_LINE = 1.6
+INTERVAL_LINE = 1.1     # several intervals stacked per row (forest plots)
 GRID_TEXT_LIGHT = "white"
 GRID_TEXT_DARK = "black"
 

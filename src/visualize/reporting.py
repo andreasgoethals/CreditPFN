@@ -100,7 +100,8 @@ def page_text(page):
     tables = page.tables or figure_tables(page.figure)
     if not tables:
         raise ValueError(f"Figure {page.name} has no text-equivalent data")
-    parts = [f"Figure: {page.name}", page.caption]
+    parts = [f"Figure: {page.name}", *([f"Title: {page.title}"] if getattr(page, "title", "") else []),
+             page.caption]
     for label, frame in tables.items():
         parts.extend((str(label), table_text(frame)))
     return "\n".join(parts)

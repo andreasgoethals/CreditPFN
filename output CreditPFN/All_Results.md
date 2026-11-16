@@ -189,6 +189,7 @@ pd     1       4
        4       4
 
 Figure: corpus_overview
+Title: The credit corpus: size, predictors, missing cells and target
 Every processed credit table, PD (17) above LGD (8), each block ordered by decreasing row count; P1–P4 is the dataset partition in which the table is held out from continued pretraining. Rows and predictors use logarithmic axes; missing predictor cells exclude the target; the last panel shows the minority-class (default) rate for PD and the mean loss rate for LGD, both on a zero-based axis.
 Corpus overview
 CSV (first column: row index)
@@ -252,6 +253,7 @@ row,track,dataset,partition
 Histograms describe the processed targets; no additional clipping is applied by the plot.
 
 Figure: lgd_distributions
+Title: LGD target distribution per table
 Processed LGD target of each of the 8 LGD tables: 30-bin histograms of the fraction of rows, with dotted lines at the table's mean and median. Values follow the registered preprocessing, including the [0, 1] clip; tables are not pooled and vertical scales differ between panels.
 LGD distribution statistics
 CSV (first column: row index)
@@ -269,6 +271,7 @@ row,dataset,rows,mean,median,share_zero,share_one
 Illustration only: a 10,000-row chunk, all processed tables and no skipped updates. Actual runs use base-specific caps and training partitions.
 
 Figure: planned_exposure
+Title: Share of updates per table: one sample versus full pass
 Planned share of optimizer updates per credit table if every processed table of the task were in the corpus: one sampled episode per table visit (circles, equal shares) versus a full pass over disjoint chunks of 10,000 context-plus-query rows (squares, one update per chunk). Labels give the table's rows and the full-pass share divided by the one-sample share (blue above one, red below; colour does not mean better or worse). Illustration only: runs train on three of four partitions, TabPFN v3 and TabICLv2 use 26,000-row episodes, and a run stops at its update budget.
 Step shares and full-pass share ratios
 CSV (first column: row index)
@@ -397,6 +400,7 @@ row,property,credit_median,noncredit_median,cliffs_delta,mann_whitney_p
 9,heavy_tail_share,0.4,0.39166667,-0.025951557,0.88799001
 
 Figure: pd_properties
+Title: PD tables versus non-credit tables, per property
 PD. Every PD credit table, binary non-credit retention table and matched non-credit control table (the E4 twins, subsampled to the shape of their credit tables), per property (panels). Points are tables with horizontal jitter; bars mark group medians. Tables above 50,000 rows are subsampled to 50,000 rows for the property computation.
 Panel 1: Minority-class rate / points 1
 CSV (first column: row index)
@@ -1179,6 +1183,7 @@ row,property,credit_median,noncredit_median,cliffs_delta,mann_whitney_p
 14,top5_abs_spearman,0.27934167,0.33593409,-0.15,0.56613853
 
 Figure: lgd_properties
+Title: LGD tables versus non-credit tables, per property
 LGD. Every LGD credit table, regression non-credit retention table and matched non-credit control table (the E4 twins, subsampled to the shape of their credit tables), per property (panels). Points are tables with horizontal jitter; bars mark group medians. Tables above 50,000 rows are subsampled to 50,000 rows for the property computation.
 Panel 1: Target within [0, 1] / points 1
 CSV (first column: row index)
@@ -1831,6 +1836,7 @@ B5. The target
 Target shape per table.
 
 Figure: lgd_targets
+Title: LGD targets versus non-credit regression targets
 Left: empirical distribution function of each table target after per-table min-max rescaling. Right: share of rows exactly at the minimum and at the maximum target value. Colours mark credit LGD tables and non-credit regression tables.
 Panel 1: Target per table / series 1
 CSV (first column: row index)
@@ -7589,6 +7595,7 @@ C1. Projection of table properties
 Two components; the distance tests in A4 and B4 use all properties.
 
 Figure: embedding
+Title: Credit and non-credit tables in property space
 First two principal components of the standardised feature and target properties of every table, for PD with the binary non-credit tables (left) and LGD with the regression non-credit tables (right). Each point is one table: credit corpus, matched non-credit control corpus (E4) and non-credit retention panel. Axis labels give the share of property variance per component.
 Panel 1: PD and binary tables / points 1
 CSV (first column: row index)
@@ -7717,17 +7724,15 @@ row,experiment,slug,arm,track,change,models,runs,tasks
 1,E1,reference,0,lgd,reference,4,16,unavailable
 2,E2,seed,0,pd,seed=43,4,16,unavailable
 3,E2,seed,1,pd,seed=44,4,16,unavailable
-4,E2,seed,2,pd,seed=45,4,16,unavailable
-5,E2,seed,0,lgd,seed=43,4,16,unavailable
-6,E2,seed,1,lgd,seed=44,4,16,unavailable
-7,E2,seed,2,lgd,seed=45,4,16,unavailable
-8,E3,precision,0,pd,training_precision=bf16,2,8,unavailable
-9,E3,precision,1,pd,training_precision=fp32,1,4,unavailable
-10,E3,precision,0,lgd,training_precision=bf16,2,8,unavailable
-11,E3,precision,1,lgd,training_precision=fp32,1,4,unavailable
-12,E4,domain_control,0,pd,corpus=domain_control,4,16,unavailable
-13,E4,domain_control,0,lgd,corpus=domain_control,4,16,unavailable
-14,E5,target_finetune,—,unavailable,"Is CPT worth it compared with fine-tuning on the target table, and do the two stack?",unavailable,0,"PD, LGD"
+4,E2,seed,0,lgd,seed=43,4,16,unavailable
+5,E2,seed,1,lgd,seed=44,4,16,unavailable
+6,E3,precision,0,pd,training_precision=bf16,2,8,unavailable
+7,E3,precision,1,pd,training_precision=fp32,1,4,unavailable
+8,E3,precision,0,lgd,training_precision=bf16,2,8,unavailable
+9,E3,precision,1,lgd,training_precision=fp32,1,4,unavailable
+10,E4,domain_control,0,pd,corpus=domain_control,4,16,unavailable
+11,E4,domain_control,0,lgd,corpus=domain_control,4,16,unavailable
+12,E5,target_finetune,—,unavailable,"Is CPT worth it compared with fine-tuning on the target table, and do the two stack?",unavailable,0,"PD, LGD"
 
 2. How transfer develops, and how much is seed noise (E1, E2)
 No results yet for E1 monitor curves; the figure is drawn once they exist.
@@ -7739,6 +7744,10 @@ CSV (first column: row index)
 row
 
 Table: Seed range of the held-out credit mean (E1 and E2)
+CSV (first column: row index)
+row
+
+Table: Positive control: own training tables against held-out credit tables at the last update (E1)
 CSV (first column: row index)
 row
 
@@ -7768,7 +7777,20 @@ rq1/01_training: no figures saved.
 ```
 RQ1: transfer — results
 
-1. Per-table transfer and seed noise (E1, E2)
+1. Primary comparison (pre-specified)
+No results yet for primary comparison; the figure is drawn once they exist.
+
+No measurements available for this figure group.
+
+Table: Primary comparison (Holm over 16 tests; equivalence once margins are fixed)
+CSV (first column: row index)
+row
+
+Table: Same outcomes on credit and retention tables
+CSV (first column: row index)
+row
+
+2. Per-table transfer and seed noise (E1, E2)
 No results yet for E1 five-fold gains; the figure is drawn once they exist.
 
 No measurements available for this figure group.
@@ -7785,7 +7807,7 @@ Table: PD E2 summary per seed arm
 CSV (first column: row index)
 row
 
-Table: PD gains at four seeds
+Table: PD gains at three seeds
 CSV (first column: row index)
 row
 
@@ -7803,24 +7825,11 @@ Table: LGD E2 summary per seed arm
 CSV (first column: row index)
 row
 
-Table: LGD gains at four seeds
+Table: LGD gains at three seeds
 CSV (first column: row index)
 row
 
-Table: PD mean gain with 95% bootstrap interval (E1)
-CSV (first column: row index)
-row
-
-Table: LGD mean gain with 95% bootstrap interval (E1)
-CSV (first column: row index)
-row
-
-2. Transfer against forgetting, with uncertainty
-No results yet for E1 retention gains; the figure is drawn once they exist.
-
-No measurements available for this figure group.
-
-3. Discrimination, calibration and distribution quality
+3. Ranking, profit, calibration and distribution quality
 No results yet for E1 metric profile; the figure is drawn once they exist.
 
 No measurements available for this figure group.
@@ -7888,6 +7897,10 @@ No results yet for E5 fine-tuning; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
+Table: E5 recommendation: change per option, best option and cost, by labelled-row band
+CSV (first column: row index)
+row
+
 Table: E5 summary per model and start
 CSV (first column: row index)
 row
@@ -7896,7 +7909,7 @@ Table: E5 per table
 CSV (first column: row index)
 row
 
-Table: GPU hours: CPT (E1, paid once) against fine-tuning per target table (E5)
+Table: GPU hours and inference seconds: CPT (E1, paid once) against fine-tuning per target table (E5)
 CSV (first column: row index)
 row
 

@@ -252,6 +252,117 @@ def _binary_ece(p: np.ndarray, y: np.ndarray, n_bins: int = 10) -> float:
         return float("nan")
 
 
+
+# ------------------------------------------------------------------ credit-scoring measures
+#: EMP parameters of Verbraken et al. (2014, EJOR 238(2)): the loss given default saved by
+#: rejecting a defaulter is 0 with probability P0, 1 with probability P1 and uniform in between;
+#: rejecting a good applicant costs the return on investment ROI (fractions of the loan amount).
+EMP_P0, EMP_P1, EMP_ROI = 0.55, 0.10, 0.2644
+
+
+def roc_hull(p: np.ndarray, y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Upper convex hull of the ROC curve, from (0, 0) to (1, 1).
+
+    x = share of non-defaulters (class 0) rejected, y = share of defaulters (class 1) rejected,
+    rejecting every case whose predicted default probability is at least the threshold.
+    """
+    from sklearn.metrics import roc_curve
+    fpr, tpr, _ = roc_curve(np.asarray(y).astype(int), np.asarray(p, dtype=np.float64))
+    hull: list[tuple[float, float]] = []
+    for point in zip(np.r_[0.0, fpr, 1.0], np.r_[0.0, tpr, 1.0]):
+        point = (float(point[0]), float(point[1]))
+        while len(hull) >= 2:
+            (x1, y1), (x2, y2) = hull[-2], hull[-1]
+            if (x2 - x1) * (point[1] - y1) - (y2 - y1) * (point[0] - x1) >= 0:   # not a right turn
+                hull.pop()
+            else:
+                break
+        if not hull or point != hull[-1]:
+            hull.append(point)
+    xs, ys = np.array(hull).T
+    return xs, ys
+
+
+def _hull_regions(xs, ys, ratio):
+    """[lo_i, hi_i): range of a cost parameter t over which hull point i is optimal, when moving
+    from point i to i+1 pays off iff t > ratio·Δx/Δy (Δy/Δx decreases along the hull)."""
+    dx, dy = np.diff(xs), np.diff(ys)
+    with np.errstate(divide="ignore", invalid="ignore"):
+        switch = np.where(dy > 0, ratio * dx / np.where(dy > 0, dy, 1.0), np.inf)
+    switch = np.maximum.accumulate(switch)
+    return np.r_[0.0, switch], np.r_[switch, np.inf]
+
+
+def expected_maximum_profit(p: np.ndarray, y: np.ndarray, *, p0: float = EMP_P0, p1: float = EMP_P1,
+                            roi: float = EMP_ROI) -> tuple[float, float]:
+    """EMP for credit scoring (Verbraken et al. 2014) and the share of applicants it rejects.
+
+    Profit per applicant of a cut-off, as a fraction of the loan: λ·π_d·y − ROI·π_g·x, with λ
+    distributed as above. EMP is its expectation over λ with the cut-off chosen optimally for
+    each λ, integrated exactly over the ROC convex hull. Returns (EMP, expected share rejected).
+    A ranking measure: invariant to monotone recalibration, like AUC.
+    """
+    y = np.asarray(y).astype(int)
+    if np.unique(y).size < 2:
+        return float("nan"), float("nan")
+    pi_d = float(y.mean())
+    pi_g = 1.0 - pi_d
+    xs, ys = roc_hull(p, y)
+    lo, hi = _hull_regions(xs, ys, roi * pi_g / pi_d)
+    a, b = pi_d * ys, roi * pi_g * xs                     # profit_i(λ) = a_i·λ − b_i
+    lo1, hi1 = np.clip(lo, 0, 1), np.clip(hi, 0, 1)
+    density = 1.0 - p0 - p1
+    rejected = pi_d * ys + pi_g * xs
+    emp = density * np.sum(a * (hi1 ** 2 - lo1 ** 2) / 2 - b * (hi1 - lo1))
+    share = density * np.sum(rejected * (hi1 - lo1))
+    at_one = int(np.argmax(a - b))                         # point mass at λ = 1
+    emp += p1 * (a[at_one] - b[at_one])
+    share += p1 * rejected[at_one]                         # at λ = 0 nobody is rejected
+    return float(emp), float(share)
+
+
+def h_measure(p: np.ndarray, y: np.ndarray, a: float = 2.0, b: float = 2.0) -> float:
+    """Hand's (2009) H-measure with the default Beta(2, 2) cost distribution.
+
+    Minimum expected misclassification loss c·π_d·(1 − y) + (1 − c)·π_g·x over the ROC convex hull,
+    integrated over the cost c, relative to the loss of the best trivial classifier. The
+    symmetric Beta(2, 2) makes the value independent of which class is called positive.
+    """
+    from scipy.special import beta as beta_fn
+    from scipy.stats import beta as beta_dist
+    y = np.asarray(y).astype(int)
+    if np.unique(y).size < 2:
+        return float("nan")
+    pi_d = float(y.mean())
+    pi_g = 1.0 - pi_d
+    xs, ys = roc_hull(p, y)
+    # Point i+1 beats i iff c/(1 − c) > (π_g/π_d)·Δx/Δy: regions in odds, mapped to c.
+    lo, hi = _hull_regions(xs, ys, pi_g / pi_d)
+    lo, hi = (np.where(np.isinf(o), 1.0, o / (1 + np.where(np.isinf(o), 0.0, o))) for o in (lo, hi))
+
+    def moment(k, u, v):   # ∫_u^v c^k Beta(c; a, b) dc
+        return beta_fn(a + k, b) / beta_fn(a, b) * (beta_dist.cdf(v, a + k, b) - beta_dist.cdf(u, a + k, b))
+
+    slope, intercept = pi_d * (1 - ys) - pi_g * xs, pi_g * xs     # loss_i(c) = slope·c + intercept
+    loss = np.sum(slope * moment(1, lo, hi) + intercept * moment(0, lo, hi))
+    # Trivial classifiers: accept everyone (loss c·π_d) or reject everyone (loss (1 − c)·π_g).
+    worst = pi_d * moment(1, 0.0, pi_g) + pi_g * (moment(0, pi_g, 1.0) - moment(1, pi_g, 1.0))
+    return float(1 - loss / worst) if worst > 0 else float("nan")
+
+
+def credit_scoring_metrics(p: np.ndarray, y: np.ndarray) -> dict[str, float]:
+    """Ranking measures of credit scoring (Lessmann et al. 2015): Gini, KS, H-measure and EMP."""
+    from sklearn.metrics import roc_auc_score, roc_curve
+    y = np.asarray(y).astype(int)
+    p = np.asarray(p, dtype=np.float64)
+    if np.unique(y).size < 2:
+        return dict(gini=float("nan"), ks=float("nan"), h_measure=float("nan"), emp=float("nan"),
+                    emp_rejection_rate=float("nan"))
+    fpr, tpr, _ = roc_curve(y, p)
+    emp, share = expected_maximum_profit(p, y)
+    return dict(gini=float(2 * roc_auc_score(y, p) - 1), ks=float(np.max(tpr - fpr)),
+                h_measure=h_measure(p, y), emp=emp, emp_rejection_rate=share)
+
 def _posthoc_calibrated(
     proba_test: np.ndarray, proba_val: np.ndarray, y_val: np.ndarray,
     method: str,
@@ -343,6 +454,7 @@ def _classification_metrics(
         if K == 2:
             out["roc_auc"] = float(roc_auc_score(y_test, proba_test[:, 1]))
             out["pr_auc"]  = float(average_precision_score(y_test, proba_test[:, 1]))
+            out.update(credit_scoring_metrics(proba_test[:, 1], y_test))
         elif n_classes_seen >= 2:
             out["roc_auc"] = float(
                 roc_auc_score(y_test, proba_test, multi_class="ovr", average="macro")
@@ -552,6 +664,8 @@ def _regression_metrics(
       target or constant prediction.
     * ``spearman_r``          — rank correlation; robust to monotone
       nonlinearities. NaN under the same degenerate cases.
+    * ``kendall_tau``         — Kendall's τ-b (Loterman et al. 2012 report Pearson,
+      Spearman and Kendall beside R² for LGD).
     """
     from sklearn.metrics import (
         explained_variance_score,
@@ -617,6 +731,12 @@ def _regression_metrics(
             out["spearman_r"] = float(rho) if not np.isnan(rho) else float("nan")
     except ImportError:                                                # pragma: no cover
         out["spearman_r"] = float("nan")
+    if np.ptp(y_test) == 0 or np.ptp(pred_test) == 0:
+        out["kendall_tau"] = float("nan")
+    else:
+        from scipy.stats import kendalltau
+        tau = kendalltau(y_test, pred_test).statistic
+        out["kendall_tau"] = float(tau) if np.isfinite(tau) else float("nan")
 
     if quantiles is not None:
         q = np.asarray(quantiles)

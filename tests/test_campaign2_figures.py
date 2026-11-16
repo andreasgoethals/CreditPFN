@@ -49,8 +49,8 @@ def test_every_figure_returns_none_without_evidence():
     assert r2.monitor_development(empty, title="t") is None
     assert r2.arm_trajectories([dict(curves=empty, x="successful_updates", ylabel="y")], empty, title="t") is None
     assert r2.table_gains(empty, track="pd", title="t") is None
-    assert r2.transfer_and_retention({"pd": empty, "lgd": empty}, title="t") is None
-    assert r2.finetune_conditions(empty, title="t") is None
+    assert r2.primary_forest(empty, title="t") is None
+    assert r2.adaptation_by_size(empty, title="t") is None
     assert r2.baseline_position({"pd": empty}, title="t") is None
     assert r2.metric_profile_heatmap({"pd": empty}, title="t") is None
     assert r2.dose_response(empty, track="pd", title="t") is None
@@ -101,23 +101,57 @@ def test_metric_profile_orients_improvements(results):
     assert c2.improvement("log_loss", 0.3, 0.4) > 0 and c2.improvement("calibration_slope", 0.9, 1.3) > 0
     profiles = {t: c2.select(c2.metric_profile(c2.endpoint_metrics("reference", t)), arm=0) for t in ("pd", "lgd")}
     fig, text = _finished(r2.metric_profile_heatmap(profiles, title="profile"))
-    assert len(fig.axes[0].texts) == 4 * 6 and "tables_improved" in text
+    assert len(fig.axes[0].texts) == 4 * len(c2.PROFILE_METRICS["pd"]) and "tables_improved" in text
+    assert {"ks", "h_measure", "emp"} <= set(profiles["pd"].metric)
 
 
 def test_rq1_result_figures_render(results):
-    gains = {t: c2.endpoint_gains("reference", t) for t in ("pd", "lgd")}
-    _finished(r2.transfer_and_retention(gains, title="t"))
-    intervals = {t: c2.gain_intervals("reference", t) for t in ("pd", "lgd")}
-    fig, text = _finished(r2.transfer_and_retention(gains, intervals, title="t"))
-    assert len(fig.axes) == 2 and "interval_low" in text
     baselines = {t: c2.baseline_comparison(t) for t in ("pd", "lgd")}
     assert (baselines["pd"].folds == 5).all() and set(baselines["pd"].model) == set(syn.BASES)
     _finished(r2.baseline_position(baselines, title="t"))
     finetune = c2.finetune_table(syn.finetune())
     assert set(finetune.model) == set(syn.BASES)
     assert np.allclose(finetune.cpt_finetune_change, finetune.cpt_finetune - finetune.original)
-    fig, _ = _finished(r2.finetune_conditions(finetune, title="t"))
-    assert len(fig.axes) == 8
+    results = syn.finetune()
+    table = c2.adaptation_by_size(results)
+    assert np.allclose(table.cpt_after_finetune, table.cpt_finetune - table.original_finetune)
+    assert set(table.best_option) <= set(c2.ADAPTATION_OPTIONS) and table.context_rows.notna().all()
+    fig, _ = _finished(r2.adaptation_by_size(table, title="t"))
+    assert len(fig.axes) == 6
+    summary = c2.adaptation_summary(table)
+    assert summary.tables.sum() == len(table)
+    assert summary[[f"best_{o}" for o in c2.ADAPTATION_OPTIONS]].sum(axis=1).eq(summary.tables).all()
+
+
+def test_primary_endpoint_is_holm_adjusted_and_decides_equivalence_only_with_a_margin(results):
+    from src.utils.design import load_design
+    primary = c2.primary_endpoint()
+    assert len(primary) == 2 * 2 * 4                                   # tasks x outcomes x models
+    assert (primary.p_holm >= primary.p_value).all() and (primary.p_holm <= 1).all()
+    assert ((primary.low <= primary["mean"]) & (primary["mean"] <= primary.high)).all()
+    assert ((primary.low <= primary.low90) & (primary.high90 <= primary.high)).all()
+    assert set(primary.decision) <= {"better", "worse", "not significant (margin not set)"}
+    design = load_design()
+    design["analysis"]["primary"]["equivalence_margin"] = {m: 1.0 for m in ("roc_auc", "brier_score", "r2", "crps")}
+    decided = c2.primary_endpoint(design)
+    assert set(decided.decision) <= {"better", "worse", "equivalent"}
+    brier = primary[(primary.metric == "brier_score")].iloc[0]
+    assert np.isfinite(brier["mean"])                                  # oriented: positive = lower Brier
+    retention = pd.concat([c2.outcome_intervals("reference", t, ["roc_auc", "brier_score", "r2", "crps"])
+                           for t in ("pd", "lgd")])
+    assert set(retention.credit) == {True, False}
+    fig, text = _finished(r2.primary_forest(primary, retention, title="t"))
+    assert len(fig.axes) == 4 and fig._suptitle is None and "p_holm" in text
+    assert np.allclose(c2.holm([0.01, 0.04, 0.03, 0.2]), [0.04, 0.09, 0.09, 0.2])
+
+
+def test_positive_control_compares_own_training_tables_with_held_out_tables():
+    changes = c2.monitor_table_changes(syn.trajectories("reference", "pd"), "pd")
+    control = c2.positive_control(changes)
+    assert set(control.model) == set(syn.BASES)
+    assert (control.train_mean_change > control.test_mean_change).all()   # synthetic: training tables gain 2x
+    # every credit table is a training table of three partitions and held out in one; each counts once
+    assert (control.train_tables == 17).all() and (control.test_tables == 17).all()
 
 
 def test_bootstrap_intervals_cover_the_mean_and_respect_the_table_as_unit(results):
@@ -156,10 +190,14 @@ def test_precision_agreement_and_cost_tables():
     resources = pd.DataFrame([dict(slug="reference", arm=0, track="pd", model="tabpfn-v2", hours_without_monitor=h)
                               for h in (1.0, 3.0)])
     finetune = pd.DataFrame([dict(track="pd", model="tabpfn-v2", dataset_id=d, fold=f, start="original",
-                                  finetuned=True, fit_seconds=360.0) for d in ("a", "b") for f in range(5)])
+                                  finetuned=tuned, fit_seconds=360.0 if tuned else 1.0, predict_seconds=2.0,
+                                  test_rows=500, device_name="NVIDIA B200")
+                             for d in ("a", "b") for f in range(5) for tuned in (False, True)])
     cost = c2.cost_comparison(resources, finetune)
     assert cost.cpt_hours_total.iloc[0] == 4.0 and np.isclose(cost.finetune_hours_per_table.iloc[0], 0.5)
     assert np.isclose(cost.tables_to_break_even.iloc[0], 8.0)
+    assert np.isclose(cost.inference_seconds_per_1k_rows.iloc[0], 4.0)
+    assert cost.finetune_device.iloc[0] == "NVIDIA B200"
     assert c2.cost_comparison(pd.DataFrame(), finetune).empty
 
 
@@ -312,4 +350,9 @@ def test_similarity_test_finds_distance_driven_transfer_and_permutes_tables():
     assert test.iloc[0].spearman < -0.8 and test.iloc[0].p_value < 0.05
     pairs["change"] = rng.normal(0, 1, len(pairs))                         # no relation
     assert c2.transfer_similarity(pairs, permutations=300).iloc[0].p_value > 0.05
+    assert not pairs.same_source.any()                                      # synthetic ids: no shared lender
+    pairs.loc[:3, "same_source"] = True
+    test = c2.transfer_similarity(pairs, permutations=50)
+    assert test.iloc[0].same_source_pairs == 4
+    assert np.isclose(test.iloc[0].same_source_mean_change, pairs.change[:4].mean())
     assert r2.transfer_similarity(pairs, test, track="pd", title="t") is not None

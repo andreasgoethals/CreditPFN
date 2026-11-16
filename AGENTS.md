@@ -140,7 +140,9 @@ Newest first, dates `DD-MM-YYYY`.
   rescaled afterwards. On 03-11-2026 the user replaced the ICML US Letter geometry chosen on
   30-09-2026 with this A4 article geometry, matching the template.
 - Title, caption and legend complement each other: the title names what is compared, the caption
-  states how it was measured, the legend decodes every colour and line style. Merge panels that share
+  states how it was measured, the legend decodes every colour and line style. LNCS figures carry no
+  figure-level title (16-11-2026): `campaign.show` moves `fig.suptitle` out of the drawing, shows it
+  above the inline figure and records it beside the caption; panel titles stay. Merge panels that share
   a quantity and comparison unit into one figure rather than repeating near-identical figures.
 - Captions are the **paper's** captions: pure description, ready to paste under the figure.
 - Bind `NotebookReport(..., sink=sink)` and display tables through `report.table`. The final

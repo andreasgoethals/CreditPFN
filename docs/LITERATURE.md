@@ -2,11 +2,41 @@
 
 Primary-source support for the second campaign's methods, defined in
 [RESEARCH_BRIEF.md](RESEARCH_BRIEF.md) and [`config/design.yaml`](../config/design.yaml). Sections are
-dated. Sections before 04-11-2026 were written for the first study and keep its experiment
-numbers: experiment 1 (learning-rate grid), 2 (seed), 5 (DiagScale), 6 (LoRA), 7 (row exposure),
-8 (corpus composition), 9 (episode size) and 10 (context curves) correspond to the second
-campaign's E5, E2, E6, E6, E8, E9, E10 and E11 (numbers of 05-11-2026). Library references are read-only at the pin
+dated. Experiment numbers are the current ones (E1-E12, 16-11-2026). Sections before 04-11-2026
+were written for the first study; its experiments 1 (learning-rate grid), 2 (seed), 5 (DiagScale),
+6 (LoRA), 7 (row exposure), 8 (corpus composition), 9 (episode size) and 10 (context curves)
+correspond to E8, E2, E9, E9, E10, E11, E12 and E6. Library references are read-only at the pin
 stated in each section.
+
+## Metrics, primary comparison and pretraining data — 16-11-2026
+
+Library pin `c08b03530c4f0f9019cd1cd59e749c97dabcbfac`.
+
+* **Credit-scoring measures.** Lessmann et al. 2015
+  (`tfm-library/supporting-references/text/2015/2015_Benchmarking_state_of_the_art_*`, Sect. 4.2)
+  score scorecards with PCC, AUC, partial Gini, the H-measure with Beta(2, 2) costs, Brier score
+  and KS. Baesens et al. 2026, the closest benchmark of TFMs on credit risk
+  (`tfm-library/papers/text/2026/10_Baesens_et_al._Tabular_Foundation_Models_for_Credit_Risk_*`),
+  report AUC (PD) and R² (LGD) as primary and Gini, KS, adjusted AP, Brier, log loss, threshold
+  measures, Pearson/Spearman and portfolio-level calibration (observed minus predicted mean) as
+  secondary. CreditPFN records all of these except adjusted AP, partial Gini and maximum error,
+  adds the H-measure (Hand 2009) and EMP, and keeps AUC/R² as the comparison metric of the figures.
+* **EMP** (Verbraken et al. 2014, *EJOR* 238(2)) is not in the library. The parameters used
+  (LGD of a rejected defaulter 0 with probability 0.55, 1 with probability 0.10, uniform otherwise;
+  ROI 0.2644) are the defaults of that paper's EMP package as recalled, not verified here against
+  the primary text; check before the paper cites them. The implementation integrates exactly over
+  the ROC convex hull and is tested against brute-force integration.
+* **Equivalence.** Baesens et al. 2026 use a Bayesian signed-rank test with a region of practical
+  equivalence; CreditPFN's frequentist counterpart is the pre-specified equivalence margin
+  (`config/design.yaml` `analysis.primary`).
+* **Pretraining data of the base models.** TabPFN v2 (Hollmann et al. 2025), TabPFN-3 (technical
+  report Sect. 2.5: "trained on synthetically generated data based on our SCM prior") and TabICLv2
+  (Qu et al. 2026, synthetic prior) are pretrained on synthetic data only, so they cannot have
+  seen our tables. The TabPFN-2.5 report states that its base model is synthetic-only and that
+  real data enter only the Real-TabPFN-2.5 sibling. For **TabPFN-2.6** no primary text in the
+  library states the training data; Prior Labs' model page (`repositories/TabPFN Docs.txt`,
+  models.md) lists 2.6 as a "Base" model only. Exposure of v2.6 to the public credit or retention
+  tables can therefore not be excluded from primary sources; results are reported per model.
 
 ## Second-campaign choices — 04-11-2026
 
@@ -20,14 +50,15 @@ stated in each section.
 * **Partial fine-tuning** (Rubachev et al. 2025, `tfm-library/papers/text/2025/06_Rubachev_*`):
   last-layer, LoRA and embedding/LayerNorm/head variants differ minimally from full fine-tuning on
   TabPFNv2; rates are tuned per method on a validation split (5e-6 to 5e-4). CPT has no target labels,
-  so E6 compares scopes at matched rates instead; no top-layer scope is added.
-* **Target fine-tuning baseline (E4)** uses the libraries' own fine-tuners (`tabpfn.finetuning`,
-  `tabicl._finetune`) with early stopping. Learning rate 6.5e-5 (05-11-2026): Rubachev et al. tune
-  the rate per dataset over ten log-spaced values from 5e-6 to 5e-4. Their code dump's 49 tuned
-  configurations most often choose 2.3e-5 and 1.8e-4 (11 each; no rate wins more than 22%), and
-  subsamples of one dataset choose rates up to 20 times apart; the paper does not analyse whether the
-  best rate is predictable. E4 uses the geometric midpoint of the two most frequent winners, 6.5e-5,
-  which is also a point of their grid.
+  so E9 compares scopes at matched rates instead; no top-layer scope is added.
+* **Target fine-tuning baseline (E5)** uses the libraries' own fine-tuners (`tabpfn.finetuning`,
+  `tabicl._finetune`) with early stopping. Rubachev et al. tune the rate per dataset over ten
+  log-spaced values from 5e-6 to 5e-4. Their code dump's 49 tuned configurations most often choose
+  2.3e-5 and 1.8e-4 (11 each; no rate wins more than 22%), and subsamples of one dataset choose rates
+  up to 20 times apart; the paper does not analyse whether the best rate is predictable. 6.5e-5 is
+  the geometric midpoint of the two most frequent winners and a point of their grid; since
+  12-11-2026 E5 chooses per fold from 1e-6, 1e-5 and 6.5e-5 on the validation split
+  (RESEARCH_BRIEF).
 * **Gradient clipping at norm 1** is the default of both upstream fine-tuners
   (`tabpfn.finetuning` `grad_clip_value=1.0`, `tabicl._finetune` `grad_clip=1.0`); the Real-TabPFN
   text does not state a clipping value.
@@ -135,8 +166,7 @@ refined after inspecting results, so it is exploratory rather than a retroactive
 Parameter anchoring, fewer updated parameters and smaller learning rates can restrict departure
 from initialization. This motivates testing preservation versus useful specialization, but there is
 no theorem here that less parameter movement lowers prediction variance or improves AUC. E2
-checks a second *training* seed; E10 changes row exposure at fixed successful
-updates. Neither substitutes for independently resampled inference contexts.
+adds two *training* seeds; E10 changes row exposure. Neither substitutes for independently resampled inference contexts.
 The prior-NLL identity concerns probabilistic PFN objectives; it is not an identity for TabICLv2's
 regression pinball loss. Native objectives and evaluation functionals remain distinct in this study.
 
@@ -191,9 +221,9 @@ training is needed for that check.
 | [Tanna et al., Exploring Fine-Tuning for Tabular Foundation Models](../tfm-library/papers/text/2026/04_Tanna_et_al._Exploring_Fine_Tuning_for_Tabular_Foundation_Models.txt) | Per-dataset adaptation experiments across tabular foundation models, including original TabICL; sensitivity to adaptation procedure | Motivation to report failures, architecture-specific mechanisms and stability. Its TabICL results do not establish collapse or the correct freeze scheme for **TabICLv2** |
 | [Qu et al., TabICLv2](../tfm-library/papers/text/2026/09_Qu_et_al._TabICLv2_A_better_faster_scalable_and_open_tabular_foundation_model.txt) | A newer model with classification/regression support, staged architecture and scalable inference | Use the actual v2 training/inference interfaces and distinguish front-end freezing from freezing its dominant ICL stack. Inference capacity demonstrations do not establish train-time memory capacity |
 | [Tanna et al., Data Presentation Over Architecture](../tfm-library/papers/text/2026/05_Tanna_et_al._Data_Presentation_Over_Architecture_Resampling_Strategies_for_Credit_Risk_Prediction_with_Tabular_Foundation_Models.txt) | Context construction and imbalance on two credit datasets, without corpus-level continued pretraining; Lending Club uses a temporal split | Context and prevalence are substantive factors. It does not establish that balancing the **query training loss distribution** is equivalent to balancing only the inference context |
-| [Purucker et al., Beyond IID](../tfm-library/papers/text/2026/06_Purucker_et_al._Beyond_IID_How_General_Are_Tabular_Foundation_Models_Really.txt) | Tabular model evaluation under IID, temporal and grouped splits; finetuning/CPT is outside the evaluated adaptation scope | IID rankings should not be promoted into claims about future lending or new borrowers. Proper split keys and source grouping are prerequisites for those questions |
+| [Purucker et al., Beyond IID](../tfm-library/papers/text/2026/10_Purucker_et_al._Beyond_IID_How_General_Are_Tabular_Foundation_Models_Really.txt) | Tabular model evaluation under IID, temporal and grouped splits; finetuning/CPT is outside the evaluated adaptation scope | IID rankings should not be promoted into claims about future lending or new borrowers. Proper split keys and source grouping are prerequisites for those questions |
 | [Kolberg et al., TabPFN-Wide](../tfm-library/papers/text/2026/03_Kolberg_et_al._TabPFN_Wide_Continued_Pre_Training_for_Extreme_Feature_Counts.txt) | Continued pretraining toward extreme feature counts using an adapted synthetic training setting, with retention/generalization checks | CPT can target a data regime as well as a real-data domain. It motivates retention checks, but does not measure real credit-corpus specialization |
-| [Grinsztajn et al., TabPFN-3 Technical Report](../tfm-library/papers/text/2026/05_Grinsztajn_et_al._TabPFN_3_Technical_Report.txt) | New architecture, synthetic prior training and broader inference capacity/evaluation | Changes in base prior and context capacity can change adaptation behavior. A published inference envelope is not a measured continued-pretraining row cap for our GPU/configuration |
+| [Grinsztajn et al., TabPFN-3 Technical Report](../tfm-library/papers/text/2026/11_Grinsztajn_et_al._TabPFN_3_Technical_Report.txt) | New architecture, synthetic prior training and broader inference capacity/evaluation | Changes in base prior and context capacity can change adaptation behavior. A published inference envelope is not a measured continued-pretraining row cap for our GPU/configuration |
 
 ## Recipe choices and their limits
 
@@ -223,7 +253,7 @@ Scope matters: the hash-matched v3 regressor metadata and upstream `_get_v2_conf
 
 TabICLv2 regression uses mean pinball loss across its 999 native quantiles, matching the [TabICL snapshot](../tfm-library/repositories/TabICL.txt) `_pinball_loss` and `_compute_batch_loss`; its paper describes the quantile formulation. Native losses provide a defensible controlled starting point, not proof of optimal credit AUC/F1/RMSE. NLL and pinball assess predictive distributions; neither directly minimizes point RMSE. Loss scales and the relative strength of the same L2-SP lambda differ across these objectives.
 
-**Learning-rate range.** E5 extends from below this conservative CPT reference (`1e-7`) through `1e-5`. Rubachev et al. study higher target-specific fine-tuning rates, including a search spanning roughly `5e-6` to `5e-4`; those rates are not automatically appropriate when preserving a transferable prior across unrelated tables. The upper CreditPFN level is a useful stress condition to examine, not a literature-established optimum; Experiment 0 checks numerical behavior before the campaign.
+**Learning-rate range.** E8 extends from below this conservative CPT reference (`1e-7`) through `1e-5`. Rubachev et al. study higher target-specific fine-tuning rates, including a search spanning roughly `5e-6` to `5e-4`; those rates are not automatically appropriate when preserving a transferable prior across unrelated tables. The upper CreditPFN level is a useful stress condition to examine, not a literature-established optimum; Experiment 0 checks numerical behavior before the campaign.
 
 **Partial updates.** Rubachev's LayerNorm/head/embedding strategy includes trainable normalization affine parameters. CreditPFN freezes the selected stack completely and trains modules around it. This is a distinct ablation. Measure the fraction and names of trainable parameters, movement from initialization, time and memory; avoid applying a shared label to opposite freeze schemes in different families.
 
@@ -231,9 +261,9 @@ TabICLv2 regression uses mean pinball loss across its 999 native quantiles, matc
 
 **Budget: the literature provides precedents, not a universal update count.** The closest real-table CPT study, Garg et al., ran 20,000 updates. Kolberg et al. fixed 10,000 updates after their monitored omics/SNP curves plateaued (TabPFN-Wide, Appendix J); that used a different synthetic adaptation task. Rubachev et al. evaluated target-table fine-tuning every ten updates with patience of sixteen non-improving checks. That is a stopping rule, not a 160-update total or evidence for a universal CPT budget.
 
-No reviewed study establishes that 5k, 10k or 20k updates captures all relevant behavior for all four CreditPFN bases, both tasks and both adaptation modes. With no skipped steps, the selected 10k equal-table budget corresponds to roughly 769–833 visits per PD training table or 1,667 per LGD training table. This smaller corpus repeats tables much more often than a large corpus; row draws, losses, rates and anchoring still determine what those visits do.
+No reviewed study establishes that 2,500, 10k or 20k updates captures all relevant behavior for all four CreditPFN bases, both tasks and all adaptation modes. The reference 2,500 updates over 12–13 PD or 6 LGD training tables average about 200 or 420 visits per table; this small corpus repeats tables far more often than a large one, and row draws, losses, rates and anchoring still determine what those visits do.
 
-**CreditPFN's budget decision (project evidence, not literature).** First-study 20k-update pilots still changed after 5k, which set the 10k horizon; first-study held-out curves at 3e-7 were then flat by 2,500 updates. Ten thousand updates is a descriptive window, not evidence of saturation for every recipe, base and task. A point on a longer schedule is not equivalent to a fresh run whose cosine schedule ends there; keep the budget and milestones fixed across arms and do not select each recipe's best checkpoint. Measurements are in AGENTS_MEMORY.md, the protocol in RESEARCH_BRIEF.md.
+**CreditPFN's budget decision (project evidence, not literature).** First-study held-out curves at 3e-7 were flat by 2,500 updates and falling at larger rates, so the reference stops there and E10 adds a 10,000-update arm. Neither is evidence of saturation for every recipe, base and task. A point on a longer schedule is not equivalent to a fresh run whose cosine schedule ends there; keep the budget and milestones fixed across arms and do not select each recipe's best checkpoint. Measurements are in AGENTS_MEMORY.md, the protocol in RESEARCH_BRIEF.md.
 
 **Sampling.** Equal table visitation prevents the largest table from owning most updates. Exhaustive partitioning with size-proportional updates and within-table gradient accumulation address different questions. Equal steps alone do not match data exposure or compute. For PD, the class-balanced draw (E8) changes both context and query prevalence; the reference uses proportional sampling, so the full-pass arm (E10) covers every row without changing class prevalence. Non-overlapping partitions are a controlled design choice here, not a literature-established improvement in predictive quality.
 
@@ -385,9 +415,9 @@ then 10k with 400–60k rows. Learning rates change from 8e-4 to 1e-4 to 2e-5; t
 fraction changes from 30–90% to 80%. That staged recipe motivates studying episode size,
 but it does not isolate its effect or establish a credit-CPT optimum.
 
-In the second campaign, E9 compares small-only with count-matched large training tables, and
-E10 varies episode size (2,048 to 16,384 rows) within the pool of tables above 10,000 rows at
-equal updates (`config/design.yaml`). Equal updates do not match compute or rows seen; E10's
+In the second campaign, E11 compares small-only with count-matched large training tables, and
+E12 varies episode size (2,048 to 16,384 rows) within the pool of tables above 10,000 rows at
+equal updates (`config/design.yaml`). Equal updates do not match compute or rows seen; E12's
 row milestones and matched-context evaluation report those separately.
 
 

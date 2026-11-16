@@ -22,12 +22,16 @@ def _source(base: str, kind: str) -> str:
 def _scores(rng, track, n, level):
     if track == "pd":
         auc = np.clip(level + rng.normal(0, 0.004, n), 0.5, 1)
-        return dict(roc_auc=auc, log_loss=0.45 - 0.3 * (auc - 0.7) + rng.normal(0, .003, n),
+        return dict(roc_auc=auc, ks=0.8 * (auc - 0.5) + rng.normal(0, .004, n),
+                    h_measure=1.2 * (auc - 0.5) + rng.normal(0, .004, n),
+                    emp=0.05 * (auc - 0.5) + rng.normal(0, .0005, n),
+                    log_loss=0.45 - 0.3 * (auc - 0.7) + rng.normal(0, .003, n),
                     brier_score=0.14 - 0.1 * (auc - 0.7) + rng.normal(0, .002, n),
                     ece=np.abs(rng.normal(0.02, 0.008, n)), calibration_slope=rng.normal(1.0, 0.08, n),
                     calibration_in_the_large=rng.normal(0.0, 0.05, n))
     r2 = level + rng.normal(0, 0.01, n)
     return dict(r2=r2, nrmse=np.sqrt(np.clip(1 - r2, 0.01, None)), mae=0.25 - 0.1 * r2 + rng.normal(0, .003, n),
+                spearman_r=np.sqrt(np.clip(r2, 0, None)) + rng.normal(0, .01, n),
                 crps=0.15 - 0.05 * r2 + rng.normal(0, .002, n), bias=rng.normal(0, 0.01, n),
                 prediction_std_ratio=rng.normal(0.85, 0.05, n))
 
@@ -145,13 +149,17 @@ def finetune(seed: int = 0) -> pd.DataFrame:
     rows = []
     for track in ("pd", "lgd"):
         for name in DESIGN_NAMES.values():
-            for table in CREDIT[track]:
+            for i, table in enumerate(CREDIT[track]):
                 level = rng.uniform(0.65, 0.85) if track == "pd" else rng.uniform(0.1, 0.5)
+                available = int(600 * 1.6 ** i)
                 for fold in range(5):
                     for start, shift in (("original", 0.0), ("cpt", 0.002)):
-                        for tuned, gain in ((False, 0.0), (True, 0.006)):
+                        for tuned, gain in ((False, 0.0), (True, 0.006 * np.log10(available) / 3)):
                             rows.append(dict(track=track, model=name, start=start, finetuned=tuned, dataset_id=table,
-                                             fold=fold, **{METRIC[track]: level + shift + gain + rng.normal(0, .002)}))
+                                             fold=fold, available_context=available, test_rows=available // 4,
+                                             fit_seconds=(300.0 if tuned else 2.0), predict_seconds=1.5,
+                                             device_name="NVIDIA B200",
+                                             **{METRIC[track]: level + shift + gain + rng.normal(0, .002)}))
     return pd.DataFrame(rows)
 
 

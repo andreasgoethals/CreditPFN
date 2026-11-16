@@ -2,6 +2,13 @@
 
 ## 16-11-2026
 
+- Metrics: PD adds Gini, KS, H-measure (Beta(2, 2)) and expected maximum profit with its rejection share (exact over the ROC hull); LGD adds Kendall τ. The metric profile shows them.
+- Pre-specified primary comparison (`config/design.yaml` `analysis.primary`): E1 vs original, PD AUC and Brier, LGD R² and CRPS, Holm over 16 tests, equivalence once margins are set; positive controls (own training tables; same-lender pairs in E7).
+- Cost recording: E5 fine-tuning time per candidate rate, inference time and GPU model; E6 prediction time; inference seconds per 1,000 rows in the cost table.
+- E5 is drawn by table size (CPT, FT and CPT on top of FT) with a recommendation table per labelled-row band; replaces the four-condition figure. The credit/retention figure is folded into the primary-comparison forest.
+- Figures carry no figure-level title (LNCS); the title is shown above the inline figure and recorded beside the caption.
+- LITERATURE uses the current experiment numbers and records the base models' pretraining data (v2.6 unverified).
+
 - E6 also scores the E4 checkpoints on the same rows (start `noncredit_cpt`, inference only), so the credit-specific part of the gain is read per context size.
 - RQ2 analysis: slope test (gain per doubling of the context, per table, bootstrap over tables) and E7 similarity test (Spearman of transfer against source-target property distance, Mantel permutation).
 - Research questions regrouped into three (agreed): RQ1 does domain CPT pay off (E1-E5), RQ2 when and why (E6 context curves, E7 transfer matrix), RQ3 what changes it (E8-E12); experiments renumbered and notebooks moved to match (`rq4/` merged into `rq2/`, weight-change and training-data notebooks into `rq3/`).

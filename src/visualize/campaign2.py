@@ -183,20 +183,25 @@ def endpoint_gains(slug: str, track: str) -> pd.DataFrame:
 #: +1 higher is better, -1 lower is better, ("target", v) closer to v is better.
 METRIC_DIRECTION = {
     "roc_auc": 1, "log_loss": -1, "brier_score": -1, "ece": -1,
+    "ks": 1, "h_measure": 1, "emp": 1, "gini": 1, "pr_auc": 1,
+    "spearman_r": 1, "kendall_tau": 1,
     "calibration_slope": ("target", 1.0), "calibration_in_the_large": ("target", 0.0),
     "r2": 1, "nrmse": -1, "rmse": -1, "mae": -1, "crps": -1, "nll": -1,
     "bias": ("target", 0.0), "prediction_std_ratio": ("target", 1.0),
 }
 METRIC_LABELS = {
     "roc_auc": "AUC", "log_loss": "Log loss", "brier_score": "Brier", "ece": "ECE",
+    "ks": "KS", "h_measure": "H-measure", "emp": "EMP", "gini": "Gini", "pr_auc": "PR-AUC",
+    "spearman_r": "Spearman ρ", "kendall_tau": "Kendall τ",
     "calibration_slope": "|slope − 1|", "calibration_in_the_large": "|CITL|",
     "r2": "R²", "nrmse": "nRMSE", "rmse": "RMSE", "mae": "MAE", "crps": "CRPS", "nll": "NLL",
     "bias": "|bias|", "prediction_std_ratio": "|SD ratio − 1|",
 }
-#: Discrimination first, then probability or distribution quality (RESEARCH_BRIEF metrics).
-PROFILE_METRICS = {"pd": ("roc_auc", "log_loss", "brier_score", "ece", "calibration_slope",
-                          "calibration_in_the_large"),
-                   "lgd": ("r2", "nrmse", "mae", "crps", "bias", "prediction_std_ratio")}
+#: Ranking and profit first, then probability or distribution quality (RESEARCH_BRIEF metrics).
+#: EMP is the expected maximum profit per applicant, as a fraction of the loan (Verbraken et al.).
+PROFILE_METRICS = {"pd": ("roc_auc", "ks", "h_measure", "emp", "log_loss", "brier_score", "ece",
+                          "calibration_slope", "calibration_in_the_large"),
+                   "lgd": ("r2", "spearman_r", "mae", "crps", "bias", "prediction_std_ratio")}
 
 
 def improvement(metric: str, new, old):
@@ -466,21 +471,29 @@ def bootstrap_interval(frame: pd.DataFrame, value: str, *, table: str = "test_da
     The table is the unit of generalisation and its folds are repeated measurements of it, so a
     draw resamples the tables with replacement and then the folds within every drawn table. Only
     tables with all five folds enter. Few tables give a wide interval, as they should."""
-    empty = dict(tables=0, mean=np.nan, low=np.nan, high=np.nan)
+    matrix, means = bootstrap_means(frame, value, table=table, fold=fold, draws=draws, seed=seed)
+    if matrix is None:
+        return dict(tables=0, mean=np.nan, low=np.nan, high=np.nan)
+    tail = (1 - level) / 2
+    return dict(tables=int(len(matrix)), mean=float(matrix.mean()), low=float(np.quantile(means, tail)),
+                high=float(np.quantile(means, 1 - tail)))
+
+
+def bootstrap_means(frame: pd.DataFrame, value: str, *, table: str = "test_dataset_id",
+                    fold: str = "fold_idx", draws: int = BOOTSTRAP_DRAWS, seed: int = 0):
+    """(table × fold matrix of complete tables, equal-table means of the hierarchical draws);
+    (None, None) without a complete table."""
     if frame.empty or value not in frame:
-        return empty
+        return None, None
     matrix = frame.pivot_table(index=table, columns=fold, values=value)
     matrix = matrix[matrix.notna().sum(axis=1) == N_FOLDS].to_numpy(dtype=float)
     if not len(matrix):
-        return empty
+        return None, None
     rng = np.random.default_rng(seed)
     tables, folds = matrix.shape
     drawn_tables = rng.integers(tables, size=(draws, tables))
     drawn_folds = rng.integers(folds, size=(draws, tables, folds))
-    means = matrix[drawn_tables[:, :, None], drawn_folds].mean(axis=(1, 2))
-    tail = (1 - level) / 2
-    return dict(tables=int(tables), mean=float(matrix.mean()), low=float(np.quantile(means, tail)),
-                high=float(np.quantile(means, 1 - tail)))
+    return matrix, matrix[drawn_tables[:, :, None], drawn_folds].mean(axis=(1, 2))
 
 
 def gain_intervals(slug: str, track: str) -> pd.DataFrame:
@@ -529,6 +542,115 @@ def domain_control_intervals(track: str) -> pd.DataFrame:
     return out
 
 
+
+# --------------------------------------------------------------- pre-specified primary endpoint
+def primary_spec(design: dict | None = None) -> dict:
+    """``analysis.primary`` of config/design.yaml: outcomes, α and equivalence margins."""
+    return (design or load_design())["analysis"]["primary"]
+
+
+def primary_endpoint(design: dict | None = None, *, draws: int = BOOTSTRAP_DRAWS, seed: int = 0) -> pd.DataFrame:
+    """The confirmatory test of RQ1, fixed before the results were opened (RESEARCH_BRIEF).
+
+    Per task, primary outcome and model: the equal-table mean five-fold improvement of the E1
+    reference model (seed 42) over the original model on the held-out credit tables, with its
+    95% hierarchical-bootstrap interval, a two-sided bootstrap p-value against zero, the Holm
+    adjustment over the whole family (tasks × outcomes × models) and, once margins are set, an
+    equivalence decision from the 90% interval (two one-sided tests). Improvement is oriented so
+    that positive is better (``improvement``). Everything else in the study is secondary.
+    """
+    spec = primary_spec(design)
+    rows = []
+    for track, outcomes in spec["outcomes"].items():
+        merged = _paired("reference", track, list(outcomes))
+        if merged.empty:
+            continue
+        merged = merged[merged.credit & (merged.arm == 0)]
+        for metric in [m for m in outcomes if m in merged]:
+            sub = merged.dropna(subset=[metric, metric + "_original"]).copy()
+            sub["improvement"] = improvement(metric, sub[metric], sub[metric + "_original"])
+            for model, group in sub.groupby("model"):
+                matrix, means = bootstrap_means(group, "improvement", draws=draws, seed=seed)
+                if matrix is None:
+                    continue
+                per_table = matrix.mean(axis=1)
+                tail = min(np.sum(means <= 0), np.sum(means >= 0))
+                rows.append(dict(track=track, metric=metric, model=model, tables=len(matrix),
+                                 tables_improved=int((per_table > 0).sum()), mean=float(matrix.mean()),
+                                 low=float(np.quantile(means, 0.025)), high=float(np.quantile(means, 0.975)),
+                                 low90=float(np.quantile(means, 0.05)), high90=float(np.quantile(means, 0.95)),
+                                 p_value=float(min(1.0, 2 * (tail + 1) / (len(means) + 1)))))
+    out = pd.DataFrame(rows)
+    if out.empty:
+        return out
+    out["p_holm"] = holm(out.p_value.to_numpy())
+    alpha = float(spec["alpha"])
+    margins = spec.get("equivalence_margin") or {}
+    decisions = []
+    for row in out.itertuples():
+        margin = margins.get(row.metric)
+        if row.p_holm < alpha:
+            decisions.append("better" if row.mean > 0 else "worse")
+        elif margin is None:
+            decisions.append("not significant (margin not set)")
+        elif -float(margin) < row.low90 and row.high90 < float(margin):
+            decisions.append("equivalent")
+        else:
+            decisions.append("inconclusive")
+    out["margin"] = out.metric.map(lambda m: margins.get(m))
+    out["decision"] = decisions
+    return out
+
+
+
+def outcome_intervals(slug: str, track: str, metrics, *, arm: int = 0) -> pd.DataFrame:
+    """Per metric, model and table group (held-out credit, retention): equal-table mean five-fold
+    improvement (positive = better, ``improvement``) with its 95% hierarchical-bootstrap interval."""
+    merged = _paired(slug, track, list(metrics))
+    if merged.empty:
+        return pd.DataFrame()
+    merged = merged[merged.arm == arm]
+    rows = []
+    for metric in [m for m in metrics if m in merged]:
+        sub = merged.dropna(subset=[metric, metric + "_original"]).copy()
+        sub["improvement"] = improvement(metric, sub[metric], sub[metric + "_original"])
+        for (model, credit), group in sub.groupby(["model", "credit"]):
+            interval = bootstrap_interval(group, "improvement")
+            if interval["tables"]:
+                rows.append(dict(track=track, metric=metric, model=model, credit=bool(credit), **interval))
+    return pd.DataFrame(rows)
+
+def holm(p_values) -> np.ndarray:
+    """Holm's step-down adjustment (family-wise error), monotone and capped at 1."""
+    p = np.asarray(p_values, dtype=float)
+    order = np.argsort(p)
+    adjusted = np.maximum.accumulate((len(p) - np.arange(len(p))) * p[order])
+    out = np.empty_like(p)
+    out[order] = np.minimum(adjusted, 1.0)
+    return out
+
+
+def positive_control(changes: pd.DataFrame, *, slug: str = "reference", arm: int = 0) -> pd.DataFrame:
+    """Does CPT learn what it is trained on? Per task and model, the monitor change at the last
+    update on the run's OWN training tables against the held-out credit tables (equal-table
+    means; a table monitored by several partitions counts once). A model that does not improve
+    its own training tables cannot be expected to transfer; one that does, and still does not
+    transfer, isolates the failure to generalisation across tables."""
+    if changes.empty:
+        return pd.DataFrame()
+    sub = changes[(changes.slug == slug) & (changes.arm == arm) & changes.scope.isin(["train", "test"])]
+    if sub.empty:
+        return pd.DataFrame()
+    last = sub.groupby("run").successful_updates.transform("max")
+    sub = sub[sub.successful_updates == last]
+    per_table = sub.groupby(["track", "model", "scope", "table"]).change.mean().reset_index()
+    out = (per_table.groupby(["track", "model", "scope"])
+           .change.agg(tables="size", mean_change="mean",
+                       tables_improved=lambda g: int((g > 0).sum())).reset_index())
+    return out.pivot_table(index=["track", "model"], columns="scope",
+                           values=["tables", "mean_change", "tables_improved"]).pipe(
+        lambda w: w.set_axis([f"{scope}_{stat}" for stat, scope in w.columns], axis=1)).reset_index()
+
 PRECISION_LABELS = {"bf16": "BF16", "fp16": "FP16 with loss scaling"}
 
 
@@ -575,6 +697,17 @@ def cost_comparison(resources: pd.DataFrame, finetune: pd.DataFrame) -> pd.DataF
         finetune_tables="size", finetune_hours_per_table="mean").reset_index()
     out = out.merge(per_model, on=["track", "model"], how="left")
     out["tables_to_break_even"] = out.cpt_hours_total / out.finetune_hours_per_table
+    if "predict_seconds" in finetune:
+        # Inference cost per 1,000 test rows on the full context, untuned and fine-tuned.
+        timed = finetune.dropna(subset=["predict_seconds", "test_rows"]).assign(
+            per_1k=lambda f: 1000 * f.predict_seconds / f.test_rows, model=lambda f: f.model.map(_model_label))
+        for tuned, column in ((False, "inference_seconds_per_1k_rows"),
+                              (True, "finetuned_inference_seconds_per_1k_rows")):
+            part = timed[timed.finetuned.astype(bool) == tuned].groupby(["track", "model"]).per_1k.mean()
+            out = out.merge(part.rename(column).reset_index(), on=["track", "model"], how="left")
+    if "device_name" in finetune:
+        devices = finetune.groupby("track").device_name.agg(lambda d: ", ".join(sorted(set(map(str, d)))))
+        out["finetune_device"] = out.track.map(devices)
     return out
 
 
@@ -927,6 +1060,59 @@ def finetune_table(results: pd.DataFrame) -> pd.DataFrame:
     return pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
 
 
+
+#: E5 options in order of per-table cost; a tie goes to the cheaper option (CPT is paid once).
+ADAPTATION_OPTIONS = ("original", "cpt", "original_finetune", "cpt_finetune")
+#: Labelled training rows of a fold (context after the validation split), for the size bands.
+SIZE_BANDS = (0, 1_000, 10_000, np.inf)
+
+
+def _size_band(rows: float) -> str:
+    for low, high in zip(SIZE_BANDS[:-1], SIZE_BANDS[1:]):
+        if low <= rows < high:
+            return f"{low:,}-{high:,.0f}" if np.isfinite(high) else f">={low:,}"
+    return "unknown"
+
+
+def adaptation_by_size(results: pd.DataFrame) -> pd.DataFrame:
+    """E5 per task, model and held-out table: labelled context rows and the three contrasts a
+    practitioner chooses between — CPT alone vs the original, fine-tuning vs the original, and
+    CPT+FT vs FT (does CPT still add once the table is fine-tuned on) — plus the option with the
+    best five-fold score (ties to the cheaper option). The best option is selected on the test
+    folds, so its count describes the comparison; it is not a tuned recommendation."""
+    table = finetune_table(results)
+    if table.empty or "available_context" not in results:
+        return table
+    rows = (results.assign(model=results.model.map(_model_label))
+            .groupby(["track", "model", "dataset_id"]).available_context.mean().rename("context_rows"))
+    table = table.merge(rows.reset_index(), on=["track", "model", "dataset_id"], how="left")
+    table["cpt_after_finetune"] = table.cpt_finetune - table.original_finetune
+    scores = table[list(ADAPTATION_OPTIONS)].to_numpy(dtype=float)
+    table["best_option"] = [ADAPTATION_OPTIONS[i] for i in np.argmax(scores, axis=1)]
+    table["size_band"] = table.context_rows.map(_size_band)
+    return table
+
+
+def adaptation_summary(table: pd.DataFrame, cost: pd.DataFrame | None = None) -> pd.DataFrame:
+    """The E5 recommendation table: per task, labelled-row band and model, the equal-table mean
+    change of each option, how often each option scored best, and the GPU hours it costs."""
+    if table.empty or "size_band" not in table:
+        return pd.DataFrame()
+    out = (table.groupby(["track", "size_band", "model"])
+           .agg(tables=("dataset_id", "size"), cpt_change=("cpt_change", "mean"),
+                finetune_change=("finetune_change", "mean"),
+                cpt_finetune_change=("cpt_finetune_change", "mean"),
+                cpt_after_finetune=("cpt_after_finetune", "mean")).reset_index())
+    wins = (table.groupby(["track", "size_band", "model"]).best_option.value_counts().unstack(fill_value=0)
+            .reindex(columns=list(ADAPTATION_OPTIONS), fill_value=0).add_prefix("best_").reset_index())
+    out = out.merge(wins, on=["track", "size_band", "model"])
+    if cost is not None and not cost.empty and "finetune_hours_per_table" in cost:
+        out = out.merge(cost[["track", "model", "cpt_hours_total", "finetune_hours_per_table"]],
+                        on=["track", "model"], how="left")
+    order = {_size_band(low): i for i, low in enumerate(SIZE_BANDS[:-1])}
+    return out.sort_values(["track", "size_band", "model"], key=lambda s: s.map(order) if s.name == "size_band"
+                           else s).reset_index(drop=True)
+
 def context_table(results: pd.DataFrame) -> pd.DataFrame:
     """E6 per track, model, table and labelled-context size (all five folds): original and CPT
     means and the paired gain. When the E4 checkpoints were scored (start ``noncredit_cpt``), also
@@ -1120,7 +1306,15 @@ def transfer_pairs(long: pd.DataFrame, properties: pd.DataFrame) -> pd.DataFrame
         return pd.DataFrame()
     sub = sub[["model", "source", "target", "change"]].copy()
     sub["distance"] = [float(distance.at[s, t]) for s, t in zip(sub.source, sub.target)]
+    sub["same_source"] = [_same_source(s, t) for s, t in zip(sub.source, sub.target)]
     return sub.reset_index(drop=True)
+
+
+def _same_source(a: str, b: str) -> bool:
+    """Both tables come from the same lender's loans (``corpus.SAME_SOURCE``): a positive control
+    for transfer, since such a source is as close to its target as the corpus allows."""
+    from src.train.corpus import SAME_SOURCE
+    return any(a in group and b in group for group in SAME_SOURCE)
 
 
 def transfer_similarity(pairs: pd.DataFrame, *, permutations: int = BOOTSTRAP_DRAWS, seed: int = 0) -> pd.DataFrame:
@@ -1147,8 +1341,12 @@ def transfer_similarity(pairs: pd.DataFrame, *, permutations: int = BOOTSTRAP_DR
         null = np.array([change.corr(pd.Series(matrix[p[s], p[t]]), method="spearman")
                          for p in (rng.permutation(len(tables)) for _ in range(permutations))])
         null = null[np.isfinite(null)]
+        same = group.same_source.astype(bool) if "same_source" in group else pd.Series(False, index=group.index)
         rows.append(dict(model=model, pairs=len(group), tables=len(tables), spearman=float(observed),
-                         p_value=float((1 + np.sum(np.abs(null) >= abs(observed))) / (1 + len(null)))))
+                         p_value=float((1 + np.sum(np.abs(null) >= abs(observed))) / (1 + len(null))),
+                         same_source_pairs=int(same.sum()),
+                         same_source_mean_change=float(group.change[same].mean()) if same.any() else np.nan,
+                         other_mean_change=float(group.change[~same].mean())))
     return pd.DataFrame(rows)
 
 # ------------------------------------------------------------------------- notebook text
