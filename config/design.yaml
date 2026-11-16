@@ -58,7 +58,7 @@ experiments:
     rq: 1
     question: How much of the effect is training randomness?
     tasks: [pd, lgd]
-    arms: [{seed: 43}, {seed: 44}, {seed: 45}]   # with E1 (seed 42): four seeds of the reference
+    arms: [{seed: 43}, {seed: 44}]   # with E1 (seed 42): three seeds of the reference
   E3:
     slug: precision
     rq: 1

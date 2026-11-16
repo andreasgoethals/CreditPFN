@@ -408,12 +408,12 @@ def corpus_similarity(track: str, properties: pd.DataFrame | None = None) -> pd.
     return pd.DataFrame(rows)
 
 
-SEEDS = {"reference": {0: 42}, "seed": {0: 43, 1: 44, 2: 45}}   # E1 and the three E2 arms
+SEEDS = {"reference": {0: 42}, "seed": {0: 43, 1: 44}}   # E1 and the two E2 arms
 SEED_LIST = sorted(s for seeds in SEEDS.values() for s in seeds.values())
 
 
 def seed_noise(track: str) -> pd.DataFrame:
-    """Per table and model: the gain at seed 42 (E1) and seeds 43-45 (E2), and whether it exceeds seed noise.
+    """Per table and model: the gain at seed 42 (E1) and seeds 43 and 44 (E2), and whether it exceeds seed noise.
 
     ``seed_range`` is the largest minus the smallest gain over the seeds. ``beyond_noise`` is true
     when all seeds agree in sign and the smallest absolute gain exceeds that range, i.e. the effect
@@ -831,7 +831,7 @@ def monitor_curves(changes: pd.DataFrame, *, x: str = "successful_updates") -> p
 
 
 def seed_band(changes: pd.DataFrame, *, scope: str = "test", x: str = "successful_updates") -> pd.DataFrame:
-    """Range over the reference seeds (E1 seed 42, E2 seeds 43-45) of the equal-table mean
+    """Range over the reference seeds (E1 seed 42, E2 seeds 43 and 44) of the equal-table mean
     monitor change, per model and monitor point; only points that all seeds reached."""
     if changes.empty:
         return pd.DataFrame()

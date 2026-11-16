@@ -92,12 +92,12 @@ times 2,000, 10,000 and full tables before this is fixed).
 ## Experiments
 
 One arm = 4 models × 4 partitions × the listed tasks. E1 is the shared control of
-E2–E4 and E8–E12 and is never re-run. 832 standard runs plus 100 single-source runs.
+E2–E4 and E8–E12 and is never re-run. 800 standard runs plus 100 single-source runs.
 
 | RQ | Exp | Question | Change vs the reference | Tasks | Runs |
 |---|---|---|---|---|---|
 | 1 | E1 | Transfer and its development | none | PD, LGD | 32 |
-| 1 | E2 | Training randomness | seeds 43, 44 and 45 (with E1: four seeds) | PD, LGD | 96 |
+| 1 | E2 | Training randomness | seeds 43 and 44 (with E1: three seeds) | PD, LGD | 64 |
 | 1 | E3 | Numerical control: does the training precision change the outcome | BF16 for TabPFN v2.6 and v3; strict FP32 for TabICLv2 (reference: FP16 with loss scaling) | PD, LGD | 24 |
 | 1 | E4 | Domain specificity | CPT on the matched non-credit twins of the partition's credit training tables | PD, LGD | 32 |
 | 1 | E5 | CPT vs fine-tuning on the target table | per fold: fine-tune the original and the E1 model on the fold's training rows (upstream fine-tuners; lr chosen from 1e-6, 1e-5, 6.5e-5 on the validation split, which also drives early stopping) | PD, LGD | fine-tunes only |
@@ -152,7 +152,7 @@ For every experiment and every credit and retention table: the paired gain (CPT 
 averaged over folds) related to table size, features, share of categorical features and missing
 values, default rate or LGD zero/one mass, the original model's score (headroom) and similarity
 to the training tables (dataset properties and the model's own representation); credit segment;
-discrimination vs calibration; and whether a table's gain exceeds the seed noise of the four
+discrimination vs calibration; and whether a table's gain exceeds the seed noise of the three
 reference seeds (E1, E2). E7 gives the source→target transfer matrix from the training monitor (one fixed split, up to
 10,000 rows per target table; not a five-fold evaluation); E6 the gain as a function
 of labelled rows.
