@@ -43,6 +43,10 @@ case "$action" in
             || echo "DENSITY AUDIT INCOMPLETE (recorded; not a gate)"
         python -m src.utils.campaign_launch prepare config/experiments/E00_pilots
         python -m src.utils.campaign_launch submit-experiment0 config/experiments/E00_pilots ;;
+    rerun-experiment0)
+        # Resubmit a part of Experiment 0 after a fix: ${2} is the JSON selection (see campaign_launch).
+        python -m src.utils.campaign_launch prepare config/experiments/E00_pilots --only "${2:?selection JSON}"
+        python -m src.utils.campaign_launch rerun-experiment0 config/experiments/E00_pilots --only "$2" ;;
     submit)
         python -m src.utils.campaign_launch submit "${2:?experiment number, e.g. E6}" ;;
     summary)

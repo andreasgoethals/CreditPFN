@@ -182,6 +182,7 @@ experiment0:
     monitorfull:    {tasks: [pd, lgd], arm: {successful_updates: 250}, monitor_rows: 50000}
     sanity_single:  {tasks: [pd, lgd], arm: {single_source: 0, learning_rate: 1.0e-5, successful_updates: 250}}
     lr1e5:          {tasks: [pd, lgd], arm: {learning_rate: 1.0e-5, successful_updates: 250}}
+    lr1e5_bf16:     {tasks: [pd], arm: {learning_rate: 1.0e-5, training_precision: bf16, models: [v2.6, v3], successful_updates: 250}}   # is v3's collapse at 1e-5 caused by FP16?
     lr1e8:          {tasks: [pd, lgd], arm: {learning_rate: 1.0e-8, successful_updates: 250}}   # dose response 0 / 1e-8 / 3e-7 / 1e-5
     l2sp0:          {tasks: [pd, lgd], arm: {learning_rate: 1.0e-5, l2sp_lambda: 0.0, successful_updates: 250}}   # E6's unanchored full-weight arms
     noclip:         {tasks: [pd, lgd], arm: {grad_clip_norm: null, successful_updates: 250}}      # clipping was active on nearly every LGD update

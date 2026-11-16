@@ -35,10 +35,12 @@ QUEUE_BUDGET = 480  # of Mindwell's 500 queued jobs per user, keep 20 free for i
 EVAL_TASKS = 4      # five-fold evaluation shards per trained partition
 
 
-def prepare(folder: Path) -> list[dict]:
+def prepare(folder: Path, only: list[str] | None = None) -> list[dict]:
     from src.utils.prepare_experiment import prepare as prepare_config
     reports = []
     for path in sorted(Path(folder).glob("*.yaml")):
+        if only is not None and path.name not in set(only):
+            continue
         report = prepare_config(path, write=True)
         reports.append({"config": path.name, "run": report["run"], "track": report["track"],
                         "trials": report["training_trials"], "plan": report["plan"]})
@@ -127,12 +129,16 @@ def _launch(state: dict, key: str, path: Path, env: dict, receipt: Path) -> str:
         raise
 
 
-def submit_experiment0(folder: Path, receipt: Path) -> dict:
+def submit_experiment0(folder: Path, receipt: Path, only: dict | None = None) -> dict:
     """Every Experiment 0 part, all independent work at once (no running cap).
 
     Pilots train; the two reference pilots are also benchmarked end to end (foundation
     five-fold on GPU after training, classical baselines on CPU). GPU checks run as arrays;
     the evaluation checks wait for the reference pilots; the summary waits for everything.
+
+    ``only`` resubmits a part: {"pilots": [config names], "classical": [tracks], "recovery": [task
+    indices], "capacity": [...], "precision": [...], "evaluation": [...]}; a missing key submits
+    nothing of that kind. The summary always runs and covers every receipt.
     """
     from src.utils.pilot_checks import (
         CAPACITY_TASKS,
@@ -143,6 +149,15 @@ def submit_experiment0(folder: Path, receipt: Path) -> dict:
     )
     if receipt.exists():
         raise RuntimeError(f"Experiment 0 was already submitted; inspect {receipt}")
+    only = only or {}
+
+    def chosen(kind: str, count: int) -> list[int]:
+        if not only:
+            return list(range(count))
+        return sorted({int(i) for i in only.get(kind, []) if 0 <= int(i) < count})
+
+    def array(indices: list[int]) -> str:
+        return "--array=" + ",".join(str(i) for i in indices)
     env = _environment(CREDITPFN_EXPERIMENT="experiment0", SPLITS=1, THROTTLE=NO_CAP,
                        GLOBAL_CONCURRENCY=NO_CAP, EVAL_CONCURRENCY=NO_CAP, STAGES="train",
                        EVAL_TASKS=EVAL_TASKS,
@@ -155,28 +170,35 @@ def submit_experiment0(folder: Path, receipt: Path) -> dict:
     receipt.parent.mkdir(parents=True, exist_ok=True)
     try:
         for path in pilot_paths(folder):
+            if only and path.name not in set(only.get("pilots", [])):
+                continue
             stages = "train eval" if path.name.startswith("reference_") else "train"
             out = _run_launcher(path, {**env, "STAGES": stages})
             state["pilots"][path.name] = _job_ids(out)
             if stages != "train":
                 state["benchmark"][path.name] = re.findall(r"^(\d+)(?:;\w+)?$", out, re.M)
-        for track in ("pd", "lgd"):
+        for track in (("pd", "lgd") if not only else only.get("classical", [])):
             out = _run_launcher(folder / f"reference_{track}.yaml",
                                 {**env, "STAGES": "eval", "EVAL_KIND": "classical"})
             state["classical"][track] = re.findall(r"^(\d+)(?:;\w+)?$", out, re.M)
         gpu = "scripts/slurm/pilot_gpu.slurm"
-        state["recovery"] = _sbatch([f"--array=0-{RECOVERY_TASKS - 1}", "--time=01:00:00", gpu, "recovery"], env)
-        state["capacity"] = _sbatch([f"--array=0-{CAPACITY_TASKS - 1}", gpu, "capacity"], env)
-        state["precision"] = _sbatch([f"--array=0-{PRECISION_TASKS - 1}", "--time=01:00:00", gpu, "precision"], env)
+        for kind, count, extra in (("recovery", RECOVERY_TASKS, ["--time=01:00:00"]),
+                                   ("capacity", CAPACITY_TASKS, []),
+                                   ("precision", PRECISION_TASKS, ["--time=01:00:00"])):
+            tasks = chosen(kind, count)
+            if tasks:
+                state[kind] = _sbatch([array(tasks), *extra, gpu, kind], env)
         # The evaluation check scores the reference pilots and, for E10, the 2,048-row episode pilot.
         reference = [j for name, jobs in state["pilots"].items()
                      if name.startswith(("reference_", "episode2048_")) for j in jobs]
-        state["evaluation"] = _sbatch([f"--dependency=afterany:{':'.join(reference)}",
-                                       f"--array=0-{EVALUATION_TASKS - 1}", gpu, "evaluation"], env)
+        tasks = chosen("evaluation", EVALUATION_TASKS)
+        if tasks:
+            state["evaluation"] = _sbatch(([f"--dependency=afterany:{':'.join(reference)}"] if reference else [])
+                                          + [array(tasks), gpu, "evaluation"], env)
         after = ([j for jobs in state["pilots"].values() for j in jobs]
                  + [j for jobs in state["benchmark"].values() for j in jobs]
                  + [j for jobs in state["classical"].values() for j in jobs]
-                 + [state["recovery"], state["capacity"], state["precision"], state["evaluation"]])
+                 + [state[k] for k in ("recovery", "capacity", "precision", "evaluation") if state[k]])
         state["summary"] = _sbatch([f"--dependency=afterany:{':'.join(after)}",
                                     "scripts/slurm/campaign_cpu.slurm", "summary"], env)
     finally:
@@ -326,12 +348,22 @@ def _exists(resolve) -> bool:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("prepare", "submit-experiment0", "submit"))
+    parser.add_argument("action", choices=("prepare", "submit-experiment0", "rerun-experiment0", "submit"))
+    parser.add_argument("--only", help="rerun-experiment0: JSON {pilots, classical, recovery, capacity, "
+                                        "precision, evaluation}")
     parser.add_argument("target", nargs="?", default=str(REPO_ROOT / "config/experiments/E00_pilots"),
                         help="folder for prepare/submit-experiment0; experiment number (E1..E12) for submit")
     args = parser.parse_args(argv)
     if args.action == "prepare":
-        prepare(Path(args.target))
+        selection = json.loads(args.only) if args.only else None
+        prepare(Path(args.target), only=(selection["pilots"] + selection.get("prepare", [])) if selection else None)
+    elif args.action == "rerun-experiment0":
+        from datetime import datetime
+
+        from src.utils.pilot_checks import receipts
+        stamp = datetime.now().strftime("%Y%m%dT%H%M%S")
+        submit_experiment0(Path(args.target), receipts() / f"submission_rerun_{stamp}.json",
+                           only=json.loads(args.only))
     elif args.action == "submit-experiment0":
         from src.utils.pilot_checks import receipts
         submit_experiment0(Path(args.target), receipts() / "submission.json")

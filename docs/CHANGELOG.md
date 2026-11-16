@@ -1,5 +1,13 @@
 # Changelog
 
+## 16-11-2026
+
+- `campaign_launch rerun-experiment0 --only <JSON>` (via `campaign_cpu.slurm rerun-experiment0`) resubmits selected pilots and check tasks after a fix.
+- Recovery check passes on resume exactness; skipped FP16 updates at its large learning rate are reported, not failed.
+- Fix: `data.slurm` re-stages the scratch input snapshot after rebuilding (LGD pilots had read pre-fix tables).
+- Precision check: tables whose FP32 reference does not fit in memory are recorded as not checkable instead of failing.
+- Experiment 0 pilot `lr1e5_bf16` (PD, v2.6 and v3): tests whether v3's collapse at lr 1e-5 is caused by FP16.
+
 ## 13-11-2026
 
 - Figures revised for the 122-mm LNCS width and a smaller set: bootstrap intervals drawn on the credit/retention figure (separate interval figure removed), domain-control scatter removed in favour of the E1-minus-E4 difference with interval, context curves show the gain only for both tasks in one figure, transfer matrix uses numbered tables with a key, precision agreement is a per-table strip plot, trade-off figure is 2x2; overlapping tick and axis labels fixed in the corpus and domain figures.

@@ -22,3 +22,8 @@ export PYTHONUNBUFFERED=1 PYTHONIOENCODING=utf-8
 export CREDITPFN_USE_SCRATCH=0
 source scripts/slurm/_activate_env.sh
 python -u scripts/data_pipeline.py --log-path "$LOG" "$@"
+# Training jobs read an immutable, content-addressed scratch snapshot of the inputs. Refresh it here,
+# so a rebuilt table can never be trained from the snapshot taken before the rebuild.
+if [[ -n "${CREDITPFN_RUNTIME_VERSION:-}" && -n "${VSC_SCRATCH_GPFS1:-}" ]]; then
+    python -m src.utils.stage_inputs --destination "$VSC_SCRATCH_GPFS1/CreditPFN" --write
+fi

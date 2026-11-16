@@ -109,3 +109,25 @@ def test_campaign_submission_requires_a_passing_experiment0(monkeypatch, tmp_pat
         cl.require_experiment0()
     (tmp_path / "summary.json").write_text(json.dumps({"passed": True}))
     cl.require_experiment0()
+
+
+def test_experiment0_rerun_submits_only_the_selected_parts(tmp_path, monkeypatch):
+    from src.utils import campaign_launch as cl
+    folder = tmp_path / "E00"
+    folder.mkdir()
+    for name in ("reference_pd.yaml", "reference_lgd.yaml", "lr1e5_pd.yaml", "lr1e5_lgd.yaml"):
+        (folder / name).write_text("{}", encoding="utf-8")
+    monkeypatch.setattr(cl, "_environment", lambda **extra: {"CREDITPFN_RUNTIME_VERSION": "x", **extra})
+    launched, arrays, ids = [], [], iter(range(100, 200))
+    monkeypatch.setattr(cl, "_run_launcher", lambda path, env: launched.append((path.name, env["STAGES"])) or f"Submitted train array {next(ids)} on mindwell\n")
+    monkeypatch.setattr(cl, "_sbatch", lambda args, env: arrays.append(args) or str(next(ids)))
+    only = {"pilots": ["reference_lgd.yaml", "lr1e5_lgd.yaml"], "classical": ["lgd"],
+            "recovery": [4, 5, 99], "evaluation": [4, 5, 6, 7]}
+    state = cl.submit_experiment0(folder, tmp_path / "rerun.json", only=only)
+    assert sorted(launched) == [("lr1e5_lgd.yaml", "train"), ("reference_lgd.yaml", "eval"),
+                                ("reference_lgd.yaml", "train eval")]
+    kinds = [a[-1] for a in arrays]
+    assert kinds == ["recovery", "evaluation", "summary"]          # no capacity or precision arrays
+    assert "--array=4,5" in arrays[0]                               # out-of-range index dropped
+    assert arrays[1][0].startswith("--dependency=afterany:") and "--array=4,5,6,7" in arrays[1]
+    assert state["capacity"] is None and state["precision"] is None
