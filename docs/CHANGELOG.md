@@ -2,6 +2,11 @@
 
 ## 16-11-2026
 
+- Data fixes (review): HackerEarth drops post-charge-off and payment-to-date columns (recoveries appeared only in class 0); PD table 0009 keeps one row per loan and drops `Current Loan Amount` (its 99,999,999 sentinel marked only fully paid loans); LGD table 0002 drops the realised mortgage-insurance recovery and claim; German keeps its first loan (file has no header).
+- The two LendingClub PD tables share a partition (`corpus.SAME_SOURCE`); Myhom moves to partition 3, nothing else changes.
+- TabPFN training views follow the training seed; the missing-class guard compares each member in its own label space; E5 fine-tuned and untuned rows share the inference seed; validation rows are no longer capped by the context cap; processed rows exclude skipped episodes.
+- Single-table smoke test fails only when every model fails; one model worsening is recorded as a finding.
+- Removed the class-balanced sampling mode and its deviation key (its experiment was cut); `config/train.yaml` defaults match the reference (FP16, 2,500 updates).
 - `campaign_launch rerun-experiment0 --only <JSON>` (via `campaign_cpu.slurm rerun-experiment0`) resubmits selected pilots and check tasks after a fix.
 - Recovery check passes on resume exactness; skipped FP16 updates at its large learning rate are reported, not failed.
 - Fix: `data.slurm` re-stages the scratch input snapshot after rebuilding (LGD pilots had read pre-fix tables).

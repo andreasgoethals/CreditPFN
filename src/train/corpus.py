@@ -250,6 +250,33 @@ def _assign_random_split(
     return {d: ("test" if d in test else "train") for d in order}
 
 
+#: Tables drawn from the same lender's loans: they must never be split between training and
+#: held-out tables, or the held-out table's loans may already have been trained on.
+SAME_SOURCE = (("0004.lendingclub", "0006.hackerearth"),)
+
+
+def _keep_sources_together(shuffled: list[str], edges: list[int]) -> list[str]:
+    """Move every member of a same-source group into the block of its first member, swapping
+    each with the last unrelated table of that block, so block sizes are unchanged."""
+    order = list(shuffled)
+    grouped = {d for group in SAME_SOURCE for d in group}
+    block = lambda i: next(k for k in range(len(edges) - 1) if edges[k] <= i < edges[k + 1])  # noqa: E731
+    for group in SAME_SOURCE:
+        members = [d for d in order if d in group]
+        if len(members) < 2:
+            continue
+        target = block(order.index(members[0]))
+        for member in members[1:]:
+            if block(order.index(member)) == target:
+                continue
+            free = [i for i in range(edges[target], edges[target + 1]) if order[i] not in grouped]
+            if not free:
+                raise ValueError(f"No room to keep {group} in one partition")
+            i, j = free[-1], order.index(member)
+            order[i], order[j] = order[j], order[i]
+    return order
+
+
 def _assign_folds(
     dataset_ids: list[str], *,
     n_folds: int,
@@ -275,6 +302,7 @@ def _assign_folds(
     shuffled = [order[i] for i in rng.permutation(n)]
     # Contiguous blocks over the shuffled order, sizes differing by at most one.
     edges = [round(k * n / n_folds) for k in range(n_folds + 1)]
+    shuffled = _keep_sources_together(shuffled, edges)
     test = set(shuffled[edges[fold]:edges[fold + 1]])
     return {did: ("test" if did in test else "train") for did in order}
 

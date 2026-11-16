@@ -803,13 +803,12 @@ def _resolve_device(cfg) -> str:
 def _resolve_amp_dtype(cfg, device: str, family: str = "tabpfn") -> tuple[bool, torch.dtype | None]:
     """Resolve whether AMP is active and which CUDA autocast dtype to use.
 
-    TabPFN: BF16 is preferred when supported: unlike FP16 it retains FP32's
-    exponent range, so large TabPFN regression gradients do not repeatedly
-    overflow and force ``GradScaler`` to discard optimizer steps.
+    TabPFN: ``train.amp_dtype`` (the campaign uses fp16 with ``GradScaler``, the precision of
+    upstream's fine-tuner; ``auto`` picks BF16 where supported).
 
-    TabICLv2: FP16 with ``GradScaler``, upstream's own fine-tuning recipe, with the column
-    embedder kept in FP32 (``tabicl_model.column_embedder_in_fp32``)
-    (``tabicl._finetune``). BF16's 8-bit mantissa corrupts its column embedder:
+    TabICLv2: FP16 with ``GradScaler``, upstream's own fine-tuning recipe (``tabicl._finetune``),
+    with the column embedder kept in FP32 (``tabicl_model.column_embedder_in_fp32``).
+    BF16's 8-bit mantissa corrupts its column embedder:
     the first study's TabICL runs started at 1.2 nats (TabPFN 0.48) with every
     update clipped, and an update-zero forward on a credit table measured
     0.545 nats in FP32, 0.548 in FP16 and 0.858 in BF16. TabICLv2 therefore
@@ -1330,11 +1329,18 @@ def _query_missing_context_class(batch) -> bool:
     # potentially class-permuted view), but the y_query is shared in
     # canonical class order. Concatenate across members for the union.
     if hasattr(batch, "members"):
-        ctx_uniques = []
+        # Each member's context labels are class-permuted; compare them with the query labels
+        # mapped into THAT member's space. A union over members would mix label spaces (with two
+        # opposite binary permutations, a context without positives would look complete).
+        qry_unique = torch.unique(batch.y_query.reshape(-1)).long()
         for m in batch.members:
-            ctx_uniques.append(torch.unique(m.y_context.reshape(-1)))
-        ctx_unique = torch.unique(torch.cat(ctx_uniques))
-        qry_unique = torch.unique(batch.y_query.reshape(-1))
+            ctx = torch.unique(m.y_context.reshape(-1)).long()
+            perm = getattr(m, "class_permutation", None)
+            mapped = qry_unique if perm is None else torch.as_tensor(
+                np.asarray(perm), device=qry_unique.device).long()[qry_unique]
+            if not bool(torch.isin(mapped, ctx).all().item()):
+                return True
+        return False
     elif hasattr(batch, "y_train"):
         # TabICLTrainBatch: per-member class shuffles are BIJECTIVE remaps
         # applied consistently to y_train and y_query, so a set-membership
@@ -2756,7 +2762,6 @@ def train_one_config(
             step_t0 = time.monotonic()
             monitor_before = sum(r.monitor_seconds for r in trajectory_history)
             batch = batch.to(device)
-            processed_rows += batch_rows(batch)
             # Skip-on-missing-class check — mirrors the official
             # `FinetunedTabPFNClassifier._should_skip_batch` at
             # `TabPFN .txt`. If a stratified subsample
@@ -2777,6 +2782,7 @@ def train_one_config(
                 epoch_skipped_steps += 1
                 after_batch()
                 continue
+            processed_rows += batch_rows(batch)   # after the skip: rows seen by an update attempt
             # Pre-declare every tensor that will hold the forward autograd graph, so the
             # non-finite-loss skip below can release them by name whichever branch ran.
             pred_logits = y_target = out = _pen = None

@@ -227,6 +227,7 @@ _RAW_METADATA: dict[str, dict] = {
         ],
         "source": "uci",
         "source_url": "https://archive.ics.uci.edu/dataset/144/statlog+german+credit+data",
+        "header": None,   # the first line is the first loan (see _fix_german)
     },
     "0009.bank_status": {
         "track": "pd",
@@ -598,6 +599,12 @@ def _fix_lendingclub(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def read_raw(path, dataset_id: str) -> pd.DataFrame:
+    """Read one delivered table with its recorded CSV layout (some files have no header row)."""
+    header = DATASET_METADATA.get(dataset_id, {}).get("header", "infer")
+    return pd.read_csv(path, low_memory=False, header=header)
+
+
 @_register_fix("0005.myhom")
 def _fix_myhom(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
@@ -611,6 +618,11 @@ def _fix_hackerearth(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     drop_cols = ["member_id", "batch_enrolled", "emp_title", "pymnt_plan",
                  "desc", "title", "zip_code"]
+    # Post-outcome and payment-to-date columns, as for Bondora: recovered amounts exist only after
+    # a charge-off (non-zero in 3.6% of class-0 rows and in no class-1 row), and interest, late
+    # fees and weeks paid accumulate while the loan runs. None is known when the loan is granted.
+    drop_cols += ["recoveries", "collection_recovery_fee", "total_rec_int", "total_rec_late_fee",
+                  "last_week_pay"]
     df = df.drop(columns=[c for c in drop_cols if c in df.columns])
 
     if "emp_length" in df.columns:
@@ -618,11 +630,6 @@ def _fix_hackerearth(df: pd.DataFrame) -> pd.DataFrame:
         s = s.replace("< 1 year", "0").replace("10+ years", "11").replace("10+", "11")
         s = s.str.replace(" years", "", regex=False).str.replace(" year", "", regex=False)
         df["emp_length"] = pd.to_numeric(s, errors="coerce")
-
-    if "last_week_pay" in df.columns:
-        s = df["last_week_pay"].astype(str)
-        s = s.str.replace("th week", "", regex=False).replace("NA", np.nan)
-        df["last_week_pay"] = pd.to_numeric(s, errors="coerce")
 
     target = DATASET_METADATA["0006.hackerearth"]["target_column"]
     if target in df.columns:
@@ -657,8 +664,15 @@ def _fix_cobranded(df: pd.DataFrame) -> pd.DataFrame:
 @_register_fix("0008.german")
 def _fix_german(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
-    # The OpenML German Credit CSV ships with no header — the first data
-    # row gets misinterpreted as a header. Detect and rename.
+    # The file's first line is the first loan, written once as a pandas header: repeated values
+    # carry de-duplication suffixes ("4.1", "1.1"). Read without a header (read_raw), restore the
+    # row (the UCI table holds only integers and A-codes) and name the columns.
+    if list(df.columns)[0] in (0, "0"):
+        first = df.iloc[0].astype(str).str.extract(r"^(\d+)\.\d+$")[0].fillna(df.iloc[0].astype(str))
+        df = df.astype(object)
+        df.iloc[0] = first.to_numpy()
+        df = df.apply(lambda col: pd.to_numeric(col, errors="coerce") if pd.to_numeric(
+            col, errors="coerce").notna().all() else col.astype(str))
     needs_rename = (
         list(df.columns)[0] in (0, "0")
         or "Unnamed: 0" in df.columns
@@ -678,7 +692,14 @@ def _fix_german(df: pd.DataFrame) -> pd.DataFrame:
 def _fix_bank_status(df: pd.DataFrame) -> pd.DataFrame:
     df = df.copy()
     df = df.dropna(how="all").reset_index(drop=True)
-    df = df.drop(columns=[c for c in ["Loan ID", "Customer ID"] if c in df.columns])
+    # One row per loan: 10% of rows repeat a loan, often with one copy missing a value. Keep the
+    # most complete copy, so no loan sits in both the context and the test rows of a fold.
+    if "Loan ID" in df.columns:
+        df = (df.assign(_filled=df.notna().sum(axis=1)).sort_values("_filled", ascending=False, kind="stable")
+              .drop_duplicates("Loan ID").drop(columns="_filled").sort_index().reset_index(drop=True))
+    # `Current Loan Amount` = 99,999,999 marks 11.5% of rows, every one of them fully paid: the value
+    # encodes the label (as NaN it still would, through missingness), so the column is dropped.
+    df = df.drop(columns=[c for c in ["Loan ID", "Customer ID", "Current Loan Amount"] if c in df.columns])
 
     if "Loan Status" in df.columns:
         df["Loan Status"] = df["Loan Status"].replace(
@@ -989,6 +1010,9 @@ def _fix_loss2(df: pd.DataFrame) -> pd.DataFrame:
         "_Loss_Amount", "lss_amt", "Investor_Category", "_Proceeds",
         "_Net_sales_Proceeds", "_reo_sales_price", "_SellingCosts",
         "REO_Sales_Price",
+        # Mortgage-insurance recovery and claim: cash flows of the workout, known only after the
+        # loss. The ex-ante coverage (percent_of_primary_pmi_coverage, MI_ind) stays.
+        "_Mirecovery", "_Miclaimbal",
     ]
     df = df.drop(columns=[c for c in drop_cols if c in df.columns])
 
@@ -1238,7 +1262,7 @@ def main(cfg=None) -> int:
     for dataset_id, meta in DATASET_METADATA.items():
         path = raw_root / meta["track"] / f"{dataset_id}.csv"
         try:
-            df = pd.read_csv(path, low_memory=False)
+            df = read_raw(path, dataset_id)
             fixed = apply_dataset_specific_fixes(df, dataset_id)
             target = meta["target_column"]
             target_present = target in fixed.columns

@@ -74,8 +74,6 @@ def test_precision_arms_change_only_the_precision():
 def test_unknown_deviations_are_refused():
     with pytest.raises(ValueError, match="Undeclared deviation"):
         d.apply_arm(d.reference_config("lgd"), {"dropout": 0.1}, "lgd")
-    with pytest.raises(ValueError, match="PD-only"):
-        d.apply_arm(d.reference_config("lgd"), {"pd_class_sampling": "balanced"}, "lgd")
     with pytest.raises(ValueError, match="corpus policy"):
         d.apply_arm(d.reference_config("pd"), {"corpus": "everything"}, "pd")
 

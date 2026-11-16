@@ -278,6 +278,7 @@ def clean_loaded_dataset(
     n_classes: int | None,
     inference_config: Any,
     base_seed: int,
+    view_seed: int = 0,
 ) -> _CleanedDataset:
     """Cached wrapper for :func:`_clean_one_dataset`.
 
@@ -288,6 +289,7 @@ def clean_loaded_dataset(
     """
     key = (
         dataset_id,
+        int(view_seed),
         int(X_full_df.shape[0]),
         int(X_full_df.shape[1]),
         task_type,
@@ -298,8 +300,10 @@ def clean_loaded_dataset(
         # This ensures each dataset gets fixed, reproducible ensemble
         # configs (class permutations, feature shifts) for the whole run.
         import hashlib
+        # The training seed is part of it, so another seed (E2) also draws other views,
+        # as it already does for TabICLv2 (preprocessing_seed).
         h = hashlib.blake2b(
-            dataset_id.encode("utf-8"),
+            f"{dataset_id}|{int(view_seed)}".encode("utf-8"),
             digest_size=8,
         ).digest()
         rng_seed = int.from_bytes(h, "big") & 0x7FFF_FFFF

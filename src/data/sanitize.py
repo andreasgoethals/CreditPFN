@@ -587,7 +587,8 @@ def main(cfg=None) -> int:  # noqa: C901
                 continue
             manifest_row = row.iloc[0].to_dict()
 
-            df = pd.read_csv(raw_path, low_memory=False)
+            from src.data.preprocessing import read_raw
+            df = read_raw(raw_path, dataset_id)
             df = apply_dataset_specific_fixes(df, dataset_id)
             df_clean, log = sanitize_dataset(
                 df, dataset_id, manifest_row=manifest_row, cfg=cfg,

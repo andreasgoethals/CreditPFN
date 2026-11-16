@@ -163,7 +163,8 @@ def load_manifests(cfg=None) -> dict[str, pd.DataFrame]:
                     continue
                 raw_path = paths["raw"] / track / f"{dataset_id}.csv"
                 if raw_path.is_file():
-                    frame = pd.read_csv(raw_path, low_memory=False)
+                    from src.data.preprocessing import read_raw
+                    frame = read_raw(raw_path, dataset_id)
                     frame = apply_dataset_specific_fixes(frame, dataset_id)
                     row = compute_manifest_row(frame, dataset_id)
                 else:
@@ -284,7 +285,8 @@ def raw_corpus_summary(cfg=None, *, refresh: bool = False) -> pd.DataFrame:
                 "raw_target_unique": np.nan, "source": meta["source"],
             })
             continue
-        df = pd.read_csv(p, low_memory=False)
+        from src.data.preprocessing import read_raw
+        df = read_raw(p, dataset_id) if dataset_id in DATASET_METADATA else pd.read_csv(p, low_memory=False)
         n_missing = int(df.isna().sum().sum())
         cells = max(1, df.shape[0] * df.shape[1])
         rows.append({

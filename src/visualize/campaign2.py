@@ -726,7 +726,6 @@ def arm_settings(slug: str, track: str) -> pd.DataFrame:
                         trainable=arm.get("trainable", ref["trainable"]),
                         corpus=arm.get("corpus", ref["corpus"]),
                         episode_rows=arm.get("episode_rows"),
-                        pd_class_sampling=arm.get("pd_class_sampling", ref["pd_class_sampling"]),
                         exposure=arm.get("exposure", ref["exposure"]),
                         seed=int(arm.get("seed", ref["seed"])),
                         successful_updates=int(arm.get("successful_updates", ref["successful_updates"])),

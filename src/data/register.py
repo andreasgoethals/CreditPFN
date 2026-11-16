@@ -270,7 +270,8 @@ def main(cfg=None) -> int:  # noqa: C901
             LOGGER.warning("missing raw file: %s — skipped", path)
             continue
         try:
-            df = pd.read_csv(path, low_memory=False)
+            from src.data.preprocessing import read_raw
+            df = read_raw(path, dataset_id)
             df = apply_dataset_specific_fixes(df, dataset_id)
             row = compute_manifest_row(df, dataset_id)
             row["date_added"] = (

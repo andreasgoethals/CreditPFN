@@ -23,7 +23,6 @@ reference:
   successful_updates: 2500   # monitored densely; E8 carries a 10,000-update arm
   episode_rows: {v2: 10000, v2.6: 10000, v3: 26000, tabicl-v2: 26000}
   query_fraction: 0.40       # 60/40 context/query, as Real-TabPFN
-  pd_class_sampling: proportional
   exposure: one_sample       # one sampled episode per table visit
   corpus: all_training_tables
   regression_objective: window_nll   # TabPFN LGD; TabICL keeps its native quantile objective

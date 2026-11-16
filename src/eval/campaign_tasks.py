@@ -186,7 +186,7 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
                          "early_stopping_patience": recipe["early_stopping_patience"]}
                 candidates[float(rate)] = finetune_cell(
                     data, context, validation, test, path, family, recipe=fixed,
-                    views=INFERENCE_VIEWS[family], device=device,
+                    views=INFERENCE_VIEWS[family], device=device, seed=rules["context_seed"],
                     max_context_rows=rules["max_context_rows"])
             scores = {rate: validation_score(data.task_type, data.y[validation], out["validation_prediction"])
                       for rate, (_, out) in candidates.items()}

@@ -78,8 +78,15 @@ J0=$(sbatch --parsable scripts/slurm/runtime_cpu.slurm record env20261029f "$REC
 J1=$(sbatch --parsable --dependency=afterok:${J0%%;*} scripts/slurm/runtime_cpu.slurm prepare env20261029f "$RECORD/environment.json")
 J2=$(sbatch --parsable --dependency=afterok:${J1%%;*} --array=0-9 scripts/slurm/runtime_gpu.slurm env20261029f)
 J3=$(sbatch --parsable --dependency=afterok:${J2%%;*} scripts/slurm/runtime_cpu.slurm accept env20261029f)
-sbatch --parsable --dependency=afterok:${J3%%;*} --export=ALL,CREDITPFN_RUNTIME_VERSION=env20261029f scripts/slurm/campaign_cpu.slurm experiment0
+J4=$(sbatch --parsable --dependency=afterok:${J3%%;*} --export=ALL,CREDITPFN_RUNTIME_VERSION=env20261029f scripts/slurm/data.slurm)
+sbatch --parsable --dependency=afterok:${J4%%;*} --export=ALL,CREDITPFN_RUNTIME_VERSION=env20261029f scripts/slurm/campaign_cpu.slurm experiment0
 ```
+
+The data job runs in the accepted runtime (it needs `CREDITPFN_RUNTIME_VERSION`) and refreshes the
+scratch input snapshot that training jobs read; skip it only when no preprocessing changed. After a
+fix, `campaign_cpu.slurm rerun-experiment0 '<JSON>'` resubmits selected pilots and check tasks
+(`campaign_launch --only`: pilots, prepare, classical, recovery, capacity, precision, evaluation);
+delete their stale outputs, plans and receipts first.
 
 `campaign_cpu.slurm experiment0` runs the gate tests (upstream parity with inputs required), the
 whole suite for the record, the LGD density audit, writes every pilot plan, then submits all pilots

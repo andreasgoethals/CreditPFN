@@ -853,16 +853,8 @@ def _bench_model_on_dataset(
                     seed=seed + 1000 + fold_idx,
                     task_type=ds.task_type,
                 )
-            # Validation set should be small (~16% of dataset post 80/20
-            # outer + 20% inner) but cap it too if a tiny `max_rows`
-            # somehow yields a val split larger than the cap.
-            if len(X_va_df) > max_rows_for_handle:
-                X_va_df, y_va = _subsample_train(
-                    X_va_df, y_va,
-                    max_rows=max_rows_for_handle,
-                    seed=seed + 2000 + fold_idx,
-                    task_type=ds.task_type,
-                )
+            # Validation rows are predicted, not used as context, so the model's context cap does
+            # not apply: every model fits its threshold and calibrator on the same rows.
 
         X_tr_arr, X_va_arr, X_te_arr, cat_idx = encode_for_model(
             X_tr_df, X_va_df, X_te_df,

@@ -206,37 +206,16 @@ def _stratified_subsample_indices(
 ) -> np.ndarray:
     """Per-class subsample of size ``n_total`` — the CONTEXT-CONSTRUCTION knob.
 
-    ``mode``:
-
-    * ``"stratified"`` (default) — keep each class's frequency proportional
-      to its frequency in ``y``, like sklearn's ``StratifiedKFold`` but as a
-      single one-shot draw.
-    * ``"balanced"`` — give every class an EQUAL quota, capped by how many
-      rows that class actually has, and spend any leftover budget on the
-      classes that still have rows.
-
-    Why ``balanced`` exists (Tanna et al. 2026, *Data Presentation Over
-    Architecture*, in tfm-library): because a tabular foundation model
-    predicts by in-context learning, how the context window is built matters
-    enormously under class imbalance. They cross seven context strategies
-    with 1K–50K context sizes on Home Credit and Lending Club — both in OUR
-    training corpus — and find balanced/hybrid sampling worth **3–4 AUC
-    points over uniform, a gap larger than the spread between TFM
-    families**. Concretely here: proportional sampling of 26 000 rows from a
-    1 %-default-rate dataset yields ~260 positives, while balanced yields
-    every positive available (often thousands). The minority class is what
-    the model has to learn to retrieve.
+    Keeps each class's frequency proportional to its frequency in ``y``, like sklearn's
+    ``StratifiedKFold`` but as a single one-shot draw.
 
     Falls back to uniform random sampling for regression targets, for
     single-class targets, and whenever a per-class quota is impossible
     (``n_total`` < number of classes), so it stays a strict superset of the
     original behaviour.
     """
-    if mode not in ("stratified", "balanced"):
-        raise ValueError(
-            f"context sampling mode must be 'stratified' or 'balanced'; "
-            f"got {mode!r}"
-        )
+    if mode != "stratified":
+        raise ValueError(f"context sampling mode must be 'stratified'; got {mode!r}")
     n = len(y)
     if n_total >= n:
         return rng.permutation(n)
@@ -252,48 +231,17 @@ def _stratified_subsample_indices(
 
     classes, counts = np.unique(y, return_counts=True)
     # When the requested subsample is smaller than the number of classes,
-    # the max(1,…) floor below makes a balanced per-class quota impossible
+    # the max(1,…) floor below makes a per-class quota impossible
     # (every class wants >=1 row but n_total < n_classes). Fall back to a
     # plain random draw rather than spinning in the drift loop forever.
     if n_total < len(classes):
         return rng.choice(n, size=n_total, replace=False)
 
-    if mode == "balanced":
-        # Equal quota per class, capped by availability; the budget freed by
-        # a class that cannot fill its share is redistributed (repeatedly) to
-        # the classes that still have rows. With a 1 % positive rate this
-        # takes EVERY positive plus enough negatives to reach n_total, rather
-        # than the ~1 % of n_total a proportional draw would take.
-        quotas = np.zeros(len(classes), dtype=int)
-        remaining = int(n_total)
-        open_mask = np.ones(len(classes), dtype=bool)
-        while remaining > 0 and open_mask.any():
-            share = max(1, remaining // int(open_mask.sum()))
-            progressed = False
-            for i in np.where(open_mask)[0]:
-                if remaining <= 0:
-                    break
-                room = int(counts[i]) - int(quotas[i])
-                if room <= 0:
-                    open_mask[i] = False
-                    continue
-                take = int(min(share, room, remaining))
-                quotas[i] += take
-                remaining -= take
-                progressed = True
-                if quotas[i] >= counts[i]:
-                    open_mask[i] = False
-            if not progressed:
-                break
-    else:
-        # Target per-class quota proportional to class frequency, rounded.
-        quotas = np.maximum(1, np.round(counts * n_total / n).astype(int))
+    # Target per-class quota proportional to class frequency, rounded.
+    quotas = np.maximum(1, np.round(counts * n_total / n).astype(int))
     # Resolve rounding drift: total quotas must equal n_total. Adjust on
     # the largest class(es) so a tiny rounding off-by-one doesn't bias.
-    # Balanced mode allocates exactly against real availability above, so it
-    # has no rounding drift to fix — and running this block would hand a
-    # class a quota larger than the rows it owns.
-    drift = 0 if mode == "balanced" else int(quotas.sum()) - int(n_total)
+    drift = int(quotas.sum()) - int(n_total)
     if drift != 0:
         order = np.argsort(-counts)               # largest classes first
         # Bound the down-adjust loop: if a full pass over all classes can't
@@ -424,8 +372,7 @@ class TabICLTrainBatch:
     # Positive-class rate of the ORIGINAL sampled labels, before tabicl's
     # per-member class-shuffle remap. Measured here because after the remap
     # `y_train > 0` counts a permuted label and is meaningless: on 25 %-positive
-    # data a 2-member batch reported 74.7 %. This is what verifies that
-    # `context_sampling: balanced` actually raised minority exposure.
+    # data a 2-member batch reported 74.7 %. Logged as the episode's default rate.
     ctx_pos_rate: float = float("nan")
 
     def to(self, device: str) -> TabICLTrainBatch:
@@ -560,6 +507,7 @@ def _build_ensemble_step_batch(
     inference_config: Any,
     n_estimators: int,
     rng_seed: int,
+    view_seed: int = 0,
     context_sampling: str = "stratified",
     row_indices: np.ndarray | None = None,
 ):
@@ -608,6 +556,7 @@ def _build_ensemble_step_batch(
         n_classes=n_classes,
         inference_config=inference_config,
         base_seed=int(rng_seed),
+        view_seed=int(view_seed),
     )
     X_all = cleaned.X_clean          # (n_total_dataset, n_features) numeric
     y_all = cleaned.y
@@ -708,7 +657,7 @@ class ProcessedDatasetLoader(Dataset):
         # Context-construction strategy for the per-step subsample; see
         # _stratified_subsample_indices and docs/RESEARCH_BRIEF.md.
         self.context_sampling = str(context_sampling)
-        if self.context_sampling not in ("stratified", "balanced"):
+        if self.context_sampling != "stratified":
             raise ValueError(f"unknown context_sampling: {self.context_sampling!r}")
         self.refs = list(refs)
         self.max_rows_per_epoch = int(max_rows_per_epoch)
@@ -720,10 +669,6 @@ class ProcessedDatasetLoader(Dataset):
         self.pass_mode = str(pass_mode)
         if self.pass_mode not in ("one_sample", "full_pass"):
             raise ValueError(f"unknown pass_mode: {self.pass_mode!r}")
-        if (self.pass_mode != "one_sample" and self.context_sampling == "balanced"
-                and any(ref.task_type == "classification" for ref in self.refs)):
-            raise ValueError("Non-overlapping full_pass requires context_sampling='stratified'; "
-                             "class-balanced draws cannot also cover every row exactly once")
         # At most one epoch's permutation per table in each worker. Reuse it
         # across chunks instead of shuffling the whole table on every access.
         self._row_partitions: dict[int, tuple[int, int, list[np.ndarray]]] = {}
@@ -860,6 +805,7 @@ class ProcessedDatasetLoader(Dataset):
             row_indices=row_indices,
             n_estimators=self._n_estimators_finetune,
             rng_seed=int(step_seed),
+            view_seed=self._base_seed,
         )
 
 

@@ -12,7 +12,7 @@ PD is binary default classification, LGD is loss-rate regression. Four base mode
 v2.6 and v3, and TabICLv2. The study is descriptive: it does not assume CPT helps.
 
 Credit risk is the case study, not the limit of the contribution. The ablations (update size and
-anchoring, trainable scope, class balance, exposure, table and episode size, context scarcity,
+anchoring, trainable scope, exposure, table and episode size, context scarcity,
 source-target transfer, CPT versus target fine-tuning) are run on four architectures and two task
 types, so they also describe how continued pretraining and fine-tuning of tabular foundation
 models behave in general; the domain control (E4) separates what is credit-specific from what
@@ -24,7 +24,7 @@ any comparable real-data corpus would do.
 |---|---|
 | RQ1 Transfer | Does CPT on credit datasets improve prediction on credit datasets the model has never seen, for which base models and which task, how does the effect develop during training, how much is training randomness, and is it worth it compared with fine-tuning on the target table? |
 | RQ2 Weight change | How do update size, anchoring to the pretrained weights and which parameters are trained trade gains on credit data against forgetting on non-credit data? |
-| RQ3 Training data | Which training tables (small vs large), how much of each table, how large each training episode, and how class balance affects transfer. |
+| RQ3 Training data | Which training tables (small vs large), how much of each table and how large each training episode. |
 | RQ4 When and why | On which target tables CPT helps or hurts, what those tables have in common, how this depends on the source tables, and whether the benefit is larger when the target has few labelled rows. |
 
 ## Data, partitions and evaluation
@@ -177,6 +177,6 @@ upstream-parity inputs required.
 
 Twenty-five tables give limited power for table-level explanations; effects in the first study
 were small (≤0.005 AUC), so results are reported with per-table paired differences and seed noise
-rather than single means. Partitions were drawn once; same-source tables must sit in one
-partition (audited before launch). DiagScale's L2-SP is an exact weight-change penalty only for
+rather than single means. Partitions were drawn once (seed 1729); tables drawn from the same
+lender's loans sit in one partition (`corpus.SAME_SOURCE`: the two LendingClub PD tables). DiagScale's L2-SP is an exact weight-change penalty only for
 v2/v2.6. The window objective deviates slightly from Real-TabPFN's bar NLL.

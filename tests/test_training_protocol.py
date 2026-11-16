@@ -245,10 +245,9 @@ def test_all_builders_honor_disjoint_partitions(tmp_path, monkeypatch, family):
     assert any(set(a) != set(b) for a, b in zip(epochs[0], epochs[1]))
 
 
-def test_full_pass_rejects_balancing_and_unknown_modes(tmp_path):
+def test_unknown_pass_and_sampling_modes_are_refused(tmp_path):
     refs = make_dataset(tmp_path).refs
-    for kwargs in ({'pass_mode': 'full_pass', 'context_sampling': 'balanced'},
-                   {'pass_mode': 'typo'}, {'context_sampling': 'typo'}):
+    for kwargs in ({'pass_mode': 'typo'}, {'context_sampling': 'balanced'}, {'context_sampling': 'typo'}):
         with pytest.raises(ValueError):
             ProcessedDatasetLoader(refs, max_rows_per_epoch=80, query_fraction=.4, **kwargs)
 

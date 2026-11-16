@@ -133,7 +133,7 @@ def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
     monkeypatch.setattr(loop, "save_finetuned", fake_save)
     real_load = OmegaConf.load
     monkeypatch.setattr(OmegaConf, "load", lambda p: OmegaConf.create({"finetuning": {
-        "max_rows_per_epoch": 80, "query_fraction": .4, "context_sampling": "balanced"}})
+        "max_rows_per_epoch": 80, "query_fraction": .4, "context_sampling": "stratified"}})
         if "data.yaml" in str(p) else real_load(p))
     cfg = OmegaConf.create({"seed": seed, "run_name": "toy", "track": "pd", "device": "cpu",
         "tunable": {"classifier_base_paths": ["base.ckpt"], "learning_rates": [.001]},

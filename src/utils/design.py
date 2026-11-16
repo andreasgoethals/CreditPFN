@@ -35,7 +35,6 @@ DEVIATION_PATHS = {
     "successful_updates": "train.target_total_steps",
     "episode_rows": "train.max_rows_per_step",
     "query_fraction": "tunable.query_fractions",
-    "pd_class_sampling": "train.context_sampling",
     "exposure": "tunable.epoch_pass_modes",
     "corpus": "corpus.min_train_rows",
     "trainable": "train.adaptation_mode",
@@ -93,7 +92,6 @@ def reference_config(track: str, design: dict | None = None) -> dict:
     ref = design["reference"]
     if track not in design["tasks"]:
         raise ValueError(f"Unknown task {track!r}")
-    sampling = {"proportional": "stratified", "balanced": "balanced"}[ref["pd_class_sampling"]]
     budget = int(ref["successful_updates"])
     return {
         "track": track,
@@ -109,7 +107,7 @@ def reference_config(track: str, design: dict | None = None) -> dict:
                       "l2sp_lambda": float(ref["l2sp_lambda"])},
         "scheduler": {"warmup_fraction": float(ref["warmup_fraction"]),
                       "min_lr_fraction": float(ref["min_lr_fraction"])},
-        "train": {"context_sampling": "stratified" if track == "lgd" else sampling,
+        "train": {"context_sampling": "stratified",
                   "adaptation_mode": "full", "regression_objective": str(ref["regression_objective"]),
                   "target_total_steps": budget, "epochs": 50, "max_epochs_for_step_budget": 8000,
                   "numerical_stopping_only": True, "monitor_seed": 31415,
@@ -158,10 +156,6 @@ def apply_arm(cfg: dict, arm: dict, track: str) -> dict:
             cfg["train"]["max_rows_per_step"] = int(value)
         elif key == "query_fraction":
             cfg["tunable"]["query_fractions"] = [float(value)]
-        elif key == "pd_class_sampling":
-            if track != "pd":
-                raise ValueError("Class sampling is a PD-only deviation")
-            cfg["train"]["context_sampling"] = {"proportional": "stratified", "balanced": "balanced"}[value]
         elif key == "exposure":
             cfg["tunable"]["epoch_pass_modes"] = [str(value)]
         elif key == "corpus":
