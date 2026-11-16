@@ -111,7 +111,7 @@ def test_twins_respect_the_download_bound():
 
 
 @pytest.mark.parametrize("config", ["E04_domain_control/pd_a0.yaml", "E04_domain_control/lgd_a0.yaml",
-                                    "E09_table_size/pd_a0.yaml", "E09_table_size/pd_a1.yaml"])
+                                    "E11_table_size/pd_a0.yaml", "E11_table_size/pd_a1.yaml"])
 def test_modified_training_corpora_still_prepare(config):
     """Folds partition the credit registry even when the training corpus is replaced or filtered."""
     from pathlib import Path

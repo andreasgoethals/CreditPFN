@@ -2,6 +2,7 @@
 
 ## 16-11-2026
 
+- Research questions regrouped into three (agreed): RQ1 does domain CPT pay off (E1-E5), RQ2 when and why (E6 context curves, E7 transfer matrix), RQ3 what changes it (E8-E12); experiments renumbered and notebooks moved to match (`rq4/` merged into `rq2/`, weight-change and training-data notebooks into `rq3/`).
 - Data fixes (review): HackerEarth drops post-charge-off and payment-to-date columns (recoveries appeared only in class 0); PD table 0009 keeps one row per loan and drops `Current Loan Amount` (its 99,999,999 sentinel marked only fully paid loans); LGD table 0002 drops the realised mortgage-insurance recovery and claim; German keeps its first loan (file has no header).
 - The two LendingClub PD tables share a partition (`corpus.SAME_SOURCE`); Myhom moves to partition 3, nothing else changes.
 - TabPFN training views follow the training seed; the missing-class guard compares each member in its own label space; E5 fine-tuned and untuned rows share the inference seed; validation rows are no longer capped by the context cap; processed rows exclude skipped episodes.

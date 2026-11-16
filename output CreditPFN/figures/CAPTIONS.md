@@ -58,26 +58,26 @@ _No figures produced._
 
 _No figures produced._
 
-## rq2/01_training
+## rq2/01_context_curves
 
 _No figures produced._
 
-## rq2/02_results
+## rq2/02_when_and_why
 
 _No figures produced._
 
-## rq3/01_training
+## rq3/01_weight_change_training
 
 _No figures produced._
 
-## rq3/02_results
+## rq3/02_weight_change_results
 
 _No figures produced._
 
-## rq4/01_context_curves
+## rq3/03_training_data_training
 
 _No figures produced._
 
-## rq4/02_when_and_why
+## rq3/04_training_data_results
 
 _No figures produced._

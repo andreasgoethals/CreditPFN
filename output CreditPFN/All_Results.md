@@ -7708,7 +7708,7 @@ general/03_domain_comparison: 4 figures -> output CreditPFN/figures/general
 RQ1: transfer — training
 
 1. Design
-Each arm changes only the listed settings; E1 is the shared control of E2, E4 and E6-E10.
+Each arm changes only the listed settings; E1 is the shared control of E2, E4 and E8-E12.
 
 Table: Arms of RQ1
 CSV (first column: row index)
@@ -7930,338 +7930,13 @@ rq1/02_results: no figures saved.
 
 ---
 
-## rq2/01_training
+## rq2/01_context_curves
 
 ```
-RQ2: controlling weight change — training
-
-1. Design
-Each arm changes only the listed settings; E1 is the shared control.
-
-Table: Arms of RQ2
-CSV (first column: row index)
-row,experiment,slug,arm,track,change,models,runs
-0,E6,update_size_anchoring,0,pd,learning_rate=1e-07,4,16
-1,E6,update_size_anchoring,1,pd,learning_rate=1e-06,4,16
-2,E6,update_size_anchoring,2,pd,learning_rate=3e-06,4,16
-3,E6,update_size_anchoring,3,pd,learning_rate=1e-05,4,16
-4,E6,update_size_anchoring,4,pd,"learning_rate=3e-06, l2sp_lambda=0.0",4,16
-5,E6,update_size_anchoring,5,pd,"learning_rate=3e-06, l2sp_lambda=0.03",4,16
-6,E6,update_size_anchoring,6,pd,"learning_rate=1e-05, l2sp_lambda=0.0",4,16
-7,E6,update_size_anchoring,7,pd,"learning_rate=1e-05, l2sp_lambda=0.03",4,16
-8,E6,update_size_anchoring,8,pd,l2sp_lambda=0.0,4,16
-9,E6,update_size_anchoring,0,lgd,learning_rate=1e-07,4,16
-10,E6,update_size_anchoring,1,lgd,learning_rate=1e-06,4,16
-11,E6,update_size_anchoring,2,lgd,learning_rate=3e-06,4,16
-12,E6,update_size_anchoring,3,lgd,learning_rate=1e-05,4,16
-13,E6,update_size_anchoring,4,lgd,"learning_rate=3e-06, l2sp_lambda=0.0",4,16
-14,E6,update_size_anchoring,5,lgd,"learning_rate=3e-06, l2sp_lambda=0.03",4,16
-15,E6,update_size_anchoring,6,lgd,"learning_rate=1e-05, l2sp_lambda=0.0",4,16
-16,E6,update_size_anchoring,7,lgd,"learning_rate=1e-05, l2sp_lambda=0.03",4,16
-17,E6,update_size_anchoring,8,lgd,l2sp_lambda=0.0,4,16
-18,E7,scope,0,pd,"trainable=frozen_backbone, learning_rate=3e-07",4,16
-19,E7,scope,1,pd,"trainable=frozen_backbone, learning_rate=3e-06",4,16
-20,E7,scope,2,pd,"trainable=diagscale, learning_rate=0.0001",4,16
-21,E7,scope,3,pd,"trainable=diagscale, learning_rate=0.001",4,16
-22,E7,scope,4,pd,"trainable=lora_qv_r16, learning_rate=3e-06",4,16
-23,E7,scope,5,pd,"trainable=lora_qv_r16, learning_rate=1e-05",4,16
-24,E7,scope,0,lgd,"trainable=frozen_backbone, learning_rate=3e-07",4,16
-25,E7,scope,1,lgd,"trainable=frozen_backbone, learning_rate=3e-06",4,16
-26,E7,scope,2,lgd,"trainable=diagscale, learning_rate=0.0001",4,16
-27,E7,scope,3,lgd,"trainable=diagscale, learning_rate=0.001",4,16
-28,E7,scope,4,lgd,"trainable=lora_qv_r16, learning_rate=3e-06",4,16
-29,E7,scope,5,lgd,"trainable=lora_qv_r16, learning_rate=1e-05",4,16
-
-2. Update size and anchoring (E6)
-No results yet for E6 monitor curves; the figure is drawn once they exist.
-
-No measurements available for this figure group.
-
-Table: PD E6 change at the last monitor point
-CSV (first column: row index)
-row
-
-Table: PD E6 relative weight change at the last monitor point
-CSV (first column: row index)
-row
-
-No measurements available for this figure group.
-
-Table: LGD E6 change at the last monitor point
-CSV (first column: row index)
-row
-
-Table: LGD E6 relative weight change at the last monitor point
-CSV (first column: row index)
-row
-
-3. Trainable scope (E7)
-No results yet for E7 monitor curves; the figure is drawn once they exist.
-
-No measurements available for this figure group.
-
-Table: PD E7 change at the last monitor point
-CSV (first column: row index)
-row
-
-No measurements available for this figure group.
-
-Table: LGD E7 change at the last monitor point
-CSV (first column: row index)
-row
-
-4. Training cost
-No results yet for training cost records; the figure is drawn once they exist.
-
-Table: Training cost per arm and model (E1, E6, E7)
-CSV (first column: row index)
-row
-
-rq2/01_training: no figures saved.
-```
-
----
-
-## rq2/02_results
-
-```
-RQ2: controlling weight change — results
-
-1. Learning rate and L2-SP (E6)
-No results yet for E6 five-fold gains; the figure is drawn once they exist.
-
-No measurements available for this figure group.
-
-Table: PD E6 summary per arm and model
-CSV (first column: row index)
-row
-
-Table: PD E6 per-table gains
-CSV (first column: row index)
-row
-
-No measurements available for this figure group.
-
-Table: LGD E6 summary per arm and model
-CSV (first column: row index)
-row
-
-Table: LGD E6 per-table gains
-CSV (first column: row index)
-row
-
-2. Transfer against forgetting across recipes (E1, E6, E7)
-No results yet for E6 and E7 arm overview; the figure is drawn once they exist.
-
-No measurements available for this figure group.
-
-Table: PD arm overview (credit and retention means)
-CSV (first column: row index)
-row
-
-No measurements available for this figure group.
-
-Table: LGD arm overview (credit and retention means)
-CSV (first column: row index)
-row
-
-3. Trainable scope in detail (E7) and calibration per arm
-Tables only; the figures above summarise the same gains.
-
-Table: PD E7 summary per arm and model
-CSV (first column: row index)
-row
-
-Table: PD E7 per-table gains
-CSV (first column: row index)
-row
-
-Table: PD update_size_anchoring metric profile per arm
-CSV (first column: row index)
-row
-
-Table: PD scope metric profile per arm
-CSV (first column: row index)
-row
-
-Table: LGD E7 summary per arm and model
-CSV (first column: row index)
-row
-
-Table: LGD E7 per-table gains
-CSV (first column: row index)
-row
-
-Table: LGD update_size_anchoring metric profile per arm
-CSV (first column: row index)
-row
-
-Table: LGD scope metric profile per arm
-CSV (first column: row index)
-row
-
-rq2/02_results: no figures saved.
-```
-
----
-
-## rq3/01_training
-
-```
-RQ3: training data — training
-
-1. Design
-Each arm changes only the listed settings; E1 is the shared control of E8. E9 compares its two corpora with each other; E10 trains on the tables above 10,000 rows.
-
-Table: Arms of RQ3
-CSV (first column: row index)
-row,experiment,slug,arm,track,change,models,runs
-0,E8,exposure,0,pd,exposure=full_pass,4,16
-1,E8,exposure,1,pd,successful_updates=10000,4,16
-2,E8,exposure,0,lgd,exposure=full_pass,4,16
-3,E8,exposure,1,lgd,successful_updates=10000,4,16
-4,E9,table_size,0,pd,corpus=small_only,4,16
-5,E9,table_size,1,pd,corpus=large_matched,4,16
-6,E10,episode_size,0,pd,"corpus=tables_above_10000_rows, episode_rows=2048",4,16
-7,E10,episode_size,1,pd,"corpus=tables_above_10000_rows, episode_rows=4096",4,16
-8,E10,episode_size,2,pd,"corpus=tables_above_10000_rows, episode_rows=8192",4,16
-9,E10,episode_size,3,pd,"corpus=tables_above_10000_rows, episode_rows=16384",2,8
-10,E10,episode_size,4,pd,corpus=tables_above_10000_rows,4,16
-
-2. Exposure and table size (E8, E9)
-No results yet for E8-E9 monitor curves; the figure is drawn once they exist.
-
-No measurements available for this figure group.
-
-Table: PD change at the last monitor point (E1, E8-E9)
-CSV (first column: row index)
-row
-
-No measurements available for this figure group.
-
-Table: LGD change at the last monitor point (E1, E8-E9)
-CSV (first column: row index)
-row
-
-3. Episode size at equal updates and at equal rows (E10)
-No results yet for E10 monitor curves; the figure is drawn once they exist.
-
-No measurements available for this figure group.
-
-Table: E10 change at the last monitor point
-CSV (first column: row index)
-row
-
-Table: E10 change at each rows-processed milestone
-CSV (first column: row index)
-row
-
-4. Training cost
-No results yet for training cost records; the figure is drawn once they exist.
-
-Table: Training cost per arm and model (E1, E8-E10)
-CSV (first column: row index)
-row
-
-rq3/01_training: no figures saved.
-```
-
----
-
-## rq3/02_results
-
-```
-RQ3: training data — results
-
-1. Effect of each training-data arm (E8-E10)
-No results yet for E8-E10 five-fold gains; the figure is drawn once they exist.
-
-No measurements available for this figure group.
-
-Table: PD exposure summary per arm and model
-CSV (first column: row index)
-row
-
-Table: PD exposure per-table gains
-CSV (first column: row index)
-row
-
-Table: PD table_size summary per arm and model
-CSV (first column: row index)
-row
-
-Table: PD table_size per-table gains
-CSV (first column: row index)
-row
-
-Table: PD episode_size summary per arm and model
-CSV (first column: row index)
-row
-
-Table: PD episode_size per-table gains
-CSV (first column: row index)
-row
-
-No measurements available for this figure group.
-
-Table: LGD exposure summary per arm and model
-CSV (first column: row index)
-row
-
-Table: LGD exposure per-table gains
-CSV (first column: row index)
-row
-
-Table: LGD table_size summary per arm and model
-CSV (first column: row index)
-row
-
-Table: LGD table_size per-table gains
-CSV (first column: row index)
-row
-
-Table: LGD episode_size summary per arm and model
-CSV (first column: row index)
-row
-
-Table: LGD episode_size per-table gains
-CSV (first column: row index)
-row
-
-2. Episode size at matched inference context (E10)
-No results yet for E10 matched-context evaluation; the figure is drawn once they exist.
-
-No measurements available for this figure group.
-
-Table: E10 matched-context gains per table
-CSV (first column: row index)
-row
-
-Table: E10 AUC per arm, model and context size
-CSV (first column: row index)
-row
-
-3. Effect against training cost
-No results yet for cost records; the figure is drawn once they exist.
-
-No measurements available for this figure group.
-
-Table: Effect and cost per arm and model
-CSV (first column: row index)
-row
-
-rq3/02_results: no figures saved.
-```
-
----
-
-## rq4/01_context_curves
-
-```
-RQ4: context scarcity (E11)
+RQ2: context scarcity (E6)
 
 1. Context curves
-No results yet for E11 context curves; the figure is drawn once they exist.
+No results yet for E6 context curves; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
@@ -8281,15 +7956,15 @@ Table: LGD per table and size
 CSV (first column: row index)
 row
 
-rq4/01_context_curves: no figures saved.
+rq2/01_context_curves: no figures saved.
 ```
 
 ---
 
-## rq4/02_when_and_why
+## rq2/02_when_and_why
 
 ```
-RQ4: when and why CPT helps
+RQ2: when and why CPT helps
 
 1. Table properties
 Computed from the processed credit tables; distances are in standardised property space.
@@ -8386,28 +8061,379 @@ Table: LGD gains versus seed noise
 CSV (first column: row index)
 row
 
-4. Which sources help which targets (E12)
-No results yet for E12 transfer monitor; the figure is drawn once they exist.
+4. Which sources help which targets (E7)
+No results yet for E7 transfer monitor; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
-Table: PD E12 change per source, target and model
+Table: PD E7 change per source, target and model
 CSV (first column: row index)
 row
 
-Table: PD E12 mean change per source and model
+Table: PD E7 mean change per source and model
 CSV (first column: row index)
 row
 
 No measurements available for this figure group.
 
-Table: LGD E12 change per source, target and model
+Table: LGD E7 change per source, target and model
 CSV (first column: row index)
 row
 
-Table: LGD E12 mean change per source and model
+Table: LGD E7 mean change per source and model
 CSV (first column: row index)
 row
 
-rq4/02_when_and_why: no figures saved.
+rq2/02_when_and_why: no figures saved.
+```
+
+---
+
+## rq3/01_weight_change_training
+
+```
+RQ3: controlling weight change — training
+
+1. Design
+Each arm changes only the listed settings; E1 is the shared control.
+
+Table: Arms of RQ2
+CSV (first column: row index)
+row,experiment,slug,arm,change,tasks,runs,track,models
+0,E6,context,—,Does CPT help more when the target table offers few labelled context rows?,"PD, LGD",0,unavailable,unavailable
+1,E7,transfer,0,"single_source=0, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
+2,E7,transfer,1,"single_source=1, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
+3,E7,transfer,2,"single_source=2, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
+4,E7,transfer,3,"single_source=3, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
+5,E7,transfer,4,"single_source=4, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
+6,E7,transfer,5,"single_source=5, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
+7,E7,transfer,6,"single_source=6, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
+8,E7,transfer,7,"single_source=7, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
+9,E7,transfer,8,"single_source=8, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
+10,E7,transfer,9,"single_source=9, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
+11,E7,transfer,10,"single_source=10, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
+12,E7,transfer,11,"single_source=11, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
+13,E7,transfer,12,"single_source=12, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
+14,E7,transfer,13,"single_source=13, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
+15,E7,transfer,14,"single_source=14, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
+16,E7,transfer,15,"single_source=15, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
+17,E7,transfer,16,"single_source=16, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
+18,E7,transfer,0,"single_source=0, successful_updates=2500, learning_rate=1e-06",unavailable,4,lgd,4
+19,E7,transfer,1,"single_source=1, successful_updates=2500, learning_rate=1e-06",unavailable,4,lgd,4
+20,E7,transfer,2,"single_source=2, successful_updates=2500, learning_rate=1e-06",unavailable,4,lgd,4
+21,E7,transfer,3,"single_source=3, successful_updates=2500, learning_rate=1e-06",unavailable,4,lgd,4
+22,E7,transfer,4,"single_source=4, successful_updates=2500, learning_rate=1e-06",unavailable,4,lgd,4
+23,E7,transfer,5,"single_source=5, successful_updates=2500, learning_rate=1e-06",unavailable,4,lgd,4
+24,E7,transfer,6,"single_source=6, successful_updates=2500, learning_rate=1e-06",unavailable,4,lgd,4
+25,E7,transfer,7,"single_source=7, successful_updates=2500, learning_rate=1e-06",unavailable,4,lgd,4
+
+2. Update size and anchoring (E8)
+No results yet for E8 monitor curves; the figure is drawn once they exist.
+
+No measurements available for this figure group.
+
+Table: PD E8 change at the last monitor point
+CSV (first column: row index)
+row
+
+Table: PD E8 relative weight change at the last monitor point
+CSV (first column: row index)
+row
+
+No measurements available for this figure group.
+
+Table: LGD E8 change at the last monitor point
+CSV (first column: row index)
+row
+
+Table: LGD E8 relative weight change at the last monitor point
+CSV (first column: row index)
+row
+
+3. Trainable scope (E9)
+No results yet for E9 monitor curves; the figure is drawn once they exist.
+
+No measurements available for this figure group.
+
+Table: PD E9 change at the last monitor point
+CSV (first column: row index)
+row
+
+No measurements available for this figure group.
+
+Table: LGD E9 change at the last monitor point
+CSV (first column: row index)
+row
+
+4. Training cost
+No results yet for training cost records; the figure is drawn once they exist.
+
+Table: Training cost per arm and model (E1, E8, E9)
+CSV (first column: row index)
+row
+
+rq3/01_weight_change_training: no figures saved.
+```
+
+---
+
+## rq3/02_weight_change_results
+
+```
+RQ3: controlling weight change — results
+
+1. Learning rate and L2-SP (E8)
+No results yet for E8 five-fold gains; the figure is drawn once they exist.
+
+No measurements available for this figure group.
+
+Table: PD E8 summary per arm and model
+CSV (first column: row index)
+row
+
+Table: PD E8 per-table gains
+CSV (first column: row index)
+row
+
+No measurements available for this figure group.
+
+Table: LGD E8 summary per arm and model
+CSV (first column: row index)
+row
+
+Table: LGD E8 per-table gains
+CSV (first column: row index)
+row
+
+2. Transfer against forgetting across recipes (E1, E8, E9)
+No results yet for E8 and E9 arm overview; the figure is drawn once they exist.
+
+No measurements available for this figure group.
+
+Table: PD arm overview (credit and retention means)
+CSV (first column: row index)
+row
+
+No measurements available for this figure group.
+
+Table: LGD arm overview (credit and retention means)
+CSV (first column: row index)
+row
+
+3. Trainable scope in detail (E9) and calibration per arm
+Tables only; the figures above summarise the same gains.
+
+Table: PD E9 summary per arm and model
+CSV (first column: row index)
+row
+
+Table: PD E9 per-table gains
+CSV (first column: row index)
+row
+
+Table: PD update_size_anchoring metric profile per arm
+CSV (first column: row index)
+row
+
+Table: PD scope metric profile per arm
+CSV (first column: row index)
+row
+
+Table: LGD E9 summary per arm and model
+CSV (first column: row index)
+row
+
+Table: LGD E9 per-table gains
+CSV (first column: row index)
+row
+
+Table: LGD update_size_anchoring metric profile per arm
+CSV (first column: row index)
+row
+
+Table: LGD scope metric profile per arm
+CSV (first column: row index)
+row
+
+rq3/02_weight_change_results: no figures saved.
+```
+
+---
+
+## rq3/03_training_data_training
+
+```
+RQ3: training data — training
+
+1. Design
+Each arm changes only the listed settings; E1 is the shared control of E10. E11 compares its two corpora with each other; E12 trains on the tables above 10,000 rows.
+
+Table: Arms of RQ3
+CSV (first column: row index)
+row,experiment,slug,arm,track,change,models,runs
+0,E8,update_size_anchoring,0,pd,learning_rate=1e-07,4,16
+1,E8,update_size_anchoring,1,pd,learning_rate=1e-06,4,16
+2,E8,update_size_anchoring,2,pd,learning_rate=3e-06,4,16
+3,E8,update_size_anchoring,3,pd,learning_rate=1e-05,4,16
+4,E8,update_size_anchoring,4,pd,"learning_rate=3e-06, l2sp_lambda=0.0",4,16
+5,E8,update_size_anchoring,5,pd,"learning_rate=3e-06, l2sp_lambda=0.03",4,16
+6,E8,update_size_anchoring,6,pd,"learning_rate=1e-05, l2sp_lambda=0.0",4,16
+7,E8,update_size_anchoring,7,pd,"learning_rate=1e-05, l2sp_lambda=0.03",4,16
+8,E8,update_size_anchoring,8,pd,l2sp_lambda=0.0,4,16
+9,E8,update_size_anchoring,0,lgd,learning_rate=1e-07,4,16
+10,E8,update_size_anchoring,1,lgd,learning_rate=1e-06,4,16
+11,E8,update_size_anchoring,2,lgd,learning_rate=3e-06,4,16
+12,E8,update_size_anchoring,3,lgd,learning_rate=1e-05,4,16
+13,E8,update_size_anchoring,4,lgd,"learning_rate=3e-06, l2sp_lambda=0.0",4,16
+14,E8,update_size_anchoring,5,lgd,"learning_rate=3e-06, l2sp_lambda=0.03",4,16
+15,E8,update_size_anchoring,6,lgd,"learning_rate=1e-05, l2sp_lambda=0.0",4,16
+16,E8,update_size_anchoring,7,lgd,"learning_rate=1e-05, l2sp_lambda=0.03",4,16
+17,E8,update_size_anchoring,8,lgd,l2sp_lambda=0.0,4,16
+18,E9,scope,0,pd,"trainable=frozen_backbone, learning_rate=3e-07",4,16
+19,E9,scope,1,pd,"trainable=frozen_backbone, learning_rate=3e-06",4,16
+20,E9,scope,2,pd,"trainable=diagscale, learning_rate=0.0001",4,16
+21,E9,scope,3,pd,"trainable=diagscale, learning_rate=0.001",4,16
+22,E9,scope,4,pd,"trainable=lora_qv_r16, learning_rate=3e-06",4,16
+23,E9,scope,5,pd,"trainable=lora_qv_r16, learning_rate=1e-05",4,16
+24,E9,scope,0,lgd,"trainable=frozen_backbone, learning_rate=3e-07",4,16
+25,E9,scope,1,lgd,"trainable=frozen_backbone, learning_rate=3e-06",4,16
+26,E9,scope,2,lgd,"trainable=diagscale, learning_rate=0.0001",4,16
+27,E9,scope,3,lgd,"trainable=diagscale, learning_rate=0.001",4,16
+28,E9,scope,4,lgd,"trainable=lora_qv_r16, learning_rate=3e-06",4,16
+29,E9,scope,5,lgd,"trainable=lora_qv_r16, learning_rate=1e-05",4,16
+30,E10,exposure,0,pd,exposure=full_pass,4,16
+31,E10,exposure,1,pd,successful_updates=10000,4,16
+32,E10,exposure,0,lgd,exposure=full_pass,4,16
+33,E10,exposure,1,lgd,successful_updates=10000,4,16
+34,E11,table_size,0,pd,corpus=small_only,4,16
+35,E11,table_size,1,pd,corpus=large_matched,4,16
+36,E12,episode_size,0,pd,"corpus=tables_above_10000_rows, episode_rows=2048",4,16
+37,E12,episode_size,1,pd,"corpus=tables_above_10000_rows, episode_rows=4096",4,16
+38,E12,episode_size,2,pd,"corpus=tables_above_10000_rows, episode_rows=8192",4,16
+39,E12,episode_size,3,pd,"corpus=tables_above_10000_rows, episode_rows=16384",2,8
+40,E12,episode_size,4,pd,corpus=tables_above_10000_rows,4,16
+
+2. Exposure and table size (E10, E11)
+No results yet for E10-E11 monitor curves; the figure is drawn once they exist.
+
+No measurements available for this figure group.
+
+Table: PD change at the last monitor point (E1, E10-E11)
+CSV (first column: row index)
+row
+
+No measurements available for this figure group.
+
+Table: LGD change at the last monitor point (E1, E10-E11)
+CSV (first column: row index)
+row
+
+3. Episode size at equal updates and at equal rows (E12)
+No results yet for E12 monitor curves; the figure is drawn once they exist.
+
+No measurements available for this figure group.
+
+Table: E12 change at the last monitor point
+CSV (first column: row index)
+row
+
+Table: E12 change at each rows-processed milestone
+CSV (first column: row index)
+row
+
+4. Training cost
+No results yet for training cost records; the figure is drawn once they exist.
+
+Table: Training cost per arm and model (E1, E10-E12)
+CSV (first column: row index)
+row
+
+rq3/03_training_data_training: no figures saved.
+```
+
+---
+
+## rq3/04_training_data_results
+
+```
+RQ3: training data — results
+
+1. Effect of each training-data arm (E10-E12)
+No results yet for E10-E12 five-fold gains; the figure is drawn once they exist.
+
+No measurements available for this figure group.
+
+Table: PD exposure summary per arm and model
+CSV (first column: row index)
+row
+
+Table: PD exposure per-table gains
+CSV (first column: row index)
+row
+
+Table: PD table_size summary per arm and model
+CSV (first column: row index)
+row
+
+Table: PD table_size per-table gains
+CSV (first column: row index)
+row
+
+Table: PD episode_size summary per arm and model
+CSV (first column: row index)
+row
+
+Table: PD episode_size per-table gains
+CSV (first column: row index)
+row
+
+No measurements available for this figure group.
+
+Table: LGD exposure summary per arm and model
+CSV (first column: row index)
+row
+
+Table: LGD exposure per-table gains
+CSV (first column: row index)
+row
+
+Table: LGD table_size summary per arm and model
+CSV (first column: row index)
+row
+
+Table: LGD table_size per-table gains
+CSV (first column: row index)
+row
+
+Table: LGD episode_size summary per arm and model
+CSV (first column: row index)
+row
+
+Table: LGD episode_size per-table gains
+CSV (first column: row index)
+row
+
+2. Episode size at matched inference context (E12)
+No results yet for E12 matched-context evaluation; the figure is drawn once they exist.
+
+No measurements available for this figure group.
+
+Table: E12 matched-context gains per table
+CSV (first column: row index)
+row
+
+Table: E12 AUC per arm, model and context size
+CSV (first column: row index)
+row
+
+3. Effect against training cost
+No results yet for cost records; the figure is drawn once they exist.
+
+No measurements available for this figure group.
+
+Table: Effect and cost per arm and model
+CSV (first column: row index)
+row
+
+rq3/04_training_data_results: no figures saved.
 ```

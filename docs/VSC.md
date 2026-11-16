@@ -107,10 +107,10 @@ squeue -M mindwell -u "$USER" -o "%.20i %.28j %.12T %.12M %.40R"
 
 Mindwell's default QoS allows **500 queued jobs per user**; every array element counts, other
 projects of the same user included. Arrays hold at most 1,001 elements. One pass of all training
-experiments would queue about 1,800 jobs (E6 alone 640), so experiments are submitted separately:
+experiments would queue about 1,800 jobs (E8 alone 640), so experiments are submitted separately:
 
 ```bash
-sbatch --export=ALL,CREDITPFN_RUNTIME_VERSION=env20261029f scripts/slurm/campaign_cpu.slurm submit E6
+sbatch --export=ALL,CREDITPFN_RUNTIME_VERSION=env20261029f scripts/slurm/campaign_cpu.slurm submit E8
 ```
 
 The controller prepares the experiment's plans and submits each arm config through
@@ -118,14 +118,14 @@ The controller prepares the experiment's plans and submits each arm config throu
 evaluation shards per partition). Before every config it counts the user's queued jobs and stops
 cleanly when the next config would exceed 480; rerunning the same command continues from the
 receipt `output CreditPFN/<slug>/manifests/submission.json`. E1 also queues the classical
-baselines once. E5 (fine-tuning) and E11 (context curves) are evaluation-only arrays over
-`src.eval.campaign_tasks` and refuse to start until every E1 checkpoint exists; E10's
-matched-context evaluation is submitted by rerunning `submit E10` after its training finished.
+baselines once. E5 (fine-tuning) and E6 (context curves) are evaluation-only arrays over
+`src.eval.campaign_tasks` and refuse to start until every E1 checkpoint exists; E12's
+matched-context evaluation is submitted by rerunning `submit E12` after its training finished.
 Campaign jobs request 24 hours for training and evaluation until Experiment 0's audit gives
 measured timings; set `CREDITPFN_TRAIN_WALLTIME` / `CREDITPFN_EVAL_WALLTIME` (HH:MM:SS) then.
 A launcher that fails or times out is recorded as `uncertain` in the receipt and is never resubmitted
 automatically: inspect `squeue`, then delete that entry before rerunning.
-Suggested order: E1 → E2, E4, E8–E10, E12, E3 → E6, E7 (largest) → E5, E11.
+Suggested order: E1 → E2, E4, E10–E12, E7, E3 → E8, E9 (largest) → E5, E6.
 
 ## Measured caps
 

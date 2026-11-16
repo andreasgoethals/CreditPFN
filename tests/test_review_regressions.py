@@ -102,8 +102,8 @@ def test_null_audit_canonicalizes_renamed_keys_but_checks_weights_and_borders(tm
 
 def test_results_notebooks_use_the_second_campaign_loader():
     import ast
-    paths = sorted(Path("notebooks").glob("rq[1-3]/02_results.ipynb"))
-    assert len(paths) == 3
+    paths = [Path(p) for p in ("notebooks/rq1/02_results.ipynb", "notebooks/rq3/02_weight_change_results.ipynb",
+                                "notebooks/rq3/04_training_data_results.ipynb")]
     for path in paths:
         notebook = json.loads(path.read_text(encoding="utf-8"))
         source = "\n".join("".join(cell["source"]) for cell in notebook["cells"] if cell["cell_type"] == "code")

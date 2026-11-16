@@ -73,7 +73,7 @@ def test_loaders_stay_empty_without_evidence(monkeypatch):
     assert c2.finetune_table(pd.DataFrame()).empty and c2.context_table(pd.DataFrame()).empty
     assert c2.select(pd.DataFrame(), slug="reference").empty
     assert c2.join(pd.DataFrame(), pd.DataFrame(), on=["slug"]).empty
-    assert "No results yet for E6" in c2.evidence_note("E6", pd.DataFrame())
+    assert "No results yet for E8" in c2.evidence_note("E8", pd.DataFrame())
 
 
 # ---------------------------------------------------------------------------- RQ1 results
@@ -227,7 +227,7 @@ def test_seed_band_and_arm_trajectories():
     assert set(resources.slug) == {"reference", "update_size_anchoring"} and (resources.runs > 0).all()
 
 
-# --------------------------------------------------------------------------------- RQ4
+# --------------------------------------------------------------------------------- RQ2
 def test_context_curve_fixed_cohort_and_full_pool():
     table = c2.context_table(syn.context())
     assert table.full.any() and not table[table.full].context_rows.isin([8, 16]).any()

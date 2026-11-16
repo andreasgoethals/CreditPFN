@@ -42,8 +42,8 @@ def test_run_counts_match_the_agreed_grid():
     for (name, track, index), cfg in d.arm_configs(spec).items():
         bases = cfg["tunable"]["classifier_base_paths" if track == "pd" else "regressor_base_paths"]
         counts[name] = counts.get(name, 0) + len(bases) * int(cfg["corpus"]["n_splits"])
-    assert counts == {"E1": 32, "E2": 64, "E4": 32, "E6": 288, "E7": 192, "E8": 64,
-                      "E9": 32, "E10": 72, "E12": 100, "E3": 24}
+    assert counts == {"E1": 32, "E2": 64, "E4": 32, "E8": 288, "E9": 192, "E10": 64,
+                      "E11": 32, "E12": 72, "E7": 100, "E3": 24}
     assert sum(counts.values()) == 900              # 800 standard runs + 100 single-source runs
 
 
@@ -52,10 +52,10 @@ def test_numbering_follows_the_research_questions():
     numbers = [int(name[1:]) for name in spec]
     assert numbers == list(range(1, 13))
     rqs = [spec[f"E{i}"]["rq"] for i in numbers]
-    assert rqs == sorted(rqs) and set(rqs) == {1, 2, 3, 4}
+    assert rqs == sorted(rqs) and set(rqs) == {1, 2, 3}
     assert [spec[f"E{i}"]["slug"] for i in numbers] == [
-        "reference", "seed", "precision", "domain_control", "target_finetune", "update_size_anchoring", "scope",
-        "exposure", "table_size", "episode_size", "context", "transfer"]
+        "reference", "seed", "precision", "domain_control", "target_finetune", "context", "transfer",
+        "update_size_anchoring", "scope", "exposure", "table_size", "episode_size"]
     assert spec["E3"]["tasks"] == ["pd", "lgd"]
 
 
@@ -68,7 +68,7 @@ def test_precision_arms_change_only_the_precision():
     fp32 = d.apply_arm(d.reference_config("pd"), arms[1], "pd")["train"]
     assert (bf16["amp"], bf16["amp_dtype"]) == (True, "bf16")
     assert (fp32["amp"], fp32["tabicl_precision"]) == (False, "fp32")
-    assert d.load_design()["experiments"]["E8"]["arms"] == [{"exposure": "full_pass"}, {"successful_updates": 10000}]
+    assert d.load_design()["experiments"]["E10"]["arms"] == [{"exposure": "full_pass"}, {"successful_updates": 10000}]
 
 
 def test_unknown_deviations_are_refused():
@@ -91,7 +91,7 @@ def test_lora_keeps_the_reference_l2sp_on_the_effective_update():
 
 
 def test_update_size_grid_cells():
-    arms = d.load_design()["experiments"]["E6"]["arms"]
+    arms = d.load_design()["experiments"]["E8"]["arms"]
     cells = {(a["learning_rate"], a.get("l2sp_lambda", 0.003)) for a in arms if "learning_rate" in a}
     assert cells == {(1e-7, .003), (1e-6, .003), (3e-6, .003), (1e-5, .003),
                      (3e-6, 0.0), (3e-6, .03), (1e-5, 0.0), (1e-5, .03)}
@@ -108,17 +108,17 @@ def test_three_reference_seeds_and_the_rubachev_finetuning_rate():
 def test_transfer_runs_index_every_table_once_and_train_on_one_table():
     spec = d.load_design()
     for track, count in spec["tables"].items():
-        arms = d.experiment_arms("E12", track, spec)
+        arms = d.experiment_arms("E7", track, spec)
         assert [a["single_source"] for a in arms] == list(range(count))
     for (name, _, _), cfg in d.arm_configs(spec).items():
-        if name == "E12":
+        if name == "E7":
             assert cfg["corpus"]["n_folds"] is None and cfg["corpus"]["n_splits"] == 1
             assert cfg["train"]["target_total_steps"] == 2500
             assert cfg["tunable"]["learning_rates"] == [1e-6]
 
 
 def test_episode_size_doubles_and_16384_only_for_large_context_models():
-    arms = d.load_design()["experiments"]["E10"]["arms"]
+    arms = d.load_design()["experiments"]["E12"]["arms"]
     assert [a.get("episode_rows") for a in arms] == [2048, 4096, 8192, 16384, None]   # last: reference size
     assert arms[3]["models"] == ["v3", "tabicl-v2"] and "models" not in arms[-1]
     assert all(a["corpus"] == "tables_above_10000_rows" for a in arms)
@@ -162,6 +162,6 @@ def test_domain_control_trains_on_matched_twins_for_both_tasks():
 
 def test_config_folders_follow_the_experiment_numbering():
     spec = d.load_design()
-    assert d.experiment_folder("E6", spec).name == "E06_update_size_anchoring"
+    assert d.experiment_folder("E8", spec).name == "E08_update_size_anchoring"
     assert d.config_path("reference", "pd", 0, spec).parent.name == "E01_reference"
     assert d.PILOT_FOLDER.name == "E00_pilots"

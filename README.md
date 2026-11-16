@@ -18,17 +18,16 @@ plus declared deviations, materialized into `config/experiments/E<NN>_<slug>/` a
 `config/experiments/E00_pilots/` by `src/utils/design.py` (tests fail on any undeclared difference or stale generated config). The
 method authority is [RESEARCH_BRIEF.md](docs/RESEARCH_BRIEF.md); operations are in [VSC.md](docs/VSC.md).
 
-## Four questions, twelve experiments
+## Three questions, twelve experiments
 
 | RQ | Experiments |
 |---|---|
-| RQ1 Transfer: does CPT help on unseen credit tables, how does it develop, how much is randomness or numerics, is it domain-specific, is it worth it versus target fine-tuning? | E1 reference · E2 seeds · E3 training precision · E4 matched non-credit domain control · E5 CPT vs per-table fine-tuning |
-| RQ2 Weight change: update size, anchoring and trainable scope versus forgetting | E6 learning rate × L2-SP · E7 frozen / DiagScale / LoRA |
-| RQ3 Training data: which tables, how much of each, episode size | E8 exposure (full pass, 10,000 updates) · E9 small vs large tables · E10 episode size |
-| RQ4 When and why: which target tables gain, what they share, which sources help, context scarcity | E11 labelled-context curves · E12 single-source transfer matrix · per-table analysis |
+| RQ1 Does domain CPT pay off? Effect on unseen credit tables against seed noise, numerical precision, a matched non-credit corpus and target fine-tuning | E1 reference · E2 seeds · E3 training precision · E4 matched non-credit domain control · E5 CPT vs per-table fine-tuning |
+| RQ2 When and why? Does in-context learning already supply the domain signal, and which sources transfer to which targets | E6 labelled-context curves · E7 single-source transfer matrix · per-table analysis |
+| RQ3 What changes it? Update size, anchoring and trainable scope against forgetting; exposure, table size and episode size | E8 learning rate × L2-SP · E9 frozen / DiagScale / LoRA · E10 exposure (full pass, 10,000 updates) · E11 small vs large tables · E12 episode size |
 
 800 standard training runs plus 100 single-source runs; E1 is the shared control of
-E2–E4 and E6–E10. Every model is evaluated in FP32 on complete five-fold test sets; forgetting is measured
+E2–E4 and E8–E12. Every model is evaluated in FP32 on complete five-fold test sets; forgetting is measured
 on 19 binary and 12 regression TabArena tables; baselines are CatBoost, XGBoost and logistic/linear
 regression. TabPFN LGD trains with a 5-bucket window NLL (robust to the v2.6 regressor's
 comb-shaped density); LoRA and DiagScale use L2-SP on their effective weight change.
@@ -55,7 +54,7 @@ From this repository in Windows PowerShell:
 ```
 
 The local `.venv` matches the cluster container's exact pins (`config/runtime/`,
-`tests/test_environment_parity.py`). Notebooks live in `notebooks/{rq1,rq2,rq3,rq4,experiment0,general}`,
+`tests/test_environment_parity.py`). Notebooks live in `notebooks/{rq1,rq2,rq3,experiment0,general}`,
 contain no functions or classes, call `src/` only and end with a complete text summary. Figures are
 LNCS-width (122 mm) PDFs in `output CreditPFN/figures/<group>/`; `output CreditPFN/All_Results.md` collects
 the summaries.

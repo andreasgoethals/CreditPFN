@@ -1,4 +1,4 @@
-"""Second-campaign publication figures (RQ1-RQ4).
+"""Second-campaign publication figures (RQ1-RQ3).
 
 Every function takes the frames produced by ``src.visualize.campaign2`` and returns a matplotlib
 figure, or ``None`` when its evidence does not exist yet, so a notebook states "no results yet"
@@ -146,12 +146,12 @@ def arm_styles(settings: pd.DataFrame, *, color_by: str = "label", linestyle_by:
     """Colour and line style per arm. The reference arm is always black and solid. Other arms are
     coloured by ``color_by``: the trainable-scope colours for ``trainable``, an ordered ramp
     (``ordered``) or the arm palette, which avoids the model hues. ``linestyle_by``:
-    ``l2sp_lambda`` (E6) or ``rate_within_scope`` (E7: lower rate dashed, higher solid)."""
+    ``l2sp_lambda`` (E8) or ``rate_within_scope`` (E9: lower rate dashed, higher solid)."""
     if _empty(settings):
         return pd.DataFrame()
     arms = settings.copy()
     is_ref = arms.slug.eq("reference")
-    # An arm without a value for ``color_by`` keeps the reference setting (E10's reference
+    # An arm without a value for ``color_by`` keeps the reference setting (E12's reference
     # episode size) and is drawn like the reference.
     is_ref = is_ref | arms[color_by].isna()
     keys = list(dict.fromkeys(arms.loc[~is_ref, color_by]))
@@ -609,7 +609,7 @@ def dose_response(overview: pd.DataFrame, *, track: str, title: str):
 
 def tradeoff(overview: pd.DataFrame, *, track: str, title: str):
     """Columns: model. Equal-table mean five-fold gain on the non-credit retention panel against
-    the gain on held-out credit tables, per arm of E1, E6 and E7. Colour: trainable scope; marker:
+    the gain on held-out credit tables, per arm of E1, E8 and E9. Colour: trainable scope; marker:
     L2-SP strength (squares: adapter or frozen scopes); size grows with the learning rate; lines
     join the learning rates of one scope and strength."""
     if _empty(overview):
@@ -703,7 +703,7 @@ def arm_gains(table: pd.DataFrame, order: list[str], *, track: str, title: str):
 
 def episode_matched_context(gains: pd.DataFrame, *, title: str):
     """Columns: model. Equal-table mean gain over the original model at the same inference context
-    (2,048 rows, 8,192 rows, the full pool) against the training-episode size of E10."""
+    (2,048 rows, 8,192 rows, the full pool) against the training-episode size of E12."""
     if _empty(gains):
         return None
     models = _models(gains)
@@ -736,7 +736,7 @@ def episode_matched_context(gains: pd.DataFrame, *, title: str):
 def quality_cost(overview: pd.DataFrame, resources: pd.DataFrame, *, title: str):
     """One panel per task: equal-table mean five-fold gain on held-out credit tables against the
     mean wall-clock hours of one training run, per arm and model (reference, full pass and the
-    episode sizes; E10 sizes joined by a line)."""
+    episode sizes; E12 sizes joined by a line)."""
     if _empty(overview) or _empty(resources):
         return None
     merged = overview.merge(resources[["slug", "arm", "track", "model", "mean_hours"]],
@@ -761,8 +761,8 @@ def quality_cost(overview: pd.DataFrame, resources: pd.DataFrame, *, title: str)
         ax.set_xlabel("Hours per training run")
         ax.set_ylabel(f"Held-out credit Δ {SCORE[track]}")
         ax.set_title(TRACK_NAME[track])
-    names = {"reference": "Reference (E1)", "exposure": "Exposure (E8)", "episode_size": "Episode sizes (E10)",
-             "table_size": "Table-size corpora (E9)"}
+    names = {"reference": "Reference (E1)", "exposure": "Exposure (E10)", "episode_size": "Episode sizes (E12)",
+             "table_size": "Table-size corpora (E11)"}
     _model_proxies(axes[0, 0], _models(merged))
     for slug in [s for s in style.SLUG_MARKERS if s in set(merged.slug)]:
         _proxy_point(axes[0, 0], names[slug], marker=style.SLUG_MARKERS[slug], color=style.COLORS["untuned"],
@@ -773,7 +773,7 @@ def quality_cost(overview: pd.DataFrame, resources: pd.DataFrame, *, title: str)
                                                  "credit_tables", "mean_hours"]])
 
 
-# ------------------------------------------------------------------- RQ4 figures
+# ------------------------------------------------------------------- RQ2 figures (when and why)
 def context_curves(table: pd.DataFrame, curve: pd.DataFrame, *, title: str):
     """Rows: task; columns: model. Per-table gain of the CPT model over the original at each number
     of labelled context rows (thin grey, up to each table's largest size) and the equal-table mean

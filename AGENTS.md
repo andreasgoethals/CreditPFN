@@ -117,21 +117,21 @@ Newest first, dates `DD-MM-YYYY`.
 
 - A notebook contains **no `def` and no `class`** — logic goes in `src/` — and its **last code
   cell prints a text summary**, section by section, in the notebook's own section order.
-- Notebooks follow the four RQs and twelve experiments of `config/design.yaml`:
-  RQ1 E1 reference, E2 seeds, E3 training precision (numerical control), E4 matched non-credit
-  domain control, E5 CPT vs target fine-tuning; RQ2 E6 update size × L2-SP, E7 trainable scope;
-  RQ3 E8 exposure (full pass, 10,000 updates), E9 small vs large tables, E10 episode size;
-  RQ4 E11 context scarcity (context curves), E12 single-source transfer matrix and the
-  per-table analysis.
-  Experiment 0 owns validation (`experiment0/`); corpus notebooks use `general/`. Folders are
-  `rq1/`–`rq3/` (one `01_training` and one `02_results` notebook each), `rq4/`, `experiment0/`
-  and `general/`. E1 is the shared control of E2–E4 and E6–E10: never count it twice. Combine
+- Notebooks follow the three RQs and twelve experiments of `config/design.yaml`:
+  RQ1 does domain CPT pay off: E1 reference, E2 seeds, E3 training precision (numerical control),
+  E4 matched non-credit domain control, E5 CPT vs target fine-tuning; RQ2 when and why: E6
+  context scarcity (context curves), E7 single-source transfer matrix and the per-table analysis;
+  RQ3 what changes it: E8 update size × L2-SP, E9 trainable scope, E10 exposure (full pass,
+  10,000 updates), E11 small vs large tables, E12 episode size.
+  Experiment 0 owns validation (`experiment0/`); corpus notebooks use `general/`. Folders:
+  `rq1/` (`01_training`, `02_results`), `rq2/` (`01_context_curves`, `02_when_and_why`),
+  `rq3/` (`01_`/`02_weight_change_*`, `03_`/`04_training_data_*`), `experiment0/` and `general/`. E1 is the shared control of E2–E4 and E8–E12: never count it twice. Combine
   experiments in a figure when their quantities and comparison units agree; retain
   individual-table evidence.
 - **Never pick a colour or a size.** `src/visualize/style.py` owns both, so every notebook here
   looks the same. Add a new one there, once, not in the notebook.
 - Save through `src/visualize/figures.FigureSaver`: **PDF only**, all in
-  `output CreditPFN/figures/<notebook group>/` (`rq1`–`rq4`, `experiment0`, `general`). Notebook filename prefixes identify ownership;
+  `output CreditPFN/figures/<notebook group>/` (`rq1`–`rq3`, `experiment0`, `general`). Notebook filename prefixes identify ownership;
   each notebook clears only its own files before drawing. Full reruns also retire figures
   from renamed notebooks. This shared publication tree deliberately overrides the template's per-notebook folders.
   The notebook displays each figure inline.
@@ -195,7 +195,7 @@ anything is finished.
   `src/utils/paths.py`.
 - Training notebooks cover trajectories, optimizer and resource diagnostics; result notebooks
   cover endpoint comparisons and final benchmarks, explicitly distinguishing monitor outcomes
-  from five-fold evaluation. RQ1–RQ3 combine their respective experiments by phase; RQ4 is evaluation only.
+  from five-fold evaluation. RQ1 and RQ3 combine their experiments by phase; RQ2 is evaluation and analysis only.
 - LoRA uses `train.adaptation_mode: lora` (native query/value adapters). Adapter scopes (LoRA,
   DiagScale) apply L2-SP to the effective weight change (`src/train/l2sp.py`); never weight decay
   on LoRA factors. TabPFN LGD trains with the 5-bucket window NLL (`regression_objectives.py`).
@@ -210,7 +210,7 @@ anything is finished.
 - **Entry points:** `scripts/{data,train,eval}_pipeline.py` and `scripts/probe_row_cap.py`,
   submitted through `scripts/slurm/`: `campaign_cpu.slurm` (Experiment 0 controller, per-experiment
   submission, summary), `pilot_gpu.slurm`, `run_experiment.sh` (train/eval chains over `train_pd`/`train_lgd`
-  and `eval_pd`/`eval_lgd`/`eval_classical`), `campaign_eval_gpu.slurm` (E5 fine-tuning and E11
+  and `eval_pd`/`eval_lgd`/`eval_classical`), `campaign_eval_gpu.slurm` (E5 fine-tuning and E6
   context curves via `src/eval/campaign_tasks.py`), `runtime_{build,cpu,gpu}.slurm`, `data.slurm`
   and `probe_row_cap.slurm`. Everything else is a utility under `src/utils/`, run with `python -m`.
 

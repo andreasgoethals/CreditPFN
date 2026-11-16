@@ -10,9 +10,14 @@ import pandas as pd
 import pytest
 import torch
 
-from src.data.preprocessing import apply_dataset_specific_fixes, read_raw
+from src.data.preprocessing import DATASET_METADATA, apply_dataset_specific_fixes, read_raw
 
 REPO = Path(__file__).resolve().parents[1]
+
+
+def _table(prefix: str, track: str) -> str:
+    """Registry id by number and task (some ids carry names that must stay out of tracked files)."""
+    return next(k for k, m in DATASET_METADATA.items() if k.startswith(prefix) and m["track"] == track)
 
 
 def test_hackerearth_drops_post_outcome_and_payment_to_date_columns():
@@ -24,20 +29,20 @@ def test_hackerearth_drops_post_outcome_and_payment_to_date_columns():
     assert set(out.columns) == {"loan_status", "funded_amnt"}
 
 
-def test_bank_status_keeps_one_row_per_loan_and_drops_the_sentinel_column():
+def test_pd_0009_keeps_one_row_per_loan_and_drops_the_sentinel_column():
     df = pd.DataFrame({"Loan ID": ["a", "a", "b"], "Customer ID": [1, 1, 2],
                        "Loan Status": ["Fully Paid", "Fully Paid", "Charged Off"],
                        "Current Loan Amount": [99999999, 99999999, 5000],
                        "Credit Score": [np.nan, 700.0, 650.0]})
-    out = apply_dataset_specific_fixes(df, "0009.bank_status")
+    out = apply_dataset_specific_fixes(df, _table("0009.", "pd"))
     assert len(out) == 2 and "Current Loan Amount" not in out
     assert out["Credit Score"].tolist() == [700.0, 650.0]          # the most complete copy is kept
 
 
-def test_loss2_drops_realised_mortgage_insurance_cash_flows():
+def test_lgd_0002_drops_realised_mortgage_insurance_cash_flows():
     df = pd.DataFrame({"_ELGD": [0.2, 0.5], "_Mirecovery": [1.0, 0.0], "_Miclaimbal": [3.0, 2.0],
                        "percent_of_primary_pmi_coverage": [25, 0], "UPB_At_Resolution": [9.0, 8.0]})
-    out = apply_dataset_specific_fixes(df, "0002.loss2")
+    out = apply_dataset_specific_fixes(df, _table("0002.", "lgd"))
     assert {"_Mirecovery", "_Miclaimbal"}.isdisjoint(out.columns)
     assert {"percent_of_primary_pmi_coverage", "UPB_At_Resolution"} <= set(out.columns)
 

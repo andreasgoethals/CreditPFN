@@ -6,7 +6,7 @@ every Experiment 0 part at once. ``submit E<n>`` submits one experiment:
 * training experiments: every arm config through ``scripts/slurm/run_experiment.sh`` with
   ``STAGES="train eval"`` (each partition's five-fold evaluation waits for its training with
   ``afterok``); E1 also queues the classical baselines once (they do not depend on CPT);
-* E5 (target fine-tuning) and E11 (context curves): ``campaign_eval_gpu.slurm`` arrays over
+* E5 (target fine-tuning) and E6 (context curves): ``campaign_eval_gpu.slurm`` arrays over
   ``src.eval.campaign_tasks``, only after every E1 checkpoint exists.
 
 Mindwell allows 500 queued jobs per user and counts every array element (other projects of the
@@ -16,7 +16,7 @@ command later continues where it stopped. Children receive the scrubbed submissi
 
     python -m src.utils.campaign_launch prepare config/experiments/E00_pilots
     python -m src.utils.campaign_launch submit-experiment0
-    python -m src.utils.campaign_launch submit E6
+    python -m src.utils.campaign_launch submit E8
 """
 from __future__ import annotations
 
@@ -188,7 +188,7 @@ def submit_experiment0(folder: Path, receipt: Path, only: dict | None = None) ->
             tasks = chosen(kind, count)
             if tasks:
                 state[kind] = _sbatch([array(tasks), *extra, gpu, kind], env)
-        # The evaluation check scores the reference pilots and, for E10, the 2,048-row episode pilot.
+        # The evaluation check scores the reference pilots and, for E12, the 2,048-row episode pilot.
         reference = [j for name, jobs in state["pilots"].items()
                      if name.startswith(("reference_", "episode2048_")) for j in jobs]
         tasks = chosen("evaluation", EVALUATION_TASKS)
@@ -215,7 +215,7 @@ def queued_jobs() -> int:
 
 
 def stages(path: Path) -> str:
-    """Single-source runs (E12) are read from their monitor (every other table, one fixed split);
+    """Single-source runs (E7) are read from their monitor (every other table, one fixed split);
     a five-fold evaluation of 100 runs on all tables would cost more than their training."""
     from src.train.config import load_train_config
     single = load_train_config(config_path=str(path)).corpus.get("single_source", None)
@@ -291,7 +291,7 @@ def submit_experiment(name: str, *, budget: int = QUEUE_BUDGET, queued=queued_jo
                 state["submitted"][path.name] = dict(train=_job_ids(out), cost=cost)
                 write_json(receipt, state)
             if "matched_context_evaluation" in spec and len(state["submitted"]) == len(configs):
-                # E10: matched-context scoring once every episode-size checkpoint exists; rerun later otherwise.
+                # E12: matched-context scoring once every episode-size checkpoint exists; rerun later otherwise.
                 matched = state.setdefault("matched_context", {"submitted": {}})
                 try:
                     _submit_evaluation_tasks("episode_context", matched, env, budget, queued)
