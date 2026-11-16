@@ -2,6 +2,8 @@
 
 ## 16-11-2026
 
+- E2 has three seeds (43-45; four with E1), 932 runs in total. E6 also scores the E4 checkpoints on the same rows (start `noncredit_cpt`, inference only), so the credit-specific part of the gain is read per context size.
+- RQ2 analysis: slope test (gain per doubling of the context, per table, bootstrap over tables) and E7 similarity test (Spearman of transfer against source-target property distance, Mantel permutation).
 - Research questions regrouped into three (agreed): RQ1 does domain CPT pay off (E1-E5), RQ2 when and why (E6 context curves, E7 transfer matrix), RQ3 what changes it (E8-E12); experiments renumbered and notebooks moved to match (`rq4/` merged into `rq2/`, weight-change and training-data notebooks into `rq3/`).
 - Data fixes (review): HackerEarth drops post-charge-off and payment-to-date columns (recoveries appeared only in class 0); PD table 0009 keeps one row per loan and drops `Current Loan Amount` (its 99,999,999 sentinel marked only fully paid loans); LGD table 0002 drops the realised mortgage-insurance recovery and claim; German keeps its first loan (file has no header).
 - The two LendingClub PD tables share a partition (`corpus.SAME_SOURCE`); Myhom moves to partition 3, nothing else changes.

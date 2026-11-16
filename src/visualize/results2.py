@@ -19,7 +19,7 @@ import pandas as pd
 
 from src.data.dataset_names import display_name
 from src.visualize import style
-from src.visualize.campaign2 import METRIC_LABELS, MONITOR_SCOPES
+from src.visualize.campaign2 import METRIC_LABELS, MONITOR_SCOPES, SEED_LIST, SLOPE_QUANTITIES
 
 TRACKS = ("pd", "lgd")
 TRACK_NAME = {"pd": "PD", "lgd": "LGD"}
@@ -45,6 +45,10 @@ def _report(fig, **tables):
     fig._report_tables = {name.replace("_", " "): frame.reset_index(drop=True)
                           for name, frame in tables.items() if not _empty(frame)}
     return fig
+
+
+def _seed_text() -> str:
+    return ", ".join(str(s) for s in SEED_LIST)
 
 
 def _zero(ax, axis: str = "y") -> None:
@@ -135,7 +139,7 @@ def monitor_development(curves: pd.DataFrame, band: pd.DataFrame | None = None, 
                         linestyle=style.SCOPE_LINESTYLES[scope])
     if not _empty(band):
         axes[0, 0].fill_between([], [], [], color=style.COLORS["untuned"], alpha=style.SEED_BAND_ALPHA * 2,
-                                linewidth=0, label="Range over seeds 42, 43, 44 (held-out credit)")
+                                linewidth=0, label=f"Range over seeds {_seed_text()} (held-out credit)")
     axes[0, 0].legend()
     fig.suptitle(title)
     return _report(fig, monitor_curves=curves, seed_range=band)
@@ -222,8 +226,8 @@ def arm_trajectories(rows: list[dict], arms: pd.DataFrame, *, title: str):
 # ------------------------------------------------------------------- RQ1 endpoint figures
 def table_gains(gains: pd.DataFrame, seeds: pd.DataFrame | None = None, *, track: str, title: str):
     """Columns: model; rows: held-out credit tables. Five-fold gain of CPT over the original
-    model per table (seed 42, E1); with E2, a line spans the three seeds' gains and a filled
-    marker means all three agree in sign and exceed their range."""
+    model per table (seed 42, E1); with E2, a line spans the seeds' gains and a filled marker
+    means all seeds agree in sign and exceed their range."""
     if _empty(gains):
         return None
     g = gains[gains.credit & gains.complete & (gains.arm == 0)]
@@ -268,7 +272,7 @@ def table_gains(gains: pd.DataFrame, seeds: pd.DataFrame | None = None, *, track
         _proxy_point(axes[0, 0], "Seed 42; all seeds exceed their range", color=ref, s=style.POINT_SIZE)
         _proxy_point(axes[0, 0], "Seed 42; within seed range", facecolors=style.HOLLOW_FACE, edgecolors=ref,
                      s=style.POINT_SIZE)
-        _proxy_line(axes[0, 0], "Range over seeds 42, 43, 44", color=ref, linewidth=style.TABLE_CURVE_LINE * 1.6)
+        _proxy_line(axes[0, 0], f"Range over seeds {_seed_text()}", color=ref, linewidth=style.TABLE_CURVE_LINE * 1.6)
     else:
         _proxy_point(axes[0, 0], "Seed 42 (E1)", color=ref, s=style.POINT_SIZE)
     _proxy_line(axes[0, 0], "Equal-table mean (seed 42)", color=ref, linestyle="--", linewidth=0.9)
@@ -777,7 +781,8 @@ def quality_cost(overview: pd.DataFrame, resources: pd.DataFrame, *, title: str)
 def context_curves(table: pd.DataFrame, curve: pd.DataFrame, *, title: str):
     """Rows: task; columns: model. Per-table gain of the CPT model over the original at each number
     of labelled context rows (thin grey, up to each table's largest size) and the equal-table mean
-    over the tables that reach every plotted size (the fixed cohort)."""
+    over the tables that reach every plotted size (the fixed cohort). When E4 was scored, the
+    fixed-cohort mean gain of the non-credit CPT model is drawn in the same colour, dotted."""
     if _empty(table) or _empty(curve):
         return None
     t = table[~table.full]
@@ -796,6 +801,9 @@ def context_curves(table: pd.DataFrame, curve: pd.DataFrame, *, title: str):
                 ax.plot(s.context_rows, s.gain, color=style.CONNECTOR_COLOR, linewidth=style.TABLE_CURVE_LINE)
             m = cv[(cv.track == track) & (cv.model == model)].sort_values("context_rows")
             ax.plot(m.context_rows, m.gain, color=style.model_color(model), linewidth=style.MEAN_CURVE_LINE)
+            if "noncredit_gain" in m and m.noncredit_gain.notna().any():
+                ax.plot(m.context_rows, m.noncredit_gain, color=style.model_color(model),
+                        linewidth=style.MEAN_CURVE_LINE, linestyle=style.START_LINESTYLES["noncredit_cpt"])
             _zero(ax)
             ax.set_xscale("log")
             if r == 0:
@@ -806,10 +814,49 @@ def context_curves(table: pd.DataFrame, curve: pd.DataFrame, *, title: str):
     _proxy_line(axes[0, 0], "Single table", color=style.CONNECTOR_COLOR, linewidth=style.TABLE_CURVE_LINE)
     _proxy_line(axes[0, 0], "Equal-table mean, fixed cohort", color=style.COLORS["mean"],
                 linewidth=style.MEAN_CURVE_LINE)
+    if "noncredit_gain" in cv and cv.noncredit_gain.notna().any():
+        _proxy_line(axes[0, 0], "Same, non-credit CPT (E4)", color=style.COLORS["mean"],
+                    linewidth=style.MEAN_CURVE_LINE, linestyle=style.START_LINESTYLES["noncredit_cpt"])
     axes[0, 0].legend()
     fig.suptitle(title)
     return _report(fig, fixed_cohort_curve=cv, per_table=t)
 
+
+
+def context_slopes(summary: pd.DataFrame, *, title: str):
+    """One panel per task: per model, the equal-table mean slope of the gain per doubling of the
+    labelled context, with its 95% bootstrap interval over tables, for each E6 quantity (marker)."""
+    if _empty(summary):
+        return None
+    tracks = [t for t in TRACKS if t in set(summary.track)]
+    quantities = [q for q in SLOPE_QUANTITIES if q in set(summary.quantity)]
+    fig, axes = plt.subplots(1, len(tracks), squeeze=False, sharey=True,
+                             figsize=style.figsize(style.WIDTH_FULL, 0.42))
+    models = _models(summary)
+    offsets = dict(zip(quantities, np.linspace(-0.22, 0.22, len(quantities)) if len(quantities) > 1 else [0.0]))
+    markers = dict(zip(quantities, style.CONDITION_MARKERS.values()))
+    for ax, track in zip(axes[0], tracks):
+        frame = summary[summary.track == track]
+        for i, model in enumerate(models):
+            color = style.model_color(model)
+            for _, row in frame[frame.model == model].iterrows():
+                y = i + offsets[row.quantity]
+                ax.plot([row.low, row.high], [y, y], color=color, linewidth=style.MEAN_CURVE_LINE)
+                ax.scatter([row["mean"]], [y], s=style.POINT_SIZE, color=color, marker=markers[row.quantity],
+                           zorder=3)
+        _zero(ax, "x")
+        ax.set_yticks(range(len(models)), models)
+        ax.set_ylim(len(models) - 0.5, -0.5)
+        ax.set_title(TRACK_NAME[track])
+        ax.set_xlabel(f"Δ {SCORE[track]} per doubling of context")
+    for quantity in quantities:
+        _proxy_point(axes[0, 0], SLOPE_QUANTITIES[quantity], color=style.COLORS["mean"], s=style.POINT_SIZE,
+                     marker=markers[quantity])
+    _proxy_line(axes[0, 0], "95% bootstrap interval over tables", color=style.COLORS["mean"],
+                linewidth=style.MEAN_CURVE_LINE)
+    axes[0, 0].legend()
+    fig.suptitle(title)
+    return _report(fig, slopes=summary)
 
 PROPERTY_LABELS = {"original": "Original model score", "rows": "Rows (log scale)", "features": "Features",
                    "categorical_share": "Categorical share", "missing_share": "Missing share",
@@ -850,6 +897,38 @@ def gain_vs_properties(merged: pd.DataFrame, *, track: str, title: str, properti
     fig.suptitle(title)
     return _report(fig, per_table=merged[["model", "test_dataset_id", "gain", *properties]])
 
+
+def transfer_similarity(pairs: pd.DataFrame, tests: pd.DataFrame, *, track: str, title: str):
+    """Panels: model. E7 monitor change of each target against its property distance to the source,
+    one point per source-target pair, with the Spearman correlation and Mantel p-value."""
+    if _empty(pairs):
+        return None
+    models = _models(pairs)
+    ncols = 2 if len(models) > 1 else 1
+    nrows = int(np.ceil(len(models) / ncols))
+    fig, axes = plt.subplots(nrows, ncols, squeeze=False, sharex=True, sharey=True,
+                             figsize=(style.WIDTH_FULL, _height(nrows, style.ROW_HEIGHT * 1.1)))
+    for k, model in enumerate(models):
+        ax = axes.ravel()[k]
+        s = pairs[pairs.model == model]
+        ax.scatter(s.distance, s.change, s=style.TABLE_POINT_SIZE, color=style.model_color(model),
+                   alpha=style.POINT_ALPHA, linewidths=0)
+        _zero(ax)
+        ax.set_title(model)
+        test = tests[tests.model == model] if not _empty(tests) else pd.DataFrame()
+        if not test.empty:
+            row = test.iloc[0]
+            ax.text(0.97, 0.95, f"ρ = {row.spearman:.2f}, p = {row.p_value:.3f}", transform=ax.transAxes,
+                    ha="right", va="top", fontsize=style.ANNOTATION_SIZE)
+        row_index, col = divmod(k, ncols)
+        if col == 0:
+            ax.set_ylabel(f"Δ {SCORE[track]} (monitor)")
+        if row_index == nrows - 1 or k + ncols >= len(models):
+            ax.set_xlabel("Property distance, source to target")
+    for ax in axes.ravel()[len(models):]:
+        ax.set_visible(False)
+    fig.suptitle(title)
+    return _report(fig, similarity_test=tests, pairs=pairs)
 
 def transfer_heatmaps(long: pd.DataFrame, *, track: str, title: str):
     """Panels: model. Monitor change of each held-out target table (columns) after CPT on one

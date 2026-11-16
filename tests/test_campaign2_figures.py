@@ -250,3 +250,66 @@ def test_transfer_matrix_and_property_scatter(results):
                                    features=np.arange(17) + 5, default_rate=np.linspace(.02, .4, 17)))
     fig, text = _finished(r2.gain_vs_properties(gains.merge(properties, on="test_dataset_id"), track="pd", title="t"))
     assert "default_rate" in text and fig.axes[1].get_xscale() == "log"
+
+
+# --------------------------------------------------------------------- RQ2 slope and similarity tests
+def _context_results(slope_credit=-0.004, slope_noncredit=-0.001):
+    import numpy as np
+    rows = []
+    for table in ("0001.a", "0002.b", "0003.c"):
+        for fold in range(5):
+            for size in (8, 16, 32, 64, 128):
+                d = np.log2(size)
+                for start, auc in (("original", 0.70), ("cpt", 0.75 + slope_credit * d),
+                                   ("noncredit_cpt", 0.72 + slope_noncredit * d)):
+                    rows.append(dict(track="pd", model="v2.6", dataset_id=table, fold=fold, context_rows=size,
+                                     start=start, roc_auc=auc,
+                                     source="domain_control" if start == "noncredit_cpt" else "reference"))
+    return pd.DataFrame(rows)
+
+
+def test_context_table_pairs_credit_and_noncredit_cpt_on_identical_rows():
+    table = c2.context_table(_context_results())
+    assert {"gain", "noncredit_gain", "credit_minus_noncredit"} <= set(table.columns)
+    row = table[table.context_rows == 8].iloc[0]
+    assert row.gain == pytest.approx(0.05 - 0.004 * 3)
+    assert row.credit_minus_noncredit == pytest.approx(0.03 - 0.003 * 3)
+    curve = c2.context_cohort_curve(table)
+    assert curve.noncredit_tables.eq(3).all()
+
+
+def test_context_table_drops_noncredit_cells_without_five_folds():
+    results = _context_results()
+    results = results[~((results.start == "noncredit_cpt") & (results.fold == 4) & (results.dataset_id == "0001.a"))]
+    table = c2.context_table(results)
+    assert table[table.dataset_id == "0001.a"].noncredit_gain.isna().all()
+    assert table[table.dataset_id == "0002.b"].noncredit_gain.notna().all()
+
+
+def test_slope_test_recovers_the_change_per_doubling():
+    slopes = c2.context_slopes(c2.context_table(_context_results()))
+    by = slopes.groupby("quantity").slope_per_doubling.mean()
+    assert by["gain"] == pytest.approx(-0.004)
+    assert by["noncredit_gain"] == pytest.approx(-0.001)
+    assert by["credit_minus_noncredit"] == pytest.approx(-0.003)
+    summary = c2.slope_summary(slopes)
+    gain = summary[summary.quantity == "gain"].iloc[0]
+    assert gain.tables == 3 and gain.tables_negative == 3 and gain.excludes_zero
+    assert r2.context_slopes(summary, title="t") is not None
+
+
+def test_similarity_test_finds_distance_driven_transfer_and_permutes_tables():
+    import numpy as np
+    rng = np.random.default_rng(1)
+    tables = [f"{i:04d}.t" for i in range(1, 9)]
+    properties = pd.DataFrame(dict(test_dataset_id=tables, rows=10 ** rng.uniform(3, 5, 8),
+                                   features=rng.integers(5, 60, 8), categorical_share=rng.uniform(0, 1, 8)))
+    long = pd.DataFrame([dict(model="v3", source=s, target=t, scope="test", change=0.0)
+                         for s in tables for t in tables if s != t])
+    pairs = c2.transfer_pairs(long, properties)
+    pairs["change"] = -pairs.distance + rng.normal(0, 0.05, len(pairs))   # closer sources transfer better
+    test = c2.transfer_similarity(pairs, permutations=300)
+    assert test.iloc[0].spearman < -0.8 and test.iloc[0].p_value < 0.05
+    pairs["change"] = rng.normal(0, 1, len(pairs))                         # no relation
+    assert c2.transfer_similarity(pairs, permutations=300).iloc[0].p_value > 0.05
+    assert r2.transfer_similarity(pairs, test, track="pd", title="t") is not None

@@ -506,8 +506,8 @@ CONDITION_TICKS = {"cpt": "CPT", "finetune": "FT", "cpt_finetune": "CPT+FT"}
 CONDITION_MARKERS = {"cpt": "o", "finetune": "s", "cpt_finetune": "D"}
 
 #: Original model versus its continued-pretrained counterpart in absolute-score panels.
-START_LINESTYLES = {"original": "--", "cpt": "-"}
-START_LABELS = {"original": "Original", "cpt": "CPT"}
+START_LINESTYLES = {"original": "--", "cpt": "-", "noncredit_cpt": ":"}
+START_LABELS = {"original": "Original", "cpt": "CPT", "noncredit_cpt": "Non-credit CPT (E4)"}
 
 #: Markers for a measured value versus a summary of measured values.
 MEAN_MARKER = "D"

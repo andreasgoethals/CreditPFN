@@ -12,10 +12,16 @@ def all_tasks():
     return ct.tasks()
 
 
-def test_every_table_model_and_fold_once(all_tasks):
-    assert len(all_tasks) == (17 + 8) * 4 * 5
-    keys = {(t["track"], t["model"], t["dataset_id"], t["fold"]) for t in all_tasks}
+def test_every_table_model_and_fold_once_per_source(all_tasks):
+    """E6 scores the E1 (credit) and the E4 (non-credit) checkpoints; the finetune list has E1 only."""
+    assert len(all_tasks) == 2 * (17 + 8) * 4 * 5
+    keys = {(t["source"], t["track"], t["model"], t["dataset_id"], t["fold"]) for t in all_tasks}
     assert len(keys) == len(all_tasks)
+    assert {t["source"] for t in all_tasks} == {"reference", "domain_control"}
+    assert {t["source"] for t in ct.tasks(kind="finetune")} == {"reference"}
+    reference = [{k: v for k, v in t.items() if k != "source"} for t in all_tasks if t["source"] == "reference"]
+    control = [{k: v for k, v in t.items() if k != "source"} for t in all_tasks if t["source"] == "domain_control"]
+    assert reference == control     # same tables, partitions, models and folds
 
 
 def test_each_table_belongs_to_exactly_one_partition(all_tasks):
@@ -26,17 +32,19 @@ def test_each_table_belongs_to_exactly_one_partition(all_tasks):
 
 
 def test_cpt_checkpoint_never_saw_the_table(all_tasks):
-    """The E1 run of the task's partition holds the table out of its training corpus."""
+    """The E1 and E4 runs of the task's partition hold the table out of their training corpus."""
     from src.train.config import load_train_config
     from src.train.corpus import split_from_cfg
     from src.utils.experiment import apply_split_index
-    for track in ("pd", "lgd"):
-        cfg = load_train_config(config_path=str(ct._references(None)[track]))
-        for partition in range(4):
-            split = split_from_cfg(apply_split_index(cfg.copy(), partition))
-            trained = {r.dataset_id for r in split.train}
-            held = {t["dataset_id"] for t in all_tasks if t["track"] == track and t["partition"] == partition}
-            assert held and not (held & trained)
+    for source in ("reference", "domain_control"):
+        for track in ("pd", "lgd"):
+            cfg = load_train_config(config_path=str(ct._references(None, source)[track]))
+            for partition in range(4):
+                split = split_from_cfg(apply_split_index(cfg.copy(), partition))
+                trained = {r.dataset_id for r in split.train}
+                held = {t["dataset_id"] for t in all_tasks if t["track"] == track and t["partition"] == partition
+                        and t["source"] == source}
+                assert held and not (held & trained)
 
 
 def test_missing_e1_checkpoint_is_refused(all_tasks):

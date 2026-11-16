@@ -1,7 +1,7 @@
 #!/bin/bash -l
 # Second-campaign evaluation tasks: campaign_eval_gpu.slurm <context|finetune|episode_context>, one task
 # per element. Task index = TASK_OFFSET + array index (array indices stay below MaxArraySize 1001).
-# Count: python -m src.eval.campaign_tasks count <kind>. Requires the E1 reference checkpoints.
+# Count: python -m src.eval.campaign_tasks count <kind>. Requires the E1 checkpoints (context: also E4).
 #SBATCH --job-name=creditpfn-campaign-eval
 #SBATCH --clusters=mindwell
 #SBATCH --partition=gpu_b200

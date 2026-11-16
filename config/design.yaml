@@ -58,7 +58,7 @@ experiments:
     rq: 1
     question: How much of the effect is training randomness?
     tasks: [pd, lgd]
-    arms: [{seed: 43}, {seed: 44}]   # with E1 (seed 42): three seeds of the reference
+    arms: [{seed: 43}, {seed: 44}, {seed: 45}]   # with E1 (seed 42): four seeds of the reference
   E3:
     slug: precision
     rq: 1
@@ -97,8 +97,11 @@ experiments:
     slug: context
     rq: 2
     kind: inference
-    question: Does CPT help more when the target table offers few labelled context rows?   # validation rows stay labelled (calibration, thresholds)
+    question: Does CPT help more when the target table offers few labelled context rows, and is what helps credit-specific?   # validation rows stay labelled (calibration, thresholds)
     source: E1
+    # The E4 checkpoints (CPT on the matched non-credit twins) are scored on the same rows, so the
+    # credit-specific part of the gain (E1 minus E4) is read at every context size. Inference only.
+    sources: [reference, domain_control]
     outer_folds: 5
     validation_fraction: 0.20
     context_rows: [8, 16, 32, 64, 128, 256, 512, 1024, 2048, 4096, 8192, 16384, 32768, 50000]

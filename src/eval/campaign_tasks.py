@@ -1,6 +1,7 @@
 """Evaluation tasks over held-out tables, one model, table and outer fold per task:
 
-* ``context`` (E6): original and E1 model at nested labelled-context sizes;
+* ``context`` (E6): original and E1 model at nested labelled-context sizes, and the E4 model (CPT
+  on the matched non-credit twins, start ``noncredit_cpt``) on the same rows;
 * ``finetune`` (E5): fine-tuning on the target fold from the original and from the E1 model,
   at the candidate learning rate with the best inner-validation score;
 * ``episode_context`` (E12): each episode-size model at fixed contexts of 2,048 and 8,192 rows and
@@ -38,9 +39,14 @@ POLICY_SEEDS = {"split_seed": 99, "context_seed": 271828, "inner_validation_frac
 QUICK = {"context_rows": [32, 512], "epochs": 2}
 
 
-def _references(references: dict | None) -> dict:
+#: Start name of each E6 checkpoint source (experiment slug); only the reference tasks also score
+#: the original model, which is the same for every source.
+SOURCE_START = {"reference": "cpt", "domain_control": "noncredit_cpt"}
+
+
+def _references(references: dict | None, source: str = "reference") -> dict:
     from src.utils.design import config_path
-    return references or {track: config_path("reference", track) for track in ("pd", "lgd")}
+    return references or {track: config_path(source, track) for track in ("pd", "lgd")}
 
 
 MODEL_OF_BASE = {Path(path).name: model for bases in BASES.values() for model, path in bases.items()}
@@ -58,7 +64,11 @@ def tasks(design: dict | None = None, references: dict | None = None, *, kind: s
             out += [dict(t, arm=arm) for t in
                     _config_tasks({"pd": config_path("episode_size", "pd", arm, design)}, ("pd",))]
         return out
-    return _config_tasks(_references(references), tuple(design["tasks"]))
+    if references is not None:   # Experiment 0: one explicit reference pilot
+        return [dict(t, source="reference") for t in _config_tasks(references, tuple(design["tasks"]))]
+    sources = experiment_by_slug("context", design)[1].get("sources", ["reference"]) if kind == "context"         else ["reference"]
+    return [dict(t, source=source) for source in sources
+            for t in _config_tasks(_references(None, source), tuple(design["tasks"]))]
 
 
 def _config_tasks(references: dict, tracks) -> list[dict]:
@@ -85,7 +95,7 @@ def cpt_checkpoint(task: dict, references: dict | None = None) -> Path:
     from src.train.loop import descriptive_name, naming_mode
     from src.utils.experiment import apply_split_index
     from src.utils.paths import resolve_staging_path
-    reference = _references(references)[task["track"]]
+    reference = _references(references, task.get("source", "reference"))[task["track"]]
     cfg = apply_split_index(load_train_config(config_path=str(reference)), task["partition"])
     base, lr, frozen, query, accum, mode, minimum, l2sp = resolve_grid(cfg, single=False)[task["trial"]]
     name = descriptive_name(run_name=cfg.run_name, track=cfg.track, base_path=base, learning_rate=lr,
@@ -139,8 +149,9 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
     receipt = folder / "completed" / f"{kind}_{index:05d}.json"
     rules = policy(task["model"], design, quick=quick, kind=kind)
     family = rules["family"]
-    starts = {"cpt": cpt_checkpoint(task, references)}
-    if kind != "episode_context":
+    source = task.get("source", "reference")
+    starts = {SOURCE_START[source]: cpt_checkpoint(task, references)}
+    if kind != "episode_context" and source == "reference":
         starts = {"original": resolve_base_checkpoint(BASES[task["track"]][task["model"]]), **starts}
     recipe = {k: experiment_by_slug("target_finetune", design)[1]["recipe"][k]
               for k in ("epochs", "learning_rates", "early_stopping_patience")}

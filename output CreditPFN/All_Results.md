@@ -7717,15 +7717,17 @@ row,experiment,slug,arm,track,change,models,runs,tasks
 1,E1,reference,0,lgd,reference,4,16,unavailable
 2,E2,seed,0,pd,seed=43,4,16,unavailable
 3,E2,seed,1,pd,seed=44,4,16,unavailable
-4,E2,seed,0,lgd,seed=43,4,16,unavailable
-5,E2,seed,1,lgd,seed=44,4,16,unavailable
-6,E3,precision,0,pd,training_precision=bf16,2,8,unavailable
-7,E3,precision,1,pd,training_precision=fp32,1,4,unavailable
-8,E3,precision,0,lgd,training_precision=bf16,2,8,unavailable
-9,E3,precision,1,lgd,training_precision=fp32,1,4,unavailable
-10,E4,domain_control,0,pd,corpus=domain_control,4,16,unavailable
-11,E4,domain_control,0,lgd,corpus=domain_control,4,16,unavailable
-12,E5,target_finetune,—,unavailable,"Is CPT worth it compared with fine-tuning on the target table, and do the two stack?",unavailable,0,"PD, LGD"
+4,E2,seed,2,pd,seed=45,4,16,unavailable
+5,E2,seed,0,lgd,seed=43,4,16,unavailable
+6,E2,seed,1,lgd,seed=44,4,16,unavailable
+7,E2,seed,2,lgd,seed=45,4,16,unavailable
+8,E3,precision,0,pd,training_precision=bf16,2,8,unavailable
+9,E3,precision,1,pd,training_precision=fp32,1,4,unavailable
+10,E3,precision,0,lgd,training_precision=bf16,2,8,unavailable
+11,E3,precision,1,lgd,training_precision=fp32,1,4,unavailable
+12,E4,domain_control,0,pd,corpus=domain_control,4,16,unavailable
+13,E4,domain_control,0,lgd,corpus=domain_control,4,16,unavailable
+14,E5,target_finetune,—,unavailable,"Is CPT worth it compared with fine-tuning on the target table, and do the two stack?",unavailable,0,"PD, LGD"
 
 2. How transfer develops, and how much is seed noise (E1, E2)
 No results yet for E1 monitor curves; the figure is drawn once they exist.
@@ -7783,7 +7785,7 @@ Table: PD E2 summary per seed arm
 CSV (first column: row index)
 row
 
-Table: PD gains at three seeds
+Table: PD gains at four seeds
 CSV (first column: row index)
 row
 
@@ -7801,7 +7803,7 @@ Table: LGD E2 summary per seed arm
 CSV (first column: row index)
 row
 
-Table: LGD gains at three seeds
+Table: LGD gains at four seeds
 CSV (first column: row index)
 row
 
@@ -7956,6 +7958,19 @@ Table: LGD per table and size
 CSV (first column: row index)
 row
 
+2. Slope test
+No results yet for E6 slope test; the figure is drawn once they exist.
+
+No measurements available for this figure group.
+
+Table: Slope per table and quantity
+CSV (first column: row index)
+row
+
+Table: Mean slope per task, model and quantity
+CSV (first column: row index)
+row
+
 rq2/01_context_curves: no figures saved.
 ```
 
@@ -8084,6 +8099,29 @@ Table: LGD E7 mean change per source and model
 CSV (first column: row index)
 row
 
+5. Similarity test (E7)
+No results yet for E7 similarity test; the figure is drawn once they exist.
+
+No measurements available for this figure group.
+
+Table: PD E7 similarity test per model
+CSV (first column: row index)
+row
+
+Table: PD E7 source-target pairs
+CSV (first column: row index)
+row
+
+No measurements available for this figure group.
+
+Table: LGD E7 similarity test per model
+CSV (first column: row index)
+row
+
+Table: LGD E7 source-target pairs
+CSV (first column: row index)
+row
+
 rq2/02_when_and_why: no figures saved.
 ```
 
@@ -8100,7 +8138,7 @@ Each arm changes only the listed settings; E1 is the shared control.
 Table: Arms of RQ2
 CSV (first column: row index)
 row,experiment,slug,arm,change,tasks,runs,track,models
-0,E6,context,—,Does CPT help more when the target table offers few labelled context rows?,"PD, LGD",0,unavailable,unavailable
+0,E6,context,—,"Does CPT help more when the target table offers few labelled context rows, and is what helps credit-specific?","PD, LGD",0,unavailable,unavailable
 1,E7,transfer,0,"single_source=0, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
 2,E7,transfer,1,"single_source=1, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
 3,E7,transfer,2,"single_source=2, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4

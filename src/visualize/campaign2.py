@@ -14,7 +14,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from src.utils.design import load_design
+from src.utils.design import experiment_by_slug, load_design
 
 TRACK_METRIC = {"pd": ("roc_auc", "AUC", 1), "lgd": ("r2", "R²", 1)}
 MONITOR_METRIC = {"pd": ("roc_auc", "AUC", 1), "lgd": ("rmse", "RMSE", -1)}
@@ -392,10 +392,7 @@ def corpus_similarity(track: str, properties: pd.DataFrame | None = None) -> pd.
     properties = table_properties(track) if properties is None else properties
     if properties.empty:
         return pd.DataFrame()
-    features = properties.set_index("test_dataset_id").copy()
-    features["rows"] = np.log10(features["rows"])
-    features["features"] = np.log10(features["features"])
-    z = (features - features.mean()) / features.std(ddof=0).replace(0, 1)
+    z = _property_space(properties)
     from src.utils.design import config_path
     cfg = load_train_config(config_path=str(config_path("reference", track)))
     rows = []
@@ -411,11 +408,12 @@ def corpus_similarity(track: str, properties: pd.DataFrame | None = None) -> pd.
     return pd.DataFrame(rows)
 
 
-SEEDS = {"reference": {0: 42}, "seed": {0: 43, 1: 44}}   # E1 and the two E2 arms
+SEEDS = {"reference": {0: 42}, "seed": {0: 43, 1: 44, 2: 45}}   # E1 and the three E2 arms
+SEED_LIST = sorted(s for seeds in SEEDS.values() for s in seeds.values())
 
 
 def seed_noise(track: str) -> pd.DataFrame:
-    """Per table and model: the gain at seeds 42 (E1), 43 and 44 (E2), and whether it exceeds seed noise.
+    """Per table and model: the gain at seed 42 (E1) and seeds 43-45 (E2), and whether it exceeds seed noise.
 
     ``seed_range`` is the largest minus the smallest gain over the seeds. ``beyond_noise`` is true
     when all seeds agree in sign and the smallest absolute gain exceeds that range, i.e. the effect
@@ -833,7 +831,7 @@ def monitor_curves(changes: pd.DataFrame, *, x: str = "successful_updates") -> p
 
 
 def seed_band(changes: pd.DataFrame, *, scope: str = "test", x: str = "successful_updates") -> pd.DataFrame:
-    """Range over the reference seeds (E1 seed 42, E2 seeds 43 and 44) of the equal-table mean
+    """Range over the reference seeds (E1 seed 42, E2 seeds 43-45) of the equal-table mean
     monitor change, per model and monitor point; only points that all seeds reached."""
     if changes.empty:
         return pd.DataFrame()
@@ -844,7 +842,7 @@ def seed_band(changes: pd.DataFrame, *, scope: str = "test", x: str = "successfu
     curves = (sub.groupby(["track", "model", "seed", "table", x]).change.mean().reset_index()
               .groupby(["track", "model", "seed", x]).change.mean().reset_index())
     band = curves.groupby(["track", "model", x]).change.agg(low="min", high="max", seeds="size").reset_index()
-    return band[band.seeds == 3].reset_index(drop=True)
+    return band[band.seeds == len(SEED_LIST)].reset_index(drop=True)
 
 
 def drift_curves(frame: pd.DataFrame, track: str) -> pd.DataFrame:
@@ -931,11 +929,13 @@ def finetune_table(results: pd.DataFrame) -> pd.DataFrame:
 
 def context_table(results: pd.DataFrame) -> pd.DataFrame:
     """E6 per track, model, table and labelled-context size (all five folds): original and CPT
-    means and the paired gain. ``full`` marks the size that used the whole available pool
-    (capped at the model's context limit) rather than a declared grid size."""
+    means and the paired gain. When the E4 checkpoints were scored (start ``noncredit_cpt``), also
+    ``noncredit_gain`` (E4 CPT minus original) and ``credit_minus_noncredit`` (E1 minus E4 CPT) on
+    the same rows; NaN where E4 lacks one of the five folds. ``full`` marks the size that used the
+    whole available pool (capped at the model's context limit) rather than a declared grid size."""
     if results.empty or "context_rows" not in results:
         return pd.DataFrame()
-    grid = set(int(v) for v in load_design()["experiments"]["E6"]["context_rows"])
+    grid = set(int(v) for v in experiment_by_slug("context")[1]["context_rows"])
     rows = []
     for track, metric in (("pd", "roc_auc"), ("lgd", "r2")):
         sub = results[results.track == track]
@@ -949,7 +949,14 @@ def context_table(results: pd.DataFrame) -> pd.DataFrame:
         if wide.empty:
             continue
         wide["gain"] = wide.cpt - wide.original
-        table = (wide.groupby(["model", "dataset_id", "context_rows"])[["original", "cpt", "gain"]]
+        columns = ["original", "cpt", "gain"]
+        if "noncredit_cpt" in wide:
+            folds = wide.groupby(["model", "dataset_id", "context_rows"]).noncredit_cpt.transform("count")
+            wide.loc[folds < N_FOLDS, "noncredit_cpt"] = np.nan
+            wide["noncredit_gain"] = wide.noncredit_cpt - wide.original
+            wide["credit_minus_noncredit"] = wide.cpt - wide.noncredit_cpt
+            columns += ["noncredit_cpt", "noncredit_gain", "credit_minus_noncredit"]
+        table = (wide.groupby(["model", "dataset_id", "context_rows"])[columns]
                  .mean().reset_index())
         table = table.assign(track=track, metric=metric, model=table.model.map(_model_label),
                              full=~table.context_rows.astype(int).isin(grid))
@@ -964,14 +971,67 @@ def context_cohort_curve(table: pd.DataFrame) -> pd.DataFrame:
     if table.empty:
         return pd.DataFrame()
     grid = table[~table.full]
+    extra = ({"noncredit_gain": ("noncredit_gain", "mean"),
+              "credit_minus_noncredit": ("credit_minus_noncredit", "mean"),
+              "noncredit_tables": ("noncredit_gain", "count")} if "noncredit_gain" in grid else {})
     curve = (grid.groupby(["track", "model", "context_rows"])
              .agg(original=("original", "mean"), cpt=("cpt", "mean"), gain=("gain", "mean"),
-                  median_gain=("gain", "median"), tables=("gain", "size")).reset_index())
+                  median_gain=("gain", "median"), tables=("gain", "size"), **extra).reset_index())
     total = grid.groupby(["track", "model"]).dataset_id.nunique().rename("all_tables").reset_index()
     curve = curve.merge(total, on=["track", "model"])
     curve["fixed_cohort"] = curve.tables == curve.all_tables
     return curve
 
+
+#: E6 quantities whose trend against context size the slope test reads.
+SLOPE_QUANTITIES = {"gain": "Credit CPT (E1) minus original",
+                    "noncredit_gain": "Non-credit CPT (E4) minus original",
+                    "credit_minus_noncredit": "Credit minus non-credit CPT (E1 minus E4)"}
+
+
+def context_slopes(table: pd.DataFrame) -> pd.DataFrame:
+    """E6 slope test, per track, model, table and quantity: the least-squares slope of the gain on
+    log2 of the labelled context rows, i.e. the change of the gain per doubling of the context.
+
+    Every table of a model enters over the same sizes: the grid sizes up to the largest size that
+    all its tables reached (the fixed cohort of ``context_cohort_curve``), at least three. A negative
+    slope means the gain shrinks as the model sees more labelled target rows: in-context learning
+    then supplies what CPT added."""
+    if table.empty:
+        return pd.DataFrame()
+    grid = table[~table.full]
+    rows = []
+    for (track, model), sub in grid.groupby(["track", "model"]):
+        up_to = sub.groupby("dataset_id").context_rows.max().min()
+        sub = sub[sub.context_rows <= up_to]
+        for quantity in [q for q in SLOPE_QUANTITIES if q in sub]:
+            for table_id, cells in sub.dropna(subset=[quantity]).groupby("dataset_id"):
+                if cells.context_rows.nunique() < 3:
+                    continue
+                x = np.log2(cells.context_rows.to_numpy(dtype=float))
+                slope = float(np.polyfit(x, cells[quantity].to_numpy(dtype=float), 1)[0])
+                rows.append(dict(track=track, model=model, dataset_id=table_id, quantity=quantity,
+                                 slope_per_doubling=slope, sizes=int(cells.context_rows.nunique()),
+                                 up_to=int(up_to)))
+    return pd.DataFrame(rows)
+
+
+def slope_summary(slopes: pd.DataFrame, *, draws: int = BOOTSTRAP_DRAWS, seed: int = 0) -> pd.DataFrame:
+    """Per track, model and quantity: the equal-table mean slope with a 95% bootstrap interval over
+    tables (a slope is one value per table) and the number of tables with a negative slope."""
+    if slopes.empty:
+        return pd.DataFrame()
+    rng = np.random.default_rng(seed)
+    rows = []
+    for (track, model, quantity), group in slopes.groupby(["track", "model", "quantity"]):
+        values = group.slope_per_doubling.to_numpy(dtype=float)
+        means = values[rng.integers(len(values), size=(draws, len(values)))].mean(axis=1)
+        rows.append(dict(track=track, model=model, quantity=quantity, tables=len(values),
+                         mean=float(values.mean()), low=float(np.quantile(means, 0.025)),
+                         high=float(np.quantile(means, 0.975)), tables_negative=int((values < 0).sum())))
+    out = pd.DataFrame(rows)
+    out["excludes_zero"] = (out.low > 0) | (out.high < 0)
+    return out
 
 def episode_context_gains(episode: pd.DataFrame, context: pd.DataFrame) -> pd.DataFrame:
     """E12 at matched inference context: each episode-size model minus the original model scored
@@ -989,7 +1049,7 @@ def episode_context_gains(episode: pd.DataFrame, context: pd.DataFrame) -> pd.Da
     merged = _all_folds(merged, ["arm", "model", "dataset_id", "context_rows"])
     if merged.empty:
         return pd.DataFrame()
-    grid = set(int(v) for v in load_design()["experiments"]["E12"]["matched_context_evaluation"][:-1])
+    grid = set(int(v) for v in experiment_by_slug("episode_size")[1]["matched_context_evaluation"][:-1])
     merged["context"] = [str(int(c)) if int(c) in grid else "full" for c in merged.context_rows]
     out = (merged.groupby(["arm", "model", "dataset_id", "context"])
            .agg(gain=("gain", "mean"), context_rows=("context_rows", "mean")).reset_index())
@@ -1037,6 +1097,59 @@ def transfer_matrix(frame: pd.DataFrame, track: str, model: str) -> pd.DataFrame
         return pd.DataFrame()
     return sub.pivot_table(index="source", columns="target", values="change").sort_index()
 
+
+def _property_space(properties: pd.DataFrame) -> pd.DataFrame:
+    """Table properties standardised over the track's tables (rows and features on a log scale)."""
+    features = properties.set_index("test_dataset_id").copy()
+    features["rows"] = np.log10(features["rows"])
+    features["features"] = np.log10(features["features"])
+    return (features - features.mean()) / features.std(ddof=0).replace(0, 1)
+
+
+def transfer_pairs(long: pd.DataFrame, properties: pd.DataFrame) -> pd.DataFrame:
+    """E7 per model, source and held-out target: the monitor change and the standardised property
+    distance between source and target (the space of ``corpus_similarity``)."""
+    if long.empty or properties.empty:
+        return pd.DataFrame()
+    z = _property_space(properties)
+    values = z.to_numpy(dtype=float)
+    distance = pd.DataFrame(np.sqrt(((values[:, None, :] - values[None, :, :]) ** 2).sum(axis=2)),
+                            index=z.index, columns=z.index)
+    sub = long[(long.scope == "test") & long.source.isin(z.index) & long.target.isin(z.index)]
+    if sub.empty:
+        return pd.DataFrame()
+    sub = sub[["model", "source", "target", "change"]].copy()
+    sub["distance"] = [float(distance.at[s, t]) for s, t in zip(sub.source, sub.target)]
+    return sub.reset_index(drop=True)
+
+
+def transfer_similarity(pairs: pd.DataFrame, *, permutations: int = BOOTSTRAP_DRAWS, seed: int = 0) -> pd.DataFrame:
+    """E7 similarity test per model: Spearman correlation between the change of a target and its
+    property distance to the source, over all source-target pairs.
+
+    Pairs that share a table are not independent, so the p-value is a Mantel permutation test:
+    the table labels of the distance matrix are permuted jointly (rows and columns) and the
+    correlation recomputed; two-sided. A negative correlation means closer sources transfer better."""
+    if pairs.empty:
+        return pd.DataFrame()
+    rng = np.random.default_rng(seed)
+    rows = []
+    for model, group in pairs.groupby("model"):
+        tables = sorted(set(group.source) | set(group.target))
+        if len(tables) < 4 or len(group) < 6:
+            continue
+        index = {t: i for i, t in enumerate(tables)}
+        s, t = group.source.map(index).to_numpy(), group.target.map(index).to_numpy()
+        matrix = np.full((len(tables), len(tables)), np.nan)
+        matrix[s, t] = matrix[t, s] = group.distance.to_numpy(dtype=float)
+        change = pd.Series(group.change.to_numpy(dtype=float))
+        observed = change.corr(pd.Series(matrix[s, t]), method="spearman")
+        null = np.array([change.corr(pd.Series(matrix[p[s], p[t]]), method="spearman")
+                         for p in (rng.permutation(len(tables)) for _ in range(permutations))])
+        null = null[np.isfinite(null)]
+        rows.append(dict(model=model, pairs=len(group), tables=len(tables), spearman=float(observed),
+                         p_value=float((1 + np.sum(np.abs(null) >= abs(observed))) / (1 + len(null)))))
+    return pd.DataFrame(rows)
 
 # ------------------------------------------------------------------------- notebook text
 def evidence_note(label: str, frame) -> str:

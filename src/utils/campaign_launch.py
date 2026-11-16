@@ -7,7 +7,7 @@ every Experiment 0 part at once. ``submit E<n>`` submits one experiment:
   ``STAGES="train eval"`` (each partition's five-fold evaluation waits for its training with
   ``afterok``); E1 also queues the classical baselines once (they do not depend on CPT);
 * E5 (target fine-tuning) and E6 (context curves): ``campaign_eval_gpu.slurm`` arrays over
-  ``src.eval.campaign_tasks``, only after every E1 checkpoint exists.
+  ``src.eval.campaign_tasks``, only after every E1 checkpoint (E6: and every E4 checkpoint) exists.
 
 Mindwell allows 500 queued jobs per user and counts every array element (other projects of the
 same user included). Each submission is sized first; when the next config would not fit under

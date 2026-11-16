@@ -92,16 +92,16 @@ times 2,000, 10,000 and full tables before this is fixed).
 ## Experiments
 
 One arm = 4 models × 4 partitions × the listed tasks. E1 is the shared control of
-E2–E4 and E8–E12 and is never re-run. 800 standard runs plus 100 single-source runs.
+E2–E4 and E8–E12 and is never re-run. 832 standard runs plus 100 single-source runs.
 
 | RQ | Exp | Question | Change vs the reference | Tasks | Runs |
 |---|---|---|---|---|---|
 | 1 | E1 | Transfer and its development | none | PD, LGD | 32 |
-| 1 | E2 | Training randomness | seeds 43 and 44 (with E1: three seeds) | PD, LGD | 64 |
+| 1 | E2 | Training randomness | seeds 43, 44 and 45 (with E1: four seeds) | PD, LGD | 96 |
 | 1 | E3 | Numerical control: does the training precision change the outcome | BF16 for TabPFN v2.6 and v3; strict FP32 for TabICLv2 (reference: FP16 with loss scaling) | PD, LGD | 24 |
 | 1 | E4 | Domain specificity | CPT on the matched non-credit twins of the partition's credit training tables | PD, LGD | 32 |
 | 1 | E5 | CPT vs fine-tuning on the target table | per fold: fine-tune the original and the E1 model on the fold's training rows (upstream fine-tuners; lr chosen from 1e-6, 1e-5, 6.5e-5 on the validation split, which also drives early stopping) | PD, LGD | fine-tunes only |
-| 2 | E6 | Context scarcity | evaluation only: original vs E1 with 8 … 50,000 labelled context rows and the full pool, five folds; the fold's validation rows stay labelled for calibration and thresholds, so this is context scarcity rather than total label scarcity | PD, LGD | 0 |
+| 2 | E6 | Context scarcity | evaluation only: original vs E1, and E4 (non-credit CPT) on the same rows, with 8 … 50,000 labelled context rows and the full pool, five folds; the fold's validation rows stay labelled for calibration and thresholds, so this is context scarcity rather than total label scarcity | PD, LGD | 0 |
 | 2 | E7 | Which sources help which targets | CPT on one table (2,500 updates, lr 1e-6), scored on every other table | PD, LGD | 100 |
 | 3 | E8 | Update size × anchoring | lr 1e-7, 1e-6, 3e-6, 1e-5 at λ 0.003; λ 0 and 0.03 at lr 3e-6 and 1e-5; λ 0 at the reference rate | PD, LGD | 288 |
 | 3 | E9 | Which weights change | frozen backbone (3e-7, 3e-6); DiagScale (1e-4, 1e-3); LoRA r16 query/value (3e-6, 1e-5); λ 0.003 throughout | PD, LGD | 192 |
@@ -152,10 +152,19 @@ For every experiment and every credit and retention table: the paired gain (CPT 
 averaged over folds) related to table size, features, share of categorical features and missing
 values, default rate or LGD zero/one mass, the original model's score (headroom) and similarity
 to the training tables (dataset properties and the model's own representation); credit segment;
-discrimination vs calibration; and whether a table's gain exceeds the seed noise of the three
+discrimination vs calibration; and whether a table's gain exceeds the seed noise of the four
 reference seeds (E1, E2). E7 gives the source→target transfer matrix from the training monitor (one fixed split, up to
 10,000 rows per target table; not a five-fold evaluation); E6 the gain as a function
-of labelled rows. Heavy
+of labelled rows.
+
+Two tests make RQ2 explanatory rather than descriptive. *Slope test (E6):* per table, the slope
+of the gain on log2 of the context rows, over the sizes every table of the model reached; a
+negative mean slope (95% bootstrap interval over tables) means in-context learning on the
+target's own rows supplies what CPT added. The same slope of E1 minus E4 says whether any
+credit-specific part survives as the context grows. *Similarity test (E7):* Spearman correlation
+between a target's change and its standardised property distance to the source, over all
+source-target pairs, with a Mantel permutation test over table labels (pairs sharing a table are
+not independent). Heavy
 computation (similarities, the transfer matrix) runs in `src` on VSC; notebooks only call `src`.
 
 ## Experiment 0

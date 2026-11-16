@@ -119,7 +119,8 @@ evaluation shards per partition). Before every config it counts the user's queue
 cleanly when the next config would exceed 480; rerunning the same command continues from the
 receipt `output CreditPFN/<slug>/manifests/submission.json`. E1 also queues the classical
 baselines once. E5 (fine-tuning) and E6 (context curves) are evaluation-only arrays over
-`src.eval.campaign_tasks` and refuse to start until every E1 checkpoint exists; E12's
+`src.eval.campaign_tasks` and refuse to start until every E1 checkpoint (E6: and every E4
+checkpoint) exists; E12's
 matched-context evaluation is submitted by rerunning `submit E12` after its training finished.
 Campaign jobs request 24 hours for training and evaluation until Experiment 0's audit gives
 measured timings; set `CREDITPFN_TRAIN_WALLTIME` / `CREDITPFN_EVAL_WALLTIME` (HH:MM:SS) then.
