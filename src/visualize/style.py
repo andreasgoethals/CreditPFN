@@ -333,7 +333,7 @@ def note(ax, text: str) -> None:
     figure into the manuscript and can be edited without re-running anything.
     """
     ax.text(0.99, 0.01, text, transform=ax.transAxes, ha="right", va="bottom",
-            fontsize=6, color=COLORS["annotation"])
+            fontsize=ANNOTATION_SIZE, color=COLORS["annotation"])
 
 
 #: Longest axes title that fits one line of a publication-width figure at `axes.titlesize`.

@@ -13,10 +13,10 @@ The first study (896 runs) is complete and archived locally in `archive/study-20
 learning rate 3e-7 was the best tested (PD +0.0009 AUC on held-out credit tables, mostly from
 TabPFN v2), LGD got slightly worse for every model, and curves were flat by 2,500 updates.
 
-The second campaign is defined in [`config/design.yaml`](config/design.yaml): one reference recipe
+Project documentation (`docs/`: research brief, VSC runbook, literature, logs) is kept locally and
+is not part of the repository. The second campaign is defined in [`config/design.yaml`](config/design.yaml): one reference recipe
 plus declared deviations, materialized into `config/experiments/E<NN>_<slug>/` and
-`config/experiments/E00_pilots/` by `src/utils/design.py` (tests fail on any undeclared difference or stale generated config). The
-method authority is [RESEARCH_BRIEF.md](docs/RESEARCH_BRIEF.md); operations are in [VSC.md](docs/VSC.md).
+`config/experiments/E00_pilots/` by `src/utils/design.py` (tests fail on any undeclared difference or stale generated config).
 
 ## Three questions, twelve experiments
 
@@ -68,7 +68,5 @@ caption carries it; the title is kept beside the caption in `CAPTIONS.md`);
 Reusable code lives in `src/`; entry points are `scripts/{data,train,eval}_pipeline.py` and
 `scripts/probe_row_cap.py`, submitted through `scripts/slurm/`. `tfm-library/` and `vsc-library/`
 are pinned read-only references. Never commit datasets, checkpoints, credentials or raw private
-rows. Substantive changes go in [CHANGELOG.md](docs/CHANGELOG.md), cluster runs and dead ends in
-[AGENTS_MEMORY.md](docs/AGENTS_MEMORY.md). The inherited template is
-[docs/TEMPLATE.md](docs/TEMPLATE.md); the shared figure tree and the output directory name are
-deliberate project-specific choices.
+rows. The shared figure tree and the output directory name are deliberate project-specific
+choices.

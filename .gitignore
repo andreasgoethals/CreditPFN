@@ -66,7 +66,6 @@ __pypackages__/
 coverage.xml
 htmlcov/
 .ipynb_checkpoints/
-docs/_build/
 
 # Optional experiment trackers must not leak separate output trees into Git.
 wandb/
@@ -103,3 +102,6 @@ Thumbs.db
 *.pickle
 *.joblib
 *.onnx
+
+# Project documentation is kept locally only (17-11-2026); it stays in Git history.
+/docs/

@@ -118,6 +118,9 @@ def test_runtime_specification_can_be_recorded_again_from_the_comparator():
     job = (root / "scripts/slurm/runtime_cpu.slurm").read_text(encoding="utf-8")
     assert 'if [[ "$action" == record ]]' in job and "runtime_container record" in job
     assert "miniconda3/envs/CreditPFN/bin/python" in job
-    runbook = (root / "docs/VSC.md").read_text(encoding="utf-8")
+    runbook_path = root / "docs/VSC.md"
+    if not runbook_path.is_file():   # docs/ is local only (gitignored since 17-11-2026)
+        return
+    runbook = runbook_path.read_text(encoding="utf-8")
     assert "runtime_cpu.slurm record env20261029f" in runbook
     assert "rerecord20261104" not in runbook        # the deleted copy is never referenced

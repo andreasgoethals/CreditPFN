@@ -7,6 +7,8 @@ Instructions for AI agents working in this repository.
 1. [`docs/TEMPLATE.md`](docs/TEMPLATE.md) — the layout and rules this project started from.
    **Follow it**, and when you deviate — which is allowed, it is a starting point rather than a
    contract — **say so in your reply**. Never silently.
+   `docs/` is local only (gitignored since 17-11-2026; earlier versions remain in Git history):
+   update it as before, but it is never committed and is absent from the VSC checkout.
 2. [`docs/AGENTS_MEMORY.md`](docs/AGENTS_MEMORY.md) — the cluster runs already done and the dead
    ends already hit. Reading it is not optional: it is how you avoid resubmitting a configuration
    that failed last month, or spending an hour on a known dead end.
@@ -165,7 +167,7 @@ anything is finished.
   permission on 26-10-2026. Verify the remote result and tell Andreas to pull on VSC before submission;
   a local commit alone is not deployed there. Do not change cluster files used by active jobs.
 - **No secrets, credentials, private dataset contents or large log excerpts** in any document —
-  both dated logs included, since both are tracked.
+  both dated logs included: they are local now, but they are shared and archived.
 - **Second campaign (from 03-11-2026).** The first study is archived locally in
   `archive/study-2026-11.zip` (verified pack, `PACK_MANIFEST.json` inside); its VSC outputs were
   deleted and no code serves it any more.
