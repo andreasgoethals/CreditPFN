@@ -3,7 +3,7 @@ from pathlib import Path
 
 from src.utils.paths import outputs_dir
 
-PUBLICATION_GROUPS = ("general", "experiment0", "rq1", "rq2", "rq3")
+PUBLICATION_GROUPS = ("general", "experiment0", "rq1", "rq2", "rq3", "appendix")
 
 
 def notebook_parts(notebook: str) -> tuple[str, Path]:

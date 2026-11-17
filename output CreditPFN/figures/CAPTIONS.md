@@ -10,6 +10,26 @@ These are the paper's captions: paste one straight under its figure. Pure descri
 Figures are PDFs at the A4 paper widths (160 mm full, 77 mm single column); never rescale one
 in the document, because that rescales its text with it.
 
+## appendix/01_rq1_results
+
+_No figures produced._
+
+## appendix/02_rq2_context_curves
+
+_No figures produced._
+
+## appendix/03_rq2_when_and_why
+
+_No figures produced._
+
+## appendix/04_rq3_weight_change_results
+
+_No figures produced._
+
+## appendix/05_rq3_training_data_results
+
+_No figures produced._
+
 ## experiment0/01_campaign2_checks
 
 _No figures produced._

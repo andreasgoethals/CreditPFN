@@ -64,7 +64,7 @@ def test_every_figure_returns_none_without_evidence():
 
 
 def test_loaders_stay_empty_without_evidence(monkeypatch):
-    monkeypatch.setattr(c2, "_results_frames", lambda slug, track: pd.DataFrame())
+    monkeypatch.setattr(c2, "_read_results_frames", lambda slug, track: pd.DataFrame())
     assert c2.endpoint_metrics("reference", "pd").empty
     assert c2.baseline_comparison("pd").empty
     assert c2.arms_overview(["reference", "scope"], "pd").empty
@@ -123,18 +123,15 @@ def test_rq1_result_figures_render(results):
     assert summary[[f"best_{o}" for o in c2.ADAPTATION_OPTIONS]].sum(axis=1).eq(summary.tables).all()
 
 
-def test_primary_endpoint_is_holm_adjusted_and_decides_equivalence_only_with_a_margin(results):
+def test_primary_endpoint_is_holm_adjusted_without_an_equivalence_claim(results):
     from src.utils.design import load_design
+    assert "equivalence_margin" not in load_design()["analysis"]["primary"]
     primary = c2.primary_endpoint()
     assert len(primary) == 2 * 2 * 4                                   # tasks x outcomes x models
     assert (primary.p_holm >= primary.p_value).all() and (primary.p_holm <= 1).all()
     assert ((primary.low <= primary["mean"]) & (primary["mean"] <= primary.high)).all()
-    assert ((primary.low <= primary.low90) & (primary.high90 <= primary.high)).all()
-    assert set(primary.decision) <= {"better", "worse", "not significant (margin not set)"}
-    design = load_design()
-    design["analysis"]["primary"]["equivalence_margin"] = {m: 1.0 for m in ("roc_auc", "brier_score", "r2", "crps")}
-    decided = c2.primary_endpoint(design)
-    assert set(decided.decision) <= {"better", "worse", "equivalent"}
+    assert set(primary.decision) <= {"better", "worse", "not significant"}
+    assert not {"margin", "low90", "high90"} & set(primary.columns)
     brier = primary[(primary.metric == "brier_score")].iloc[0]
     assert np.isfinite(brier["mean"])                                  # oriented: positive = lower Brier
     retention = pd.concat([c2.outcome_intervals("reference", t, ["roc_auc", "brier_score", "r2", "crps"])
@@ -356,3 +353,58 @@ def test_similarity_test_finds_distance_driven_transfer_and_permutes_tables():
     assert test.iloc[0].same_source_pairs == 4
     assert np.isclose(test.iloc[0].same_source_mean_change, pairs.change[:4].mean())
     assert r2.transfer_similarity(pairs, test, track="pd", title="t") is not None
+
+
+# --------------------------------------------------------------- leaderboard and table scope
+def test_leaderboard_pool_meets_on_identical_folds_and_anchors_the_linear_baseline(results):
+    finetune = syn.finetune()
+    for track, anchor in (("pd", "Logistic regression"), ("lgd", "Linear regression")):
+        errors = c2.leaderboard_errors(track, finetune)
+        assert not errors.table.str.startswith("openml_").any()            # held-out credit tables only
+        assert set(errors.variant) == {"original", "CPT", "FT", "CPT+FT", "baseline"}
+        out = c2.leaderboard(track, finetune)
+        board = out["board"]
+        assert len(board) == 4 * 4 + 3                                      # 4 models x 4 variants + baselines
+        assert board.set_index("method").loc[anchor, "elo"] == pytest.approx(1000)
+        assert out["dropped"] == [syn.CREDIT[track][-1]]                    # the table with a missing CPT fold
+        assert board.tables.eq(len(syn.CREDIT[track]) - 1).all()
+        assert ((board.normalized_score >= 0) & (board.normalized_score <= 1)).all()
+        fig, text = _finished(r2.leaderboard(board, track=track, title="t"))
+        assert len(fig.axes) == 3 and "normalized_score" in text and "improvability" in text
+    assert r2.leaderboard(pd.DataFrame(), track="pd", title="t") is None
+
+
+def test_leaderboard_leaves_out_a_method_scored_on_too_few_tables(results):
+    finetune = syn.finetune()
+    few = finetune[~(finetune.finetuned & (finetune.model == "v2") & (finetune.start == "cpt")
+                     & ~finetune.dataset_id.isin(syn.CREDIT["pd"][:3]))]
+    out = c2.leaderboard("pd", few)
+    coverage = out["coverage"].set_index("method")
+    assert not coverage.loc["TabPFN v2 CPT+FT", "entered"]
+    assert "TabPFN v2 CPT+FT" not in set(out["board"].method)
+    assert out["dropped"] == [syn.CREDIT["pd"][-1]]                         # not shrunk to three tables
+
+
+@pytest.fixture
+def private(monkeypatch):
+    """Mark two synthetic PD tables and three LGD tables proprietary; restore the scope after."""
+    from src.data import dataset_names
+    hidden = {*syn.CREDIT["pd"][:2], *syn.CREDIT["lgd"][:3]}
+    monkeypatch.setattr(dataset_names, "_PROPRIETARY", hidden)
+    yield hidden
+    c2.use_tables("all")
+
+
+def test_public_scope_removes_proprietary_tables_from_every_loader(results, private):
+    full = c2.endpoint_gains("reference", "pd")
+    c2.use_tables("public")
+    assert c2.table_scope() == "public"
+    public = c2.endpoint_gains("reference", "pd")
+    assert set(full.test_dataset_id) - set(public.test_dataset_id) == set(syn.CREDIT["pd"][:2])
+    assert not set(c2.leaderboard_errors("lgd", syn.finetune()).table) & private
+    primary = c2.primary_endpoint()
+    assert primary[primary.track == "lgd"].tables.eq(len(syn.CREDIT["lgd"]) - 3 - 1).all()
+    changes = c2.monitor_table_changes(syn.trajectories("reference", "pd"), "pd")
+    assert not set(changes.table) & private and not changes.empty
+    with pytest.raises(ValueError):
+        c2.use_tables("private")

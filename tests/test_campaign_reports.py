@@ -43,7 +43,7 @@ def test_nested_figure_ownership_never_clears_sibling(isolated_output):
 
 def test_all_notebooks_are_thin_ordered_and_use_owned_savers():
     notebooks=sorted(Path("notebooks").rglob("*.ipynb"))
-    assert {p.parent.name for p in notebooks} == {'experiment0','general','rq1','rq2','rq3'}
+    assert {p.parent.name for p in notebooks} == {'experiment0','general','rq1','rq2','rq3','appendix'}
     for path in notebooks:
         nb=json.loads(path.read_text(encoding="utf8"))
         code=["".join(c["source"]) for c in nb["cells"] if c["cell_type"]=="code"]

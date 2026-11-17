@@ -23,8 +23,9 @@ are reported rather than silently generating figures beside an unexecuted notebo
 THE RUNNER DOES NOT SAVE FIGURES; each notebook does, through `FigureSaver`, so an interactive
 *Run All* produces exactly the same PDFs. The runner adds parallelism and the two documents.
 
-NOTEBOOKS ARE DISCOVERED, NOT LISTED, alphabetically — which is also the order in both summary
-documents. A hard-coded list silently stops covering a notebook someone added.
+NOTEBOOKS ARE DISCOVERED, NOT LISTED, alphabetically with the appendix last — which is also the
+order in both summary documents. A hard-coded list silently stops covering a notebook someone
+added.
 """
 
 from __future__ import annotations
@@ -102,16 +103,17 @@ class NotebookResult:
 
 
 def discover(names: tuple[str, ...] | None = None) -> tuple[str, ...]:
-    """Relative notebook names, alphabetical, excluding hidden backup folders.
+    """Relative notebook names, alphabetical with ``appendix/`` last, excluding hidden backups.
 
     Selectors match case-insensitive substrings of the complete relative name:
     ``rq1`` selects a research question and ``02_results`` selects result notebooks.
     Including the folder also distinguishes identically named notebooks in different studies.
     """
     root = notebooks_dir()
-    found = tuple(sorted(p.relative_to(root).with_suffix("").as_posix()
-                         for p in root.rglob("*.ipynb")
-                         if not any(part.startswith(".") for part in p.relative_to(root).parts)))
+    found = tuple(sorted((p.relative_to(root).with_suffix("").as_posix()
+                          for p in root.rglob("*.ipynb")
+                          if not any(part.startswith(".") for part in p.relative_to(root).parts)),
+                         key=lambda name: (name.startswith("appendix/"), name)))
     if not names:
         return found
     return tuple(s for s in found

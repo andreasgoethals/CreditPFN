@@ -506,6 +506,17 @@ CONDITION_LABELS = {"cpt": "CPT: continued pretraining only", "finetune": "FT: o
 CONDITION_TICKS = {"cpt": "CPT", "finetune": "FT", "cpt_finetune": "CPT+FT"}
 CONDITION_MARKERS = {"cpt": "o", "finetune": "s", "cpt_finetune": "D"}
 
+#: Leaderboard (TabArena-style Elo): marker shape = adaptation of a foundation model, filled =
+#: with continued pretraining; colour = base model, the baselines in their registered colours.
+VARIANT_MARKERS = {"original": "o", "CPT": "o", "FT": "s", "CPT+FT": "s", "baseline": "^"}
+VARIANT_FILLED = {"original": False, "CPT": True, "FT": False, "CPT+FT": True, "baseline": True}
+VARIANT_LABELS = {"original": "Original model", "CPT": "CPT (E1)", "FT": "Fine-tuned on the table (E5)",
+                  "CPT+FT": "CPT, then fine-tuned (E5)", "baseline": "Tuned classical baseline"}
+BASELINE_COLORS = {"CatBoost": COLORS["catboost"], "XGBoost": COLORS["xgboost"],
+                   "Logistic regression": COLORS["linear"], "Linear regression": COLORS["linear"]}
+#: Height of one method row in a leaderboard figure.
+LEADERBOARD_ROW = 0.13
+
 #: Original model versus its continued-pretrained counterpart in absolute-score panels.
 START_LINESTYLES = {"original": "--", "cpt": "-", "noncredit_cpt": ":"}
 START_LABELS = {"original": "Original", "cpt": "CPT", "noncredit_cpt": "Non-credit CPT (E4)"}

@@ -24,6 +24,50 @@ _NAME = re.compile(r"^cpt2_(?P<slug>.+)_a(?P<arm>\d+)_s(?P<part>\d+)_(?P<track>p
                    r"(?P<base>tabpfn-v[0-9.]+|tabicl)[^_]*?.*\.trajectory\.csv$")
 
 
+# ------------------------------------------------------------------------- table scope
+#: Which evaluated tables every loader returns: ``all``, or ``public`` (the proprietary tables
+#: removed). The appendix notebooks switch to ``public`` so that every result can be recomputed
+#: on data a reader can obtain; training corpora are unchanged (they still contained the
+#: proprietary tables), so this restricts evaluation, not training.
+TABLE_SCOPES = ("all", "public")
+_SCOPE = {"tables": "all"}
+
+
+def use_tables(scope: str) -> None:
+    """Set the table scope of every loader for the rest of the session (``all`` or ``public``)."""
+    if scope not in TABLE_SCOPES:
+        raise ValueError(f"table scope must be one of {TABLE_SCOPES}, got {scope!r}")
+    _SCOPE["tables"] = scope
+
+
+def table_scope() -> str:
+    return _SCOPE["tables"]
+
+
+def in_scope(frame: pd.DataFrame, column: str) -> pd.DataFrame:
+    """``frame`` without the rows of proprietary tables when the scope is ``public`` (loaders apply
+    it themselves; notebooks use it for frames that must keep every table internally, such as
+    table properties, whose distances still refer to all training tables)."""
+    if _SCOPE["tables"] == "all" or frame.empty or column not in frame:
+        return frame
+    from src.data.dataset_names import is_proprietary
+    return frame[~frame[column].map(is_proprietary).astype(bool)]
+
+
+def scope_counts(track: str) -> pd.DataFrame:
+    """Held-out credit tables of a task in scope and left out by it (for the appendix)."""
+    from src.data.dataset_names import is_proprietary
+    try:
+        from src.train.corpus import build_dataset_pool
+        ids = sorted(r.dataset_id for r in build_dataset_pool(track))
+    except Exception:  # noqa: BLE001 - the registry may be absent off-cluster
+        return pd.DataFrame()
+    proprietary = sum(bool(is_proprietary(i)) for i in ids)
+    kept = len(ids) - (proprietary if _SCOPE["tables"] == "public" else 0)
+    return pd.DataFrame([dict(track=track, scope=_SCOPE["tables"], credit_tables=len(ids),
+                              proprietary_tables=proprietary, tables_in_scope=kept)])
+
+
 # ------------------------------------------------------------------------------- design
 def experiments(rq: int | None = None) -> dict:
     spec = load_design()["experiments"]
@@ -106,6 +150,11 @@ def trajectory_curves(frame: pd.DataFrame, track: str, *, scope: str = "test",
 
 # --------------------------------------------------------------------- endpoint gains
 def _results_frames(slug: str, track: str) -> pd.DataFrame:
+    """Five-fold metric rows of one experiment and task, restricted to the table scope."""
+    return in_scope(_read_results_frames(slug, track), "test_dataset_id")
+
+
+def _read_results_frames(slug: str, track: str) -> pd.DataFrame:
     from src.utils.paths import results_dir
     try:
         root = results_dir(experiment=slug) / track.upper()
@@ -378,9 +427,17 @@ def experiment0_tables(summary: dict | None) -> dict[str, pd.DataFrame]:
 
 
 # ----------------------------------------------------------------------------- display
+#: Caption prefix of every figure drawn under the public table scope (appendix notebooks).
+PUBLIC_CAPTION = ("Public tables only: the proprietary credit tables are removed from the evaluation; "
+                  "the CPT corpora still contained them. ")
+
+
 def pages(fig, name: str, caption: str) -> list:
-    """Wrap one figure for ``campaign.show``; an absent figure yields no page."""
+    """Wrap one figure for ``campaign.show``; an absent figure yields no page. Under the public
+    table scope the caption starts with ``PUBLIC_CAPTION``."""
     from src.visualize.campaign import Page
+    if _SCOPE["tables"] == "public":
+        caption = PUBLIC_CAPTION + caption
     return [] if fig is None else [Page(figure=fig, name=name, caption=caption)]
 
 
@@ -410,7 +467,7 @@ def corpus_similarity(track: str, properties: pd.DataFrame | None = None) -> pd.
             distances = np.sqrt(((z.loc[train] - z.loc[ref.dataset_id]) ** 2).sum(axis=1))
             rows.append(dict(test_dataset_id=ref.dataset_id, partition=partition,
                              nearest=float(distances.min()), mean=float(distances.mean())))
-    return pd.DataFrame(rows)
+    return in_scope(pd.DataFrame(rows), "test_dataset_id")
 
 
 SEEDS = {"reference": {0: 42}, "seed": {0: 43, 1: 44}}   # E1 and the two E2 arms
@@ -545,7 +602,7 @@ def domain_control_intervals(track: str) -> pd.DataFrame:
 
 # --------------------------------------------------------------- pre-specified primary endpoint
 def primary_spec(design: dict | None = None) -> dict:
-    """``analysis.primary`` of config/design.yaml: outcomes, α and equivalence margins."""
+    """``analysis.primary`` of config/design.yaml: outcomes and α."""
     return (design or load_design())["analysis"]["primary"]
 
 
@@ -554,10 +611,11 @@ def primary_endpoint(design: dict | None = None, *, draws: int = BOOTSTRAP_DRAWS
 
     Per task, primary outcome and model: the equal-table mean five-fold improvement of the E1
     reference model (seed 42) over the original model on the held-out credit tables, with its
-    95% hierarchical-bootstrap interval, a two-sided bootstrap p-value against zero, the Holm
-    adjustment over the whole family (tasks × outcomes × models) and, once margins are set, an
-    equivalence decision from the 90% interval (two one-sided tests). Improvement is oriented so
-    that positive is better (``improvement``). Everything else in the study is secondary.
+    95% hierarchical-bootstrap interval, a two-sided bootstrap p-value against zero and the Holm
+    adjustment over the whole family (tasks × outcomes × models). No equivalence margin is
+    pre-specified: a comparison that is not significant is reported with its interval, not called
+    equivalent. Improvement is oriented so that positive is better (``improvement``). Everything
+    else in the study is secondary.
     """
     spec = primary_spec(design)
     rows = []
@@ -578,27 +636,14 @@ def primary_endpoint(design: dict | None = None, *, draws: int = BOOTSTRAP_DRAWS
                 rows.append(dict(track=track, metric=metric, model=model, tables=len(matrix),
                                  tables_improved=int((per_table > 0).sum()), mean=float(matrix.mean()),
                                  low=float(np.quantile(means, 0.025)), high=float(np.quantile(means, 0.975)),
-                                 low90=float(np.quantile(means, 0.05)), high90=float(np.quantile(means, 0.95)),
                                  p_value=float(min(1.0, 2 * (tail + 1) / (len(means) + 1)))))
     out = pd.DataFrame(rows)
     if out.empty:
         return out
     out["p_holm"] = holm(out.p_value.to_numpy())
     alpha = float(spec["alpha"])
-    margins = spec.get("equivalence_margin") or {}
-    decisions = []
-    for row in out.itertuples():
-        margin = margins.get(row.metric)
-        if row.p_holm < alpha:
-            decisions.append("better" if row.mean > 0 else "worse")
-        elif margin is None:
-            decisions.append("not significant (margin not set)")
-        elif -float(margin) < row.low90 and row.high90 < float(margin):
-            decisions.append("equivalent")
-        else:
-            decisions.append("inconclusive")
-    out["margin"] = out.metric.map(lambda m: margins.get(m))
-    out["decision"] = decisions
+    out["decision"] = np.where(out.p_holm >= alpha, "not significant",
+                               np.where(out["mean"] > 0, "better", "worse"))
     return out
 
 
@@ -720,7 +765,8 @@ def task_results(kind: str) -> pd.DataFrame:
     except Exception:  # noqa: BLE001 - missing layout is missing evidence
         return pd.DataFrame()
     files = sorted(folder.glob(f"{kind}_*.csv.gz")) if folder.is_dir() else []
-    return pd.concat([pd.read_csv(f) for f in files], ignore_index=True) if files else pd.DataFrame()
+    frame = pd.concat([pd.read_csv(f) for f in files], ignore_index=True) if files else pd.DataFrame()
+    return in_scope(frame, "dataset_id")
 
 
 def _all_folds(frame: pd.DataFrame, keys: list[str]) -> pd.DataFrame:
@@ -949,7 +995,7 @@ def monitor_table_changes(frame: pd.DataFrame, track: str, *, x: str = "successf
     long["scope"] = long.column.map(lambda c: columns[c].group(1))
     long["table"] = long.column.map(lambda c: columns[c].group(2))
     long["change"] = long.score - long.start
-    return long.drop(columns="column").dropna(subset=["change"])
+    return in_scope(long.drop(columns="column").dropna(subset=["change"]), "table")
 
 
 def monitor_curves(changes: pd.DataFrame, *, x: str = "successful_updates") -> pd.DataFrame:
@@ -1112,6 +1158,92 @@ def adaptation_summary(table: pd.DataFrame, cost: pd.DataFrame | None = None) ->
     order = {_size_band(low): i for i, low in enumerate(SIZE_BANDS[:-1])}
     return out.sort_values(["track", "size_band", "model"], key=lambda s: s.map(order) if s.name == "size_band"
                            else s).reset_index(drop=True)
+
+# --------------------------------------------------------------------------- leaderboard
+#: TabArena's error per task (lower is better): 1 − AUC for binary tasks, RMSE for regression.
+LEADERBOARD_ERROR = {"pd": ("roc_auc", "1 − AUC"), "lgd": ("rmse", "RMSE")}
+#: The Elo anchor (= 1000): the linear baseline, the standard reference model of credit scoring.
+LEADERBOARD_ANCHOR = {"pd": "Logistic regression", "lgd": "Linear regression"}
+LEADERBOARD_BASELINES = {"catboost": "CatBoost", "xgboost": "XGBoost", "logreg": "Logistic regression",
+                         "linreg": "Linear regression"}
+#: E5 start and fine-tuning → suffix of the method name.
+LEADERBOARD_VARIANTS = {("original", False): "", ("cpt", False): " CPT", ("original", True): " FT",
+                        ("cpt", True): " CPT+FT"}
+#: A method enters a leaderboard only when it is scored on at least this share of the tables.
+LEADERBOARD_MIN_COVERAGE = 0.5
+
+
+def _error(track: str, frame: pd.DataFrame) -> pd.Series:
+    metric, _ = LEADERBOARD_ERROR[track]
+    values = frame[metric].astype(float)
+    return 1.0 - values if track == "pd" else values
+
+
+def leaderboard_errors(track: str, finetune: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Long frame (method, base, variant, table, fold, error) on the held-out credit tables: from
+    the E1 five-fold evaluation the original models, the E1 CPT models (seed 42) and the tuned
+    baselines; from E5 the original and the CPT model fine-tuned on the table. E5 uses the same
+    outer folds and inner split (``POLICY_SEEDS``), so all methods meet on identical test rows."""
+    metric, _ = LEADERBOARD_ERROR[track]
+    frame = _results_frames("reference", track)
+    rows = []
+    if not frame.empty and metric in frame:
+        frame = frame[~frame.test_dataset_id.astype(str).str.startswith("openml_")].dropna(subset=[metric])
+        base = frame.model_name.str.extract(r"(tabpfn-v[0-9.]+|tabicl)")[0]
+        source = frame.model_source.astype(str)
+        original = source.str.endswith("untuned") & base.notna()
+        cpt = (source.str.endswith("trained") & frame.model_name.str.contains("cpt2_reference_a0_", regex=False)
+               & base.notna())
+        baseline = (source == "baseline") & frame.model_name.isin(LEADERBOARD_BASELINES)
+        for mask, variant in ((original, ""), (cpt, " CPT")):
+            sub = frame[mask]
+            label = base[mask].map(MODEL_LABELS)
+            rows.append(pd.DataFrame({"method": label + variant, "base": label, "variant": variant.strip() or "original",
+                                      "table": sub.test_dataset_id, "fold": sub.fold_idx, "error": _error(track, sub)}))
+        sub = frame[baseline]
+        rows.append(pd.DataFrame({"method": sub.model_name.map(LEADERBOARD_BASELINES), "base": "baseline",
+                                  "variant": "baseline", "table": sub.test_dataset_id, "fold": sub.fold_idx,
+                                  "error": _error(track, sub)}))
+    if finetune is not None and not finetune.empty and "finetuned" in finetune:
+        sub = in_scope(finetune[(finetune.track == track) & finetune.finetuned.astype(bool)], "dataset_id")
+        if not sub.empty and metric in sub:
+            sub = sub.dropna(subset=[metric])
+            label = sub.model.map(_model_label)
+            suffix = [LEADERBOARD_VARIANTS[(s, True)] for s in sub.start]
+            rows.append(pd.DataFrame({"method": label + suffix, "base": label,
+                                      "variant": [x.strip() for x in suffix], "table": sub.dataset_id,
+                                      "fold": sub.fold, "error": _error(track, sub)}))
+    rows = [r for r in rows if not r.empty]
+    if not rows:
+        return pd.DataFrame(columns=["method", "base", "variant", "table", "fold", "error"])
+    return pd.concat(rows, ignore_index=True).drop_duplicates(["method", "table", "fold"], keep="last")
+
+
+def leaderboard(track: str, finetune: pd.DataFrame | None = None, *, seed: int = 0) -> dict:
+    """TabArena-style leaderboard of one task (``src.visualize.arena``): ``board`` (one row per
+    method), ``coverage`` (tables and folds per method, and whether it entered) and ``dropped``
+    (tables left out because a method in the board lacked one of their folds). Methods covering
+    fewer than half of the tables are left out rather than shrinking every comparison to them."""
+    from src.visualize import arena
+    errors = leaderboard_errors(track, finetune)
+    empty = dict(board=pd.DataFrame(), coverage=pd.DataFrame(), dropped=[])
+    if errors.empty:
+        return empty
+    tables = errors.table.nunique()
+    coverage = (errors.groupby(["method", "base", "variant"])
+                .agg(tables=("table", "nunique"), units=("fold", "size")).reset_index())
+    coverage["entered"] = coverage.tables >= LEADERBOARD_MIN_COVERAGE * tables
+    kept = errors[errors.method.isin(coverage.method[coverage.entered])]
+    kept, dropped = arena.complete_units(kept)
+    anchor = LEADERBOARD_ANCHOR[track]
+    if kept.empty or anchor not in set(kept.method) or kept.method.nunique() < 2:
+        return dict(empty, coverage=coverage, dropped=dropped)
+    board = arena.leaderboard(kept[list(arena.COLUMNS)], anchor, seed=seed)
+    meta = coverage.set_index("method")[["base", "variant"]]
+    board = board.join(meta, on="method")
+    board.insert(0, "track", track)
+    return dict(board=board, coverage=coverage.assign(track=track), dropped=dropped)
+
 
 def context_table(results: pd.DataFrame) -> pd.DataFrame:
     """E6 per track, model, table and labelled-context size (all five folds): original and CPT

@@ -127,13 +127,16 @@ Newest first, dates `DD-MM-YYYY`.
   10,000 updates), E11 small vs large tables, E12 episode size.
   Experiment 0 owns validation (`experiment0/`); corpus notebooks use `general/`. Folders:
   `rq1/` (`01_training`, `02_results`), `rq2/` (`01_context_curves`, `02_when_and_why`),
-  `rq3/` (`01_`/`02_weight_change_*`, `03_`/`04_training_data_*`), `experiment0/` and `general/`. E1 is the shared control of E2–E4 and E8–E12: never count it twice. Combine
+  `rq3/` (`01_`/`02_weight_change_*`, `03_`/`04_training_data_*`), `experiment0/`, `general/` and
+  `appendix/`: one twin per results notebook, recomputed on public tables only
+  (`campaign2.use_tables('public')`). The twins are generated — edit the source notebook, then run
+  `python -m src.utils.appendix_notebooks`; a test fails on a stale twin. E1 is the shared control of E2–E4 and E8–E12: never count it twice. Combine
   experiments in a figure when their quantities and comparison units agree; retain
   individual-table evidence.
 - **Never pick a colour or a size.** `src/visualize/style.py` owns both, so every notebook here
   looks the same. Add a new one there, once, not in the notebook.
 - Save through `src/visualize/figures.FigureSaver`: **PDF only**, all in
-  `output CreditPFN/figures/<notebook group>/` (`rq1`–`rq3`, `experiment0`, `general`). Notebook filename prefixes identify ownership;
+  `output CreditPFN/figures/<notebook group>/` (`rq1`–`rq3`, `experiment0`, `general`, `appendix`). Notebook filename prefixes identify ownership;
   each notebook clears only its own files before drawing. Full reruns also retire figures
   from renamed notebooks. This shared publication tree deliberately overrides the template's per-notebook folders.
   The notebook displays each figure inline.

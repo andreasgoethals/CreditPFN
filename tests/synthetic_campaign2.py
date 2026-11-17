@@ -30,7 +30,8 @@ def _scores(rng, track, n, level):
                     ece=np.abs(rng.normal(0.02, 0.008, n)), calibration_slope=rng.normal(1.0, 0.08, n),
                     calibration_in_the_large=rng.normal(0.0, 0.05, n))
     r2 = level + rng.normal(0, 0.01, n)
-    return dict(r2=r2, nrmse=np.sqrt(np.clip(1 - r2, 0.01, None)), mae=0.25 - 0.1 * r2 + rng.normal(0, .003, n),
+    return dict(r2=r2, nrmse=np.sqrt(np.clip(1 - r2, 0.01, None)), rmse=0.3 * np.sqrt(np.clip(1 - r2, 0.01, None)),
+                mae=0.25 - 0.1 * r2 + rng.normal(0, .003, n),
                 spearman_r=np.sqrt(np.clip(r2, 0, None)) + rng.normal(0, .01, n),
                 crps=0.15 - 0.05 * r2 + rng.normal(0, .002, n), bias=rng.normal(0, 0.01, n),
                 prediction_std_ratio=rng.normal(0.85, 0.05, n))
@@ -78,7 +79,7 @@ def install_results(monkeypatch, slugs_arms: dict, **kwargs) -> None:
     from src.visualize import campaign2
     cache = {(slug, track): results(slug, track, arms, seed=i, **kwargs)
              for i, (slug, arms) in enumerate(slugs_arms.items()) for track in ("pd", "lgd")}
-    monkeypatch.setattr(campaign2, "_results_frames",
+    monkeypatch.setattr(campaign2, "_read_results_frames",
                         lambda slug, track: cache.get((slug, track), pd.DataFrame()).copy())
 
 
@@ -142,6 +143,12 @@ def transfer_trajectories(track: str, seed: int = 0) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def _finetune_scores(track: str, value: float) -> dict:
+    if track == "pd":
+        return dict(roc_auc=value)
+    return dict(r2=value, rmse=0.3 * float(np.sqrt(max(1 - value, 0.01))))
+
+
 def finetune(seed: int = 0) -> pd.DataFrame:
     """E5 task rows: per track, model (design name), table and fold, both starts with and without
     fine-tuning, as ``task_results('finetune')`` returns them."""
@@ -159,7 +166,7 @@ def finetune(seed: int = 0) -> pd.DataFrame:
                                              fold=fold, available_context=available, test_rows=available // 4,
                                              fit_seconds=(300.0 if tuned else 2.0), predict_seconds=1.5,
                                              device_name="NVIDIA B200",
-                                             **{METRIC[track]: level + shift + gain + rng.normal(0, .002)}))
+                                             **_finetune_scores(track, level + shift + gain + rng.normal(0, .002))))
     return pd.DataFrame(rows)
 
 

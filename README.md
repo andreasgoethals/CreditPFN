@@ -26,7 +26,9 @@ E8–E12. Every table is evaluated by a model that never saw it (four partitions
 on 19 binary and 12 regression TabArena tables; baselines are CatBoost, XGBoost and
 logistic/linear regression. One comparison is pre-specified as primary (E1 against the original
 model; PD AUC and Brier score, LGD R² and CRPS; Holm correction over 16 tests). PD is also scored
-with the credit-scoring measures KS, H-measure and expected maximum profit.
+with the credit-scoring measures KS, H-measure and expected maximum profit. A TabArena-style
+leaderboard (Elo anchored at the linear baseline, normalized score, improvability) ranks every
+method on the same folds, and an appendix recomputes every result on the public tables only.
 
 TabPFN LGD trains with a 5-bucket window NLL (robust to the v2.6 regressor's comb-shaped density);
 LoRA and DiagScale use L2-SP on their effective weight change.
@@ -50,8 +52,10 @@ From this repository in Windows PowerShell:
 ```
 
 The local `.venv` matches the cluster container's exact pins (`config/runtime/`,
-`tests/test_environment_parity.py`). Notebooks live in `notebooks/{rq1,rq2,rq3,experiment0,general}`,
-contain no functions or classes, call `src/` only and end with a complete text summary. Figures are
+`tests/test_environment_parity.py`). Notebooks live in
+`notebooks/{rq1,rq2,rq3,experiment0,general,appendix}`, contain no functions or classes, call
+`src/` only and end with a complete text summary. The appendix notebooks are generated from the
+results notebooks (`python -m src.utils.appendix_notebooks`). Figures are
 drawn for Springer LNCS (122 mm wide, vector PDF, no figure-level title) in
 `output CreditPFN/figures/<group>/`; `CAPTIONS.md` holds their captions and titles, and
 `output CreditPFN/All_Results.md` the notebook summaries.

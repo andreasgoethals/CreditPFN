@@ -422,6 +422,54 @@ def baseline_position(frames: dict, *, title: str):
                    per_table=pd.concat([frames[t].assign(track=t) for t in tracks]))
 
 
+def leaderboard(board: pd.DataFrame, *, track: str, title: str):
+    """Three panels sharing the method rows (sorted by Elo): TabArena-style Elo with its 95%
+    table-bootstrap interval (anchor = 1000, dotted), the normalized score (1 = best method on
+    every table, 0 = at or below the median method) and improvability (mean relative error gap to
+    the best method of each fold, with its 95% interval). Colour: base model or baseline; marker:
+    adaptation (hollow without CPT, filled with CPT; circle without and square with fine-tuning)."""
+    if _empty(board):
+        return None
+    from src.visualize.campaign2 import LEADERBOARD_ANCHOR, LEADERBOARD_ERROR
+    board = board.sort_values("elo", ascending=False).reset_index(drop=True)
+    n = len(board)
+    fig, axes = plt.subplots(1, 3, sharey=True, squeeze=False, gridspec_kw=dict(width_ratios=[1.5, 1, 1]),
+                             figsize=(style.WIDTH_FULL, _height(n, style.LEADERBOARD_ROW) + 0.35))
+    y = np.arange(n)
+    for row in board.itertuples():
+        variant = row.variant if row.variant in style.VARIANT_MARKERS else "baseline"
+        color = style.BASELINE_COLORS.get(row.method, style.model_color(row.base))
+        face = color if style.VARIANT_FILLED[variant] else style.HOLLOW_FACE
+        marker = dict(marker=style.VARIANT_MARKERS[variant], s=style.POINT_SIZE, facecolors=face,
+                      edgecolors=color, linewidths=0.8, zorder=3)
+        i = row.Index
+        axes[0, 0].plot([row.elo_low, row.elo_high], [i, i], color=color, linewidth=style.INTERVAL_LINE)
+        axes[0, 0].scatter([row.elo], [i], **marker)
+        axes[0, 1].scatter([row.normalized_score], [i], **marker)
+        axes[0, 2].plot([100 * row.improvability_low, 100 * row.improvability_high], [i, i], color=color,
+                        linewidth=style.INTERVAL_LINE)
+        axes[0, 2].scatter([100 * row.improvability], [i], **marker)
+    axes[0, 0].axvline(1000, **style.ZERO_LINE)
+    axes[0, 0].set_yticks(y, board.method)
+    axes[0, 0].set_ylim(n - 0.5, -0.5)
+    axes[0, 0].set_xlabel(f"Elo ({LEADERBOARD_ANCHOR[track].lower()} = 1000)")
+    axes[0, 1].set_xlabel("Normalized score")
+    axes[0, 1].set_xlim(-0.05, 1.05)
+    axes[0, 2].set_xlabel("Improvability (%)")
+    axes[0, 2].set_xlim(left=0)
+    for ax in axes[0]:
+        ax.grid(axis="x", alpha=0.25)
+    variants = [v for v in style.VARIANT_LABELS if v in set(board.variant) or (v == "baseline")]
+    for v in variants:
+        _proxy_point(axes[0, 0], style.VARIANT_LABELS[v], marker=style.VARIANT_MARKERS[v], s=style.POINT_SIZE,
+                     facecolors=style.COLORS["mean"] if style.VARIANT_FILLED[v] else style.HOLLOW_FACE,
+                     edgecolors=style.COLORS["mean"], linewidths=0.8)
+    _proxy_line(axes[0, 0], "95% table-bootstrap interval", color=style.COLORS["mean"], linewidth=style.INTERVAL_LINE)
+    axes[0, 0].legend()
+    fig.suptitle(title)
+    return _report(fig, leaderboard=board.assign(error=LEADERBOARD_ERROR[track][1]))
+
+
 def metric_profile_heatmap(profiles: dict, *, title: str):
     """One panel per task: models (rows) × metrics (columns). Colour and text: share and count of
     complete held-out tables on which CPT improved the metric. The mean improvements, whose scales
