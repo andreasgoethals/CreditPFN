@@ -285,35 +285,44 @@ def table_gains(gains: pd.DataFrame, seeds: pd.DataFrame | None = None, *, track
 OUTCOME_LABELS = {"roc_auc": "AUC", "brier_score": "Brier score", "r2": "R²", "crps": "CRPS"}
 
 
-def primary_forest(primary: pd.DataFrame, retention: pd.DataFrame | None = None, *, title: str):
-    """Panels: the pre-specified outcomes (PD AUC and Brier, LGD R² and CRPS). Per model, the mean
-    five-fold improvement of E1 over the original model on the held-out credit tables with its 95%
-    hierarchical-bootstrap interval (filled; an asterisk marks a Holm-adjusted p < α) and, hollow,
-    the same on the non-credit retention tables. Positive is better in every panel."""
+def primary_forest(primary: pd.DataFrame, retention: pd.DataFrame | None = None,
+                   contrast: pd.DataFrame | None = None, *, title: str):
+    """Panels: the pre-specified outcomes (PD AUC and Brier, LGD R² and CRPS). Per model, three
+    estimates with 95% hierarchical-bootstrap intervals, positive = better in every panel: E1 over
+    the original model on the held-out credit tables (filled circle; an asterisk marks a
+    Holm-adjusted p < α: the primary test), the same on the non-credit retention tables (hollow
+    circle: forgetting) and, when E4 exists, credit CPT over CPT on the matched non-credit twins on
+    the held-out credit tables (square: the credit-specific part)."""
     if _empty(primary):
         return None
     panels = [(t, m) for t in TRACKS for m in dict.fromkeys(primary[primary.track == t].metric)]
     models = _models(primary)
     fig, axes = plt.subplots(1, len(panels), squeeze=False, sharey=True,
-                             figsize=style.figsize(style.WIDTH_FULL, 0.40))
-    hollow = False
+                             figsize=style.figsize(style.WIDTH_FULL, 0.40 if _empty(contrast) else 0.50))
+    hollow = squares = False
     for ax, (track, metric) in zip(axes[0], panels):
-        rows = [(primary[(primary.track == track) & (primary.metric == metric)], True)]
+        rows = [(primary[(primary.track == track) & (primary.metric == metric)], "credit")]
         if not _empty(retention):
             rows.append((retention[(retention.track == track) & (retention.metric == metric)
-                                   & ~retention.credit.astype(bool)], False))
-        for frame, credit in rows:
+                                   & ~retention.credit.astype(bool)], "retention"))
+        if not _empty(contrast):
+            rows.append((contrast[(contrast.track == track) & (contrast.metric == metric)], "contrast"))
+        offsets = dict(zip([kind for _, kind in rows], np.linspace(-0.24, 0.24, len(rows)) if len(rows) > 1 else [0.0]))
+        for frame, kind in rows:
             for i, model in enumerate(models):
                 hit = frame[frame.model == model]
                 if hit.empty:
                     continue
                 row = hit.iloc[0]
-                y = i + (-0.15 if credit else 0.15)
+                y = i + offsets[kind]
                 color = style.model_color(model)
-                ax.plot([row.low, row.high], [y, y], color=color, linewidth=style.MEAN_CURVE_LINE)
+                ax.plot([row.low, row.high], [y, y], color=color, linewidth=style.INTERVAL_LINE)
                 ax.scatter([row["mean"]], [y], s=style.POINT_SIZE, zorder=3, linewidths=0.8, edgecolors=color,
-                           facecolors=color if credit else style.HOLLOW_FACE)
-                hollow = hollow or not credit
+                           marker=style.CONTRAST_MARKER if kind == "contrast" else "o",
+                           facecolors=style.HOLLOW_FACE if kind == "retention" else color)
+                hollow = hollow or kind == "retention"
+                squares = squares or kind == "contrast"
+                credit = kind == "credit"
                 if credit and str(row.get("decision", "")) in ("better", "worse"):
                     ax.annotate("*", (row.high, y), xytext=(2, -2), textcoords="offset points",
                                 fontsize=style.ANNOTATION_SIZE + 2, color=color, va="center")
@@ -329,10 +338,13 @@ def primary_forest(primary: pd.DataFrame, retention: pd.DataFrame | None = None,
     if hollow:
         _proxy_point(axes[0, 0], "Non-credit retention tables", facecolors=style.HOLLOW_FACE, edgecolors=ref,
                      s=style.POINT_SIZE)
-    _proxy_line(axes[0, 0], "95% bootstrap interval", color=ref, linewidth=style.MEAN_CURVE_LINE)
+    if squares:
+        _proxy_point(axes[0, 0], "Credit CPT minus non-credit CPT (E1 − E4), held-out credit",
+                     marker=style.CONTRAST_MARKER, color=ref, s=style.POINT_SIZE)
+    _proxy_line(axes[0, 0], "95% bootstrap interval", color=ref, linewidth=style.INTERVAL_LINE)
     axes[0, 0].legend()
     fig.suptitle(title)
-    return _report(fig, primary_endpoint=primary, retention=retention)
+    return _report(fig, primary_endpoint=primary, retention=retention, domain_contrast=contrast)
 
 
 ADAPTATION_ROWS = (("cpt_change", "CPT − original"), ("finetune_change", "FT − original"),
@@ -368,59 +380,6 @@ def adaptation_by_size(table: pd.DataFrame, *, title: str):
     axes[0, 0].legend()
     fig.suptitle(title)
     return _report(fig, per_table=table)
-
-def baseline_position(frames: dict, *, title: str):
-    """Rows: task; columns: model. Per held-out credit table, the original and the CPT model's
-    five-fold score minus tuned CatBoost's (zero line). The linear baseline is reported in the
-    attached table, not drawn: it sits far below and would compress the comparison."""
-    tracks = [t for t in _tracks(frames) if not frames[t][frames[t].credit].empty]
-    if not tracks:
-        return None
-    models = _models(pd.concat([frames[t] for t in tracks]))
-    fig, axes = plt.subplots(len(tracks), len(models), sharey="row", squeeze=False,
-                             figsize=(style.WIDTH_FULL, _height(len(tracks), style.ROW_HEIGHT * 1.3)))
-    summary = []
-    for r, track in enumerate(tracks):
-        f = frames[track][frames[track].credit]
-        for c, model in enumerate(models):
-            ax = axes[r, c]
-            sub = f[f.model == model]
-            color = style.model_color(model)
-            values = sub[["original_vs_catboost", "cpt_vs_catboost"]].to_numpy()
-            for row in values:
-                ax.plot([0, 1], row, color=style.CONNECTOR_COLOR, linewidth=style.CONNECTOR_LINE, zorder=1)
-            if len(values):
-                ax.scatter(np.zeros(len(values)), values[:, 0], s=style.TABLE_MARKER_SIZE,
-                           facecolors=style.HOLLOW_FACE, edgecolors=color, linewidths=0.6, zorder=2)
-                ax.scatter(np.ones(len(values)), values[:, 1], s=style.TABLE_MARKER_SIZE, color=color,
-                           linewidths=0, zorder=2)
-                ax.scatter([0, 1], values.mean(axis=0), marker=style.MEAN_MARKER, s=style.MEAN_MARKER_SIZE,
-                           color=color, edgecolors=style.COLORS["mean"], linewidths=0.6, zorder=3)
-                summary.append(dict(track=track, model=model, tables=len(values),
-                                    original_minus_catboost=values[:, 0].mean(),
-                                    cpt_minus_catboost=values[:, 1].mean(),
-                                    linear_minus_catboost=sub.linear_vs_catboost.mean(),
-                                    xgboost_minus_catboost=sub.xgboost_vs_catboost.mean(),
-                                    original_beats_catboost=int((values[:, 0] > 0).sum()),
-                                    cpt_beats_catboost=int((values[:, 1] > 0).sum())))
-            ax.axhline(0, color=style.COLORS["catboost"], linewidth=0.9)
-            ax.set_xticks([0, 1], ["Original", "CPT"])
-            ax.set_xlim(-0.4, 1.4)
-            if r == 0:
-                ax.set_title(model)
-            if c == 0:
-                ax.set_ylabel(f"{TRACK_NAME[track]}: {SCORE[track]} − CatBoost")
-    _proxy_line(axes[0, 0], "Tuned CatBoost (zero)", color=style.COLORS["catboost"], linewidth=0.9)
-    _proxy_point(axes[0, 0], "Original model, per table", facecolors=style.HOLLOW_FACE,
-                 edgecolors=style.COLORS["mean"], s=style.TABLE_MARKER_SIZE)
-    _proxy_point(axes[0, 0], "CPT model, per table", color=style.COLORS["mean"], s=style.TABLE_MARKER_SIZE)
-    _proxy_point(axes[0, 0], "Equal-table mean", marker=style.MEAN_MARKER, color=style.COLORS["untuned"],
-                 edgecolors=style.COLORS["mean"], s=style.MEAN_MARKER_SIZE)
-    axes[0, 0].legend()
-    fig.suptitle(title)
-    return _report(fig, summary=pd.DataFrame(summary),
-                   per_table=pd.concat([frames[t].assign(track=t) for t in tracks]))
-
 
 def leaderboard(board: pd.DataFrame, *, track: str, title: str):
     """Three panels sharing the method rows (sorted by Elo): TabArena-style Elo with its 95%
@@ -508,45 +467,6 @@ def metric_profile_heatmap(profiles: dict, *, title: str):
     return _report(fig, **{f"{TRACK_NAME[t]} metric profile": profiles[t] for t in tracks})
 
 
-def gain_forest(intervals: dict, *, title: str, value: str = "mean", xlabel: str | None = None):
-    """One panel per task: per model, the equal-table mean gain with its 95% hierarchical-bootstrap
-    interval, on the held-out credit tables (filled) and, when present, the retention tables
-    (hollow). Also draws ``domain_control_intervals`` (``value="credit_minus_noncredit"``)."""
-    tracks = _tracks(intervals)
-    if not tracks:
-        return None
-    fig, axes = plt.subplots(1, len(tracks), squeeze=False, sharey=True,
-                             figsize=style.figsize(style.WIDTH_FULL, 0.42))
-    models = _models(pd.concat([intervals[t] for t in tracks]))
-    hollow = False
-    for ax, track in zip(axes[0], tracks):
-        frame = intervals[track]
-        if "arm" in frame:
-            frame = frame[frame.arm == 0]
-        for i, model in enumerate(models):
-            for _, row in frame[frame.model == model].iterrows():
-                credit = bool(row.get("credit", True))
-                hollow = hollow or not credit
-                y = i + (0.0 if "credit" not in frame else (-0.16 if credit else 0.16))
-                color = style.model_color(model)
-                ax.plot([row.low, row.high], [y, y], color=color, linewidth=style.MEAN_CURVE_LINE)
-                ax.scatter([row[value]], [y], s=style.POINT_SIZE, zorder=3, linewidths=0.8,
-                           edgecolors=color, facecolors=color if credit else style.HOLLOW_FACE)
-        _zero(ax, "x")
-        ax.set_yticks(range(len(models)), models)
-        ax.set_ylim(len(models) - 0.5, -0.5)
-        ax.set_title(TRACK_NAME[track])
-        ax.set_xlabel(xlabel or f"Change of {SCORE[track]}")
-    _proxy_point(axes[0, 0], "Held-out credit tables", color=style.COLORS["mean"], s=style.POINT_SIZE)
-    if hollow:
-        _proxy_point(axes[0, 0], "Non-credit retention tables", facecolors=style.HOLLOW_FACE,
-                     edgecolors=style.COLORS["mean"], s=style.POINT_SIZE)
-    _proxy_line(axes[0, 0], "95% bootstrap interval", color=style.COLORS["mean"], linewidth=style.MEAN_CURVE_LINE)
-    axes[0, 0].legend()
-    fig.suptitle(title)
-    return _report(fig, **{f"{TRACK_NAME[t]} intervals": intervals[t] for t in tracks})
-
-
 def precision_agreement(agreement: pd.DataFrame, *, title: str, threshold: float = 0.9):
     """One panel per task. Rows: base model; one point per training table: the cosine between the
     mixed-precision and the FP32 gradient at update zero on the identical episode (1 = same
@@ -590,47 +510,6 @@ def precision_agreement(agreement: pd.DataFrame, *, title: str, threshold: float
 
 
 # ------------------------------------------------------------------- RQ2 figures
-def dose_response(overview: pd.DataFrame, *, track: str, title: str):
-    """Rows: held-out credit tables, non-credit retention panel; columns: model. Equal-table mean
-    five-fold gain against the peak learning rate of full-weight CPT, one line per L2-SP strength
-    (the reference recipe is lr 3e-7 at λ 0.003)."""
-    if _empty(overview):
-        return None
-    o = overview[(overview.trainable == "all") & overview.slug.isin(["reference", "update_size_anchoring"])]
-    if o.slug.eq("update_size_anchoring").sum() == 0:
-        return None
-    models = _models(o)
-    rows = [("credit_mean", "Held-out credit"), ("retention_mean", "Retention panel")]
-    fig, axes = plt.subplots(2, len(models), sharex=True, sharey="row", squeeze=False,
-                             figsize=(style.WIDTH_FULL, _height(2, style.ROW_HEIGHT * 1.2)))
-    for r, (column, name) in enumerate(rows):
-        for c, model in enumerate(models):
-            ax = axes[r, c]
-            color = style.model_color(model)
-            for lam in sorted(o.l2sp_lambda.unique()):
-                s = o[(o.model == model) & (o.l2sp_lambda == lam)].sort_values("learning_rate")
-                if s.empty:
-                    continue
-                ax.plot(s.learning_rate, s[column], color=color, linestyle=style.LAMBDA_LINESTYLES.get(lam, "-"),
-                        marker=style.LAMBDA_MARKERS.get(lam, "o"), markersize=3.5, linewidth=1.0)
-            _zero(ax)
-            ax.set_xscale("log")
-            if r == 0:
-                ax.set_title(model)
-            if c == 0:
-                ax.set_ylabel(f"{name}: Δ {SCORE[track]}")
-            if r == 1:
-                ax.set_xlabel("Peak learning rate")
-    for lam in sorted(o.l2sp_lambda.unique()):
-        _proxy_line(axes[0, 0], f"L2-SP λ = {lam:g}", color=style.COLORS["mean"],
-                    linestyle=style.LAMBDA_LINESTYLES.get(lam, "-"), marker=style.LAMBDA_MARKERS.get(lam, "o"),
-                    markersize=3.5)
-    axes[0, 0].legend()
-    fig.suptitle(title)
-    return _report(fig, arms=o[["slug", "arm", "model", "learning_rate", "l2sp_lambda", "credit_mean",
-                                "credit_tables", "credit_improved", "retention_mean", "retention_tables"]])
-
-
 def tradeoff(overview: pd.DataFrame, *, track: str, title: str):
     """Columns: model. Equal-table mean five-fold gain on the non-credit retention panel against
     the gain on held-out credit tables, per arm of E1, E8 and E9. Colour: trainable scope; marker:
@@ -675,6 +554,11 @@ def tradeoff(overview: pd.DataFrame, *, track: str, title: str):
     for lam in sorted(o[o.trainable == "all"].l2sp_lambda.unique()):
         _proxy_point(axes[0, 0], f"L2-SP λ = {lam:g}", color=style.COLORS["untuned"],
                      marker=style.LAMBDA_MARKERS.get(lam, "o"), s=20)
+    if len(rates) > 1:
+        _proxy_point(axes[0, 0], f"Learning rate {min(rates):.0e} (smallest marker)", color=style.COLORS["untuned"],
+                     s=min(size.values()))
+        _proxy_point(axes[0, 0], f"Learning rate {max(rates):.0e} (largest marker)", color=style.COLORS["untuned"],
+                     s=max(size.values()))
     axes[0, 0].legend()
     fig.suptitle(title)
     return _report(fig, arms=o[["slug", "arm", "label", "model", "trainable", "learning_rate", "l2sp_lambda",
@@ -757,47 +641,6 @@ def episode_matched_context(gains: pd.DataFrame, *, title: str):
     return _report(fig, summary=summary)
 
 
-def quality_cost(overview: pd.DataFrame, resources: pd.DataFrame, *, title: str):
-    """One panel per task: equal-table mean five-fold gain on held-out credit tables against the
-    mean wall-clock hours of one training run, per arm and model (reference, full pass and the
-    episode sizes; E12 sizes joined by a line)."""
-    if _empty(overview) or _empty(resources):
-        return None
-    merged = overview.merge(resources[["slug", "arm", "track", "model", "mean_hours"]],
-                            on=["slug", "arm", "track", "model"]).dropna(subset=["credit_mean", "mean_hours"])
-    merged = merged[merged.slug.isin(style.SLUG_MARKERS)]
-    if merged.empty or merged.slug.nunique() < 2:
-        return None
-    tracks = [t for t in TRACKS if t in set(merged.track)]
-    fig, axes = plt.subplots(1, len(tracks), squeeze=False, figsize=style.figsize(style.WIDTH_FULL, 0.42))
-    for ax, track in zip(axes[0], tracks):
-        sub = merged[merged.track == track]
-        for model in _models(sub):
-            color = style.model_color(model)
-            series = sub[(sub.model == model) & (sub.slug == "episode_size")].sort_values("episode_rows")
-            if len(series) > 1:
-                ax.plot(series.mean_hours, series.credit_mean, color=color, linewidth=0.6, alpha=0.7)
-            for slug, s in sub[sub.model == model].groupby("slug"):
-                ax.scatter(s.mean_hours, s.credit_mean, color=color, marker=style.SLUG_MARKERS[slug],
-                           s=style.POINT_SIZE, edgecolors="none", zorder=3)
-        _zero(ax)
-        _plain_log_axis(ax, sub.mean_hours)
-        ax.set_xlabel("Hours per training run")
-        ax.set_ylabel(f"Held-out credit Δ {SCORE[track]}")
-        ax.set_title(TRACK_NAME[track])
-    names = {"reference": "Reference (E1)", "exposure": "Exposure (E10)", "episode_size": "Episode sizes (E12)",
-             "table_size": "Table-size corpora (E11)"}
-    _model_proxies(axes[0, 0], _models(merged))
-    for slug in [s for s in style.SLUG_MARKERS if s in set(merged.slug)]:
-        _proxy_point(axes[0, 0], names[slug], marker=style.SLUG_MARKERS[slug], color=style.COLORS["untuned"],
-                     s=style.POINT_SIZE)
-    axes[0, 0].legend()
-    fig.suptitle(title)
-    return _report(fig, quality_and_cost=merged[["slug", "arm", "label", "track", "model", "credit_mean",
-                                                 "credit_tables", "mean_hours"]])
-
-
-# ------------------------------------------------------------------- RQ2 figures (when and why)
 def context_curves(table: pd.DataFrame, curve: pd.DataFrame, *, title: str):
     """Rows: task; columns: model. Per-table gain of the CPT model over the original at each number
     of labelled context rows (thin grey, up to each table's largest size) and the equal-table mean
@@ -881,7 +724,7 @@ def context_slopes(summary: pd.DataFrame, *, title: str):
 PROPERTY_LABELS = {"original": "Original model score", "rows": "Rows (log scale)", "features": "Features",
                    "categorical_share": "Categorical share", "missing_share": "Missing share",
                    "default_rate": "Default rate", "zero_share": "Share of LGD = 0",
-                   "one_share": "Share of LGD = 1", "nearest": "Distance to nearest training table"}
+                   "one_share": "Share of LGD = 1", "nearest": "Distance to nearest\ntraining table"}
 
 
 def gain_vs_properties(merged: pd.DataFrame, *, track: str, title: str, properties=None):
@@ -918,43 +761,52 @@ def gain_vs_properties(merged: pd.DataFrame, *, track: str, title: str, properti
     return _report(fig, per_table=merged[["model", "test_dataset_id", "gain", *properties]])
 
 
-def transfer_similarity(pairs: pd.DataFrame, tests: pd.DataFrame, *, track: str, title: str):
-    """Panels: model. E7 monitor change of each target against its property distance to the source,
-    one point per source-target pair, with the Spearman correlation and Mantel p-value."""
-    if _empty(pairs):
+def transfer_similarity(frames: dict, *, title: str):
+    """Rows: task; columns: model. E7 monitor change of each target against its property distance
+    to the source, one point per source-target pair (stars: same lender, the positive control). The
+    Spearman correlation and Mantel p-value sit in headroom reserved above the points.
+    ``frames[track]`` holds ``pairs`` and ``tests`` (``campaign2.transfer_pairs``/``transfer_similarity``)."""
+    tracks = [t for t in TRACKS if t in frames and not _empty(frames[t].get("pairs"))]
+    if not tracks:
         return None
-    models = _models(pairs)
-    ncols = 2 if len(models) > 1 else 1
-    nrows = int(np.ceil(len(models) / ncols))
-    fig, axes = plt.subplots(nrows, ncols, squeeze=False, sharex=True, sharey=True,
-                             figsize=(style.WIDTH_FULL, _height(nrows, style.ROW_HEIGHT * 1.1)))
-    for k, model in enumerate(models):
-        ax = axes.ravel()[k]
-        s = pairs[pairs.model == model]
-        same = s.same_source.astype(bool) if "same_source" in s else pd.Series(False, index=s.index)
-        ax.scatter(s.distance[~same], s.change[~same], s=style.TABLE_POINT_SIZE, color=style.model_color(model),
-                   alpha=style.POINT_ALPHA, linewidths=0)
-        if same.any():   # positive control: source and target from the same lender
-            ax.scatter(s.distance[same], s.change[same], s=style.POINT_SIZE, marker="*", zorder=3,
-                       color=style.model_color(model), edgecolors=style.COLORS["mean"], linewidths=0.4)
-        _zero(ax)
-        test = tests[tests.model == model] if not _empty(tests) else pd.DataFrame()
-        # The test result goes in the panel title, where it cannot cover a point.
-        ax.set_title(model if test.empty else
-                     f"{model}\nρ = {test.iloc[0].spearman:.2f}, p = {test.iloc[0].p_value:.3f}")
-        row_index, col = divmod(k, ncols)
-        if col == 0:
-            ax.set_ylabel(f"Δ {SCORE[track]} (monitor)")
-        if row_index == nrows - 1 or k + ncols >= len(models):
-            ax.set_xlabel("Property distance, source to target")
-    for ax in axes.ravel()[len(models):]:
-        ax.set_visible(False)
-    if "same_source" in pairs and pairs.same_source.astype(bool).any():
+    models = _models(pd.concat([frames[t]["pairs"] for t in tracks]))
+    fig, axes = plt.subplots(len(tracks), len(models), squeeze=False, sharex="row", sharey="row",
+                             figsize=(style.WIDTH_FULL, _height(len(tracks), style.ROW_HEIGHT * 1.15)))
+    stars, reports = False, {}
+    for r, track in enumerate(tracks):
+        pairs, tests = frames[track]["pairs"], frames[track].get("tests")
+        low, high = float(pairs.change.min()), float(pairs.change.max())
+        pad = (high - low) or 1.0
+        for c, model in enumerate(models):
+            ax = axes[r, c]
+            s = pairs[pairs.model == model]
+            same = s.same_source.astype(bool) if "same_source" in s else pd.Series(False, index=s.index)
+            ax.scatter(s.distance[~same], s.change[~same], s=style.TABLE_POINT_SIZE, color=style.model_color(model),
+                       alpha=style.POINT_ALPHA, linewidths=0)
+            if same.any():   # positive control: source and target from the same lender
+                stars = True
+                ax.scatter(s.distance[same], s.change[same], s=style.POINT_SIZE, marker="*", zorder=3,
+                           color=style.model_color(model), edgecolors=style.COLORS["mean"], linewidths=0.4)
+            _zero(ax)
+            ax.set_ylim(low - 0.05 * pad, high + 0.30 * pad)      # headroom for the test result
+            test = tests[tests.model == model] if not _empty(tests) else pd.DataFrame()
+            if not test.empty:
+                ax.text(0.04, 0.96, f"ρ = {test.iloc[0].spearman:.2f}\np = {test.iloc[0].p_value:.3f}",
+                        transform=ax.transAxes, ha="left", va="top", fontsize=style.ANNOTATION_SIZE)
+            if r == 0:
+                ax.set_title(model)
+            if r == len(tracks) - 1:
+                ax.set_xlabel("Source–target\ndistance")
+        axes[r, 0].set_ylabel(f"{TRACK_NAME[track]}: Δ {SCORE[track]}")
+        reports[f"{TRACK_NAME[track]} similarity test"] = tests
+        reports[f"{TRACK_NAME[track]} pairs"] = pairs
+    if stars:
         _proxy_point(axes[0, 0], "Source and target from the same lender", marker="*", s=style.POINT_SIZE,
                      color=style.COLORS["untuned"], edgecolors=style.COLORS["mean"], linewidths=0.4)
         axes[0, 0].legend()
     fig.suptitle(title)
-    return _report(fig, similarity_test=tests, pairs=pairs)
+    return _report(fig, **{k.replace(" ", "_"): v for k, v in reports.items() if not _empty(v)})
+
 
 def transfer_heatmaps(long: pd.DataFrame, *, track: str, title: str):
     """Panels: model. Monitor change of each held-out target table (columns) after CPT on one

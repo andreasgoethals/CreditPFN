@@ -30,6 +30,10 @@ Table: Same outcomes on credit and retention tables
 CSV (first column: row index)
 row
 
+Table: Credit CPT minus non-credit CPT (E1 − E4) per outcome
+CSV (first column: row index)
+row
+
 2. Per-table transfer and seed noise (E1, E2)
 No results yet for E1 five-fold gains; the figure is drawn once they exist.
 
@@ -93,8 +97,6 @@ row
 4. Position relative to tuned classical baselines
 No results yet for baseline comparison; the figure is drawn once they exist.
 
-No measurements available for this figure group.
-
 Table: PD scores relative to CatBoost per table (with the XGBoost and linear baselines)
 CSV (first column: row index)
 row
@@ -121,8 +123,6 @@ row
 Table: LGD E4 versus E1 per model
 CSV (first column: row index)
 row
-
-No measurements available for this figure group.
 
 Table: PD credit minus non-credit CPT gain with 95% bootstrap interval
 CSV (first column: row index)
@@ -384,8 +384,6 @@ row
 5. Similarity test (E7)
 No results yet for E7 similarity test; the figure is drawn once they exist.
 
-No measurements available for this figure group.
-
 Table: PD E7 similarity test per model
 CSV (first column: row index)
 row
@@ -394,8 +392,6 @@ Table: PD E7 source-target pairs
 CSV (first column: row index)
 row
 
-No measurements available for this figure group.
-
 Table: LGD E7 similarity test per model
 CSV (first column: row index)
 row
@@ -403,6 +399,8 @@ row
 Table: LGD E7 source-target pairs
 CSV (first column: row index)
 row
+
+No measurements available for this figure group.
 
 appendix/03_rq2_when_and_why: no figures saved.
 ```
@@ -423,8 +421,6 @@ row,track,scope,credit_tables,proprietary_tables,tables_in_scope
 0,pd,public,17,2,15
 1,lgd,public,8,5,3
 
-No measurements available for this figure group.
-
 Table: PD E8 summary per arm and model
 CSV (first column: row index)
 row
@@ -432,8 +428,6 @@ row
 Table: PD E8 per-table gains
 CSV (first column: row index)
 row
-
-No measurements available for this figure group.
 
 Table: LGD E8 summary per arm and model
 CSV (first column: row index)
@@ -579,8 +573,6 @@ row
 
 3. Effect against training cost
 No results yet for cost records; the figure is drawn once they exist.
-
-No measurements available for this figure group.
 
 Table: Effect and cost per arm and model
 CSV (first column: row index)
@@ -8339,8 +8331,6 @@ row
 3. Credit versus matched non-credit CPT (E4)
 No results yet for E4 monitor curves; the figure is drawn once they exist.
 
-No measurements available for this figure group.
-
 Table: Held-out credit change at the last monitor point (E1, E4)
 CSV (first column: row index)
 row
@@ -8372,6 +8362,10 @@ CSV (first column: row index)
 row
 
 Table: Same outcomes on credit and retention tables
+CSV (first column: row index)
+row
+
+Table: Credit CPT minus non-credit CPT (E1 − E4) per outcome
 CSV (first column: row index)
 row
 
@@ -8438,8 +8432,6 @@ row
 4. Position relative to tuned classical baselines
 No results yet for baseline comparison; the figure is drawn once they exist.
 
-No measurements available for this figure group.
-
 Table: PD scores relative to CatBoost per table (with the XGBoost and linear baselines)
 CSV (first column: row index)
 row
@@ -8466,8 +8458,6 @@ row
 Table: LGD E4 versus E1 per model
 CSV (first column: row index)
 row
-
-No measurements available for this figure group.
 
 Table: PD credit minus non-credit CPT gain with 95% bootstrap interval
 CSV (first column: row index)
@@ -8731,8 +8721,6 @@ row
 5. Similarity test (E7)
 No results yet for E7 similarity test; the figure is drawn once they exist.
 
-No measurements available for this figure group.
-
 Table: PD E7 similarity test per model
 CSV (first column: row index)
 row
@@ -8741,8 +8729,6 @@ Table: PD E7 source-target pairs
 CSV (first column: row index)
 row
 
-No measurements available for this figure group.
-
 Table: LGD E7 similarity test per model
 CSV (first column: row index)
 row
@@ -8750,6 +8736,8 @@ row
 Table: LGD E7 source-target pairs
 CSV (first column: row index)
 row
+
+No measurements available for this figure group.
 
 rq2/02_when_and_why: no figures saved.
 ```
@@ -8852,8 +8840,6 @@ RQ3: controlling weight change — results
 1. Learning rate and L2-SP (E8)
 No results yet for E8 five-fold gains; the figure is drawn once they exist.
 
-No measurements available for this figure group.
-
 Table: PD E8 summary per arm and model
 CSV (first column: row index)
 row
@@ -8861,8 +8847,6 @@ row
 Table: PD E8 per-table gains
 CSV (first column: row index)
 row
-
-No measurements available for this figure group.
 
 Table: LGD E8 summary per arm and model
 CSV (first column: row index)
@@ -9095,8 +9079,6 @@ row
 
 3. Effect against training cost
 No results yet for cost records; the figure is drawn once they exist.
-
-No measurements available for this figure group.
 
 Table: Effect and cost per arm and model
 CSV (first column: row index)

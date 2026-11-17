@@ -600,6 +600,31 @@ def domain_control_intervals(track: str) -> pd.DataFrame:
 
 
 
+def domain_contrast_intervals(outcomes: dict) -> pd.DataFrame:
+    """Per task, outcome and model on the held-out credit tables: the improvement of credit CPT
+    (E1) over CPT on the matched non-credit twins (E4), fold by fold on identical rows, with its
+    95% hierarchical-bootstrap interval (positive = the credit corpus did better). ``outcomes``
+    maps a task to its metrics, as ``analysis.primary``."""
+    rows = []
+    keys = ["model", "test_dataset_id", "fold_idx"]
+    for track, metrics in outcomes.items():
+        credit, control = _paired("reference", track, list(metrics)), _paired("domain_control", track, list(metrics))
+        if credit.empty or control.empty:
+            continue
+        for metric in [m for m in metrics if m in credit and m in control]:
+            merged = credit[credit.credit & (credit.arm == 0)][[*keys, metric]].merge(
+                control[control.credit & (control.arm == 0)][[*keys, metric]], on=keys,
+                suffixes=("_credit", "_noncredit")).dropna()
+            if merged.empty:
+                continue
+            merged["improvement"] = improvement(metric, merged[metric + "_credit"], merged[metric + "_noncredit"])
+            for model, group in merged.groupby("model"):
+                interval = bootstrap_interval(group, "improvement")
+                if interval["tables"]:
+                    rows.append(dict(track=track, metric=metric, model=model, **interval))
+    return pd.DataFrame(rows)
+
+
 # --------------------------------------------------------------- pre-specified primary endpoint
 def primary_spec(design: dict | None = None) -> dict:
     """``analysis.primary`` of config/design.yaml: outcomes and α."""

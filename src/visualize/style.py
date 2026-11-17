@@ -514,6 +514,8 @@ VARIANT_LABELS = {"original": "Original model", "CPT": "CPT (E1)", "FT": "Fine-t
                   "CPT+FT": "CPT, then fine-tuned (E5)", "baseline": "Tuned classical baseline"}
 BASELINE_COLORS = {"CatBoost": COLORS["catboost"], "XGBoost": COLORS["xgboost"],
                    "Logistic regression": COLORS["linear"], "Linear regression": COLORS["linear"]}
+#: Credit CPT minus non-credit CPT (E1 − E4) in forest plots: a contrast between two CPT corpora.
+CONTRAST_MARKER = "s"
 #: Height of one method row in a leaderboard figure.
 LEADERBOARD_ROW = 0.13
 

@@ -51,13 +51,11 @@ def test_every_figure_returns_none_without_evidence():
     assert r2.table_gains(empty, track="pd", title="t") is None
     assert r2.primary_forest(empty, title="t") is None
     assert r2.adaptation_by_size(empty, title="t") is None
-    assert r2.baseline_position({"pd": empty}, title="t") is None
     assert r2.metric_profile_heatmap({"pd": empty}, title="t") is None
-    assert r2.dose_response(empty, track="pd", title="t") is None
     assert r2.tradeoff(empty, track="pd", title="t") is None
     assert r2.arm_gains(empty, ["Reference"], track="pd", title="t") is None
     assert r2.episode_matched_context(empty, title="t") is None
-    assert r2.quality_cost(empty, empty, title="t") is None
+    assert r2.transfer_similarity({"pd": dict(pairs=empty)}, title="t") is None
     assert r2.context_curves(empty, empty, title="t") is None
     assert r2.gain_vs_properties(empty, track="pd", title="t") is None
     assert r2.transfer_heatmaps(empty, track="pd", title="t") is None
@@ -108,7 +106,6 @@ def test_metric_profile_orients_improvements(results):
 def test_rq1_result_figures_render(results):
     baselines = {t: c2.baseline_comparison(t) for t in ("pd", "lgd")}
     assert (baselines["pd"].folds == 5).all() and set(baselines["pd"].model) == set(syn.BASES)
-    _finished(r2.baseline_position(baselines, title="t"))
     finetune = c2.finetune_table(syn.finetune())
     assert set(finetune.model) == set(syn.BASES)
     assert np.allclose(finetune.cpt_finetune_change, finetune.cpt_finetune - finetune.original)
@@ -165,12 +162,16 @@ def test_bootstrap_intervals_cover_the_mean_and_respect_the_table_as_unit(result
     intervals = {t: c2.gain_intervals("reference", t) for t in ("pd", "lgd")}
     assert set(intervals["pd"].model) == set(syn.BASES) and set(intervals["pd"].credit) == {True, False}
     assert ((intervals["pd"].low <= intervals["pd"]["mean"]) & (intervals["pd"]["mean"] <= intervals["pd"].high)).all()
-    _, text = _finished(r2.gain_forest(intervals, title="t"))
-    assert "excludes_zero" in text
     controls = {t: c2.domain_control_intervals(t) for t in ("pd", "lgd")}
     per_table = c2.domain_control_gains("pd").groupby("model").credit_minus_noncredit.mean()
     assert np.allclose(controls["pd"].set_index("model").credit_minus_noncredit.sort_index(), per_table.sort_index())
-    _finished(r2.gain_forest(controls, title="t", value="credit_minus_noncredit"))
+    contrast = c2.domain_contrast_intervals({"pd": ["roc_auc", "brier_score"], "lgd": ["r2", "crps"]})
+    auc = contrast[(contrast.track == "pd") & (contrast.metric == "roc_auc")].set_index("model")["mean"]
+    assert np.allclose(auc.sort_index(), controls["pd"].set_index("model").credit_minus_noncredit.sort_index())
+    assert len(contrast) == 2 * 2 * 4
+    primary = c2.primary_endpoint()
+    fig, text = _finished(r2.primary_forest(primary, None, contrast, title="t"))
+    assert "domain contrast" in text and len(fig.axes) == 4
 
 
 def test_precision_agreement_and_cost_tables():
@@ -206,8 +207,9 @@ def test_arm_overview_carries_settings_and_both_table_groups(results):
     assert sorted(e5.learning_rate.unique()) == [1e-7, 1e-6, 3e-6, 1e-5]
     assert set(overview.trainable) == {"all", "frozen_backbone", "diagscale", "lora_qv_r16"}
     assert (overview.credit_tables == 16).all() and (overview.retention_tables == 19).all()
-    _finished(r2.dose_response(overview, track="pd", title="t"))
-    fig, _ = _finished(r2.tradeoff(overview, track="pd", title="t"))
+    fig, text = _finished(r2.tradeoff(overview, track="pd", title="t"))
+    legend = [t.get_text() for t in fig.legends[0].texts]
+    assert "Learning rate 1e-07 (smallest marker)" in legend and "Learning rate 1e-03 (largest marker)" in legend
     assert len([ax for ax in fig.axes if ax.get_visible()]) == 4 and fig.axes[2].get_xlabel()
 
 
@@ -352,7 +354,9 @@ def test_similarity_test_finds_distance_driven_transfer_and_permutes_tables():
     test = c2.transfer_similarity(pairs, permutations=50)
     assert test.iloc[0].same_source_pairs == 4
     assert np.isclose(test.iloc[0].same_source_mean_change, pairs.change[:4].mean())
-    assert r2.transfer_similarity(pairs, test, track="pd", title="t") is not None
+    fig, text = _finished(r2.transfer_similarity({"pd": dict(pairs=pairs, tests=test), "lgd": dict(pairs=pairs, tests=test)},
+                                                  title="t"))
+    assert len(fig.axes) == 2 * len(set(pairs.model)) and "PD similarity test" in text
 
 
 # --------------------------------------------------------------- leaderboard and table scope
