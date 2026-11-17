@@ -300,3 +300,24 @@ def test_classification_metrics_carry_the_credit_scoring_measures():
     assert 0 < out["emp_rejection_rate"] < 1
     one_class = _classification_metrics(proba, np.zeros_like(y), proba, y, n_classes_seen=2)
     assert np.isnan(one_class["emp"]) and np.isnan(one_class["ks"])
+
+
+def test_emp_matches_the_authors_r_package_line_by_line():
+    """Port of EMP 2.0.5 ``empCreditScoring`` (Verbraken et al. 2014; ROCR convex hull): the
+    lambda grid of eq. 13, the segment sum of eq. 15 and the point mass at lambda = 1 taken at the
+    hull point that is optimal there (the package's ``tail(F0)``)."""
+    from src.eval.metrics import EMP_P0, EMP_P1, EMP_ROI, expected_maximum_profit, roc_hull
+    for seed, prevalence in ((5, 0.3), (6, 0.08)):
+        p, y = _scored(n=1500, prevalence=prevalence, seed=seed)
+        F1, F0 = roc_hull(p, y)                       # x: goods rejected, y: defaulters rejected
+        pi0, pi1 = y.mean(), 1 - y.mean()
+        with np.errstate(divide="ignore", invalid="ignore"):
+            lam = np.r_[0.0, (pi1 * EMP_ROI / pi0) * np.diff(F1) / np.diff(F0)]
+        lam = np.r_[lam[lam < 1], 1.0]
+        lo, hi = lam[:-1], lam[1:]
+        f0, f1 = F0[:len(lo)], F1[:len(lo)]
+        alpha = 1 - EMP_P0 - EMP_P1
+        emp = (np.sum(alpha * (hi - lo) * (pi0 * f0 * (hi + lo) / 2 - EMP_ROI * f1 * pi1))
+               + (pi0 * f0[-1] - EMP_ROI * pi1 * f1[-1]) * EMP_P1)
+        frac = np.sum(alpha * (hi - lo) * (pi0 * f0 + pi1 * f1)) + EMP_P1 * (pi0 * f0[-1] + pi1 * f1[-1])
+        assert expected_maximum_profit(p, y) == pytest.approx((emp, frac), abs=1e-12)
