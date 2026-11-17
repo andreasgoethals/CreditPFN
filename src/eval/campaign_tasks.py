@@ -157,6 +157,7 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
               for k in ("epochs", "learning_rates", "early_stopping_patience")}
     if quick:
         recipe["epochs"] = QUICK["epochs"]
+    recipe["selection"] = "validation_roc_auc_pd_rmse_lgd"   # part of the task identity (17-11-2026)
     identity = task_identity(kind, task, rules, recipe if kind == "finetune" else None, quick, starts)
     if target.exists():
         # A finished task is reused only for the same task, data, checkpoints and protocol.
@@ -204,8 +205,7 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
             chosen = min(scores, key=lambda rate: (scores[rate], rate))
             metrics, out = candidates[chosen]
             primary = "roc_auc" if data.task_type == "classification" else "rmse"
-            metrics = {**metrics, "selection_metric": "validation_log_loss" if data.task_type == "classification"
-                       else "validation_rmse",
+            metrics = {**metrics, "selection_metric": selection_metric(data.task_type, data.y[validation]),
                        **{f"validation_score_lr{rate:g}": score for rate, score in scores.items()},
                        **{f"test_{primary}_lr{rate:g}": float(m[primary]) for rate, (m, _) in candidates.items()},
                        **{f"fit_seconds_lr{rate:g}": float(m["fit_seconds"]) for rate, (m, _) in candidates.items()},
@@ -241,12 +241,27 @@ def _device_name(device: str) -> str:
     return "cpu"
 
 
+def selection_metric(task_type: str, y) -> str:
+    """What chooses the E5 learning rate: validation AUC for PD, the metric the upstream
+    fine-tuners also early-stop on, so stopping and rate choice optimise the same quantity
+    (agreed 17-11-2026); log loss only when a one-class validation split leaves AUC undefined.
+    LGD: validation RMSE (the fine-tuners early-stop on MSE)."""
+    if task_type != "classification":
+        return "validation_rmse"
+    return "validation_roc_auc" if np.unique(np.asarray(y)).size > 1 else "validation_log_loss"
+
+
 def validation_score(task_type: str, y, prediction) -> float:
-    """Lower is better: log loss (PD) or RMSE (LGD) on the inner validation rows."""
+    """Lower is better: minus AUC (PD; log loss if AUC is undefined) or RMSE (LGD) on the inner
+    validation rows. Every candidate rate shares the rows, so all use the same criterion."""
     y = np.asarray(y)
     prediction = np.asarray(prediction, dtype=float)
     if task_type == "classification":
-        positive = np.clip(prediction[:, 1] if prediction.ndim == 2 else prediction, 1e-7, 1 - 1e-7)
+        positive = prediction[:, 1] if prediction.ndim == 2 else prediction
+        if selection_metric(task_type, y) == "validation_roc_auc":
+            from sklearn.metrics import roc_auc_score
+            return -float(roc_auc_score(y, positive))
+        positive = np.clip(positive, 1e-7, 1 - 1e-7)
         return float(-np.mean(np.where(y == 1, np.log(positive), np.log1p(-positive))))
     return float(np.sqrt(np.mean((prediction - y) ** 2)))
 

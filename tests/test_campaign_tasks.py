@@ -105,3 +105,21 @@ def test_matched_context_tasks_cover_every_episode_arm_and_its_models(all_tasks)
     from src.utils.design import load_design
     rules = ct.policy("v3", load_design(), kind="episode_context")
     assert rules["context_rows"] == [2048, 8192] and rules["include_full_available"]
+
+
+def test_e5_rate_is_chosen_on_validation_auc_for_pd_and_rmse_for_lgd():
+    """PD: the rate with the highest validation AUC wins, even when another has lower log loss."""
+    import numpy as np
+    y = np.array([0, 0, 0, 1, 1, 0, 1, 0])
+    ranks_well = np.array([0.40, 0.41, 0.42, 0.45, 0.46, 0.43, 0.47, 0.44])   # AUC 1, poorly calibrated
+    calibrated = np.array([0.10, 0.20, 0.60, 0.70, 0.90, 0.10, 0.40, 0.20])   # lower log loss, AUC < 1
+    proba = lambda p: np.column_stack([1 - p, p])                              # noqa: E731
+    assert ct.selection_metric("classification", y) == "validation_roc_auc"
+    scores = {1e-6: ct.validation_score("classification", y, proba(ranks_well)),
+              1e-5: ct.validation_score("classification", y, proba(calibrated))}
+    assert scores[1e-6] == -1.0 and min(scores, key=lambda r: (scores[r], r)) == 1e-6
+    one_class = np.zeros(4, dtype=int)
+    assert ct.selection_metric("classification", one_class) == "validation_log_loss"
+    assert ct.validation_score("classification", one_class, proba(np.full(4, 0.1))) > 0
+    assert ct.selection_metric("regression", y) == "validation_rmse"
+    assert ct.validation_score("regression", np.array([0.0, 1.0]), np.array([0.0, 0.0])) == np.sqrt(0.5)
