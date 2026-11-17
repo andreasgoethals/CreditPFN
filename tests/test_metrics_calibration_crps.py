@@ -105,12 +105,13 @@ def test_classification_block_emits_bias_and_recalibration_columns():
     _, p, y = _calibrated_sample(n=20_000, seed=5)
     proba = np.column_stack([1 - p, p])
     metrics = _classification_metrics(proba, y, proba, y, 2)
-    assert metrics["bias"] == pytest.approx(p.mean() - y.mean(), abs=1e-12)
+    assert metrics["bias"] == pytest.approx(y.mean() - p.mean(), abs=1e-12)   # observed − predicted
     assert abs(metrics["bias"]) < 0.01
     assert metrics["calibration_slope"] == pytest.approx(1.0, abs=0.06)
     assert {"calibration_intercept", "calibration_in_the_large"} <= metrics.keys()
     shifted = _classification_metrics(np.column_stack([0.9 - p * 0.9, p * 0.9 + 0.1]), y, proba, y, 2)
-    assert shifted["bias"] == pytest.approx(0.1 * (1 - p.mean()) + p.mean() - y.mean(), abs=1e-12)
+    assert shifted["bias"] == pytest.approx(y.mean() - (0.1 * (1 - p.mean()) + p.mean()), abs=1e-12)
+    assert shifted["bias"] < 0 and shifted["calibration_in_the_large"] < 0   # over-predicted: same sign
 
 
 def test_multiclass_block_reports_nan_calibration():
@@ -131,7 +132,7 @@ def test_regression_bias_nrmse_and_nll_by_hand():
     y = np.array([0.0, 0.5, 1.0, 0.5])
     pred = np.array([0.1, 0.6, 0.9, 0.8])
     m = _regression_metrics(pred, y, neg_nll=-0.25)
-    assert m["bias"] == pytest.approx(pred.mean() - y.mean())                    # 0.1
+    assert m["bias"] == pytest.approx(y.mean() - pred.mean())                    # -0.1: over-predicted
     rmse = np.sqrt(np.mean((pred - y) ** 2))
     assert m["nrmse"] == pytest.approx(rmse / np.sqrt(0.125))                    # pop. std = √0.125
     assert m["nrmse"] ** 2 == pytest.approx(1 - m["r2"])

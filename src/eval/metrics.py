@@ -440,10 +440,11 @@ def _classification_metrics(
             prediction_entropy=float(-(p * np.log(p) + (1-p) * np.log1p(-p)).mean()),
             target_prevalence=float(np.mean(np.asarray(y_test) == 1)),
             calibration_bins=calibration_bins(proba_test[:, 1], y_test),
-            # Calibration-in-the-large on the probability scale: mean(p) − mean(y),
-            # with the unclipped probabilities. Positive = risk over-predicted.
-            bias=float(np.mean(np.asarray(proba_test[:, 1], dtype=np.float64))
-                       - np.mean(np.asarray(y_test) == 1)),
+            # Portfolio calibration on the probability scale: observed default rate minus mean
+            # predicted PD (the sign of Baesens et al. 2026). Positive = risk under-predicted,
+            # the same direction as ``calibration_in_the_large``.
+            bias=float(np.mean(np.asarray(y_test) == 1)
+                       - np.mean(np.asarray(proba_test[:, 1], dtype=np.float64))),
             **logistic_recalibration(proba_test[:, 1], y_test))
     else:
         out.update(bias=float("nan"), calibration_slope=float("nan"),
@@ -634,7 +635,8 @@ def _regression_metrics(
 
     Additional calibration / scale-free / probabilistic columns:
 
-    * ``bias``  — mean(prediction) − mean(y). Positive = LGD over-predicted.
+    * ``bias``  — mean(y) − mean(prediction) (observed minus predicted, as Baesens et
+      al. 2026). Positive = LGD under-predicted.
     * ``nrmse`` — RMSE / std(y) with the population std (ddof = 0), so it is
       comparable across tables with different target scales; nrmse² = 1 − R².
       NaN when y is constant.
@@ -685,7 +687,7 @@ def _regression_metrics(
     }
     y_arr = np.asarray(y_test, dtype=np.float64).reshape(-1)
     pred_arr = np.asarray(pred_test, dtype=np.float64).reshape(-1)
-    out["bias"] = float(pred_arr.mean() - y_arr.mean())
+    out["bias"] = float(y_arr.mean() - pred_arr.mean())
     # Spread of the predictions relative to the targets: a collapsed regressor predicts
     # nearly one value (prediction_std -> 0, std_ratio -> 0) while its RMSE can stay plausible.
     out["prediction_mean"] = float(pred_arr.mean())
