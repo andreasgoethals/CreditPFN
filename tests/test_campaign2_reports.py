@@ -5,32 +5,7 @@ import pandas as pd
 from src.visualize import campaign2 as c2
 
 
-def _trajectory():
-    rows = []
-    for run, arm, delta in (("r1", 0, 0.01), ("r2", 1, -0.02)):
-        for updates, rows_seen, kind in ((0, 0, "trajectory"), (250, 600_000, "trajectory"),
-                                         (420, 1_000_512, "rows_milestone"), (500, 1_200_000, "trajectory")):
-            rows.append(dict(run=run, slug="episode_size", arm=arm, model="TabPFN v3", track="pd",
-                             record_type=kind, successful_updates=updates, processed_rows=rows_seen,
-                             test_metric=0.70 + (delta if updates else 0.0)))
-    return pd.DataFrame(rows)
-
-
-def test_update_curves_start_at_zero_and_use_only_scheduled_points():
-    curves = c2.trajectory_curves(_trajectory(), "pd")
-    assert set(curves.successful_updates) == {0, 250, 500}
-    assert np.allclose(curves[curves.successful_updates == 0].change, 0)
-    assert np.isclose(curves[(curves.arm == 1) & (curves.successful_updates == 500)].change.iloc[0], -0.02)
-
-
-def test_row_milestones_are_labelled_by_threshold_and_measured_from_update_zero():
-    curves = c2.trajectory_curves(_trajectory(), "pd", x="processed_rows")
-    assert list(curves.processed_rows.unique()) == [1_000_000]
-    assert np.isclose(curves[curves.arm == 0].change.iloc[0], 0.01)
-
-
 def test_missing_evidence_gives_empty_frames():
-    assert c2.trajectory_curves(pd.DataFrame(), "pd").empty
     assert c2.gain_summary(pd.DataFrame()).empty
     assert c2.pages(None, "n", "c") == []
 

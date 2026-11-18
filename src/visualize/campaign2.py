@@ -128,32 +128,6 @@ def load_trajectories(slugs) -> pd.DataFrame:
     return pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
 
 
-def trajectory_curves(frame: pd.DataFrame, track: str, *, scope: str = "test",
-                      x: str = "successful_updates") -> pd.DataFrame:
-    """Mean change from update 0 per slug/arm/model, averaged over partitions."""
-    if frame.empty:
-        return pd.DataFrame()
-    frame = frame[(frame.track == track)]
-    column = f"{scope}_metric"
-    if frame.empty or column not in frame:
-        return pd.DataFrame()
-    kinds = frame.record_type if "record_type" in frame else pd.Series("trajectory", index=frame.index)
-    baseline = frame[(kinds == "trajectory") & (frame.successful_updates == 0)]
-    start = baseline.groupby("run")[column].first()
-    if x == "successful_updates":
-        points = frame[kinds == "trajectory"]
-    else:
-        # Milestone records sit just past each threshold; label them by the threshold reached.
-        from src.utils.design import load_design
-        thresholds = sorted(int(v) for v in load_design()["reference"]["monitor"]["processed_rows"])
-        points = frame[kinds == "rows_milestone"].copy()
-        points[x] = points.processed_rows.map(
-            lambda r: max((t for t in thresholds if t <= r), default=np.nan))
-        points = points.dropna(subset=[x])
-    points = points.assign(change=points[column] - points.run.map(start))
-    return points.groupby(["slug", "arm", "model", x])["change"].mean().reset_index()
-
-
 # --------------------------------------------------------------------- endpoint gains
 def _results_frames(slug: str, track: str) -> pd.DataFrame:
     """Five-fold metric rows of one experiment and task, restricted to the table scope."""
