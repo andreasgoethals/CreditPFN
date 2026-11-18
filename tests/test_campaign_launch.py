@@ -62,6 +62,7 @@ def test_evaluation_arrays_restart_indices_and_cover_every_task_once(monkeypatch
     from src.eval import campaign_tasks as ct
     calls = []
     monkeypatch.setattr(ct, "tasks", lambda kind: [dict(track="pd", model="v3", partition=0, arm=0)] * 1190)
+    monkeypatch.setattr(ct, "write_tasks_cache", lambda kind, listed: None)
     monkeypatch.setattr(cl, "_exists", lambda resolve: True)
     monkeypatch.setattr(cl, "_sbatch", lambda args, env: calls.append(args) or str(len(calls)))
     state = {"submitted": {}}
@@ -69,7 +70,8 @@ def test_evaluation_arrays_restart_indices_and_cover_every_task_once(monkeypatch
     covered = []
     for args in calls:
         last = int(args[0].rsplit("-", 1)[1])
-        offset = int(args[1].split("TASK_OFFSET=")[1])
+        assert args[1] == f"--time={cl.TASK_WALLTIME}"
+        offset = int(args[2].split("TASK_OFFSET=")[1])
         assert args[0].startswith("--array=0-") and last <= 1000
         covered += [offset + i for i in range(last + 1)]
         assert args[-1] == "episode_context"
@@ -131,3 +133,46 @@ def test_experiment0_rerun_submits_only_the_selected_parts(tmp_path, monkeypatch
     assert "--array=4,5" in arrays[0]                               # out-of-range index dropped
     assert arrays[1][0].startswith("--dependency=afterany:") and "--array=4,5,6,7" in arrays[1]
     assert state["capacity"] is None and state["precision"] is None
+
+
+# ---------------------------------------------------------------- 18-11-2026 review fixes
+def test_an_uncertain_chunk_blocks_resubmission_and_is_saved_before_sbatch(monkeypatch):
+    from src.eval import campaign_tasks as ct
+    monkeypatch.setattr(ct, "tasks", lambda kind: [dict(track="pd", model="v3", partition=0, arm=0)] * 10)
+    monkeypatch.setattr(ct, "write_tasks_cache", lambda kind, listed: None)
+    monkeypatch.setattr(cl, "_exists", lambda resolve: True)
+    saved = []
+
+    def timeout(args, env):
+        raise TimeoutError("sbatch did not answer")
+    monkeypatch.setattr(cl, "_sbatch", timeout)
+    state = {"submitted": {}}
+    with pytest.raises(TimeoutError):
+        cl._submit_evaluation_tasks("finetune", state, {}, 5000, lambda: 0, lambda: saved.append(dict(state["submitted"])))
+    assert saved == [{"0-9": "uncertain"}]                                # recorded before submitting
+    with pytest.raises(RuntimeError, match="may have been submitted"):
+        cl._submit_evaluation_tasks("finetune", state, {}, 5000, lambda: 0)
+
+
+def test_a_second_controller_is_refused_while_the_lock_exists(fake):
+    _, root = fake
+    (root / "update_size_anchoring.lock").touch()
+    with pytest.raises(RuntimeError, match="holds"):
+        cl.submit_experiment("E8", budget=1000, queued=lambda: 0)
+
+
+def test_controller_passes_its_budget_as_the_launcher_ceiling(fake, monkeypatch):
+    seen = []
+    monkeypatch.setattr(cl, "_run_launcher", lambda path, env: seen.append(env["MAX_QUEUED"])
+                        or "Submitted train array 1 on mindwell (x)\n")
+    cl.submit_experiment("E8", budget=123, queued=lambda: 0)
+    assert set(seen) == {"123"}
+
+
+def test_rerun_selection_without_pilots_prepares_none_and_empty_is_refused(monkeypatch):
+    prepared = []
+    monkeypatch.setattr(cl, "prepare", lambda folder, only=None: prepared.append(only) or [])
+    cl.main(["prepare", "config/experiments/E00_pilots", "--only", '{"evaluation": [0, 1]}'])
+    assert prepared == [[]]
+    with pytest.raises(SystemExit, match="non-empty"):
+        cl.main(["rerun-experiment0", "config/experiments/E00_pilots", "--only", "{}"])

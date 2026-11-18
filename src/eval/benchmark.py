@@ -161,12 +161,21 @@ class EvalRow:
     false_positive: float = float("nan")
     false_negative: float = float("nan")
     true_positive: float = float("nan")
-    # Logistic recalibration (src.eval.metrics.logistic_recalibration) and
-    # mean(p) − mean(y); `bias` is mean(pred) − mean(y) for regression rows.
+    # Logistic recalibration (src.eval.metrics.logistic_recalibration). `bias` is
+    # observed minus predicted mean (Baesens et al. 2026): mean(y) − mean(p) for PD,
+    # mean(y) − mean(pred) for LGD; positive = under-prediction.
     calibration_slope: float = float("nan")
     calibration_intercept: float = float("nan")
     calibration_in_the_large: float = float("nan")
     bias: float = float("nan")
+    # Credit-scoring measures (src.eval.metrics.credit_scoring_metrics): Gini = 2·AUC − 1,
+    # Kolmogorov-Smirnov, H-measure with Beta(2, 2) costs, expected maximum profit and the
+    # rejection rate at which it is reached (Verbraken et al. 2014).
+    gini: float = float("nan")
+    ks: float = float("nan")
+    h_measure: float = float("nan")
+    emp: float = float("nan")
+    emp_rejection_rate: float = float("nan")
     calibration_bins: str = "[]"
     calibration_bins_platt: str = "[]"
     calibration_bins_isotonic: str = "[]"
@@ -189,6 +198,8 @@ class EvalRow:
     explained_variance:  float = float("nan")
     pearson_r:           float = float("nan")
     spearman_r:          float = float("nan")
+    kendall_tau:         float = float("nan")
+    prediction_std_ratio: float = float("nan")  # std(pred) / std(y)
     neg_nll:             float = float("nan")    # TabPFN-* only; mean log-likelihood (= −NLL, higher better)
     nll:                 float = float("nan")    # −neg_nll (lower better)
     nrmse:               float = float("nan")    # RMSE / population std(y)

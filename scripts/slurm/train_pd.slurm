@@ -17,5 +17,7 @@
 #SBATCH --array=0
 
 set -euo pipefail
-cd "${VSC_DATA:?}/CreditPFN"
+# The checkout that submitted the job (a second DATA checkout runs its own code).
+cd "${SLURM_SUBMIT_DIR:?}"
+test -f scripts/slurm/run_experiment.sh || { echo "Submit from the CreditPFN repository root, not $PWD" >&2; exit 2; }
 source scripts/slurm/_train_job.sh pd

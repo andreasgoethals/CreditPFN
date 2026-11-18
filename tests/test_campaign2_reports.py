@@ -100,15 +100,3 @@ def test_task_summaries_pair_rows_and_need_all_five_folds():
                                      fold=fold, finetuned=tuned, roc_auc=auc))
     out = c2.finetune_summary(pd.DataFrame(rows)).set_index("start")
     assert (out.tables == 1).all() and np.allclose(out.mean_finetune_gain, 0.03)
-    curve = []
-    for table, sizes in (("a", (8, 16, 32)), ("b", (8, 16))):
-        for size in sizes:
-            for fold in range(5):
-                curve += [dict(track="pd", model="m", dataset_id=table, fold=fold, context_rows=size,
-                               start="original", roc_auc=.6),
-                          dict(track="pd", model="m", dataset_id=table, fold=fold, context_rows=size,
-                               start="cpt", roc_auc=.6 + (.02 if table == "a" else .0))]
-    full = c2.context_gain_curve(pd.DataFrame(curve)).set_index("context_rows")
-    assert full.tables.tolist() == [2, 2, 1]                            # population changes at 32
-    common = c2.context_gain_curve(pd.DataFrame(curve), common_up_to=32).set_index("context_rows")
-    assert common.tables.tolist() == [1, 1, 1] and np.allclose(common["mean"], .02)

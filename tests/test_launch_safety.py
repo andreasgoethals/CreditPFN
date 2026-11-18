@@ -109,12 +109,13 @@ def test_environment_failure_is_logged_and_propagated_before_python(tmp_path, jo
     node = tmp_path / "node"
     scripts = node / "CreditPFN/scripts/slurm"
     scripts.mkdir(parents=True)
+    (scripts / "run_experiment.sh").touch()   # marks the fake checkout as a repository root
     for name in (f"{job}.slurm", "_job_log.sh", "_train_job.sh", "_eval_job.sh"):
         shutil.copyfile(repo / "scripts/slurm" / name, scripts / name)
     (scripts / "_activate_env.sh").write_text(
         'echo "synthetic activation failure" >&2\nreturn 17\n', encoding="utf-8")
     result = subprocess.run([bash, (scripts / f"{job}.slurm").as_posix(), "stage"],
-        env=dict(os.environ, VSC_DATA=node.as_posix(),
+        env=dict(os.environ, VSC_DATA=node.as_posix(), SLURM_SUBMIT_DIR=(node / "CreditPFN").as_posix(),
                  CREDITPFN_OUTPUT_ROOT=(node / "CreditPFN").as_posix(), SLURM_JOB_ID="test-job"),
         capture_output=True, text=True)
     assert result.returncode == 17, result.stderr
@@ -135,6 +136,7 @@ def test_training_lookup_failure_stops_before_smoke_or_training(tmp_path, failur
     node = tmp_path / "node"
     scripts = node / "CreditPFN/scripts/slurm"
     scripts.mkdir(parents=True)
+    (scripts / "run_experiment.sh").touch()   # marks the fake checkout as a repository root
     for name in ("train_pd.slurm", "_train_job.sh", "_run_train.sh", "_job_log.sh"):
         shutil.copyfile(repo / "scripts/slurm" / name, scripts / name)
     config_file = node / 'CreditPFN/config/experiments/E00_pilots/reference_pd.yaml'
@@ -147,7 +149,7 @@ def test_training_lookup_failure_stops_before_smoke_or_training(tmp_path, failur
 }
 ''', encoding="utf-8")
     result = subprocess.run([bash, (scripts / "train_pd.slurm").as_posix()],
-        env=dict(os.environ, VSC_DATA=node.as_posix(), SLURM_JOB_ID="synthetic",
+        env=dict(os.environ, VSC_DATA=node.as_posix(), SLURM_SUBMIT_DIR=(node / "CreditPFN").as_posix(), SLURM_JOB_ID="synthetic",
                  CREDITPFN_OUTPUT_ROOT=(node / "CreditPFN").as_posix(),
                  CREDITPFN_CONFIG="config/experiments/E00_pilots/reference_pd.yaml", CREDITPFN_SPLIT_INDEX="0",
                  SLURM_ARRAY_TASK_ID="0", FAIL_LOOKUP=failure), capture_output=True, text=True)
@@ -166,6 +168,7 @@ def test_batch_entrypoints_route_setup_failures_to_the_selected_experiment(tmp_p
     node = tmp_path / "node"
     scripts = node / "CreditPFN/scripts/slurm"
     scripts.mkdir(parents=True)
+    (scripts / "run_experiment.sh").touch()   # marks the fake checkout as a repository root
     for name in (f"{job}.slurm", "_job_log.sh", "_train_job.sh", "_eval_job.sh"):
         shutil.copyfile(repo / "scripts/slurm" / name, scripts / name)
     (scripts / "_activate_env.sh").write_text(
@@ -174,7 +177,7 @@ def test_batch_entrypoints_route_setup_failures_to_the_selected_experiment(tmp_p
     config_file = node / 'CreditPFN' / config
     config_file.parent.mkdir(parents=True)
     config_file.write_text(f'experiment:\n  output_group: {experiment}\n')
-    env = dict(os.environ, VSC_DATA=node.as_posix(), SLURM_JOB_ID="synthetic",
+    env = dict(os.environ, VSC_DATA=node.as_posix(), SLURM_SUBMIT_DIR=(node / "CreditPFN").as_posix(), SLURM_JOB_ID="synthetic",
                SLURM_RESTART_COUNT="0", SLURM_ARRAY_TASK_ID="0",
                CREDITPFN_OUTPUT_ROOT=(node / "CreditPFN").as_posix(),
                CREDITPFN_EXPERIMENT="general",
@@ -236,13 +239,14 @@ def test_signal_during_environment_setup_is_logged_as_failure(tmp_path, signal, 
     node = tmp_path / "node"
     scripts = node / "CreditPFN/scripts/slurm"
     scripts.mkdir(parents=True)
+    (scripts / "run_experiment.sh").touch()   # marks the fake checkout as a repository root
     for name in ("train_pd.slurm", "_train_job.sh", "_job_log.sh"):
         shutil.copyfile(repo / "scripts/slurm" / name, scripts / name)
     (scripts / "_activate_env.sh").write_text(
         'echo "setup started"\nkill -s "$TEST_SIGNAL" "$$"\necho UNEXPECTED_CONTINUATION\n',
         encoding="utf-8")
     result = subprocess.run([bash, (scripts / "train_pd.slurm").as_posix()],
-        env=dict(os.environ, VSC_DATA=node.as_posix(), SLURM_JOB_ID="synthetic",
+        env=dict(os.environ, VSC_DATA=node.as_posix(), SLURM_SUBMIT_DIR=(node / "CreditPFN").as_posix(), SLURM_JOB_ID="synthetic",
                  CREDITPFN_OUTPUT_ROOT=(node / "CreditPFN").as_posix(),
                  CREDITPFN_EXPERIMENT="experiment0", CREDITPFN_CONFIG="", TEST_SIGNAL=signal),
         capture_output=True, text=True, timeout=20)
@@ -325,13 +329,14 @@ def test_eval_wrapper_forwards_phase_partition_and_packing(tmp_path, track):
     node = tmp_path / "node"
     scripts = node / "CreditPFN/scripts/slurm"
     scripts.mkdir(parents=True)
+    (scripts / "run_experiment.sh").touch()   # marks the fake checkout as a repository root
     for name in (f"eval_{track}.slurm", "_eval_job.sh", "_job_log.sh"):
         shutil.copyfile(repo / "scripts/slurm" / name, scripts / name)
     (scripts / "_eval_cache.sh").write_text('share_eval_controls() { :; }\n', encoding="utf-8")
     (scripts / "_activate_env.sh").write_text('python() { printf "ARG:%s\\n" "$@"; }\n',
                                              encoding="utf-8")
     result = subprocess.run([bash, (scripts / f"eval_{track}.slurm").as_posix()],
-        env=dict(os.environ, VSC_DATA=node.as_posix(), SLURM_JOB_ID="synthetic",
+        env=dict(os.environ, VSC_DATA=node.as_posix(), SLURM_SUBMIT_DIR=(node / "CreditPFN").as_posix(), SLURM_JOB_ID="synthetic",
                  CREDITPFN_OUTPUT_ROOT=(node / "CreditPFN").as_posix(),
                  CREDITPFN_CONFIG=f"phase path/{track}.yaml", CREDITPFN_SPLIT_INDEX="3",
                  SLURM_ARRAY_TASK_ID="5", EVAL_TASKS="12"), capture_output=True, text=True)

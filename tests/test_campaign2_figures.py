@@ -370,8 +370,9 @@ def test_leaderboard_pool_meets_on_identical_folds_and_anchors_the_linear_baseli
         board = out["board"]
         assert len(board) == 4 * 4 + 3                                      # 4 models x 4 variants + baselines
         assert board.set_index("method").loc[anchor, "elo"] == pytest.approx(1000)
-        assert out["dropped"] == [syn.CREDIT[track][-1]]                    # the table with a missing CPT fold
-        assert board.tables.eq(len(syn.CREDIT[track]) - 1).all()
+        # Foundation models come from E5 (complete); the missing E1 CPT fold no longer matters.
+        assert out["dropped"] == []
+        assert board.tables.eq(len(syn.CREDIT[track])).all()
         assert ((board.normalized_score >= 0) & (board.normalized_score <= 1)).all()
         fig, text = _finished(r2.leaderboard(board, track=track, title="t"))
         assert len(fig.axes) == 3 and "normalized_score" in text and "improvability" in text
@@ -386,7 +387,7 @@ def test_leaderboard_leaves_out_a_method_scored_on_too_few_tables(results):
     coverage = out["coverage"].set_index("method")
     assert not coverage.loc["TabPFN v2 CPT+FT", "entered"]
     assert "TabPFN v2 CPT+FT" not in set(out["board"].method)
-    assert out["dropped"] == [syn.CREDIT["pd"][-1]]                         # not shrunk to three tables
+    assert out["dropped"] == []                                              # not shrunk to three tables
 
 
 @pytest.fixture

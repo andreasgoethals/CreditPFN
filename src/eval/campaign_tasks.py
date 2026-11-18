@@ -129,6 +129,43 @@ def policy(model: str, design: dict, *, quick: bool = False, kind: str = "contex
             "family": FAMILY[model]}
 
 
+def _tasks_key() -> str:
+    """Identity of a task list: the design file and the size of every processed table (the
+    enumeration reads both). Cheap: one read and directory listings, no CSV parsing."""
+    import hashlib
+
+    from src.utils.design import DESIGN
+    from src.utils.paths import processed_dir
+    digest = hashlib.sha256(Path(DESIGN).read_bytes())
+    for track in ("pd", "lgd"):
+        folder = processed_dir(track)
+        for path in sorted(folder.glob("*.sanitized.csv")) if folder.is_dir() else []:
+            digest.update(f"{track}/{path.name}:{path.stat().st_size}".encode())
+    return digest.hexdigest()
+
+
+def tasks_cache(kind: str) -> Path:
+    from src.utils.paths import manifests_dir
+    return manifests_dir(SLUGS[kind]) / f"{kind}_tasks.json"
+
+
+def write_tasks_cache(kind: str, listed: list[dict]) -> None:
+    """Written by the controller before it submits an array: workers then read their task from
+    it instead of parsing every credit table to enumerate the list again (~20 s per worker)."""
+    from src.utils.atomic import write_json
+    write_json(tasks_cache(kind), dict(key=_tasks_key(), tasks=listed))
+
+
+def campaign_tasks(kind: str, design: dict | None = None) -> list[dict]:
+    """The campaign task list: from the controller's cache when its key still matches."""
+    path = tasks_cache(kind)
+    if path.is_file():
+        cached = json.loads(path.read_text(encoding="utf-8"))
+        if cached.get("key") == _tasks_key():
+            return cached["tasks"]
+    return tasks(design, kind=kind)
+
+
 def run(kind: str, index: int, *, references: dict | None = None, slug: str | None = None,
         quick: bool = False, device: str | None = None) -> Path:
     from src.eval.context_curve import budgets, fold_indices, score_cell
@@ -139,7 +176,8 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
     if kind not in KINDS:
         raise ValueError(f"Unknown task kind {kind!r}")
     design = load_design()
-    task = tasks(design, references, kind=kind)[index]
+    task = (tasks(design, references, kind=kind) if references is not None
+            else campaign_tasks(kind, design))[index]
     if kind == "episode_context" and references is None:
         from src.utils.design import config_path
         references = {"pd": config_path("episode_size", "pd", task["arm"], design)}
@@ -159,13 +197,21 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
         recipe["epochs"] = QUICK["epochs"]
     recipe["selection"] = "validation_roc_auc_pd_rmse_lgd"   # part of the task identity (17-11-2026)
     identity = task_identity(kind, task, rules, recipe if kind == "finetune" else None, quick, starts)
+    stored = target.with_name(target.name.replace(".csv.gz", ".predictions.npz"))
     if target.exists():
-        # A finished task is reused only for the same task, data, checkpoints and protocol.
+        # A finished task (metrics, predictions AND receipt) is reused only for the same task,
+        # checkpoints and protocol. Metrics without a receipt are an interrupted publication and
+        # are recomputed; a receipt with another identity means other code or inputs: refuse.
         done = json.loads(receipt.read_text(encoding="utf-8")) if receipt.is_file() else {}
-        if done.get("identity") != identity:
+        if not done:
+            print(f"Task {index}: metrics without a receipt (interrupted); recomputing", flush=True)
+        elif done.get("identity") != identity:
             raise RuntimeError(f"{target.name} was produced under a different identity; move it aside")
-        print(f"Task {index} already complete: {target}", flush=True)
-        return target
+        elif not stored.is_file():
+            raise RuntimeError(f"{target.name} has a receipt but no {stored.name}; move both aside")
+        else:
+            print(f"Task {index} already complete: {target}", flush=True)
+            return target
     if device is None:
         import torch
         device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -219,8 +265,8 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
     frame = pd.DataFrame(rows).assign(**task, test_rows=len(test), validation_rows=len(validation),
                                       available_context=len(context), quick=quick,
                                       device_name=_device_name(device))
-    # Row i of the metrics owns the arrays "i__<name>" (indices, targets, predictions).
-    stored = target.with_name(target.name.replace(".csv.gz", ".predictions.npz"))
+    # Row i of the metrics owns the arrays "i__<name>" (indices, targets, predictions). Published in
+    # order predictions -> metrics -> receipt; readers take a metrics file only with its receipt.
     pending = stored.with_suffix(".pending")
     with open(pending, "wb") as handle:
         np.savez_compressed(handle, **predictions)

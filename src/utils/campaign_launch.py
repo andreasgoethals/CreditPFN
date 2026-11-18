@@ -241,7 +241,14 @@ def _receipt(slug: str) -> Path:
 #: (two hours, no segments) is far below first-study timings for 26,000-row trials (2.1-2.4 h
 #: with 2,000-row monitors; monitors are now 10,000 rows), and a timed-out training job
 #: cancels its evaluation.
-DEFAULT_WALLTIMES = {"WALLTIME": "24:00:00", "EVAL_WALLTIME": "24:00:00"}
+# Measured in Experiment 0 (16-11-2026): 250-update pilots 7 min median, 35 min at most (the
+# campaign runs 2,500 updates, E10 also 10,000 and full passes); one PD five-fold evaluation shard
+# 5.1-6.5 h, LGD 12-15 min. Without SEGMENT_MINUTES a job that reaches its walltime fails rather
+# than requeues, so training keeps a wide margin.
+DEFAULT_WALLTIMES = {"WALLTIME": "12:00:00", "EVAL_WALLTIME": "09:00:00"}
+#: E5/E6/E12 task arrays (campaign_eval_gpu.slurm); E5 fine-tuning on the largest tables is not
+#: yet measured, so the wrapper's 12 h stays the default. Override: CREDITPFN_TASK_WALLTIME.
+TASK_WALLTIME = "12:00:00"
 
 
 def campaign_walltimes() -> dict:
@@ -270,13 +277,23 @@ def submit_experiment(name: str, *, budget: int = QUEUE_BUDGET, queued=queued_jo
     slug, kind = spec["slug"], spec.get("kind", "training")
     receipt = _receipt(slug)
     state = json.loads(receipt.read_text(encoding="utf-8")) if receipt.exists() else {"submitted": {}}
+    # The launcher's own queue ceiling equals the controller's budget: a lower one would make it
+    # wait (and be killed by the 15-minute launcher timeout) on work the controller just admitted.
     env = _environment(CREDITPFN_EXPERIMENT=slug, THROTTLE=NO_CAP, GLOBAL_CONCURRENCY=NO_CAP,
-                       EVAL_CONCURRENCY=NO_CAP, EVAL_TASKS=EVAL_TASKS, **campaign_walltimes())
+                       EVAL_CONCURRENCY=NO_CAP, EVAL_TASKS=EVAL_TASKS, MAX_QUEUED=str(budget),
+                       **campaign_walltimes())
     receipt.parent.mkdir(parents=True, exist_ok=True)
+    # One controller per experiment at a time: two would both see the same unsubmitted work.
+    lock = receipt.with_suffix(".lock")
+    try:
+        lock.open("x").close()
+    except FileExistsError:
+        raise RuntimeError(f"Another submission of {name} holds {lock}; if none runs (squeue), delete the lock") from None
+    save = lambda: write_json(receipt, state)  # noqa: E731
     try:
         if kind in ("finetune", "inference"):
             _submit_evaluation_tasks("finetune" if slug == "target_finetune" else "context",
-                                     state, env, budget, queued)
+                                     state, env, budget, queued, save)
         else:
             configs = sorted(experiment_folder(name, design).glob("*.yaml"))
             prepare(experiment_folder(name, design))
@@ -294,7 +311,7 @@ def submit_experiment(name: str, *, budget: int = QUEUE_BUDGET, queued=queued_jo
                 # E12: matched-context scoring once every episode-size checkpoint exists; rerun later otherwise.
                 matched = state.setdefault("matched_context", {"submitted": {}})
                 try:
-                    _submit_evaluation_tasks("episode_context", matched, env, budget, queued)
+                    _submit_evaluation_tasks("episode_context", matched, env, budget, queued, save)
                 except RuntimeError as exc:
                     print(f"Matched-context evaluation not submitted yet: {exc}", flush=True)
             if slug == "reference" and len(state["submitted"]) == len(configs):
@@ -308,12 +325,20 @@ def submit_experiment(name: str, *, budget: int = QUEUE_BUDGET, queued=queued_jo
                     write_json(receipt, state)
     finally:
         write_json(receipt, state)
+        lock.unlink(missing_ok=True)
     print(json.dumps(state, indent=2), flush=True)
     return state
 
 
-def _submit_evaluation_tasks(kind, state, env, budget, queued):
-    """Chunks of an evaluation task array, only once every checkpoint it scores exists."""
+def _submit_evaluation_tasks(kind, state, env, budget, queued, save=lambda: None):
+    """Chunks of an evaluation task array, only once every checkpoint it scores exists.
+
+    Each chunk is recorded as ``uncertain`` (and saved) before ``sbatch``: a timeout after Slurm
+    accepted it then leaves a marker that blocks resubmission until squeue has been inspected."""
+    uncertain = [k for k, v in state.get("submitted", {}).items() if v == "uncertain"]
+    if uncertain:
+        raise RuntimeError(f"{kind}: chunks {uncertain} may have been submitted; inspect squeue, then set "
+                           "their job ids (or delete the entries) in the receipt")
     from src.eval import campaign_tasks as ct
     from src.utils.design import config_path
     tasks = ct.tasks(kind=kind)
@@ -324,6 +349,7 @@ def _submit_evaluation_tasks(kind, state, env, budget, queued):
                       if not _exists(lambda: ct.cpt_checkpoint(t, references(t)))})
     if missing:
         raise RuntimeError(f"{len(missing)} checkpoints are missing; finish their training first: {missing[:3]}")
+    ct.write_tasks_cache(kind, tasks)   # workers read their task from it (no corpus re-read)
     start = int(state.get("next_task", 0))
     while start < len(tasks):
         room = budget - queued()
@@ -332,10 +358,17 @@ def _submit_evaluation_tasks(kind, state, env, budget, queued):
             break
         stop = min(len(tasks), start + room, start + 1000)   # Slurm MaxArraySize is 1001
         # Array indices restart at 0 for every chunk; the wrapper adds TASK_OFFSET back.
-        job = _sbatch([f"--array=0-{stop - start - 1}", f"--export=ALL,TASK_OFFSET={start}",
+        key = f"{start}-{stop - 1}"
+        state.setdefault("submitted", {})[key] = "uncertain"
+        save()
+        walltime = os.environ.get("CREDITPFN_TASK_WALLTIME", TASK_WALLTIME)
+        if not re.fullmatch(r"\d{1,3}:\d{2}:\d{2}", walltime):
+            raise ValueError(f"CREDITPFN_TASK_WALLTIME must be HH:MM:SS, got {walltime!r}")
+        job = _sbatch([f"--array=0-{stop - start - 1}", f"--time={walltime}", f"--export=ALL,TASK_OFFSET={start}",
                        "scripts/slurm/campaign_eval_gpu.slurm", kind], env)
-        state["submitted"][f"{start}-{stop - 1}"] = job
+        state["submitted"][key] = job
         state["next_task"] = start = stop
+        save()
 
 
 def _exists(resolve) -> bool:
@@ -356,14 +389,18 @@ def main(argv=None) -> int:
     args = parser.parse_args(argv)
     if args.action == "prepare":
         selection = json.loads(args.only) if args.only else None
-        prepare(Path(args.target), only=(selection["pilots"] + selection.get("prepare", [])) if selection else None)
+        # A selection prepares only the pilots it names (an evaluation-only rerun prepares none).
+        prepare(Path(args.target), only=(list(selection.get("pilots", [])) + list(selection.get("prepare", [])))
+                if selection is not None else None)
     elif args.action == "rerun-experiment0":
         from datetime import datetime
 
         from src.utils.pilot_checks import receipts
         stamp = datetime.now().strftime("%Y%m%dT%H%M%S")
-        submit_experiment0(Path(args.target), receipts() / f"submission_rerun_{stamp}.json",
-                           only=json.loads(args.only))
+        selection = json.loads(args.only or "{}")
+        if not any(selection.values()):
+            raise SystemExit("rerun-experiment0 needs a non-empty selection; an empty one would rerun everything")
+        submit_experiment0(Path(args.target), receipts() / f"submission_rerun_{stamp}.json", only=selection)
     elif args.action == "submit-experiment0":
         from src.utils.pilot_checks import receipts
         submit_experiment0(Path(args.target), receipts() / "submission.json")

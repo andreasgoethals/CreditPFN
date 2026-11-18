@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import functools
 import os
+import re
 from pathlib import Path
 
 #: Per-project folder names; overrides always name the enclosing project root.
@@ -48,10 +49,11 @@ def group_for_run(run: str) -> str:
     run = str(run)
     if run.startswith("cpt2e0_"):
         return "experiment0"
-    if run.startswith("cpt2_"):
-        slug = run[len("cpt2_"):].rsplit("_a", 1)[0]
-        if slug in CAMPAIGN2_GROUPS:
-            return slug
+    # The arm marker is ``_a<digits>``; checkpoint file names also contain ``_acc<n>``, so a plain
+    # split on the last ``_a`` would pick the wrong boundary.
+    match = re.match(r"^cpt2_(.+?)_a\d+(?:_|$)", run)
+    if match and match.group(1) in CAMPAIGN2_GROUPS:
+        return match.group(1)
     return "general"
 
 

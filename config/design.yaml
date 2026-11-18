@@ -93,9 +93,9 @@ experiments:
     kind: finetune
     question: Is CPT worth it compared with fine-tuning on the target table, and do the two stack?
     source: E1
-    starts: [original, cpt]       # original and CPT models without fine-tuning come from the benchmark
-    # Learning rate chosen per table, fold and start on the inner validation rows (log loss for PD,
-    # RMSE for LGD): 6.5e-5 is the geometric midpoint of the two most frequent tuned winners in
+    starts: [original, cpt]       # both are also scored WITHOUT fine-tuning on the same rows and context cap
+    # Learning rate chosen per table, fold and start on the inner validation rows (AUC for PD, log
+    # loss only when the validation rows hold one class; RMSE for LGD): 6.5e-5 is the geometric midpoint of the two most frequent tuned winners in
     # Rubachev et al. 2025; 1e-6 is Ning et al. 2026's TabPFN-3 rate; 1e-5 lies between (Tanna et
     # al. 2026 report TabICL collapsing at 1e-5 and above). One fixed rate would favour some models.
     recipe: {epochs: 30, learning_rates: [1.0e-6, 1.0e-5, 6.5e-5], early_stopping_patience: 8, validation_fraction: 0.20}

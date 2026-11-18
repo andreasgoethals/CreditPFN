@@ -3462,7 +3462,8 @@ def train_one_config(
         rows_seen=_rows_seen,
         # Diagnostic only — nothing stopped early. None means the loss was still falling when
         # the step budget ran out, i.e. raise the budget next time rather than lower it.
-        would_stop_epoch=would_have_stopped([r.train_loss for r in history]),
+        # The epoch=-1 baseline row would shift every position by one (epochs count from 0).
+        would_stop_epoch=would_have_stopped([r.train_loss for r in history if r.epoch >= 0]),
         descriptive_name=save_path.name,
         diverged=bool(diverged),
         diverged_at_epoch=diverged_at_epoch,

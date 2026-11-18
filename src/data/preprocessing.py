@@ -700,6 +700,12 @@ def _fix_bank_status(df: pd.DataFrame) -> pd.DataFrame:
     # `Current Loan Amount` = 99,999,999 marks 11.5% of rows, every one of them fully paid: the value
     # encodes the label (as NaN it still would, through missingness), so the column is dropped.
     df = df.drop(columns=[c for c in ["Loan ID", "Customer ID", "Current Loan Amount"] if c in df.columns])
+    # `Credit Score` above 1,000 (5.5% of loans) is a normal score times ten (585-751 x 10), and
+    # every such loan is charged off: the scale error encodes the label (20% of defaults, no false
+    # positive). Dividing by ten restores the score and removes the cue (found 18-11-2026).
+    if "Credit Score" in df.columns:
+        score = pd.to_numeric(df["Credit Score"], errors="coerce")
+        df["Credit Score"] = score.where(~(score > 1000), score / 10)
 
     if "Loan Status" in df.columns:
         df["Loan Status"] = df["Loan Status"].replace(

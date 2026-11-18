@@ -10,7 +10,6 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 import matplotlib.pyplot as plt
-import numpy as np
 
 from src.visualize import style
 from src.visualize.reporting import NotebookReport, page_text

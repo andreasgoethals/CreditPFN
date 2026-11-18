@@ -71,6 +71,11 @@ def isolated_output(tmp_path, monkeypatch):
 
     monkeypatch.setenv("VSC_DATA", str(tmp_path / "vsc_data"))
     monkeypatch.setenv(paths.STAGING_ENV_VARS[0], str(tmp_path / "staging"))
+    # A Slurm job exports CREDITPFN_OUTPUT_ROOT, which wins over VSC_DATA: without this the
+    # Experiment 0 test run on VSC wrote test figures and logs into the real DATA output tree.
+    monkeypatch.setenv(paths.OUTPUT_ROOT_ENV, str(tmp_path / "vsc_data" / paths.PROJECT_NAME))
+    for name in paths.STAGING_ENV_VARS[1:]:
+        monkeypatch.delenv(name, raising=False)
     return tmp_path
 
 

@@ -13,13 +13,19 @@ they were tables. Monitor curves are equal-table means of one fixed context/quer
 from __future__ import annotations
 
 import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
 import numpy as np
 import pandas as pd
+from matplotlib.ticker import MaxNLocator
 
 from src.data.dataset_names import display_name
 from src.visualize import style
-from src.visualize.campaign2 import METRIC_LABELS, MONITOR_SCOPES, PROFILE_METRICS, SEED_LIST, SLOPE_QUANTITIES
+from src.visualize.campaign2 import (
+    METRIC_LABELS,
+    MONITOR_SCOPES,
+    PROFILE_METRICS,
+    SEED_LIST,
+    SLOPE_QUANTITIES,
+)
 
 TRACKS = ("pd", "lgd")
 TRACK_NAME = {"pd": "PD", "lgd": "LGD"}

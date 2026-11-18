@@ -50,7 +50,13 @@ def in_scope(frame: pd.DataFrame, column: str) -> pd.DataFrame:
     table properties, whose distances still refer to all training tables)."""
     if _SCOPE["tables"] == "all" or frame.empty or column not in frame:
         return frame
+    from src.data import dataset_names
     from src.data.dataset_names import is_proprietary
+    if not dataset_names._PROPRIETARY:
+        # Without the gitignored mapping every identifier looks public; filtering would silently
+        # keep the proprietary tables in a "public-only" result.
+        raise RuntimeError("The public table scope needs src/data/_private_names.py (the proprietary "
+                           "table list); it is absent or failed to import on this machine.")
     return frame[~frame[column].map(is_proprietary).astype(bool)]
 
 
@@ -169,12 +175,15 @@ def _read_results_frames(slug: str, track: str) -> pd.DataFrame:
         except Exception:  # noqa: BLE001 - unreadable shard is reported by the audit, not here
             continue
         if {"model_name", "test_dataset_id", "fold_idx", "status"} <= set(frame.columns):
-            frames.append(frame[frame.status == "OK"])
+            frames.append(frame)
     if not frames:
         return pd.DataFrame()
-    # File names carry their timestamp, so the newest score of a model, table and fold is last.
-    return (pd.concat(frames, ignore_index=True)
-            .drop_duplicates(["model_name", "test_dataset_id", "fold_idx"], keep="last"))
+    # File names carry their timestamp, so the newest row of a model, table and fold is last. The
+    # newest row decides: a fold whose latest scoring failed is missing, not silently replaced by
+    # an older success computed by other code.
+    newest = (pd.concat(frames, ignore_index=True)
+              .drop_duplicates(["model_name", "test_dataset_id", "fold_idx"], keep="last"))
+    return newest[newest.status == "OK"].reset_index(drop=True)
 
 
 #: Outer folds of the five-fold evaluation (config/eval.yaml cv.n_folds).
@@ -489,8 +498,9 @@ def seed_noise(track: str) -> pd.DataFrame:
         gains = gains[gains.arm.isin(list(seeds)) & complete(gains)].copy()
         gains["seed"] = gains.arm.map(seeds)
         frames.append(gains)
-    wide = pd.concat(frames).pivot_table(index=["model", "test_dataset_id", "credit"], columns="seed",
-                                         values="gain").dropna()
+    # All three seeds are required: with one seed absent the range would be taken over two.
+    wide = (pd.concat(frames).pivot_table(index=["model", "test_dataset_id", "credit"], columns="seed",
+                                          values="gain").reindex(columns=SEED_LIST).dropna())
     if wide.empty:
         return pd.DataFrame()
     wide.columns = [f"gain_seed{c}" for c in wide.columns]
@@ -665,10 +675,20 @@ def primary_endpoint(design: dict | None = None, *, draws: int = BOOTSTRAP_DRAWS
     out = pd.DataFrame(rows)
     if out.empty:
         return out
-    out["p_holm"] = holm(out.p_value.to_numpy())
+    # The family is the DECLARED one (tasks x outcomes x models), not the tests that happen to have
+    # results: a missing test enters Holm with p = 1, so a partial download cannot shrink the
+    # correction and turn a result significant.
+    from src.visualize.style import model_label
+    design = design or load_design()
+    models = [MODEL_LABELS.get(m, model_label(m)) for m in design["models"]]
+    family = pd.DataFrame([dict(track=t, metric=m, model=model) for t, ms in spec["outcomes"].items()
+                           for m in ms for model in models])
+    out = family.merge(out, on=["track", "metric", "model"], how="left")
+    out["missing"] = out.p_value.isna()
+    out["p_holm"] = holm(out.p_value.fillna(1.0).to_numpy())
     alpha = float(spec["alpha"])
-    out["decision"] = np.where(out.p_holm >= alpha, "not significant",
-                               np.where(out["mean"] > 0, "better", "worse"))
+    out["decision"] = np.where(out.missing, "missing", np.where(
+        out.p_holm >= alpha, "not significant", np.where(out["mean"] > 0, "better", "worse")))
     return out
 
 
@@ -789,7 +809,9 @@ def task_results(kind: str) -> pd.DataFrame:
         folder = results_dir(experiment=SLUGS[kind]) / kind
     except Exception:  # noqa: BLE001 - missing layout is missing evidence
         return pd.DataFrame()
-    files = sorted(folder.glob(f"{kind}_*.csv.gz")) if folder.is_dir() else []
+    # A metrics file counts only with its receipt: one without is an interrupted publication.
+    files = [f for f in (sorted(folder.glob(f"{kind}_*.csv.gz")) if folder.is_dir() else [])
+             if (folder / "completed" / f.name.replace(".csv.gz", ".json")).is_file()]
     frame = pd.concat([pd.read_csv(f) for f in files], ignore_index=True) if files else pd.DataFrame()
     return in_scope(frame, "dataset_id")
 
@@ -829,46 +851,16 @@ def finetune_summary(results: pd.DataFrame) -> pd.DataFrame:
     return pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
 
 
-def context_gain_curve(results: pd.DataFrame, *, common_up_to: int | None = None) -> pd.DataFrame:
-    """E6: CPT minus original at each labelled-context size, per model, averaged within table
-    first (tables with all five folds at that size).
-
-    Larger sizes exist only for larger tables, so the table population changes along the curve.
-    ``common_up_to`` keeps only tables scored at every size up to that value, so the curve below it
-    compares the same tables throughout."""
-    if results.empty:
-        return pd.DataFrame()
-    rows = []
-    for track, metric in (("pd", "roc_auc"), ("lgd", "r2")):
-        sub = results[results.track == track]
-        if sub.empty or metric not in sub:
-            continue
-        wide = sub.pivot_table(index=["model", "dataset_id", "fold", "context_rows"], columns="start",
-                               values=metric).dropna().reset_index()
-        wide = _all_folds(wide, ["model", "dataset_id", "context_rows"])
-        if common_up_to is not None:
-            wide = wide[wide.context_rows <= common_up_to]
-            sizes = wide.groupby("model").context_rows.nunique()
-            have = wide.groupby(["model", "dataset_id"]).context_rows.nunique().reset_index(name="n")
-            have = have[have.n == have.model.map(sizes)]
-            wide = wide.merge(have[["model", "dataset_id"]], on=["model", "dataset_id"])
-        if wide.empty:
-            continue
-        wide["gain"] = wide["cpt"] - wide["original"]
-        per_table = wide.groupby(["model", "dataset_id", "context_rows"]).gain.mean().reset_index()
-        curve = (per_table.groupby(["model", "context_rows"]).gain
-                 .agg(mean="mean", median="median", tables="size").reset_index())
-        rows.append(curve.assign(track=track, metric=metric))
-    return pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
-
-
 def episode_context_summary(results: pd.DataFrame) -> pd.DataFrame:
     """E12 at matched inference context: mean AUC per episode-size arm, model and context size."""
     if results.empty or "roc_auc" not in results:
         return pd.DataFrame()
-    results = _all_folds(results, ["arm", "model", "context_rows", "dataset_id"])
-    per_table = results.groupby(["arm", "model", "context_rows", "dataset_id"]).roc_auc.mean().reset_index()
-    return per_table.groupby(["arm", "model", "context_rows"]).roc_auc.agg(["mean", "median", "size"]).reset_index()
+    # The full pool differs by a row or two between folds, so it is one context ("full").
+    grid = set(int(v) for v in experiment_by_slug("episode_size")[1]["matched_context_evaluation"][:-1])
+    results = results.assign(context=[str(int(c)) if int(c) in grid else "full" for c in results.context_rows])
+    results = _all_folds(results, ["arm", "model", "context", "dataset_id"])
+    per_table = results.groupby(["arm", "model", "context", "dataset_id"]).roc_auc.mean().reset_index()
+    return per_table.groupby(["arm", "model", "context"]).roc_auc.agg(["mean", "median", "size"]).reset_index()
 
 
 # ------------------------------------------------------------------- arm settings and labels
@@ -1205,12 +1197,18 @@ def _error(track: str, frame: pd.DataFrame) -> pd.Series:
 
 
 def leaderboard_errors(track: str, finetune: pd.DataFrame | None = None) -> pd.DataFrame:
-    """Long frame (method, base, variant, table, fold, error) on the held-out credit tables: from
-    the E1 five-fold evaluation the original models, the E1 CPT models (seed 42) and the tuned
-    baselines; from E5 the original and the CPT model fine-tuned on the table. E5 uses the same
-    outer folds and inner split (``POLICY_SEEDS``), so all methods meet on identical test rows."""
+    """Long frame (method, base, variant, table, fold, error) on the held-out credit tables.
+
+    The tuned baselines come from the E1 five-fold evaluation. The foundation models come from E5
+    when it exists: the original and the E1 CPT model, each without and with fine-tuning on the
+    table, all scored on the same context rows under E5's context cap, so fine-tuning is never
+    compared with a model that saw more labelled rows (E1 lets v3 and TabICLv2 use up to 1,000,000
+    rows, E5 at most 50,000). Without E5 the untuned models come from E1. E5 uses the same outer
+    folds and inner split (``POLICY_SEEDS``), so every method meets on identical test rows."""
     metric, _ = LEADERBOARD_ERROR[track]
     frame = _results_frames("reference", track)
+    tuned = (finetune is not None and not finetune.empty and "finetuned" in finetune
+             and not finetune[finetune.track == track].empty)
     rows = []
     if not frame.empty and metric in frame:
         frame = frame[~frame.test_dataset_id.astype(str).str.startswith("openml_")].dropna(subset=[metric])
@@ -1220,7 +1218,7 @@ def leaderboard_errors(track: str, finetune: pd.DataFrame | None = None) -> pd.D
         cpt = (source.str.endswith("trained") & frame.model_name.str.contains("cpt2_reference_a0_", regex=False)
                & base.notna())
         baseline = (source == "baseline") & frame.model_name.isin(LEADERBOARD_BASELINES)
-        for mask, variant in ((original, ""), (cpt, " CPT")):
+        for mask, variant in (() if tuned else ((original, ""), (cpt, " CPT"))):
             sub = frame[mask]
             label = base[mask].map(MODEL_LABELS)
             rows.append(pd.DataFrame({"method": label + variant, "base": label, "variant": variant.strip() or "original",
@@ -1229,14 +1227,14 @@ def leaderboard_errors(track: str, finetune: pd.DataFrame | None = None) -> pd.D
         rows.append(pd.DataFrame({"method": sub.model_name.map(LEADERBOARD_BASELINES), "base": "baseline",
                                   "variant": "baseline", "table": sub.test_dataset_id, "fold": sub.fold_idx,
                                   "error": _error(track, sub)}))
-    if finetune is not None and not finetune.empty and "finetuned" in finetune:
-        sub = in_scope(finetune[(finetune.track == track) & finetune.finetuned.astype(bool)], "dataset_id")
+    if tuned:
+        sub = in_scope(finetune[finetune.track == track], "dataset_id")
         if not sub.empty and metric in sub:
             sub = sub.dropna(subset=[metric])
             label = sub.model.map(_model_label)
-            suffix = [LEADERBOARD_VARIANTS[(s, True)] for s in sub.start]
+            suffix = [LEADERBOARD_VARIANTS[(s, bool(f))] for s, f in zip(sub.start, sub.finetuned)]
             rows.append(pd.DataFrame({"method": label + suffix, "base": label,
-                                      "variant": [x.strip() for x in suffix], "table": sub.dataset_id,
+                                      "variant": [x.strip() or "original" for x in suffix], "table": sub.dataset_id,
                                       "fold": sub.fold, "error": _error(track, sub)}))
     rows = [r for r in rows if not r.empty]
     if not rows:
@@ -1259,7 +1257,12 @@ def leaderboard(track: str, finetune: pd.DataFrame | None = None, *, seed: int =
                 .agg(tables=("table", "nunique"), units=("fold", "size")).reset_index())
     coverage["entered"] = coverage.tables >= LEADERBOARD_MIN_COVERAGE * tables
     kept = errors[errors.method.isin(coverage.method[coverage.entered])]
-    kept, dropped = arena.complete_units(kept)
+    # A table enters with all five outer folds only; a fold missing for every method would
+    # otherwise pass the per-method completeness check below.
+    folds = kept.groupby("table").fold.nunique()
+    short = sorted(folds.index[folds < N_FOLDS])
+    kept, dropped = arena.complete_units(kept[~kept.table.isin(short)])
+    dropped = sorted(set(dropped) | set(short))
     anchor = LEADERBOARD_ANCHOR[track]
     if kept.empty or anchor not in set(kept.method) or kept.method.nunique() < 2:
         return dict(empty, coverage=coverage, dropped=dropped)
@@ -1288,21 +1291,24 @@ def context_table(results: pd.DataFrame) -> pd.DataFrame:
                                values=metric).reset_index()
         if not {"original", "cpt"} <= set(wide.columns):
             continue
-        wide = _all_folds(wide.dropna(subset=["original", "cpt"]), ["model", "dataset_id", "context_rows"])
+        # The full pool differs by a row or two between folds (it is what each fold had), so it is
+        # grouped as one size (-1); declared grid sizes are identical in every fold.
+        wide["size"] = np.where(wide.context_rows.astype(int).isin(grid), wide.context_rows.astype(int), -1)
+        wide = _all_folds(wide.dropna(subset=["original", "cpt"]), ["model", "dataset_id", "size"])
         if wide.empty:
             continue
         wide["gain"] = wide.cpt - wide.original
-        columns = ["original", "cpt", "gain"]
+        columns = ["context_rows", "original", "cpt", "gain"]
         if "noncredit_cpt" in wide:
-            folds = wide.groupby(["model", "dataset_id", "context_rows"]).noncredit_cpt.transform("count")
+            folds = wide.groupby(["model", "dataset_id", "size"]).noncredit_cpt.transform("count")
             wide.loc[folds < N_FOLDS, "noncredit_cpt"] = np.nan
             wide["noncredit_gain"] = wide.noncredit_cpt - wide.original
             wide["credit_minus_noncredit"] = wide.cpt - wide.noncredit_cpt
             columns += ["noncredit_cpt", "noncredit_gain", "credit_minus_noncredit"]
-        table = (wide.groupby(["model", "dataset_id", "context_rows"])[columns]
+        table = (wide.groupby(["model", "dataset_id", "size"])[columns]
                  .mean().reset_index())
         table = table.assign(track=track, metric=metric, model=table.model.map(_model_label),
-                             full=~table.context_rows.astype(int).isin(grid))
+                             full=table["size"] < 0).drop(columns="size")
         rows.append(table)
     return pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
 
@@ -1389,11 +1395,12 @@ def episode_context_gains(episode: pd.DataFrame, context: pd.DataFrame) -> pd.Da
     if merged.empty:
         return pd.DataFrame()
     merged["gain"] = merged.roc_auc - merged.roc_auc_original
-    merged = _all_folds(merged, ["arm", "model", "dataset_id", "context_rows"])
-    if merged.empty:
-        return pd.DataFrame()
+    # The full pool differs by a row or two between folds, so it is one context ("full").
     grid = set(int(v) for v in experiment_by_slug("episode_size")[1]["matched_context_evaluation"][:-1])
     merged["context"] = [str(int(c)) if int(c) in grid else "full" for c in merged.context_rows]
+    merged = _all_folds(merged, ["arm", "model", "dataset_id", "context"])
+    if merged.empty:
+        return pd.DataFrame()
     out = (merged.groupby(["arm", "model", "dataset_id", "context"])
            .agg(gain=("gain", "mean"), context_rows=("context_rows", "mean")).reset_index())
     settings = arm_settings("episode_size", "pd")[["arm", "episode_rows"]]
@@ -1407,12 +1414,18 @@ def episode_context_gains(episode: pd.DataFrame, context: pd.DataFrame) -> pd.Da
 
 # ------------------------------------------------------------------------ E7 transfer
 def transfer_sources(track: str) -> dict[int, str]:
-    """Single-source arm index -> source table id (tables of the task sorted by id)."""
+    """Single-source arm index -> source table id (tables of the task sorted by id, the rule the
+    generated E7 configs use). Refuses a registry whose size differs from the design, since a
+    missing table would shift every later label."""
     try:
         from src.train.corpus import build_dataset_pool
-        return dict(enumerate(sorted(r.dataset_id for r in build_dataset_pool(track))))
+        ids = sorted(r.dataset_id for r in build_dataset_pool(track))
     except Exception:  # noqa: BLE001 - the registry may be absent off-cluster
         return {}
+    expected = int(load_design()["tables"][track])
+    if len(ids) != expected:
+        raise RuntimeError(f"{track}: {len(ids)} registered tables, design has {expected}; E7 source labels would shift")
+    return dict(enumerate(ids))
 
 
 def transfer_long(frame: pd.DataFrame, track: str) -> pd.DataFrame:
@@ -1422,8 +1435,11 @@ def transfer_long(frame: pd.DataFrame, track: str) -> pd.DataFrame:
                                     track, scopes=("test", "ood"))
     if changes.empty:
         return pd.DataFrame()
+    # Only runs that reached the designed budget enter: an interrupted run's last monitor point
+    # would otherwise stand in for the end of training.
+    budget = int(load_design()["experiments"]["E7"]["successful_updates"])
     last = changes.groupby("run").successful_updates.transform("max")
-    end = changes[changes.successful_updates == last]
+    end = changes[(changes.successful_updates == last) & (last >= budget)]
     sources = transfer_sources(track)
     end = end.assign(source=end.arm.map(lambda a: sources.get(int(a), f"source {a}")))
     return end[["model", "arm", "source", "scope", "table", "successful_updates", "change"]].rename(

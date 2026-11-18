@@ -48,16 +48,18 @@
   },
   "search.exclude": {
     "tfm-library": true,
+    "vsc-library": true,
     "output CreditPFN": true,
     "data": true,
     ".venv": true
   },
-  "python.analysis.exclude": ["tfm-library", "output CreditPFN", "data"],
+  "python.analysis.exclude": ["tfm-library", "vsc-library", "output CreditPFN", "data"],
 
   // The submodule is READ-ONLY by rule. This makes the editor enforce what the rule asks,
   // so an accidental edit there is not even possible.
   "files.readonlyInclude": {
-    "tfm-library/**": true
+    "tfm-library/**": true,
+    "vsc-library/**": true
   },
 
   "files.eol": "\n",

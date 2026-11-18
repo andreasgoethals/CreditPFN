@@ -67,3 +67,9 @@ Reusable code lives in `src/`; entry points are `scripts/{data,train,eval}_pipel
 `vsc-library/` (VSC infrastructure) are pinned read-only submodules. Datasets, checkpoints and
 credentials are never committed; the project documentation (`docs/`) is kept outside the
 repository.
+
+## Based on the repository template
+
+Based on [andreasgoethals/0.-Template](https://github.com/andreasgoethals/0.-Template), which
+describes the starting layout and utilities. The shared figure tree (`output CreditPFN/figures/`)
+and the output directory name are deliberate project-specific deviations.

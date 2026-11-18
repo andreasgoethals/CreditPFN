@@ -139,7 +139,22 @@ def run(
     log_path: Path | str | None = None,
     cfg=None,
 ) -> int:
-    """Run the full data pipeline. See module docstring."""
+    """Run the full data pipeline. See module docstring.
+
+    Called from inside a training or evaluation run (``_ensure_processed``), it must not change
+    that run's output group: the caller's ``CREDITPFN_EXPERIMENT`` is restored on return."""
+    import os
+    caller_group = os.environ.get("CREDITPFN_EXPERIMENT")
+    try:
+        return _run(fresh=fresh, datasets=datasets, log_path=log_path, cfg=cfg)
+    finally:
+        if caller_group is None:
+            os.environ.pop("CREDITPFN_EXPERIMENT", None)
+        else:
+            os.environ["CREDITPFN_EXPERIMENT"] = caller_group
+
+
+def _run(fresh: bool, datasets: list[str] | None, log_path: Path | str | None, cfg) -> int:
     if cfg is None:
         cfg = _load_cfg()
     from src.utils.paths import activate_experiment

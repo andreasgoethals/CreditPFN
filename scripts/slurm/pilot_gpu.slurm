@@ -13,7 +13,9 @@
 #SBATCH --error=/dev/null
 #SBATCH --export=ALL
 set -euo pipefail
-cd "${VSC_DATA:?}/CreditPFN"
+# The checkout that submitted the job (a second DATA checkout runs its own code).
+cd "${SLURM_SUBMIT_DIR:?}"
+test -f scripts/slurm/run_experiment.sh || { echo "Submit from the CreditPFN repository root, not $PWD" >&2; exit 2; }
 action="${1:?recovery, capacity, evaluation or precision}"
 : "${CREDITPFN_RUNTIME_VERSION:?accepted runtime required}"
 export CREDITPFN_EXPERIMENT=experiment0 CREDITPFN_USE_SCRATCH=1 CREDITPFN_REQUIRE_STAGING=1
