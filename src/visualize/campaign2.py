@@ -203,7 +203,10 @@ def endpoint_gains(slug: str, track: str) -> pd.DataFrame:
     merged = _paired(slug, track, [metric])
     if merged.empty:
         return pd.DataFrame()
+    merged = merged[merged.fold_idx.isin(range(N_FOLDS))].copy()
     merged["gain"] = merged[metric] - merged[metric + "_original"]
+    valid = np.isfinite(merged[metric]) & np.isfinite(merged[metric + "_original"])
+    merged.loc[~valid, [metric, metric + "_original", "gain", "fold_idx"]] = np.nan
     out = (merged.groupby(["arm", "model", "test_dataset_id", "credit"])
            .agg(gain=("gain", "mean"), original=(metric + "_original", "mean"),
                 folds=("fold_idx", "nunique")).reset_index())
@@ -256,7 +259,8 @@ def endpoint_metrics(slug: str, track: str, metrics=None) -> pd.DataFrame:
     rows = []
     for metric in [m for m in metrics if m in merged]:
         sub = merged[["arm", "model", "test_dataset_id", "credit", "fold_idx", metric,
-                      metric + "_original"]].dropna()
+                      metric + "_original"]].replace([np.inf, -np.inf], np.nan).dropna()
+        sub = sub[sub.fold_idx.isin(range(N_FOLDS))]
         if sub.empty:
             continue
         sub = sub.assign(improvement=improvement(metric, sub[metric], sub[metric + "_original"]),
@@ -526,8 +530,9 @@ def bootstrap_means(frame: pd.DataFrame, value: str, *, table: str = "test_datas
     (None, None) without a complete table."""
     if frame.empty or value not in frame:
         return None, None
-    matrix = frame.pivot_table(index=table, columns=fold, values=value)
-    matrix = matrix[matrix.notna().sum(axis=1) == N_FOLDS].to_numpy(dtype=float)
+    valid = frame.loc[frame[fold].isin(range(N_FOLDS)) & np.isfinite(frame[value])]
+    matrix = valid.pivot_table(index=table, columns=fold, values=value)
+    matrix = matrix.reindex(columns=range(N_FOLDS)).dropna().to_numpy(dtype=float)
     if not len(matrix):
         return None, None
     rng = np.random.default_rng(seed)
@@ -1303,6 +1308,9 @@ def context_cohort_curve(table: pd.DataFrame) -> pd.DataFrame:
     total = grid.groupby(["track", "model"]).dataset_id.nunique().rename("all_tables").reset_index()
     curve = curve.merge(total, on=["track", "model"])
     curve["fixed_cohort"] = curve.tables == curve.all_tables
+    if "noncredit_tables" in curve:
+        incomplete = curve.noncredit_tables != curve.tables
+        curve.loc[incomplete, ["noncredit_gain", "credit_minus_noncredit"]] = np.nan
     return curve
 
 
@@ -1325,11 +1333,15 @@ def context_slopes(table: pd.DataFrame) -> pd.DataFrame:
     grid = table[~table.full]
     rows = []
     for (track, model), sub in grid.groupby(["track", "model"]):
-        up_to = sub.groupby("dataset_id").context_rows.max().min()
-        sub = sub[sub.context_rows <= up_to]
+        counts = sub.groupby("context_rows").dataset_id.nunique()
+        common_sizes = counts.index[counts == sub.dataset_id.nunique()]
+        if len(common_sizes) < 3:
+            continue
+        up_to = common_sizes.max()
+        sub = sub[sub.context_rows.isin(common_sizes)]
         for quantity in [q for q in SLOPE_QUANTITIES if q in sub]:
             for table_id, cells in sub.dropna(subset=[quantity]).groupby("dataset_id"):
-                if cells.context_rows.nunique() < 3:
+                if cells.context_rows.nunique() != len(common_sizes):
                     continue
                 x = np.log2(cells.context_rows.to_numpy(dtype=float))
                 slope = float(np.polyfit(x, cells[quantity].to_numpy(dtype=float), 1)[0])

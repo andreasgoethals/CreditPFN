@@ -128,7 +128,7 @@ def plot_corpus_overview(data: pd.DataFrame, partitions: pd.DataFrame) -> list[P
     axes[1].xaxis.set_minor_formatter(NullFormatter())
     axes[2].set_xlabel("Missing (%)")
     axes[2].set_xlim(0, max(5.0, float(np.nanmax(frame.missing * 100)) * 1.1))
-    axes[3].set_xlabel("Target mean")
+    axes[3].set_xlabel("Target share")
     axes[3].set_xlim(0, 1)
     axes[3].set_xticks([0, 0.5, 1], ["0", "0.5", "1"])
     for ax in axes:
@@ -141,7 +141,7 @@ def plot_corpus_overview(data: pd.DataFrame, partitions: pd.DataFrame) -> list[P
                  "Every processed credit table, PD (17) above LGD (8), each block ordered by decreasing row count; "
                  "P1–P4 is the dataset partition in which the table is held out from continued pretraining. Rows and "
                  "predictors use logarithmic axes; missing predictor cells exclude the target; the last panel shows the "
-                 "minority-class (default) rate for PD and the mean loss rate for LGD, both on a zero-based axis.",
+                 "fraction of rows in the less frequent class for PD and the mean loss rate for LGD.",
                  {"Corpus overview": tables})]
 
 
@@ -154,7 +154,7 @@ def plot_lgd_distributions() -> list[Page]:
     nrows = int(np.ceil(len(ids) / columns))
     fig, axes = plt.subplots(nrows, columns, squeeze=False, sharex=True,
                              figsize=(style.WIDTH_FULL, min(style.MAX_HEIGHT, style.FIGURE_BAND + nrows * 1.25)))
-    statistics = []
+    statistics, bins = [], []
     for ax, dataset in zip(axes.flat, ids):
         meta = DATASET_METADATA[dataset]
         try:
@@ -163,13 +163,17 @@ def plot_lgd_distributions() -> list[Page]:
         except FileNotFoundError:
             values = pd.Series(dtype=float)
         if not values.empty:
-            ax.hist(values, bins=30, weights=np.full(len(values), 1 / len(values)), color=style.color("lgd"))
-            for name, value in (("Mean", values.mean()), ("Median", values.median())):
-                ax.axvline(value, color=style.color(name.lower()), linestyle=":", label=name)
+            counts, edges = np.histogram(values, bins=30, range=(0, 1))
+            shares = counts / len(values)
+            ax.bar(edges[:-1], shares, width=np.diff(edges), align="edge", color=style.color("lgd"))
+            bins.extend(dict(dataset=display_name(dataset), lower=lo, upper=hi, fraction=share)
+                        for lo, hi, share in zip(edges[:-1], edges[1:], shares))
+            for name, value, line in (("Mean", values.mean(), ":"), ("Median", values.median(), "--")):
+                ax.axvline(value, color=style.color(name.lower()), linestyle=line, label=name)
             statistics.append(dict(dataset=display_name(dataset), rows=len(values), mean=values.mean(),
                                    median=values.median(), share_zero=float((values <= 0).mean()),
                                    share_one=float((values >= 1).mean())))
-        ax.set_title(display_name(dataset), fontsize=style.ANNOTATION_SIZE)
+        ax.set_title(display_name(dataset).removesuffix(" (LGD)"), fontsize=style.ANNOTATION_SIZE)
     for ax in axes[-1]:
         ax.set_xlabel("LGD")
     for ax in axes[:, 0]:
@@ -180,9 +184,10 @@ def plot_lgd_distributions() -> list[Page]:
     fig.suptitle("LGD target distribution per table")
     return [Page("lgd_distributions", fig,
                  f"Processed LGD target of each of the {len(ids)} LGD tables: 30-bin histograms of the fraction of rows, "
-                 "with dotted lines at the table's mean and median. Values follow the registered preprocessing, "
+                 "with a dotted line at the mean and a dashed line at the median. Values follow the registered preprocessing, "
                  "including the [0, 1] clip; tables are not pooled and vertical scales differ between panels.",
-                 {"LGD distribution statistics": pd.DataFrame(statistics)})]
+                 {"LGD distribution statistics": pd.DataFrame(statistics),
+                  "Fraction of rows per common LGD bin": pd.DataFrame(bins)})]
 
 
 def partition_table() -> pd.DataFrame:
@@ -220,7 +225,8 @@ def plot_exposure(data: pd.DataFrame) -> list[Page]:
     if not tracks:
         return []
     groups = {t: data[data.track.eq(t)].sort_values("rows", ascending=False) for t in tracks}
-    fig, axes = plt.subplots(len(tracks), 1, squeeze=False, figsize=(style.WIDTH_FULL, min(
+    maximum = data[["one_sample_step_share", "full_pass_step_share"]].max().max()
+    fig, axes = plt.subplots(len(tracks), 1, sharex=True, squeeze=False, figsize=(style.WIDTH_FULL, min(
         style.MAX_HEIGHT, style.FIGURE_BAND + style.TABLE_ROW_HEIGHT * (len(data) + 3))),
         gridspec_kw=dict(height_ratios=[max(len(groups[t]), 2) + 1.5 for t in tracks]))
     for ax, track in zip(axes[:, 0], tracks):
@@ -240,7 +246,6 @@ def plot_exposure(data: pd.DataFrame) -> list[Page]:
                                           else "reference"))
         ax.set_yticks(y, [f"{r.dataset_id} ({r.rows:,.0f})" for r in group.itertuples()])
         ax.invert_yaxis()
-        maximum = group[[f"{mode}_step_share" for mode in style.SAMPLING_LABELS]].max().max()
         ax.set_xlim(0, maximum * style.EXPOSURE_LIMIT_FACTOR)
         ax.set_title(f"{track.upper()} tables")
         ax.grid(axis="x", alpha=0.25)

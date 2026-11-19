@@ -5,23 +5,17 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from src.data.domain_comparison import TABLE_PROPERTIES, TARGET_PROPERTIES, normalised_target
+from src.data.domain_comparison import normalised_target
 from src.visualize import style
 
-LABELS = {"log10_rows": "Rows (log10)", "features": "Features", "categorical_share": "Categorical share",
-          "missing_share": "Missing share", "median_abs_skew": "Median |skew| of features",
-          "heavy_tail_share": "Share heavy-tailed features", "integer_share": "Share integer features",
-          "max_abs_spearman": "Max |Spearman| feature–target", "top5_abs_spearman": "Top-5 |Spearman|",
-          "positive_rate": "Minority-class rate", "bounded_unit_interval": "Target within [0, 1]",
-          "share_at_min": "Target mass at minimum", "share_at_max": "Target mass at maximum",
-          "target_skew": "Target skewness", "target_bimodality": "Target bimodality",
-          "unique_share": "Distinct target values / rows"}
-
-
 def _scatter(ax, frame, x, y):
-    for group, sub in frame.groupby("group"):
+    for group in style.DOMAIN_MARKERS:
+        sub = frame[frame.group == group]
+        if sub.empty:
+            continue
         ax.scatter(sub[x], sub[y], s=style.POINT_SIZE, color=style.DOMAIN_COLORS[group],
-                   alpha=style.POINT_ALPHA, label=style.DOMAIN_LABELS[group], edgecolors="none")
+                   marker=style.DOMAIN_MARKERS[group], alpha=style.POINT_ALPHA,
+                   label=style.DOMAIN_LABELS[group], edgecolors="none")
 
 
 def embedding_figure(embeddings: dict, title: str):
@@ -40,30 +34,32 @@ def embedding_figure(embeddings: dict, title: str):
     return fig
 
 
-def property_figure(properties: pd.DataFrame, track: str, names=None):
-    names = list(names or (*TARGET_PROPERTIES[track], *TABLE_PROPERTIES))
-    columns = 4
-    rows = int(np.ceil(len(names) / columns))
-    fig, axes = plt.subplots(rows, columns, figsize=style.rows_figsize(rows), squeeze=False)
-    groups = [g for g in ("credit", "retention", "domain_control") if g in set(properties.group)]
+def property_figure(properties: dict[str, pd.DataFrame]):
+    """Compare size matching, missingness and univariate signal on common scales by task."""
+    names = {"log10_rows": "Rows (log10)", "missing_share": "Missing fraction",
+             "max_abs_spearman": "Max. |Spearman ρ|"}
+    fig, axes = plt.subplots(2, len(names), sharey="col", figsize=style.rows_figsize(2))
     rng = np.random.default_rng(0)
-    for ax, name in zip(axes.ravel(), names):
-        for i, group in enumerate(groups):
-            values = properties.loc[properties.group == group, name].astype(float)
-            ax.scatter(i + rng.uniform(-style.JITTER_WIDTH, style.JITTER_WIDTH, len(values)), values,
-                       s=style.TABLE_POINT_SIZE, color=style.DOMAIN_COLORS[group], alpha=style.POINT_ALPHA)
-            ax.hlines(values.median(), i - 0.3, i + 0.3, color=style.DOMAIN_COLORS[group], lw=style.MEAN_CURVE_LINE)
-        ax.set_xticks([])   # the legend decodes the three groups: twelve cramped tick rows do not
-        ax.set_xlim(-0.6, len(groups) - 0.4)
-        ax.set_title(LABELS.get(name, name), fontsize=style.ANNOTATION_SIZE)
-    for ax in axes.ravel()[len(names):]:
-        ax.set_visible(False)
-    for group in groups:
-        axes[0, 0].scatter([], [], s=style.TABLE_POINT_SIZE, color=style.DOMAIN_COLORS[group],
+    for row, track in enumerate(("pd", "lgd")):
+        frame = properties[track]
+        axes[row, 0].set_ylabel(track.upper())
+        for ax, (name, label) in zip(axes[row], names.items()):
+            if row == 0:
+                ax.set_title(label)
+            for i, group in enumerate(style.DOMAIN_MARKERS):
+                values = frame.loc[frame.group == group, name].astype(float).dropna()
+                if values.empty:
+                    continue
+                ax.scatter(i + rng.uniform(-style.JITTER_WIDTH, style.JITTER_WIDTH, len(values)), values,
+                           s=style.TABLE_POINT_SIZE, color=style.DOMAIN_COLORS[group],
+                           marker=style.DOMAIN_MARKERS[group], alpha=style.POINT_ALPHA,
                            label=style.DOMAIN_LABELS[group])
-    axes[0, 0].plot([], [], color=style.COLORS["mean"], lw=style.MEAN_CURVE_LINE, label="Median")
+                ax.hlines(values.median(), i - 0.3, i + 0.3, color=style.DOMAIN_COLORS[group],
+                          lw=style.MEAN_CURVE_LINE)
+            ax.set_xticks([])
+            ax.set_xlim(-0.6, len(style.DOMAIN_MARKERS) - 0.4)
     axes[0, 0].legend()
-    fig.suptitle(("PD" if track == "pd" else "LGD") + " tables versus non-credit tables, per property")
+    fig.suptitle("Credit tables, matched controls and retention tables")
     return fig
 
 
@@ -74,7 +70,7 @@ def target_figure(tables_lgd: list[dict], properties_lgd: pd.DataFrame):
         z = np.sort(normalised_target(t["y"]))
         ecdf = np.searchsorted(z, grid, side="right") / len(z)
         credit = t["group"] == "credit"   # credit curves on top: they are the subject
-        axes[0].plot(grid, ecdf, color=style.DOMAIN_COLORS[t["group"]],
+        axes[0].plot(grid, ecdf, color=style.DOMAIN_COLORS[t["group"]], linestyle=style.DOMAIN_LINES[t["group"]],
                      lw=style.TABLE_CURVE_LINE * (1.6 if credit else 1), alpha=0.9 if credit else 0.45,
                      zorder=3 if credit else 2)
     axes[0].set_xlabel("Target, rescaled to [0, 1]")

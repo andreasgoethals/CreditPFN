@@ -7,8 +7,7 @@ the order that notebook drew them. Caption text is passed to
 These are the paper's captions: paste one straight under its figure. Pure description
 — what is plotted, on what axes, from how much data. No interpretation.
 
-Figures are PDFs at the A4 paper widths (160 mm full, 77 mm single column); never rescale one
-in the document, because that rescales its text with it.
+PDFs use the Springer LNCS text width (122 mm) or the side-by-side width (58 mm).
 
 ## appendix/01_rq1_results
 
@@ -42,11 +41,11 @@ _No figures produced._
 
 **[general__02_processed_data__01_corpus_overview](general/general__02_processed_data__01_corpus_overview.pdf)** — `corpus_overview` — The credit corpus: size, predictors, missing cells and target
 
-Every processed credit table, PD (17) above LGD (8), each block ordered by decreasing row count; P1–P4 is the dataset partition in which the table is held out from continued pretraining. Rows and predictors use logarithmic axes; missing predictor cells exclude the target; the last panel shows the minority-class (default) rate for PD and the mean loss rate for LGD, both on a zero-based axis.
+Every processed credit table, PD (17) above LGD (8), each block ordered by decreasing row count; P1–P4 is the dataset partition in which the table is held out from continued pretraining. Rows and predictors use logarithmic axes; missing predictor cells exclude the target; the last panel shows the fraction of rows in the less frequent class for PD and the mean loss rate for LGD.
 
 **[general__02_processed_data__02_lgd_distributions](general/general__02_processed_data__02_lgd_distributions.pdf)** — `lgd_distributions` — LGD target distribution per table
 
-Processed LGD target of each of the 8 LGD tables: 30-bin histograms of the fraction of rows, with dotted lines at the table's mean and median. Values follow the registered preprocessing, including the [0, 1] clip; tables are not pooled and vertical scales differ between panels.
+Processed LGD target of each of the 8 LGD tables: 30-bin histograms of the fraction of rows, with a dotted line at the mean and a dashed line at the median. Values follow the registered preprocessing, including the [0, 1] clip; tables are not pooled and vertical scales differ between panels.
 
 **[general__02_processed_data__03_planned_exposure](general/general__02_processed_data__03_planned_exposure.pdf)** — `planned_exposure` — Share of updates per table: one sample versus full pass
 
@@ -54,19 +53,15 @@ Planned share of optimizer updates per credit table if every processed table of 
 
 ## general/03_domain_comparison
 
-**[general__03_domain_comparison__01_pd_properties](general/general__03_domain_comparison__01_pd_properties.pdf)** — `pd_properties` — PD tables versus non-credit tables, per property
+**[general__03_domain_comparison__01_lgd_targets](general/general__03_domain_comparison__01_lgd_targets.pdf)** — `lgd_targets` — LGD targets versus non-credit regression targets
 
-PD. Every PD credit table, binary non-credit retention table and matched non-credit control table (the E4 twins, subsampled to the shape of their credit tables), per property (panels). Points are tables with horizontal jitter; bars mark group medians. Tables above 50,000 rows are subsampled to 50,000 rows for the property computation.
+Left: empirical distribution function of each table target after per-table min-max rescaling. Right: fraction of sampled rows at each target bound (numerical closeness). Solid lines and circles show credit tables, dotted lines and triangles show retention tables, and dashed lines and squares show matched controls.
 
-**[general__03_domain_comparison__02_lgd_properties](general/general__03_domain_comparison__02_lgd_properties.pdf)** — `lgd_properties` — LGD tables versus non-credit tables, per property
+**[general__03_domain_comparison__02_group_properties](general/general__03_domain_comparison__02_group_properties.pdf)** — `group_properties` — Credit tables, matched controls and retention tables
 
-LGD. Every LGD credit table, regression non-credit retention table and matched non-credit control table (the E4 twins, subsampled to the shape of their credit tables), per property (panels). Points are tables with horizontal jitter; bars mark group medians. Tables above 50,000 rows are subsampled to 50,000 rows for the property computation.
+PD (top) and LGD (bottom). Each point is one table. From left to right the columns give the full row count on a log10 scale, the fraction of missing predictor cells and the largest absolute Spearman correlation of a numeric predictor with the target. Horizontal bars mark group medians. Missingness and correlations use a fixed sample of up to 50,000 rows per table. Undefined correlations are omitted.
 
-**[general__03_domain_comparison__03_lgd_targets](general/general__03_domain_comparison__03_lgd_targets.pdf)** — `lgd_targets` — LGD targets versus non-credit regression targets
-
-Left: empirical distribution function of each table target after per-table min-max rescaling. Right: share of rows exactly at the minimum and at the maximum target value. Colours mark credit LGD tables and non-credit regression tables.
-
-**[general__03_domain_comparison__04_embedding](general/general__03_domain_comparison__04_embedding.pdf)** — `embedding` — Credit and non-credit tables in property space
+**[general__03_domain_comparison__03_embedding](general/general__03_domain_comparison__03_embedding.pdf)** — `embedding` — Credit and non-credit tables in property space
 
 First two principal components of the standardised feature and target properties of every table, for PD with the binary non-credit tables (left) and LGD with the regression non-credit tables (right). Each point is one table: credit corpus, matched non-credit control corpus (E4) and non-credit retention panel. Axis labels give the share of property variance per component.
 

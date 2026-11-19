@@ -321,6 +321,16 @@ def test_context_table_drops_noncredit_cells_without_five_folds():
     table = c2.context_table(results)
     assert table[table.dataset_id == "0001.a"].noncredit_gain.isna().all()
     assert table[table.dataset_id == "0002.b"].noncredit_gain.notna().all()
+    curve = c2.context_cohort_curve(table)
+    assert curve.noncredit_gain.isna().all() and curve.gain.notna().all()
+
+
+def test_bootstrap_excludes_nonfinite_and_unregistered_folds():
+    frame = pd.DataFrame({"test_dataset_id": np.repeat(["a", "b", "c"], 5),
+                          "fold_idx": [0, 1, 2, 3, 4] * 2 + [0, 1, 2, 3, 8],
+                          "gain": [1.0] * 5 + [2.0] * 4 + [np.inf] + [3.0] * 5})
+    interval = c2.bootstrap_interval(frame, "gain")
+    assert interval["tables"] == 1 and interval["mean"] == 1.0
 
 
 def test_slope_test_recovers_the_change_per_doubling():

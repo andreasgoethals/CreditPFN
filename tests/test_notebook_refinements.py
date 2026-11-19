@@ -131,5 +131,7 @@ def test_lgd_histograms_include_dataset_mean_and_median(monkeypatch):
     page = corpus.plot_lgd_distributions()[0]
     ax = page.figure.axes[0]
     assert [line.get_xdata()[0] for line in ax.lines] == [.375,.25]
-    assert all(line.get_linestyle() == ":" for line in ax.lines)
+    assert [line.get_linestyle() for line in ax.lines] == [":", "--"]
+    bins = page.tables["Fraction of rows per common LGD bin"]
+    assert len(bins) == 30 and bins.fraction.sum() == pytest.approx(1)
     assert page.tables["LGD distribution statistics"].iloc[0]["mean"] == .375

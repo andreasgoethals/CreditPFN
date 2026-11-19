@@ -459,6 +459,8 @@ def finish_figure(fig):
 
 # Domain comparison (notebooks/general/03_domain_comparison): credit corpus vs non-credit tables.
 DOMAIN_COLORS = {"credit": "#0072B2", "retention": "#E69F00", "domain_control": "#009E73"}
+DOMAIN_MARKERS = {"credit": "o", "retention": "^", "domain_control": "s"}
+DOMAIN_LINES = {"credit": "-", "retention": ":", "domain_control": "--"}
 DOMAIN_LABELS = {"credit": "Credit corpus", "retention": "Non-credit retention panel",
                  "domain_control": "Non-credit control corpus"}
 

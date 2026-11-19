@@ -268,8 +268,7 @@ def write_captions(notebooks: tuple[str, ...]) -> Path:
         "These are the paper's captions: paste one straight under its figure. Pure description",
         "— what is plotted, on what axes, from how much data. No interpretation.",
         "",
-        "Figures are PDFs at the A4 paper widths (160 mm full, 77 mm single column); never rescale one",
-        "in the document, because that rescales its text with it.",
+        "PDFs use the Springer LNCS text width (122 mm) or the side-by-side width (58 mm).",
         "",
     ]
     for name in sorted(notebooks):

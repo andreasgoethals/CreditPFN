@@ -729,7 +729,7 @@ def context_slopes(summary: pd.DataFrame, *, title: str):
 
 PROPERTY_LABELS = {"original": "Original model score", "rows": "Rows (log scale)", "features": "Features",
                    "categorical_share": "Categorical share", "missing_share": "Missing share",
-                   "default_rate": "Default rate", "zero_share": "Share of LGD = 0",
+                   "default_rate": "PD class-1 share", "zero_share": "Share of LGD = 0",
                    "one_share": "Share of LGD = 1", "nearest": "Distance to nearest\ntraining table"}
 
 
