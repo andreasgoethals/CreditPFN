@@ -25,6 +25,7 @@ import json
 import os
 import re
 import subprocess
+import sys
 from pathlib import Path
 
 from src.utils.atomic import write_json
@@ -33,6 +34,9 @@ from src.utils.paths import REPO_ROOT
 NO_CAP = "4096"  # lane pool far larger than any submission: Slurm admission is the only cap
 QUEUE_BUDGET = 480  # of Mindwell's 500 queued jobs per user, keep 20 free for interactive work
 EVAL_TASKS = 4      # five-fold evaluation shards per trained partition
+# Rejected endpoint in the registered challenge extract, verified against LendingClub's
+# 2007-2011 LoanStats3a: 25,428 unique matches, including 1,185 fully paid loans in class zero.
+REJECTED_PD_0006_TARGET = "fda2cc44895adf82dc02e2e689ae6056cb75e55ae3aee41f34ad05fe4bc197d2"
 
 
 def prepare(folder: Path, only: list[str] | None = None) -> list[dict]:
@@ -46,6 +50,60 @@ def prepare(folder: Path, only: list[str] | None = None) -> list[dict]:
                         "trials": report["training_trials"], "plan": report["plan"]})
         print(json.dumps(reports[-1]), flush=True)
     return reports
+
+
+def pd_target_issue(dataset_id: str) -> str | None:
+    """Reject the known challenge labels for PD 0006, including a global label flip."""
+    import hashlib
+
+    import numpy as np
+    import pandas as pd
+
+    from src.data.preprocessing import DATASET_METADATA
+    from src.utils.paths import processed_dir
+
+    if dataset_id.partition(".")[0] != "0006":
+        return None
+    target = DATASET_METADATA[dataset_id]["target_column"]
+    fields = ["loan_amnt", "annual_inc", "int_rate", "dti"]
+    frame = pd.read_csv(processed_dir("pd", dataset_id + ".sanitized.csv"), usecols=[*fields, target])
+    # Fingerprint the membership of each label group, independent of row order or the names
+    # of the labels. No individual loan identifiers or records are needed in the repository.
+    profiles = pd.util.hash_pandas_object(frame[fields].astype("float64"), index=False)
+    groups = [hashlib.sha256(np.sort(profiles.loc[index].to_numpy(dtype="<u8")).tobytes()).hexdigest()
+              for index in frame.groupby(target, dropna=False).groups.values()]
+    signature = hashlib.sha256(" ".join(sorted(groups)).encode("ascii")).hexdigest()
+    if signature == REJECTED_PD_0006_TARGET:
+        return ("PD 0006 has the challenge target contradicted by LendingClub terminal outcomes. "
+                "A label flip also mixes fully paid and charged-off loans. Resolve the corpus before launching.")
+    return None
+
+
+def grid_preflight() -> dict:
+    """Resolve all training arms and evaluation task lists on the campaign's real corpus, CPU only."""
+    from src.eval import campaign_tasks as ct
+    from src.utils.design import experiment_folder, load_design
+    from src.utils.prepare_experiment import prepare as inspect
+    design = load_design()
+    configs = {name: [inspect(p) for p in sorted(experiment_folder(name, design).glob("*.yaml"))]
+               for name in design["experiments"] if name not in ("E5", "E6")}
+    if not all(configs.values()):
+        raise RuntimeError("A training experiment has no generated configurations")
+    tasks, problems = {}, []
+    for kind in ct.KINDS:
+        cells = ct.tasks(design, kind=kind)
+        keys = {(t["track"], t["model"], t.get("source"), t.get("arm"), t["dataset_id"], t["fold"])
+                for t in cells}
+        if not keys or len(keys) != len(cells):
+            raise RuntimeError(f"{kind} has missing or duplicate task identities")
+        tasks[kind] = len(cells)
+        if kind == "finetune":
+            for dataset in sorted({t["dataset_id"] for t in cells if t["track"] == "pd"}):
+                if issue := pd_target_issue(dataset):
+                    problems.append(issue)
+    return dict(configs={name: len(rows) for name, rows in configs.items()},
+                training_runs={name: sum(r["training_trials"] for r in rows) for name, rows in configs.items()},
+                evaluation_tasks=tasks, input_problems=problems, passed=not problems)
 
 
 def submission_environment() -> dict:
@@ -70,7 +128,8 @@ def _environment(**extra) -> dict:
     # The controller runs with PROJECT inputs and its own container paths; children stage and
     # activate their own (scratch inputs, as in production).
     for key in ("CREDITPFN_USE_SCRATCH", "CREDITPFN_DATA_ROOT", "CREDITPFN_BASE_CACHE_ROOT",
-                "PYTHONPATH", "LD_LIBRARY_PATH", "CREDITPFN_RUNTIME_ROOT"):
+                "PYTHONPATH", "LD_LIBRARY_PATH", "CREDITPFN_RUNTIME_ROOT", "CREDITPFN_PILOT_RUN",
+                "CREDITPFN_PILOT_SET", "CREDITPFN_RELEASE_RUN"):
         env.pop(key, None)
     env["CREDITPFN_USE_SCRATCH"] = "1"
     if not re.fullmatch(r"[A-Za-z0-9]+", env.get("CREDITPFN_RUNTIME_VERSION", "")):
@@ -146,9 +205,21 @@ def submit_experiment0(folder: Path, receipt: Path, only: dict | None = None) ->
         PRECISION_TASKS,
         RECOVERY_TASKS,
         pilot_paths,
+        recovery_case,
     )
+    from src.utils import pilot_gate
     if receipt.exists():
         raise RuntimeError(f"Experiment 0 was already submitted; inspect {receipt}")
+    root = receipt.parent
+    run = os.environ.get(pilot_gate.RUN_ENV)
+    if not run or not (pilot_gate.directory(root, run) / "preflight.json").is_file():
+        raise RuntimeError("Submit Experiment 0 through campaign_cpu.slurm so its CPU preflight runs first")
+    request = pilot_gate.current(root, run)
+    if pilot_gate.read(pilot_gate.directory(root, run) / "preflight.json").get("passed") is not True:
+        raise RuntimeError("Experiment 0 CPU preflight has not passed")
+    only = pilot_gate.with_dependencies(only)
+    if request["selection"] != only:
+        raise RuntimeError("Experiment 0 selection differs from the current request")
     only = only or {}
 
     def chosen(kind: str, count: int) -> list[int]:
@@ -166,7 +237,9 @@ def submit_experiment0(folder: Path, receipt: Path, only: dict | None = None) ->
                        # 467,000-row context on the largest table) is still unmeasured.
                        WALLTIME="01:30:00", EVAL_WALLTIME="12:00:00")
     state = {"pilots": {}, "benchmark": {}, "classical": {}, "recovery": None, "capacity": None,
-             "precision": None, "evaluation": None, "summary": None}
+             "precision": None, "evaluation": None, "scale": None, "summary": None, "run": run}
+    env[pilot_gate.RUN_ENV] = run
+    env["CREDITPFN_PILOT_SET"] = request["evidence"]
     receipt.parent.mkdir(parents=True, exist_ok=True)
     try:
         for path in pilot_paths(folder):
@@ -187,22 +260,41 @@ def submit_experiment0(folder: Path, receipt: Path, only: dict | None = None) ->
                                    ("precision", PRECISION_TASKS, ["--time=01:00:00"])):
             tasks = chosen(kind, count)
             if tasks:
-                state[kind] = _sbatch([array(tasks), *extra, gpu, kind], env)
+                check_env = env
+                if kind == "recovery" and request["evidence"] != run:
+                    # A retry must start both resume arms empty; put its plans and weights
+                    # in this attempt's directory, retaining the reference pilots for scoring.
+                    names = {f"recovery_{variant}_{arm}_{track}.yaml" for task in tasks
+                             for variant, track, _ in [recovery_case(task)]
+                             for arm in ("uninterrupted", "resumed")}
+                    subprocess.run([sys.executable, "-m", "src.utils.campaign_launch", "prepare", str(folder),
+                                    "--only", json.dumps({"prepare": sorted(names)})],
+                                   env={**os.environ, "CREDITPFN_PILOT_SET": run}, check=True)
+                    check_env = {**env, "CREDITPFN_PILOT_SET": run}
+                state[kind] = _sbatch([array(tasks), *extra, gpu, kind], check_env)
         # The evaluation check scores the reference pilots and, for E12, the 2,048-row episode pilot.
         reference = [j for name, jobs in state["pilots"].items()
-                     if name.startswith(("reference_", "episode2048_")) for j in jobs]
+                     if name.startswith(("reference_", "episode2048_", "domain_control_")) for j in jobs]
         tasks = chosen("evaluation", EVALUATION_TASKS)
         if tasks:
             state["evaluation"] = _sbatch(([f"--dependency=afterany:{':'.join(reference)}"] if reference else [])
                                           + [array(tasks), gpu, "evaluation"], env)
+        tasks = chosen("scale", EVALUATION_TASKS)
+        if tasks:
+            state["scale"] = _sbatch(([f"--dependency=afterok:{':'.join(reference)}",
+                                       "--kill-on-invalid-dep=yes"] if reference else [])
+                                     + [array(tasks), f"--time={TASK_WALLTIME}", gpu, "scale"], env)
         after = ([j for jobs in state["pilots"].values() for j in jobs]
                  + [j for jobs in state["benchmark"].values() for j in jobs]
                  + [j for jobs in state["classical"].values() for j in jobs]
-                 + [state[k] for k in ("recovery", "capacity", "precision", "evaluation") if state[k]])
-        state["summary"] = _sbatch([f"--dependency=afterany:{':'.join(after)}",
-                                    "scripts/slurm/campaign_cpu.slurm", "summary"], env)
+                 + [state[k] for k in ("recovery", "capacity", "precision", "evaluation", "scale") if state[k]])
+        if os.environ.get("SLURM_JOB_ID"):
+            after.append(os.environ["SLURM_JOB_ID"])
+        state["summary"] = _sbatch(([f"--dependency=afterany:{':'.join(after)}"] if after else [])
+                                   + ["scripts/slurm/campaign_cpu.slurm", "summary"], env)
     finally:
         write_json(receipt, state)
+        write_json(pilot_gate.directory(root, run) / "jobs.json", state, exclusive=True)
     print(json.dumps(state, indent=2), flush=True)
     return state
 
@@ -260,26 +352,29 @@ def campaign_walltimes() -> dict:
     return values
 
 
-def require_experiment0() -> None:
-    """Campaign work starts only after a passing Experiment 0 summary."""
+def require_experiment0() -> dict:
+    """Require current evidence, including when a newer controller is still queued."""
+    from src.utils import pilot_gate
     from src.utils.pilot_checks import receipts
-    path = receipts() / "summary.json"
-    if not path.is_file() or not json.loads(path.read_text(encoding="utf-8")).get("passed"):
-        raise RuntimeError(f"Experiment 0 has not passed ({path}); run and inspect it first")
+    request = pilot_gate.require(receipts())
+    if os.environ.get("SLURM_JOB_ID") and pilot_gate.pending_controllers():
+        raise RuntimeError("An Experiment 0 controller or summary is queued or running")
+    return request
 
 
 def submit_experiment(name: str, *, budget: int = QUEUE_BUDGET, queued=queued_jobs) -> dict:
     """Submit one experiment, within the queue budget; resumable by rerunning the same command."""
-    require_experiment0()
+    release = require_experiment0()
+    identity = release["identity"]
     from src.utils.design import experiment_folder, load_design
     design = load_design()
     spec = design["experiments"][name]
     slug, kind = spec["slug"], spec.get("kind", "training")
     receipt = _receipt(slug)
-    state = json.loads(receipt.read_text(encoding="utf-8")) if receipt.exists() else {"submitted": {}}
     # The launcher's own queue ceiling equals the controller's budget: a lower one would make it
     # wait (and be killed by the 15-minute launcher timeout) on work the controller just admitted.
-    env = _environment(CREDITPFN_EXPERIMENT=slug, THROTTLE=NO_CAP, GLOBAL_CONCURRENCY=NO_CAP,
+    env = _environment(CREDITPFN_EXPERIMENT=slug, CREDITPFN_RELEASE_RUN=release["run"],
+                       THROTTLE=NO_CAP, GLOBAL_CONCURRENCY=NO_CAP,
                        EVAL_CONCURRENCY=NO_CAP, EVAL_TASKS=EVAL_TASKS, MAX_QUEUED=str(budget),
                        **campaign_walltimes())
     receipt.parent.mkdir(parents=True, exist_ok=True)
@@ -289,6 +384,14 @@ def submit_experiment(name: str, *, budget: int = QUEUE_BUDGET, queued=queued_jo
         lock.open("x").close()
     except FileExistsError:
         raise RuntimeError(f"Another submission of {name} holds {lock}; if none runs (squeue), delete the lock") from None
+    try:
+        state = (json.loads(receipt.read_text(encoding="utf-8")) if receipt.exists()
+                 else {"submitted": {}, "experiment0_identity": identity})
+        if state.get("experiment0_identity") != identity:
+            raise RuntimeError("Existing campaign submission used different or unverified Experiment 0 evidence")
+    except BaseException:
+        lock.unlink(missing_ok=True)
+        raise
     save = lambda: write_json(receipt, state)  # noqa: E731
     try:
         if kind in ("finetune", "inference"):
@@ -345,11 +448,16 @@ def _submit_evaluation_tasks(kind, state, env, budget, queued, save=lambda: None
 
     def references(task):
         return ({"pd": config_path("episode_size", "pd", task["arm"])} if kind == "episode_context" else None)
-    missing = sorted({(t["track"], t["model"], t["partition"], t.get("arm")) for t in tasks
-                      if not _exists(lambda: ct.cpt_checkpoint(t, references(t)))})
+    checkpoints = {(t.get("source", "reference"), t["track"], t["model"], t["partition"], t.get("arm")): t
+                   for t in tasks}
+    missing = [key for key, task in checkpoints.items()
+                if not _exists(lambda task=task: ct.cpt_checkpoint(task, references(task)))]
     if missing:
         raise RuntimeError(f"{len(missing)} checkpoints are missing; finish their training first: {missing[:3]}")
     ct.write_tasks_cache(kind, tasks)   # workers read their task from it (no corpus re-read)
+    walltime = os.environ.get("CREDITPFN_TASK_WALLTIME", TASK_WALLTIME)
+    if not re.fullmatch(r"\d{1,3}:[0-5]\d:[0-5]\d", walltime):
+        raise ValueError(f"CREDITPFN_TASK_WALLTIME must be HH:MM:SS, got {walltime!r}")
     start = int(state.get("next_task", 0))
     while start < len(tasks):
         room = budget - queued()
@@ -361,9 +469,6 @@ def _submit_evaluation_tasks(kind, state, env, budget, queued, save=lambda: None
         key = f"{start}-{stop - 1}"
         state.setdefault("submitted", {})[key] = "uncertain"
         save()
-        walltime = os.environ.get("CREDITPFN_TASK_WALLTIME", TASK_WALLTIME)
-        if not re.fullmatch(r"\d{1,3}:\d{2}:\d{2}", walltime):
-            raise ValueError(f"CREDITPFN_TASK_WALLTIME must be HH:MM:SS, got {walltime!r}")
         job = _sbatch([f"--array=0-{stop - start - 1}", f"--time={walltime}", f"--export=ALL,TASK_OFFSET={start}",
                        "scripts/slurm/campaign_eval_gpu.slurm", kind], env)
         state["submitted"][key] = job
@@ -381,29 +486,49 @@ def _exists(resolve) -> bool:
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("prepare", "submit-experiment0", "rerun-experiment0", "submit"))
-    parser.add_argument("--only", help="rerun-experiment0: JSON {pilots, classical, recovery, capacity, "
-                                        "precision, evaluation}")
+    parser.add_argument("action", choices=("begin", "preflight", "prepare", "submit-experiment0", "rerun-experiment0", "submit"))
+    parser.add_argument("--only", help="rerun-experiment0: JSON {pilots, prepare, classical, recovery, capacity, "
+                                        "precision, evaluation, scale}")
     parser.add_argument("target", nargs="?", default=str(REPO_ROOT / "config/experiments/E00_pilots"),
                         help="folder for prepare/submit-experiment0; experiment number (E1..E12) for submit")
     args = parser.parse_args(argv)
-    if args.action == "prepare":
+    if args.action == "begin":
+        from src.utils import pilot_gate
+        from src.utils.pilot_checks import receipts
+        root = receipts()
+        run = pilot_gate.begin(root, json.loads(args.only) if args.only else None)
+        print(run, pilot_gate.read(pilot_gate.directory(root, run) / "request.json")["evidence"])
+    elif args.action == "preflight":
+        from src.utils import pilot_gate
+        from src.utils.pilot_checks import receipts
+        run = os.environ[pilot_gate.RUN_ENV]
+        pilot_gate.current(receipts(), run)
+        report = grid_preflight()
+        write_json(pilot_gate.directory(receipts(), run) / "preflight.json", report, exclusive=True)
+        print(json.dumps(report, indent=2))
+        if not report["passed"]:
+            return 1
+    elif args.action == "prepare":
         selection = json.loads(args.only) if args.only else None
         # A selection prepares only the pilots it names (an evaluation-only rerun prepares none).
         prepare(Path(args.target), only=(list(selection.get("pilots", [])) + list(selection.get("prepare", [])))
                 if selection is not None else None)
     elif args.action == "rerun-experiment0":
-        from datetime import datetime
-
+        from uuid import uuid4
         from src.utils.pilot_checks import receipts
-        stamp = datetime.now().strftime("%Y%m%dT%H%M%S")
+        stamp = uuid4().hex
         selection = json.loads(args.only or "{}")
         if not any(selection.values()):
             raise SystemExit("rerun-experiment0 needs a non-empty selection; an empty one would rerun everything")
         submit_experiment0(Path(args.target), receipts() / f"submission_rerun_{stamp}.json", only=selection)
     elif args.action == "submit-experiment0":
         from src.utils.pilot_checks import receipts
-        submit_experiment0(Path(args.target), receipts() / "submission.json")
+        from uuid import uuid4
+        root = receipts()
+        receipt = root / "submission.json"
+        if receipt.exists():
+            receipt = root / f"submission_full_{uuid4().hex}.json"
+        submit_experiment0(Path(args.target), receipt)
     else:
         submit_experiment(args.target)
     return 0

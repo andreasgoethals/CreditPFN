@@ -13,7 +13,7 @@ def fake(monkeypatch, tmp_path):
     monkeypatch.setattr(cl, "prepare", lambda folder: [])
     monkeypatch.setattr(cl, "_environment", lambda **extra: {"CREDITPFN_RUNTIME_VERSION": "x", **extra})
     monkeypatch.setattr(cl, "config_cost", lambda path: 40)
-    monkeypatch.setattr(cl, "require_experiment0", lambda: None)
+    monkeypatch.setattr(cl, "require_experiment0", lambda: {"run": "a" * 32, "identity": {"test": True}})
 
     def launcher(path, env):
         submitted.append((path.name, env["STAGES"], env.get("EVAL_KIND")))
@@ -48,6 +48,33 @@ def test_config_cost_counts_models_partitions_and_evaluation_shards():
     assert cl.config_cost(config_path("transfer", "lgd", 3)) == 4 * 1          # monitor only, no five-fold
     assert cl.stages(config_path("transfer", "pd", 0)) == "train"
     assert cl.stages(config_path("reference", "pd", 0)) == "train eval"
+
+
+def test_rejected_pd_target_survives_renaming_labels_and_reordering_rows(tmp_path, monkeypatch):
+    import hashlib
+    import numpy as np
+    import pandas as pd
+    from src.data.preprocessing import DATASET_METADATA
+    from src.utils import paths
+
+    path = tmp_path / "fixture.csv"
+    dataset = "0006.synthetic"
+    fields = ["loan_amnt", "annual_inc", "int_rate", "dti"]
+    frame = pd.DataFrame({f: [1., 2., 3.] for f in fields}).assign(outcome=[0, 1, 0])
+    monkeypatch.setitem(DATASET_METADATA, dataset, {"target_column": "outcome"})
+    monkeypatch.setattr(paths, "processed_dir", lambda *parts: path)
+    hashes = pd.util.hash_pandas_object(frame[fields], index=False).to_numpy(dtype="<u8")
+    groups = [hashlib.sha256(np.sort(group).tobytes()).hexdigest()
+              for group in (hashes[[0, 2]], hashes[[1]])]
+    monkeypatch.setattr(cl, "REJECTED_PD_0006_TARGET", hashlib.sha256(" ".join(sorted(groups)).encode()).hexdigest())
+    frame.to_csv(path, index=False)
+    assert cl.pd_target_issue(dataset)
+    frame["outcome"] = 1 - frame.outcome
+    frame.iloc[::-1].to_csv(path, index=False)
+    assert cl.pd_target_issue(dataset)
+    frame.loc[0, "outcome"] = 0
+    frame.to_csv(path, index=False)
+    assert cl.pd_target_issue(dataset) is None
 
 
 def test_evaluation_experiments_require_every_reference_checkpoint(fake, monkeypatch):
@@ -105,16 +132,38 @@ def test_failed_launch_is_recorded_as_uncertain_and_never_resubmitted(fake, monk
 
 
 def test_campaign_submission_requires_a_passing_experiment0(monkeypatch, tmp_path):
-    from src.utils import pilot_checks
+    from src.utils import pilot_checks, pilot_gate
+    monkeypatch.delenv("SLURM_JOB_ID", raising=False)
+    monkeypatch.setattr(pilot_gate, "identity", lambda **kw: {"inputs": "corrected"})
     monkeypatch.setattr(pilot_checks, "receipts", lambda: tmp_path)
     with pytest.raises(RuntimeError, match="Experiment 0 has not passed"):
         cl.require_experiment0()
     (tmp_path / "summary.json").write_text(json.dumps({"passed": True}))
+    with pytest.raises(RuntimeError, match="has not passed"):
+        cl.require_experiment0()
+    run = pilot_gate.begin(tmp_path, None)
+    first = pilot_gate.directory(tmp_path, run)
+    from src.utils.atomic import write_json
+    write_json(first / "summary.json", dict(run=run, passed=True, identity=pilot_gate.identity()))
     cl.require_experiment0()
+    monkeypatch.setattr(pilot_gate, "identity", lambda **kw: {"inputs": "changed"})
+    with pytest.raises(RuntimeError, match="changed"):
+        cl.require_experiment0()
+    monkeypatch.setattr(pilot_gate, "identity", lambda **kw: {"inputs": "corrected"})
+    again = pilot_gate.begin(tmp_path, {"evaluation": [0]})
+    checks = pilot_gate.current(tmp_path, again)["checks"]
+    assert checks["evaluation_00"] == again and checks["evaluation_01"] == run
+    with pytest.raises(RuntimeError, match="has not passed"):
+        cl.require_experiment0()
+    monkeypatch.setenv(pilot_gate.RUN_ENV, run)
+    with pytest.raises(RuntimeError, match="superseded"):
+        pilot_gate.record_check(tmp_path, "evaluation_00.json", {"passed": True})
 
 
 def test_experiment0_rerun_submits_only_the_selected_parts(tmp_path, monkeypatch):
     from src.utils import campaign_launch as cl
+    from src.utils import pilot_gate
+    monkeypatch.setattr(pilot_gate, "identity", lambda **kw: {})
     folder = tmp_path / "E00"
     folder.mkdir()
     for name in ("reference_pd.yaml", "reference_lgd.yaml", "lr1e5_pd.yaml", "lr1e5_lgd.yaml"):
@@ -124,13 +173,22 @@ def test_experiment0_rerun_submits_only_the_selected_parts(tmp_path, monkeypatch
     monkeypatch.setattr(cl, "_run_launcher", lambda path, env: launched.append((path.name, env["STAGES"])) or f"Submitted train array {next(ids)} on mindwell\n")
     monkeypatch.setattr(cl, "_sbatch", lambda args, env: arrays.append(args) or str(next(ids)))
     only = {"pilots": ["reference_lgd.yaml", "lr1e5_lgd.yaml"], "classical": ["lgd"],
-            "recovery": [4, 5, 99], "evaluation": [4, 5, 6, 7]}
+            "recovery": [4, 5], "evaluation": [4, 5, 6, 7]}
+    run = pilot_gate.begin(tmp_path, only)
+    monkeypatch.setenv(pilot_gate.RUN_ENV, run)
+    preflight = pilot_gate.directory(tmp_path, run) / "preflight.json"
+    preflight.write_text('{"passed": false}')
+    with pytest.raises(RuntimeError, match="CPU preflight has not passed"):
+        cl.submit_experiment0(folder, tmp_path / "rerun.json", only=only)
+    assert not launched and not arrays
+    preflight.write_text('{"passed": true}')
     state = cl.submit_experiment0(folder, tmp_path / "rerun.json", only=only)
     assert sorted(launched) == [("lr1e5_lgd.yaml", "train"), ("reference_lgd.yaml", "eval"),
                                 ("reference_lgd.yaml", "train eval")]
     kinds = [a[-1] for a in arrays]
-    assert kinds == ["recovery", "evaluation", "summary"]          # no capacity or precision arrays
-    assert "--array=4,5" in arrays[0]                               # out-of-range index dropped
+    assert kinds == ["recovery", "evaluation", "scale", "summary"]
+    assert "--array=4,5,6,7" in arrays[2]  # the largest-table check depends on the LGD reference too
+    assert "--array=4,5" in arrays[0]                               # just the requested cases
     assert arrays[1][0].startswith("--dependency=afterany:") and "--array=4,5,6,7" in arrays[1]
     assert state["capacity"] is None and state["precision"] is None
 
@@ -176,3 +234,71 @@ def test_rerun_selection_without_pilots_prepares_none_and_empty_is_refused(monke
     assert prepared == [[]]
     with pytest.raises(SystemExit, match="non-empty"):
         cl.main(["rerun-experiment0", "config/experiments/E00_pilots", "--only", "{}"])
+
+
+def test_new_pilot_evidence_is_isolated_on_both_tiers(isolated_output, monkeypatch):
+    from src.utils import paths, pilot_checks
+    run = "a" * 32
+    old_receipts = pilot_checks.receipts()
+    old = paths.results_dir(experiment="experiment0")
+    checkpoint = "checkpoints/trained/experiment0/pd/model.ckpt"
+    old_ckpt = paths.resolve_staging_path(checkpoint)
+    monkeypatch.setenv("CREDITPFN_EXPERIMENT", "experiment0")
+    monkeypatch.setenv("CREDITPFN_PILOT_SET", run)
+    assert paths.results_dir() == old.parent / "evidence" / run / "results"
+    assert paths.resolve_staging_path("output CreditPFN/results") == paths.results_dir()
+    assert paths.resolve_staging_path("output CreditPFN/experiment0/results") == paths.results_dir()
+    assert paths.resolve_staging_path(checkpoint) == old_ckpt.parents[1] / "evidence" / run / "pd/model.ckpt"
+    assert run in paths.manifests_dir().parts and run in paths.training_dir().parts
+    assert pilot_checks.receipts() == old_receipts
+    assert run not in paths.results_dir(experiment="reference").parts
+    assert run not in paths.resolve_staging_path("checkpoints/weights.ckpt").parts
+
+
+def test_slurm_accounting_rejects_failed_or_absent_evidence(monkeypatch):
+    import subprocess
+    from types import SimpleNamespace
+    from src.utils import pilot_gate
+    monkeypatch.setattr(subprocess, "run", lambda *a, **k: SimpleNamespace(stdout=
+                        "101_0|COMPLETED|0:0\n101_1|FAILED|1:0\n103_0|COMPLETED|0:0\n"))
+    assert pilot_gate.incomplete_jobs({"101", "102", "103_0"}) == [
+        "101_1|FAILED|1:0", "102: no accounting record"]
+    monkeypatch.setenv("USER", "test")
+    monkeypatch.setenv("SLURM_JOB_ID", "88")
+    def accounting(action):
+        return lambda cmd, **kw: SimpleNamespace(stdout="88\n99\n" if cmd[0] == "squeue" else
+            "99|sbatch scripts/slurm/campaign_cpu.slurm " + action)
+    for action in ("experiment0", "rerun-experiment0 {}", "summary", ""):
+        monkeypatch.setattr(subprocess, "run", accounting(action))
+        assert pilot_gate.pending_controllers()
+    monkeypatch.setattr(subprocess, "run", accounting("submit E2"))
+    assert not pilot_gate.pending_controllers()
+
+
+def test_pilot_identity_verifies_both_copies_of_the_input(monkeypatch, tmp_path):
+    from src.utils import paths, pilot_gate, runtime_validation
+    from src.utils.atomic import write_json
+    from src.utils.experiment import digest_json, file_digest
+
+    pointer = tmp_path / "ACTIVE_INPUTS.json"
+    scratch = tmp_path / "inputs" / "example"
+    scratch.mkdir(parents=True)
+    project = tmp_path / "project"
+    project.mkdir()
+    for root in (scratch, project):
+        (root / "sample").write_bytes(b"data")
+    files = {"sample": {"size": 4, "sha256": file_digest(project / "sample")}}
+    key = digest_json(files)
+    write_json(pointer, {"root": str(scratch), "sha256": key})
+    write_json(scratch / "inventory.json", {"files": files, "sha256": key})
+    monkeypatch.setenv("CREDITPFN_INPUT_POINTER", str(pointer))
+    monkeypatch.setenv("CREDITPFN_RUNTIME_VERSION", "test")
+    monkeypatch.delenv("CREDITPFN_USE_SCRATCH", raising=False)
+    monkeypatch.setattr(paths, "resolve_staging_path", lambda name: project / name)
+    monkeypatch.setattr(runtime_validation, "require", lambda version: {"manifest_sha256": "x", "identity": {"code": "v1"}})
+    assert pilot_gate.identity(verify_project=True)["inputs"] == key
+    for root, expected in ((project, "PROJECT inputs"), (scratch, "staged scratch input")):
+        (root / "sample").write_bytes(b"oops")
+        with pytest.raises(RuntimeError, match=expected):
+            pilot_gate.identity(verify_project=True)
+        (root / "sample").write_bytes(b"data")

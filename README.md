@@ -39,6 +39,14 @@ Training and evaluation run on the VSC Mindwell B200 GPUs in a sealed container.
 and compact logs live on VSC DATA; datasets, checkpoints, predictions and detailed results on the
 GPFS project storage. The output folder is `output CreditPFN/` on both tiers.
 
+Before E1, the Experiment 0 controller resolves the full grid, checks each reference benchmark
+against the current weights and input data, and times a full target fine-tuning fold per model
+and task. Its versioned receipts bind the campaign release to the validated source, runtime and
+input snapshot. Each new full validation preserves earlier pilot outputs.
+PD table 0006 mixes terminal loan outcomes. Among 25,428 unique matches on 16 application fields,
+the challenge's class zero includes 3,792 charged-off and 1,185 fully paid loans. The CPU
+preflight stops before submitting pilots on this corpus. [LendingClub issued-loan records](https://resources.lendingclub.com/LoanStats3a.csv.zip)
+
 ## Local tests and notebooks
 
 From this repository in Windows PowerShell:

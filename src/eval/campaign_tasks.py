@@ -52,7 +52,8 @@ def _references(references: dict | None, source: str = "reference") -> dict:
 MODEL_OF_BASE = {Path(path).name: model for bases in BASES.values() for model, path in bases.items()}
 
 
-def tasks(design: dict | None = None, references: dict | None = None, *, kind: str = "context") -> list[dict]:
+def tasks(design: dict | None = None, references: dict | None = None, *, kind: str = "context",
+          pilot_source: str = "reference") -> list[dict]:
     """Deterministic task list: track, model, partition, table, fold (no checkpoint I/O)."""
     from src.utils.design import config_path, experiment_by_slug
     design = design or load_design()
@@ -65,7 +66,7 @@ def tasks(design: dict | None = None, references: dict | None = None, *, kind: s
                     _config_tasks({"pd": config_path("episode_size", "pd", arm, design)}, ("pd",))]
         return out
     if references is not None:   # Experiment 0: one explicit reference pilot
-        return [dict(t, source="reference") for t in _config_tasks(references, tuple(design["tasks"]))]
+        return [dict(t, source=pilot_source) for t in _config_tasks(references, tuple(design["tasks"]))]
     sources = experiment_by_slug("context", design)[1].get("sources", ["reference"]) if kind == "context"         else ["reference"]
     return [dict(t, source=source) for source in sources
             for t in _config_tasks(_references(None, source), tuple(design["tasks"]))]
@@ -167,21 +168,28 @@ def campaign_tasks(kind: str, design: dict | None = None) -> list[dict]:
 
 
 def run(kind: str, index: int, *, references: dict | None = None, slug: str | None = None,
-        quick: bool = False, device: str | None = None) -> Path:
+        quick: bool = False, device: str | None = None, pilot_source: str = "reference") -> Path:
     from src.eval.context_curve import budgets, fold_indices, score_cell
     from src.eval.dataset_loader import load_processed_dataset
     from src.eval.target_finetune import finetune_cell
     from src.utils.atomic import write_json
+    from src.utils.experiment import file_digest
     from src.utils.paths import resolve_base_checkpoint, results_dir
     if kind not in KINDS:
         raise ValueError(f"Unknown task kind {kind!r}")
     design = load_design()
-    task = (tasks(design, references, kind=kind) if references is not None
+    task = (tasks(design, references, kind=kind, pilot_source=pilot_source) if references is not None
             else campaign_tasks(kind, design))[index]
     if kind == "episode_context" and references is None:
         from src.utils.design import config_path
         references = {"pd": config_path("episode_size", "pd", task["arm"], design)}
     folder = results_dir(experiment=slug or SLUGS[kind]) / kind
+    if slug == "experiment0" and references is not None:
+        import os
+        from src.utils import pilot_gate
+        if run_id := os.environ.get(pilot_gate.RUN_ENV):
+            folder = pilot_gate.directory(folder, run_id)
+        folder = folder / pilot_source / ("quick" if quick else "full")
     folder.mkdir(parents=True, exist_ok=True)
     target = folder / f"{kind}_{index:05d}.csv.gz"
     receipt = folder / "completed" / f"{kind}_{index:05d}.json"
@@ -207,8 +215,9 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
             print(f"Task {index}: metrics without a receipt (interrupted); recomputing", flush=True)
         elif done.get("identity") != identity:
             raise RuntimeError(f"{target.name} was produced under a different identity; move it aside")
-        elif not stored.is_file():
-            raise RuntimeError(f"{target.name} has a receipt but no {stored.name}; move both aside")
+        elif not stored.is_file() or (done.get("metrics_sha256"), done.get("predictions_sha256")) != (
+                file_digest(target), file_digest(stored)):
+            raise RuntimeError(f"{target.name} has missing or changed metrics/predictions; inspect its receipt")
         else:
             print(f"Task {index} already complete: {target}", flush=True)
             return target
@@ -274,7 +283,8 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
     pending = target.with_suffix(".pending")
     frame.to_csv(pending, index=False, compression="gzip")
     pending.replace(target)
-    write_json(receipt, dict(task=task, rows=len(frame), identity=identity, predictions=stored.name))
+    write_json(receipt, dict(task=task, rows=len(frame), identity=identity, predictions=stored.name,
+                             metrics_sha256=file_digest(target), predictions_sha256=file_digest(stored)))
     print(json.dumps(dict(kind=kind, index=index, rows=len(frame))), flush=True)
     return target
 
@@ -319,9 +329,13 @@ def _unpack(packed: bytes) -> dict:
 
 
 def task_identity(kind, task, rules, recipe, quick, starts) -> dict:
-    """What a stored task result depends on: task, protocol, quick mode and checkpoint bytes."""
-    from src.utils.experiment import file_digest
+    """Bind a result to the target bytes and evaluation implementation as well as its weights."""
+    from src.utils.experiment import code_identity, environment_versions, file_digest
+    from src.utils.paths import processed_dir
+    dataset = processed_dir(task["track"], task["dataset_id"] + ".sanitized.csv")
     return json.loads(json.dumps(dict(kind=kind, task=task, rules=rules, recipe=recipe, quick=bool(quick),
+                                      dataset_sha256=file_digest(dataset), code=code_identity(stage="eval"),
+                                      versions=environment_versions(stage="eval"),
                                       checkpoints={k: file_digest(v) for k, v in starts.items()}),
                                  default=str))
 

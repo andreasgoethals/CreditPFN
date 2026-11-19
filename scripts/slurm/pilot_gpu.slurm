@@ -1,5 +1,5 @@
 #!/bin/bash -l
-# Experiment 0 GPU checks: pilot_gpu.slurm <recovery|capacity|evaluation|precision>, one case per array element.
+# Experiment 0 GPU checks: pilot_gpu.slurm <recovery|capacity|evaluation|precision|scale>.
 #SBATCH --job-name=creditpfn-pilot-gpu
 #SBATCH --clusters=mindwell
 #SBATCH --partition=gpu_b200
@@ -16,7 +16,7 @@ set -euo pipefail
 # The checkout that submitted the job (a second DATA checkout runs its own code).
 cd "${SLURM_SUBMIT_DIR:?}"
 test -f scripts/slurm/run_experiment.sh || { echo "Submit from the CreditPFN repository root, not $PWD" >&2; exit 2; }
-action="${1:?recovery, capacity, evaluation or precision}"
+action="${1:?recovery, capacity, evaluation, precision or scale}"
 : "${CREDITPFN_RUNTIME_VERSION:?accepted runtime required}"
 export CREDITPFN_EXPERIMENT=experiment0 CREDITPFN_USE_SCRATCH=1 CREDITPFN_REQUIRE_STAGING=1
 export CUBLAS_WORKSPACE_CONFIG=:4096:8 PYTHONUNBUFFERED=1

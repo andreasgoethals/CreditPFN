@@ -44,18 +44,19 @@ def test_would_have_stopped_counts_training_epochs_only():
     assert would_have_stopped([0.5, 0.4, 0.45, 0.46, 0.47], patience=3) == 2
 
 
-def test_bank_status_credit_scores_times_ten_lose_the_label():
+def test_table_0009_removes_the_label_encoded_in_credit_score_scale():
     from src.data.preprocessing import _FIX_FUNCTIONS as DATASET_FIXES
     raw = pd.DataFrame({"Loan ID": list("abcd"), "Customer ID": list("abcd"), "Current Loan Amount": 1,
                         "Loan Status": ["Charged Off", "Fully Paid", "Charged Off", "Fully Paid"],
                         "Credit Score": [7300.0, 730.0, 6900.0, np.nan], "Term": "Short Term"})
-    out = DATASET_FIXES["0009.bank_status"](raw)
+    fix, = [fn for table, fn in DATASET_FIXES.items() if table.startswith("0009.")]
+    out = fix(raw)
     assert out["Credit Score"].tolist()[:3] == [730.0, 730.0, 690.0] and out["Credit Score"].isna().iloc[3]
     assert (out["Credit Score"].dropna() <= 1000).all()
 
 
 def test_primary_holm_family_is_the_declared_sixteen(monkeypatch):
-    syn.install_results(monkeypatch, {"reference": 1})
+    syn.install_results(monkeypatch, {"reference": 1}, missing_fold=False)
     full = c2.primary_endpoint()
     real = c2._read_results_frames
     keep_one = lambda slug, track: real(slug, track) if track == "pd" else pd.DataFrame()  # noqa: E731

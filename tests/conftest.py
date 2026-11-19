@@ -82,6 +82,8 @@ def isolated_output(tmp_path, monkeypatch):
 @pytest.fixture(autouse=True)
 def _experiment_routing(monkeypatch):
     monkeypatch.delenv("CREDITPFN_EXPERIMENT", raising=False)
+    monkeypatch.delenv("CREDITPFN_PILOT_RUN", raising=False)
+    monkeypatch.delenv("CREDITPFN_PILOT_SET", raising=False)
 
 
 #: Storage routing a cluster job exports (campaign_cpu.slurm) or VSC sets on every node.

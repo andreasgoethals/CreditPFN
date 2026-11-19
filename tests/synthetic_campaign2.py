@@ -77,6 +77,8 @@ def results(slug: str, track: str, arms: int = 1, seed: int = 0, *, baselines: b
 def install_results(monkeypatch, slugs_arms: dict, **kwargs) -> None:
     """Route ``campaign2._results_frames`` to synthetic frames: {slug: number of arms}."""
     from src.visualize import campaign2
+    monkeypatch.setattr(campaign2, "_primary_tables", lambda track: set(campaign2.in_scope(
+        pd.DataFrame({"table": CREDIT[track]}), "table").table))
     cache = {(slug, track): results(slug, track, arms, seed=i, **kwargs)
              for i, (slug, arms) in enumerate(slugs_arms.items()) for track in ("pd", "lgd")}
     monkeypatch.setattr(campaign2, "_read_results_frames",

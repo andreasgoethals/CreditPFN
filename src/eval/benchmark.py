@@ -61,6 +61,7 @@ from typing import Literal
 
 import numpy as np
 import pandas as pd
+from src.utils.experiment import file_digest
 
 from src.eval.dataset_loader import (
     ProcessedDataset,
@@ -638,6 +639,8 @@ def find_existing_results(
                 receipt = json.loads(sidecar.read_text(encoding="utf-8"))
                 if evaluation_key is not None and receipt.get(dataset_id) != evaluation_key:
                     continue
+                if "__metrics_sha256__" in receipt and receipt["__metrics_sha256__"] != file_digest(csv_path):
+                    continue
                 if require_predictions:
                     prediction = receipt.get("__predictions__") or {}
                     name = prediction.get("file", "")
@@ -645,6 +648,8 @@ def find_existing_results(
                         continue
                     artifact = csv_path.parent / name
                     if not artifact.is_file() or artifact.stat().st_size != prediction.get("bytes"):
+                        continue
+                    if "sha256" in prediction and prediction["sha256"] != file_digest(artifact):
                         continue
             except (OSError, ValueError, AttributeError, TypeError):
                 continue
@@ -1155,8 +1160,8 @@ def run_benchmark(
             ok_rows = [r for r in fold_rows if r.status == "OK"]
             n_fail_ds = len(fold_rows) - len(ok_rows)
 
-            def _mean(attr):
-                vals = [getattr(r, attr) for r in ok_rows]
+            def _mean(attr, rows=ok_rows):
+                vals = [getattr(r, attr) for r in rows]
                 vals = [v for v in vals if v == v]          # drop NaN (NaN != NaN)
                 return sum(vals) / len(vals) if vals else None
 
@@ -1197,11 +1202,13 @@ def run_benchmark(
                 raise RuntimeError("Incomplete predictions for successful evaluation folds")
             _pred_path = _write_predictions(model_predictions, out_path)
             if _pred_path is not None:
-                evaluation_keys["__predictions__"] = {"file": _pred_path.name, "bytes": _pred_path.stat().st_size}
+                evaluation_keys["__predictions__"] = {"file": _pred_path.name, "bytes": _pred_path.stat().st_size,
+                                                      "sha256": file_digest(_pred_path)}
                 LOGGER.info("  → wrote predictions to %s", _pred_path)
         # This receipt is the commit point: never publish it before required artifacts.
         if evaluation_keys:
             from src.utils.atomic import write_json
+            evaluation_keys["__metrics_sha256__"] = file_digest(out_path)
             write_json(marker, evaluation_keys)
         # Total wall-clock this model spent across all its folds/datasets —
         # surfaces which methods dominate eval cost (typically the XGBoost /

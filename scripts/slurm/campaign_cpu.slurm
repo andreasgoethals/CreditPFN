@@ -29,19 +29,32 @@ source scripts/slurm/_job_log.sh
 start_job_log "campaign_${action}${2:+_$2}"
 echo "commit=$(git rev-parse HEAD)"
 source scripts/slurm/_activate_env.sh
+# Keep review and submission consistent even when two controllers start together. Independent
+# campaign submitters share the lock. Slurm releases the descriptor if its controller dies.
+gate_dir="$CREDITPFN_OUTPUT_ROOT/output CreditPFN/experiment0/manifests/pilots"
+mkdir -p "$gate_dir"
+exec 9>>"$gate_dir/controller.lock"
+case "$action" in
+    experiment0|rerun-experiment0)
+        flock -x 9
+        if [[ "$action" == experiment0 ]]; then
+            ids=$(python -m src.utils.campaign_launch begin)
+        else
+            ids=$(python -m src.utils.campaign_launch begin --only "${2:?selection JSON}")
+        fi
+        read -r CREDITPFN_PILOT_RUN CREDITPFN_PILOT_SET <<< "$ids"
+        export CREDITPFN_PILOT_RUN CREDITPFN_PILOT_SET ;;
+    submit|summary) flock -s 9 ;;
+esac
+if [[ "$action" == experiment0 || "$action" == rerun-experiment0 ]]; then
+        # A selective rerun can be the first run on changed code. Publish a passing CPU
+        # preflight only after all applicable project tests, including upstream parity, pass.
+        CREDITPFN_REQUIRE_PARITY=1 python -m pytest -q -p no:cacheprovider tests
+        python -m src.utils.campaign_launch preflight
+fi
 case "$action" in
     experiment0)
-        # Gate: every test of second-campaign mechanics, with upstream-parity inputs required.
-        CREDITPFN_REQUIRE_PARITY=1 python -m pytest -q -p no:cacheprovider \
-            tests/test_upstream_parity.py tests/test_adapter_l2sp.py tests/test_design.py \
-            tests/test_pilot_checks.py tests/test_regression_objectives.py \
-            tests/test_diagscale_precision.py tests/test_tabpfn_precision_policy.py \
-            tests/test_environment_parity.py tests/test_retention_panel.py tests/test_corpus_policies.py \
-            tests/test_target_finetune.py tests/test_campaign_tasks.py tests/test_control_matching.py \
-            tests/test_archive_regressions.py tests/test_campaign_launch.py
-        # Whole suite for the record.
-        python -m pytest -q -p no:cacheprovider tests || echo "FULL SUITE HAD FAILURES (recorded above; not a gate)"
-        python -m src.utils.density_audit --out "$CREDITPFN_OUTPUT_ROOT/output CreditPFN/experiment0/manifests/pilots/density_audit.json" \
+        python -m src.utils.density_audit --out "$gate_dir/runs/$CREDITPFN_PILOT_SET/density_audit.json" \
             || echo "DENSITY AUDIT INCOMPLETE (recorded; not a gate)"
         python -m src.utils.campaign_launch prepare config/experiments/E00_pilots
         python -m src.utils.campaign_launch submit-experiment0 config/experiments/E00_pilots ;;

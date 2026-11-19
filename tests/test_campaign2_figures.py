@@ -120,7 +120,8 @@ def test_rq1_result_figures_render(results):
     assert summary[[f"best_{o}" for o in c2.ADAPTATION_OPTIONS]].sum(axis=1).eq(summary.tables).all()
 
 
-def test_primary_endpoint_is_holm_adjusted_without_an_equivalence_claim(results):
+def test_primary_endpoint_is_holm_adjusted_without_an_equivalence_claim(monkeypatch):
+    syn.install_results(monkeypatch, ALL, missing_fold=False)
     from src.utils.design import load_design
     assert "equivalence_margin" not in load_design()["analysis"]["primary"]
     primary = c2.primary_endpoint()
@@ -419,6 +420,7 @@ def test_public_scope_removes_proprietary_tables_from_every_loader(results, priv
     assert not set(c2.leaderboard_errors("lgd", syn.finetune()).table) & private
     primary = c2.primary_endpoint()
     assert primary[primary.track == "lgd"].tables.eq(len(syn.CREDIT["lgd"]) - 3 - 1).all()
+    assert primary.decision.eq("incomplete").all() and primary.p_value.isna().all()
     changes = c2.monitor_table_changes(syn.trajectories("reference", "pd"), "pd")
     assert not set(changes.table) & private and not changes.empty
     with pytest.raises(ValueError):

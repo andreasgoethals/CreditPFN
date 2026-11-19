@@ -1,6 +1,7 @@
 """Small metadata publications: complete bytes or no published file."""
 import json
 import os
+import time
 import uuid
 from pathlib import Path
 
@@ -16,6 +17,15 @@ def write_json(path: Path, payload, *, exclusive: bool = False) -> None:
         if exclusive:
             os.link(pending, path)  # atomic create, refuses to replace an existing plan
         else:
-            os.replace(pending, path)
+            # Windows readers and file indexers can briefly deny replacement. Retry the
+            # same complete temporary file without exposing a partly written destination.
+            for delay in (0.02, 0.05, 0.1, 0.2, 0.4, None):
+                try:
+                    os.replace(pending, path)
+                    break
+                except PermissionError as exc:
+                    if delay is None or getattr(exc, "winerror", None) not in (5, 32, 33):
+                        raise
+                    time.sleep(delay)
     finally:
         pending.unlink(missing_ok=True)

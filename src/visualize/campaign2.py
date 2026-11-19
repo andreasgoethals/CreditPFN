@@ -7,7 +7,6 @@ same locally after the campaign has been downloaded.
 """
 from __future__ import annotations
 
-import json
 import re
 from pathlib import Path
 
@@ -394,9 +393,19 @@ def gain_correlations(gains: pd.DataFrame, properties: pd.DataFrame) -> pd.DataF
 
 # ------------------------------------------------------------------------ experiment 0
 def experiment0_summary() -> dict | None:
+    from src.utils import pilot_gate
     from src.utils.pilot_checks import receipts
-    path = receipts() / "summary.json"
-    return json.loads(path.read_text(encoding="utf-8")) if path.is_file() else None
+    root = receipts()
+    active = root / "active.json"
+    summary = root / "summary.json"
+    if active.is_file():
+        run = pilot_gate.read(active)["run"]
+        dated = pilot_gate.directory(root, run) / "summary.json"
+        if dated.is_file():
+            return pilot_gate.read(dated)
+        record = pilot_gate.read(summary) if summary.is_file() else {}
+        return record if record.get("run") == run else None
+    return pilot_gate.read(summary) if summary.is_file() else None
 
 
 def experiment0_tables(summary: dict | None) -> dict[str, pd.DataFrame]:
@@ -406,7 +415,7 @@ def experiment0_tables(summary: dict | None) -> dict[str, pd.DataFrame]:
                                 problems=len(v.get("problems", [])))
                            for k, v in summary.get("pilots", {}).items()])
     checks = pd.DataFrame([dict(kind=kind, task=t, passed=bool(v.get("passed")))
-                           for kind in ("recovery", "capacity", "evaluation")
+                           for kind in ("recovery", "capacity", "evaluation", "scale", "precision", "benchmark")
                            for t, v in summary.get(kind, {}).items()])
     timing = pd.DataFrame([dict(pilot=k, **t) for k, v in summary.get("pilots", {}).items()
                            for t in v.get("timing", [])])
@@ -620,6 +629,13 @@ def primary_spec(design: dict | None = None) -> dict:
     return (design or load_design())["analysis"]["primary"]
 
 
+def _primary_tables(track: str) -> set:
+    from src.data.preprocessing import DATASET_METADATA
+    registry = pd.DataFrame({"test_dataset_id": [k for k, meta in DATASET_METADATA.items()
+                                                 if meta["track"] == track]})
+    return set(in_scope(registry, "test_dataset_id").test_dataset_id)
+
+
 def primary_endpoint(design: dict | None = None, *, draws: int = BOOTSTRAP_DRAWS, seed: int = 0) -> pd.DataFrame:
     """The confirmatory test of RQ1, fixed before the results were opened (RESEARCH_BRIEF).
 
@@ -637,6 +653,7 @@ def primary_endpoint(design: dict | None = None, *, draws: int = BOOTSTRAP_DRAWS
         merged = _paired("reference", track, list(outcomes))
         if merged.empty:
             continue
+        expected = _primary_tables(track)
         merged = merged[merged.credit & (merged.arm == 0)]
         for metric in [m for m in outcomes if m in merged]:
             sub = merged.dropna(subset=[metric, metric + "_original"]).copy()
@@ -647,10 +664,11 @@ def primary_endpoint(design: dict | None = None, *, draws: int = BOOTSTRAP_DRAWS
                     continue
                 per_table = matrix.mean(axis=1)
                 tail = min(np.sum(means <= 0), np.sum(means >= 0))
-                rows.append(dict(track=track, metric=metric, model=model, tables=len(matrix),
+                covered = set(group.test_dataset_id) == expected and len(matrix) == len(expected)
+                rows.append(dict(track=track, metric=metric, model=model, tables=len(matrix), expected_tables=len(expected),
                                  tables_improved=int((per_table > 0).sum()), mean=float(matrix.mean()),
                                  low=float(np.quantile(means, 0.025)), high=float(np.quantile(means, 0.975)),
-                                 p_value=float(min(1.0, 2 * (tail + 1) / (len(means) + 1)))))
+                                 p_value=float(min(1.0, 2 * (tail + 1) / (len(means) + 1))) if covered else np.nan))
     out = pd.DataFrame(rows)
     if out.empty:
         return out
@@ -668,6 +686,7 @@ def primary_endpoint(design: dict | None = None, *, draws: int = BOOTSTRAP_DRAWS
     alpha = float(spec["alpha"])
     out["decision"] = np.where(out.missing, "missing", np.where(
         out.p_holm >= alpha, "not significant", np.where(out["mean"] > 0, "better", "worse")))
+    out.loc[out.missing & out.tables.notna(), "decision"] = "incomplete"
     return out
 
 
@@ -1502,7 +1521,8 @@ def transfer_similarity(pairs: pd.DataFrame, *, permutations: int = BOOTSTRAP_DR
         null = null[np.isfinite(null)]
         same = group.same_source.astype(bool) if "same_source" in group else pd.Series(False, index=group.index)
         rows.append(dict(model=model, pairs=len(group), tables=len(tables), spearman=float(observed),
-                         p_value=float((1 + np.sum(np.abs(null) >= abs(observed))) / (1 + len(null))),
+                         p_value=(float((1 + np.sum(np.abs(null) >= abs(observed))) / (1 + len(null)))
+                                  if np.isfinite(observed) and len(null) else np.nan),
                          same_source_pairs=int(same.sum()),
                          same_source_mean_change=float(group.change[same].mean()) if same.any() else np.nan,
                          other_mean_change=float(group.change[~same].mean())))

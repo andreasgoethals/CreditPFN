@@ -1,6 +1,6 @@
 """Experiment 0 for the second campaign: GPU checks and the CPU summary.
 
-GPU tasks (one array element each, results in ``experiment0/manifests/campaign2/``):
+GPU tasks (one array element each, receipts under ``experiment0/manifests/pilots/runs/``):
 
 * ``recovery`` (24): AdamW, DiagScale and LoRA x PD/LGD x four models. Trains the
   uninterrupted twin, then the same configuration interrupted at ``interrupt_after`` (exit 75)
@@ -10,7 +10,9 @@ GPU tasks (one array element each, results in ``experiment0/manifests/campaign2/
   time and peak memory.
 * ``evaluation`` (8): the real E5 fine-tuning and E6 context-curve runner
   (``src.eval.campaign_tasks``) in quick mode on the reference pilot, smallest held-out table;
-  for PD also E12's matched-context scoring on the ``episode2048`` pilot.
+  including E4 non-credit context and, for PD, E12's matched-context scoring on the episode pilot.
+* ``scale`` (8): the production E5 procedure, both starts and all candidate rates, on fold zero
+  of the largest held-out table in each reference pilot partition and on each model.
 * ``precision`` (8): the update-zero training loss and gradient norm of each original model on
   its four largest training tables at the real episode size, computed by the training loop's own
   ``batch_loss`` in FP32 and in the resolved training precision. The two losses must agree
@@ -35,9 +37,10 @@ from pathlib import Path
 
 import numpy as np
 
+from src.utils import pilot_gate
 from src.utils.atomic import write_json
 from src.utils.design import PILOT_FOLDER as FOLDER
-from src.utils.paths import manifests_dir
+from src.utils.paths import outputs_dir
 
 VARIANTS = ("adamw", "diagscale", "lora")
 TRACKS = ("pd", "lgd")
@@ -47,6 +50,8 @@ RECOVERY_TASKS = len(VARIANTS) * len(TRACKS) * MODELS_PER_TRACK
 CAPACITY_TASKS = len(TRACKS) * MODELS_PER_TRACK
 EVALUATION_TASKS = len(TRACKS) * MODELS_PER_TRACK
 PRECISION_TASKS = len(TRACKS) * MODELS_PER_TRACK
+CHECK_COUNTS = dict(recovery=RECOVERY_TASKS, capacity=CAPACITY_TASKS, evaluation=EVALUATION_TASKS,
+                    precision=PRECISION_TASKS, scale=EVALUATION_TASKS)
 PRECISION_TABLES = 4
 #: Update-zero loss agreement required between FP32 and the training precision (nats).
 PRECISION_TOLERANCE = (0.02, 0.02)   # absolute + relative to the FP32 loss
@@ -67,7 +72,7 @@ PRECISION_ROWS = 8192
 
 
 def receipts() -> Path:
-    return manifests_dir("experiment0") / "pilots"
+    return outputs_dir() / "experiment0" / "manifests" / "pilots"
 
 
 def recovery_case(task: int) -> tuple[str, str, int]:
@@ -87,10 +92,7 @@ def track_model_case(task: int, count: int) -> tuple[str, int]:
 
 
 def _write(name: str, record: dict) -> Path:
-    out = receipts() / name
-    out.parent.mkdir(parents=True, exist_ok=True)
-    write_json(out, record)
-    return out
+    return pilot_gate.record_check(receipts(), name, record)
 
 
 # ------------------------------------------------------------------ exact resume (GPU)
@@ -207,8 +209,9 @@ def capacity(task: int) -> dict:
         wrapper.fit(X_tr, y[parts[0]], cats)
         metrics, _, _ = score_fitted(wrapper, task_type, y_tr=y[parts[0]], X_va=X_va, y_va=y[parts[1]],
                                      X_te=X_te, y_te=y[parts[2]])
-        record.update(passed=True, seconds=time.monotonic() - started, peak_bytes=peak(),
-                      primary=float(metrics.get("roc_auc" if track == "pd" else "r2", float("nan"))))
+        primary = float(metrics.get("roc_auc" if track == "pd" else "r2", float("nan")))
+        record.update(passed=bool(np.isfinite(primary)), seconds=time.monotonic() - started,
+                      peak_bytes=peak(), primary=primary)
     except Exception as exc:  # an out-of-memory here is the finding, not a crash
         record.update(passed=False, seconds=time.monotonic() - started, error=repr(exc)[:500],
                       peak_bytes=peak())
@@ -218,7 +221,7 @@ def capacity(task: int) -> dict:
 
 
 # ---------------------------------------------- context curve + target fine-tuning (GPU)
-def evaluation(task: int, folder: Path = FOLDER) -> dict:
+def evaluation(task: int, folder: Path = FOLDER, *, scale: bool = False) -> dict:
     """E5 fine-tuning and E6 context curves through their real runner, on the reference pilot.
 
     For one model and track, the smallest held-out table (fold 0) is run by
@@ -231,34 +234,54 @@ def evaluation(task: int, folder: Path = FOLDER) -> dict:
     from src.eval import campaign_tasks as ct
     track, trial = track_model_case(task, EVALUATION_TASKS)
     key = "roc_auc" if track == "pd" else "r2"
-    kinds = {"context": {t: folder / f"reference_{t}.yaml" for t in TRACKS}}
-    kinds["finetune"] = kinds["context"]
-    if track == "pd":
-        kinds["episode_context"] = {"pd": folder / "episode2048_pd.yaml"}
+    cases = [("finetune", "reference")]
+    if not scale:
+        cases.extend([("context", "reference"), ("context", "domain_control")])
+        if track == "pd":
+            cases.append(("episode_context", "episode2048"))
     record = dict(task=task, track=track, runs={}, problems=[])
-    for kind, references in kinds.items():
-        candidates = [(i, t) for i, t in enumerate(ct.tasks(references=references, kind=kind))
+    for kind, pilot in cases:
+        references = {t: folder / f"{pilot}_{t}.yaml" for t in TRACKS}
+        source = "domain_control" if pilot == "domain_control" else "reference"
+        label = "context_noncredit" if pilot == "domain_control" else kind
+        candidates = [(i, t) for i, t in enumerate(ct.tasks(references=references, kind=kind, pilot_source=source))
                       if t["track"] == track and t["trial"] == trial and t["fold"] == 0]
-        index, chosen = min(candidates, key=lambda c: (c[1]["n_rows"], c[1]["dataset_id"]))
+        index, chosen = (max if scale else min)(candidates, key=lambda c: (c[1]["n_rows"], c[1]["dataset_id"]))
         record.update(model=chosen["model"])
-        expected = {"cpt"} if kind == "episode_context" else {"original", "cpt"}
+        expected = ({"noncredit_cpt"} if source == "domain_control" else
+                    {"cpt"} if kind == "episode_context" else {"original", "cpt"})
         started = time.monotonic()
         try:
-            path = ct.run(kind, index, references=references, slug="experiment0", quick=True)
+            options = dict(references=references, slug="experiment0", quick=not scale, pilot_source=source)
+            path = ct.run(kind, index, **options)
+            written = path.stat().st_mtime_ns
             frame = pd.read_csv(path)
-            again = ct.run(kind, index, references=references, slug="experiment0", quick=True)
+            again = ct.run(kind, index, **options)
+            skipped = again == path and again.stat().st_mtime_ns == written
             scores = frame[key].to_numpy(dtype=float)
-            record["runs"][kind] = dict(dataset_rows=chosen["n_rows"], rows=len(frame),
+            if kind == "finetune":
+                arms = {(start, tuned) for start in expected for tuned in (True, False)}
+                if len(frame) != len(arms) or set(zip(frame.start, frame.finetuned)) != arms:
+                    record["problems"].append("finetune: incomplete paired starts or missing untuned comparator")
+            else:
+                from src.eval.context_curve import budgets
+                rules = ct.policy(chosen["model"], ct.load_design(), quick=not scale, kind=kind)
+                sizes = budgets(int(frame.available_context.iloc[0]), rules)
+                cells = {(start, size) for start in expected for size in sizes}
+                if len(cells) != len(frame) or cells != set(zip(frame.start, frame.context_rows)):
+                    record["problems"].append(f"{label}: incomplete or duplicated context sizes")
+            record["runs"][label] = dict(dataset_rows=chosen["n_rows"], rows=len(frame),
                                         starts=sorted(frame.start.unique()),
                                         finite=bool(np.isfinite(scores).all()),
-                                        seconds=time.monotonic() - started, resumed_skip=again == path,
+                                        seconds=time.monotonic() - started, resumed_skip=skipped,
                                         scores=frame[["start", key]].to_dict("records"))
-            if not (record["runs"][kind]["finite"] and set(frame.start) == expected):
+            if not (record["runs"][label]["finite"] and skipped and set(frame.start) == expected):
                 record["problems"].append(f"{kind}: missing or non-finite scores")
         except Exception as exc:  # the failure is the finding
             record["problems"].append(f"{kind}: {exc!r}"[:500])
     record["passed"] = not record["problems"]
-    _write(f"evaluation_{task:02d}.json", record)
+    check = "scale" if scale else "evaluation"
+    _write(f"{check}_{task:02d}.json", record)
     print(json.dumps(record, default=str), flush=True)
     return record
 
@@ -359,6 +382,7 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
                                               **build).to(device)
 
         row = {"table_index": index, "rows": int(min(rows, len(loaded.y)))}
+        label = "preparation"
         try:
             sums = {}
             for draw in range(PRECISION_ACCUMULATION):   # different episodes of the same table
@@ -398,7 +422,8 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
         except Exception as exc:  # an out-of-memory or numerical error is the finding, not a crash
             # An FP32 reference that does not fit in memory cannot be compared: recorded, not failed.
             oom = "OutOfMemoryError" in type(exc).__name__ or "out of memory" in str(exc).lower()
-            row.update(passed=oom, not_checkable=oom, error=repr(exc)[:500])
+            reference_oom = oom and label == "fp32"
+            row.update(passed=reference_oom, not_checkable=reference_oom, stage=label, error=repr(exc)[:500])
         sums = reference = flat = batch = None   # noqa: F841 - release gradients before the next table
         model.zero_grad(set_to_none=True)
         record["tables"].append(row)
@@ -441,7 +466,8 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
             model.zero_grad(set_to_none=True)
             torch.cuda.empty_cache()
         record["full_episode"].append(entry)
-    record["passed"] = bool(record["tables"]) and all(r["passed"] for r in record["tables"])
+    record["passed"] = (any(not r.get("not_checkable") for r in record["tables"])
+                        and all(r["passed"] for r in record["tables"]))
     _write(f"precision_{task:02d}.json", record)
     print(json.dumps(record), flush=True)
     return record
@@ -505,52 +531,82 @@ def pilot_checks(name: str, track: str, report: dict, cfg) -> dict:
 BASELINES = {"pd": ("catboost", "xgboost", "logreg"), "lgd": ("catboost", "xgboost", "linreg")}
 
 
+def _benchmark_rows(handle, table, track, config, run_name, n_folds):
+    import pandas as pd
+
+    from src.eval.benchmark import find_existing_results
+    from src.eval.cache import evaluation_key
+
+    paths = find_existing_results(
+        handle, table, track=track, results_base_dir=config["results"]["base_dir"],
+        run_name=run_name, n_folds_required=n_folds,
+        evaluation_key=evaluation_key(handle, table, track=track, config=config),
+        require_predictions=config["results"]["save_predictions"])
+    metrics = (["roc_auc", "brier_score", "gini", "ks", "h_measure", "emp", "emp_rejection_rate"]
+               if track == "pd" else ["r2", "rmse"] + ([] if handle.source == "baseline" else ["crps"]))
+    columns = ["model_name", "test_dataset_id", "fold_idx", "status", *metrics]
+    frames = [pd.read_csv(path, usecols=columns) for path in paths]
+    if not frames:
+        return False
+    rows = pd.concat(frames)
+    rows = rows[(rows.model_name == handle.name) & (rows.test_dataset_id == table)].drop_duplicates(
+        "fold_idx", keep="last")
+    return (set(rows.fold_idx) == set(range(n_folds)) and rows.status.eq("OK").all()
+            and np.isfinite(rows[metrics].to_numpy(dtype=float)).all())
+
+
 def benchmark(track: str, folder: Path = FOLDER, *, n_folds: int = 5) -> dict:
-    """End-to-end five-fold benchmark of a reference pilot: every expected model scored on every
-    held-out credit table and retention table, on all folds, with status OK."""
+    """Exercise the production checkpoint roster, cache keys, predictions and required endpoints."""
     from omegaconf import OmegaConf
 
-    from src.data.retention import load_refs
-    from src.train.config import load_train_config
-    from src.train.corpus import split_from_cfg
-    from src.utils.experiment import apply_split_index
-    from src.visualize.campaign2 import _results_frames
-    base = load_train_config(config_path=str(folder / f"reference_{track}.yaml"))
-    run_name = str(base.run_name)
-    cfg = apply_split_index(base, 0)
-    tables = {r.dataset_id for r in split_from_cfg(cfg, track=track).test}
-    tables |= {r.dataset_id for r in load_refs(str(OmegaConf.select(cfg, "train.retention_panel")), track)}
-    frame = _results_frames("experiment0", track)
+    from scripts.eval_pipeline import _build_roster
+    from src.eval.config import load_eval_configs
+    from src.utils.paths import activate_experiment
+
+    cfg, train = load_eval_configs([], [], config_path=str(folder / f"reference_{track}.yaml"), split_index=0)
+    activate_experiment(train)
+    config = OmegaConf.to_container(cfg, resolve=True)
+    roster, tables, _ = _build_roster(cfg, train, track)
+    trained = [h.name for h, _ in roster if h.source.endswith("-trained")]
+    original = [h.name for h, _ in roster if h.source.endswith("-untuned")]
+    classical = {h.name for h, _ in roster if h.source == "baseline"}
     problems = []
-    if frame.empty:
-        return dict(track=track, passed=False, problems=["no benchmark results"])
-    frame = frame[frame.test_dataset_id.isin(tables)]
-    source = frame.model_source.astype(str)
-    groups = {"cpt": frame[source.str.endswith("trained") & frame.model_name.str.contains(run_name, regex=False)],
-              "original": frame[source.str.endswith("untuned")],
-              "baseline": frame[source == "baseline"]}
-    expected = {"cpt": 4, "original": 4, "baseline": len(BASELINES[track])}
-    for group, rows in groups.items():
-        names = sorted(rows.model_name.unique())
-        if len(names) != expected[group]:
-            problems.append(f"{group}: {len(names)} models scored, expected {expected[group]}")
-        folds = rows.groupby(["model_name", "test_dataset_id"]).fold_idx.nunique()
-        incomplete = folds[folds < n_folds]
-        missing = {(m, t) for m in names for t in tables} - set(folds.index)
-        if len(incomplete) or missing:
-            problems.append(f"{group}: {len(incomplete) + len(missing)} model-table pairs lack all {n_folds} folds")
-    if any(n not in set(groups["baseline"].model_name) for n in BASELINES[track]):
-        problems.append(f"baselines missing: {BASELINES[track]}")
+    if (not tables or len(set(trained)) != MODELS_PER_TRACK or len(set(original)) != MODELS_PER_TRACK
+            or classical != set(BASELINES[track])):
+        problems.append("Incomplete reference roster or table set")
+    for handle, _ in roster:
+        for table in tables:
+            if not _benchmark_rows(handle, table, track, config, str(train.run_name), n_folds):
+                problems.append(f"{handle.name}, {table}: missing current five-fold metrics or predictions")
     return dict(track=track, tables=len(tables), passed=not problems, problems=problems)
 
 
 def summary(folder: Path = FOLDER) -> dict:
     from src.train.config import load_train_config
     from src.utils.audit_experiment import audit
+    from src.utils.prepare_experiment import prepare
+    run = os.environ[pilot_gate.RUN_ENV]
+    root = receipts()
+    request = pilot_gate.current(root, run, verify_project=True)
+    grid = pilot_gate.read(pilot_gate.directory(root, run) / "preflight.json")
+    if grid.get("passed") is not True:
+        raise RuntimeError("Experiment 0 CPU preflight has not passed")
+    jobs = pilot_gate.read(pilot_gate.directory(root, run) / "jobs.json")
+    if not jobs["summary"] or jobs["summary"] != os.environ.get("SLURM_JOB_ID") or jobs["run"] != run:
+        raise RuntimeError("Only the summary job of a completed Experiment 0 submission may publish")
+    publication = pilot_gate.directory(root, run) / "summary.json"
+    if publication.is_file():
+        result = pilot_gate.read(publication)
+        write_json(root / "summary.json", result)
+        return result
+    expected_jobs = {job for group in ("pilots", "benchmark", "classical")
+                     for ids in jobs[group].values() for job in ids}
+    expected_jobs.update(jobs[kind] for kind in CHECK_COUNTS if jobs.get(kind))
     pilots = {}
     for path in pilot_paths(folder):
         name, track = path.stem.rsplit("_", 1)
         try:
+            prepare(path, check=True)  # recompute trial identities from the current input bytes
             report = audit(path, null=name == "zero_lr")
             report["pilot_checks"] = pilot_checks(name, track, report, load_train_config(config_path=str(path)))
             # Experiment 0 runs only rates the campaign uses: any divergence is a finding to
@@ -562,13 +618,23 @@ def summary(folder: Path = FOLDER) -> dict:
             report = {"passed": False, "problems": [repr(exc)[:500]]}
         pilots[path.stem] = report
     receipts_by_kind = {}
-    for kind, count in (("recovery", RECOVERY_TASKS), ("capacity", CAPACITY_TASKS),
-                        ("evaluation", EVALUATION_TASKS), ("precision", PRECISION_TASKS)):
+    for kind, count in CHECK_COUNTS.items():
         receipts_by_kind[kind] = {}
         for task in range(count):
-            file = receipts() / f"{kind}_{task:02d}.json"
-            receipts_by_kind[kind][str(task)] = (json.loads(file.read_text(encoding="utf-8"))
-                                                 if file.is_file() else {"passed": False, "missing": True})
+            key = f"{kind}_{task:02d}"
+            owner = request["checks"].get(key)
+            item = {"passed": False, "missing": True}
+            if owner:
+                owner_dir = pilot_gate.directory(root, owner)
+                file = owner_dir / f"{key}.json"
+                if file.is_file() and (owner_dir / "jobs.json").is_file():
+                    evidence = pilot_gate.read(file)
+                    array = pilot_gate.read(owner_dir / "jobs.json").get(kind)
+                    if array and evidence.get("run") == owner and evidence.get("task") == task and evidence.get("array") == array:
+                        item = evidence
+                        if owner != run:
+                            expected_jobs.add(f"{array}_{task}")
+            receipts_by_kind[kind][str(task)] = item
     benchmarks = {}
     for track in TRACKS:
         try:
@@ -576,30 +642,39 @@ def summary(folder: Path = FOLDER) -> dict:
         except Exception as exc:  # unreadable results are a finding
             benchmarks[track] = {"passed": False, "problems": [repr(exc)[:500]]}
     receipts_by_kind["benchmark"] = benchmarks
-    density = receipts() / "density_audit.json"
+    density = pilot_gate.directory(root, request["evidence"]) / "density_audit.json"
     result = dict(pilots=pilots, **receipts_by_kind,
                   density_audit=json.loads(density.read_text(encoding="utf-8")) if density.is_file() else None,
                   failed_pilots=sorted(k for k, v in pilots.items() if not v.get("passed")),
                   failed=sorted(f"{kind}_{t}" for kind, items in receipts_by_kind.items()
                                 for t, v in items.items() if not v.get("passed")))
-    result["passed"] = not result["failed_pilots"] and not result["failed"]
-    _write("summary.json", result)
-    print(json.dumps({k: result[k] for k in ("passed", "failed_pilots", "failed")}, indent=2), flush=True)
+    scheduler_problems = pilot_gate.incomplete_jobs(expected_jobs)
+    result.update(run=run, identity=request["identity"], grid=grid, scheduler_problems=scheduler_problems,
+                  passed=bool(pilots) and not (result["failed_pilots"] or result["failed"] or scheduler_problems))
+    pilot_gate.current(root, run)
+    write_json(publication, result, exclusive=True)
+    write_json(root / "summary.json", result)  # latest report for offline notebooks
+    print(json.dumps({k: result[k] for k in ("passed", "failed_pilots", "failed", "scheduler_problems")}, indent=2), flush=True)
     return result
 
 
 def main(argv=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("action", choices=("recovery", "capacity", "evaluation", "precision", "summary"))
+    parser.add_argument("action", choices=(*CHECK_COUNTS, "summary"))
     parser.add_argument("--task", type=int)
     args = parser.parse_args(argv)
     if args.action == "summary":
         return 0 if summary()["passed"] else 1
     if args.task is None:
         parser.error(f"{args.action} needs --task")
-    {"recovery": recovery, "capacity": capacity, "evaluation": evaluation,
-     "precision": precision}[args.action](args.task)
-    return 0
+    if os.environ.get("SLURM_JOB_ID"):
+        import torch
+        if not torch.cuda.is_available():
+            raise RuntimeError("The Experiment 0 GPU allocation has no usable CUDA device")
+    record = (evaluation(args.task, scale=True) if args.action == "scale" else
+              {"recovery": recovery, "capacity": capacity, "evaluation": evaluation,
+               "precision": precision}[args.action](args.task))
+    return 0 if record["passed"] else 1
 
 
 if __name__ == "__main__":

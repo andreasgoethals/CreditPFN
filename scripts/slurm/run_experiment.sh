@@ -31,6 +31,12 @@ case "$RUN" in
  cpt2_*_a[0-9]*) _slug="${RUN#cpt2_}"; export CREDITPFN_EXPERIMENT="${_slug%_a*}"; unset _slug ;;
  *) export CREDITPFN_EXPERIMENT=general ;;
 esac
+if [[ "$RUN" == cpt2_* && -z "${DRY:-}" ]]; then
+    [[ "${CREDITPFN_RELEASE_RUN:-}" =~ ^[0-9a-f]{32}$ ]] || {
+        echo 'Submit E1-E12 through campaign_cpu.slurm submit so the current Experiment 0 release is checked.' >&2
+        exit 2
+    }
+fi
 [[ "$TRACK" == pd || "$TRACK" == lgd ]] || exit 1
 N_SPLITS="${SPLITS:-${META[2]}}"; N_SPLITS="${N_SPLITS:-1}"
 N_TRIALS=$(( ${#META[@]} - 6 ))

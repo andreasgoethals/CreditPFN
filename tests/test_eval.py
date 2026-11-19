@@ -913,6 +913,9 @@ def test_prediction_receipt_rejects_removed_or_truncated_artifacts(env_isolated,
     assert len(hits) == 1
     receipt = json.loads(Path(str(hits[0]) + ".evaluation.json").read_text())
     artifact = hits[0].parent / receipt["__predictions__"]["file"]
+    original = artifact.read_bytes()
+    artifact.write_bytes(bytes([original[0] ^ 1]) + original[1:])
+    assert find_existing_results(handle, "synthetic", **kwargs) == []
     artifact.write_bytes(b"truncated")
     assert find_existing_results(handle, "synthetic", **kwargs) == []
     artifact.unlink()

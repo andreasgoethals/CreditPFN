@@ -52,6 +52,24 @@ def test_missing_e1_checkpoint_is_refused(all_tasks):
         ct.cpt_checkpoint(all_tasks[0])
 
 
+def test_task_receipt_depends_on_target_bytes_and_code(tmp_path, monkeypatch):
+    from src.utils import experiment, paths
+    table, checkpoint = tmp_path / "data", tmp_path / "weights"
+    table.write_bytes(b"first")
+    checkpoint.write_bytes(b"same weights")
+    monkeypatch.setattr(paths, "processed_dir", lambda *args: table)
+    monkeypatch.setattr(experiment, "code_identity", lambda **kw: "code-1")
+    task = dict(track="pd", dataset_id="example", fold=0)
+    def identity():
+        return ct.task_identity("context", task, {}, None, False, {"cpt": checkpoint})
+    a = identity()
+    table.write_bytes(b"other table")
+    b = identity()
+    assert a["dataset_sha256"] != b["dataset_sha256"] and a["checkpoints"] == b["checkpoints"]
+    monkeypatch.setattr(experiment, "code_identity", lambda **kw: "code-2")
+    assert b != identity()
+
+
 def test_unknown_kind_is_rejected():
     with pytest.raises(ValueError):
         ct.run("benchmark", 0)

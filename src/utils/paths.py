@@ -152,7 +152,13 @@ def results_dir(*parts: str, experiment: str | None = None) -> Path:
 
 
 def _experiment_scope(experiment: str | None = None) -> Path:
-    return Path(experiment_group(experiment))
+    group = experiment_group(experiment)
+    evidence = os.environ.get("CREDITPFN_PILOT_SET") if group == "experiment0" else None
+    if evidence:
+        if not re.fullmatch("[0-9a-f]{32}", evidence):
+            raise ValueError("Invalid Experiment 0 evidence directory")
+        return Path(group, "evidence", evidence)
+    return Path(group)
 
 
 def logs_dir(experiment: str | None = None) -> Path:
@@ -480,10 +486,14 @@ def resolve_output_path(p: str | os.PathLike) -> Path:
 def _output_alias(p: str | os.PathLike) -> Path:
     """Relative `output CreditPFN/<sub>` config paths land in the active experiment's folder."""
     path = Path(p)
+    if path.parts[:3] == ("checkpoints", "trained", "experiment0") and path.parts[3:4] != ("evidence",):
+        return Path("checkpoints/trained") / _experiment_scope("experiment0") / Path(*path.parts[3:])
     if not path.is_absolute() and path.parts and path.parts[0] == OUTPUT_DIR_NAME:
         tail = path.parts[1:]
         if tail and tail[0] not in (*EXPERIMENTS, "figures"):
             tail = (*_experiment_scope().parts, *tail)
+        elif tail[:1] == ("experiment0",) and tail[1:2] in (("results",), ("training",), ("logs",), ("manifests",)):
+            tail = (*_experiment_scope("experiment0").parts, *tail[1:])
         return Path(OUTPUT_DIR_NAME, *tail)
     return path
 

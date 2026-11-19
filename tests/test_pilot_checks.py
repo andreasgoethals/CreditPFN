@@ -162,30 +162,75 @@ def test_monitor_rows_respect_each_models_context_limit():
     assert monitor_rows(0, v2, 0.4) == 0
 
 
-def test_benchmark_check_requires_every_model_table_and_fold(monkeypatch):
+def test_benchmark_check_requires_every_model_table_and_fold(monkeypatch, tmp_path):
+    from types import SimpleNamespace
+
     import pandas as pd
 
-    from src.data import retention
-    from src.visualize import campaign2
-    monkeypatch.setattr(retention, "load_refs", lambda panel, track: [])
-    from src.train.config import load_train_config
-    from src.train.corpus import split_from_cfg
-    from src.utils.experiment import apply_split_index
-    cfg = apply_split_index(load_train_config(config_path=str(design.PILOT_FOLDER / "reference_pd.yaml")), 0)
-    try:
-        held_out = [r.dataset_id for r in split_from_cfg(cfg, track="pd").test]
-    except FileNotFoundError as exc:
-        pytest.skip(f"credit registry unavailable: {exc}")
-    models = ([(f"tabpfn-trained[cpt2e0_reference_s00_pd_m{i}]", "tabpfn-trained") for i in range(4)]
-              + [(f"tabpfn-untuned[m{i}]", "tabpfn-untuned") for i in range(4)]
-              + [("catboost", "baseline"), ("xgboost", "baseline"), ("logreg", "baseline")])
-    rows = [dict(model_name=n, model_source=s, test_dataset_id=t, fold_idx=f, status="OK")
-            for n, s in models for t in held_out for f in range(5)]
-    monkeypatch.setattr(campaign2, "_read_results_frames", lambda slug, track: pd.DataFrame(rows))
+    from scripts import eval_pipeline
+    from src.eval import benchmark, cache
+
+    roster = [SimpleNamespace(name=f"{s}-{i}", source=s) for s in ("base-trained", "base-untuned")
+              for i in range(4)] + [SimpleNamespace(name=n, source="baseline") for n in pc.BASELINES["pd"]]
+    monkeypatch.setattr(eval_pipeline, "_build_roster", lambda *a: ([(h, None) for h in roster], ["t"], None))
+    monkeypatch.setattr(cache, "evaluation_key", lambda *a, **kw: "current")
+    def files(handle, table, **kw):
+        assert kw["evaluation_key"] == "current" and kw["require_predictions"]
+        return [tmp_path / (handle.name + ".csv")]
+    monkeypatch.setattr(benchmark, "find_existing_results", files)
+    metrics = dict(roc_auc=0.6, brier_score=0.2, gini=0.2, ks=0.1, h_measure=0.1, emp=0.1, emp_rejection_rate=0.1)
+    for h in roster:
+        rows = [dict(model_name=h.name, test_dataset_id="t", fold_idx=f, status="OK", **metrics) for f in range(5)]
+        pd.DataFrame(rows).to_csv(tmp_path / (h.name + ".csv"), index=False)
     assert pc.benchmark("pd")["passed"]
-    monkeypatch.setattr(campaign2, "_read_results_frames", lambda slug, track: pd.DataFrame(rows[:-1]))
-    out = pc.benchmark("pd")
-    assert not out["passed"] and "baseline" in out["problems"][0]
+    rows[-1]["fold_idx"] = 5     # five distinct folds can still miss a required one
+    pd.DataFrame(rows).to_csv(tmp_path / (h.name + ".csv"), index=False)
+    assert not pc.benchmark("pd")["passed"]
+    rows[-1].update(fold_idx=4, emp=float("nan"))
+    pd.DataFrame(rows).to_csv(tmp_path / (h.name + ".csv"), index=False)
+    assert not pc.benchmark("pd")["passed"]
+
+
+def test_summary_uses_the_requested_job_receipts_and_rechecks_the_plan(monkeypatch, tmp_path):
+    from src.train import config
+    from src.utils import audit_experiment, pilot_gate, prepare_experiment
+    from src.utils.atomic import write_json
+
+    root = tmp_path / "receipts"
+    folder = tmp_path / "plans"
+    folder.mkdir()
+    (folder / "reference_pd.yaml").touch()
+    monkeypatch.setattr(pc, "receipts", lambda: root)
+    monkeypatch.setattr(pc, "CHECK_COUNTS", {"evaluation": 1})
+    monkeypatch.setattr(pc, "TRACKS", ("pd",))
+    monkeypatch.setattr(pilot_gate, "identity", lambda **kw: {"inputs": "current"})
+    monkeypatch.setattr(config, "load_train_config", lambda **kw: {})
+    monkeypatch.setattr(audit_experiment, "audit", lambda *a, **kw: {"passed": True, "completed": 1})
+    monkeypatch.setattr(pc, "pilot_checks", lambda *a: {"trial": {"passed": True}})
+    monkeypatch.setattr(pc, "benchmark", lambda *a: {"passed": True})
+    checked = []
+    monkeypatch.setattr(prepare_experiment, "prepare", lambda path, check: checked.append((path.name, check)))
+    def accounting(ids):
+        assert ids == {"201"}
+        return []
+    monkeypatch.setattr(pilot_gate, "incomplete_jobs", accounting)
+    for array, expected in (("200", False), ("201", True)):
+        run = pilot_gate.begin(root, None)
+        monkeypatch.setenv(pilot_gate.RUN_ENV, run)
+        monkeypatch.setenv("SLURM_ARRAY_JOB_ID", array)
+        monkeypatch.setenv("SLURM_JOB_ID", "333")
+        directory = pilot_gate.directory(root, run)
+        write_json(directory / "preflight.json", {"training_runs": {"E1": 32}, "passed": True})
+        write_json(directory / "jobs.json", dict(run=run, pilots={}, benchmark={}, classical={},
+                                                 evaluation="201", summary="333"))
+        pilot_gate.record_check(root, "evaluation_00.json", {"passed": True, "task": 0})
+        assert pc.summary(folder)["passed"] is expected
+        if expected:
+            assert pilot_gate.require(root)["run"] == run
+        else:
+            with pytest.raises(RuntimeError, match="has not passed"):
+                pilot_gate.require(root)
+    assert checked == [("reference_pd.yaml", True)] * 2
 
 
 @pytest.mark.slow
