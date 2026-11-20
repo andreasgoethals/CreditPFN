@@ -607,11 +607,19 @@ CSV (first column: row index)
 row
 
 3. Training precision against FP32
-No results yet for precision check; the figure is drawn once they exist.
+No results yet for bounded strict FP32 training probes; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
-Table: Bounded episodes: gradient agreement and the recorded production policy
+Table: Mixed-precision comparisons on bounded episodes
+CSV (first column: row index)
+row
+
+Table: TabPFN v2 PD training loss and gradient under bounded strict FP32
+CSV (first column: row index)
+row
+
+Table: Independent check of native and bounded FP32 on the same smaller episode
 CSV (first column: row index)
 row
 
