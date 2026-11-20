@@ -195,7 +195,7 @@ row,table
 8. Training precision (E3)
 No results yet for E3 results; the figure is drawn once they exist.
 
-Table: PD five-fold effect per training precision and model (E1 reference: FP16; E3)
+Table: PD five-fold effect per training precision and model (E1 reference and E3 alternatives)
 CSV (first column: row index)
 row
 
@@ -207,7 +207,7 @@ Table: PD E3 per-table gains
 CSV (first column: row index)
 row
 
-Table: LGD five-fold effect per training precision and model (E1 reference: FP16; E3)
+Table: LGD five-fold effect per training precision and model (E1 reference and E3 alternatives)
 CSV (first column: row index)
 row
 
@@ -611,7 +611,11 @@ No results yet for precision check; the figure is drawn once they exist.
 
 No measurements available for this figure group.
 
-Table: Update-zero loss and gradient agreement with FP32
+Table: Bounded episodes: gradient agreement and the recorded production policy
+CSV (first column: row index)
+row
+
+Table: Full training episodes: recorded policy, gradient agreement, time and peak GPU memory
 CSV (first column: row index)
 row
 
@@ -7863,7 +7867,7 @@ row,table
 8. Training precision (E3)
 No results yet for E3 results; the figure is drawn once they exist.
 
-Table: PD five-fold effect per training precision and model (E1 reference: FP16; E3)
+Table: PD five-fold effect per training precision and model (E1 reference and E3 alternatives)
 CSV (first column: row index)
 row
 
@@ -7875,7 +7879,7 @@ Table: PD E3 per-table gains
 CSV (first column: row index)
 row
 
-Table: LGD five-fold effect per training precision and model (E1 reference: FP16; E3)
+Table: LGD five-fold effect per training precision and model (E1 reference and E3 alternatives)
 CSV (first column: row index)
 row
 

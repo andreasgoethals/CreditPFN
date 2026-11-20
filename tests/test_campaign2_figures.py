@@ -181,7 +181,9 @@ def test_precision_agreement_and_cost_tables(monkeypatch):
          "loss_fp16": 0.5, "grad_cosine_fp16": 0.98},
         {"table_index": 1, "rows": 8192, "loss_fp32": 0.4, "error": "out of memory"}]}}}
     agreement = c2.precision_agreement(summary)
-    assert len(agreement) == 2 and set(agreement.precision) == set(c2.PRECISION_LABELS.values())
+    assert set(agreement.precision) == {"FP16", "BF16"}
+    assert len(agreement) == 4 and agreement.gradient_cosine.notna().sum() == 2
+    assert agreement.role.eq("unrecorded").all()
     assert set(agreement.model) == {"TabPFN v2.6"}          # checkpoint file name -> model label
     fig, text = _finished(r2.precision_agreement(agreement, title="t"))
     assert "below_threshold" in text and len(fig.axes) == 1
@@ -207,6 +209,28 @@ def test_precision_agreement_and_cost_tables(monkeypatch):
     partial = c2.cost_comparison(resources, missing)
     assert partial.finetune_tables.iloc[0] == 1 and partial.tables_to_break_even.isna().all()
     assert c2.cost_comparison(pd.DataFrame(), finetune).empty
+
+
+def test_precision_roles_follow_each_receipt_and_preserve_missing_measurements():
+    table = {"table_index": 0, "rows": 8192, "grad_cosine_fp16": .65, "grad_cosine_fp16_norm32": .95}
+    base = {"track": "pd", "base": "tabpfn-v2-classifier.ckpt", "tables": [table]}
+    for production, comparator in (("fp16", "fp16_norm32"), ("fp16_norm32", "fp16")):
+        full = {"table_index": 0, "rows": 10000, "fp32": {"seconds": 2.},
+                "production": {"seconds": 1., "gradient_cosine": table["grad_cosine_" + production]},
+                comparator: {"error": "out of memory"}}
+        record = dict(base, training_label=production, full_episode=[full])
+        summary = {"precision": {"0": record}}
+        out = c2.precision_agreement(summary).set_index("role")
+        assert out.at["production", "precision"] == c2.PRECISION_LABELS[production]
+        assert out.at["comparison", "precision"] == c2.PRECISION_LABELS[comparator]
+        full_out = c2.precision_full_episodes(summary).set_index("role")
+        assert full_out.at["production", "precision"] == c2.PRECISION_LABELS[production]
+        assert full_out.at["production", "gradient_cosine"] == table["grad_cosine_" + production]
+        assert full_out.at["comparison", "status"] == "failed" and pd.isna(full_out.at["comparison", "gradient_cosine"])
+    old = dict(base, training_dtype="float16", tables=[{"table_index": 0, "stage": "fp32", "error": "out of memory"}])
+    old_frame = c2.precision_agreement({"precision": {"0": old}})
+    assert old_frame.iloc[0].role == "production" and old_frame.iloc[0].status == "unavailable"
+    assert r2.precision_agreement(old_frame, title="t") is None
 
 
 # ---------------------------------------------------------------------------- RQ2 / RQ3

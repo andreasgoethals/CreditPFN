@@ -69,7 +69,7 @@ train:
   max_epochs_for_step_budget: 6000        # rail on the above, so no arm runs away
   grad_clip_norm: 1.0
   amp: true
-  amp_dtype: fp16                         # FP16 + GradScaler for every model (config/design.yaml)
+  amp_dtype: fp16                         # FP16 + GradScaler; TabPFN v2 PD transformer norms use FP32
   tabicl_precision: fp16                  # TabICLv2: fp16 (column embedder in FP32) or fp32; never BF16
   dataloader_workers: 0                   # 0 = serial (default). >0 parallelises the per-step
   #   TabPFN preprocessing across CPU workers so the GPU SMs don't idle waiting for it; loop.py

@@ -477,7 +477,7 @@ def precision_agreement(agreement: pd.DataFrame, *, title: str, threshold: float
     """One panel per task. Rows: base model; one point per training table: the cosine between the
     mixed-precision and the FP32 gradient at update zero on the identical episode (1 = same
     direction). Colour and marker: candidate precision; the dashed line marks ``threshold``."""
-    if _empty(agreement):
+    if _empty(agreement) or not np.isfinite(agreement.gradient_cosine.to_numpy(dtype=float)).any():
         return None
     tracks = [t for t in TRACKS if t in set(agreement.track)]
     precisions = list(dict.fromkeys(agreement.precision))
@@ -509,8 +509,8 @@ def precision_agreement(agreement: pd.DataFrame, *, title: str, threshold: float
     _proxy_line(axes[0, 0], f"Cosine {threshold:g}", color=style.COLORS["mean"], linestyle="--", linewidth=0.8)
     axes[0, 0].legend()
     fig.suptitle(title)
-    summary = (agreement.groupby(["track", "model", "precision"]).gradient_cosine
-               .agg(tables="count", minimum="min", median="median",
+    summary = (agreement.groupby(["track", "model", "precision", "role"]).gradient_cosine
+               .agg(tables="size", compared="count", minimum="min", median="median",
                     below_threshold=lambda v: int((v < threshold).sum())).reset_index())
     return _report(fig, precision_summary=summary, precision_agreement=agreement)
 

@@ -27,11 +27,9 @@ reference:
   corpus: all_training_tables
   regression_objective: window_nll   # TabPFN LGD; TabICL keeps its native quantile objective
   preprocessing_views: 2
-  # FP16 autocast with loss scaling for every model and both tasks (13-11-2026): the precision of
-  # both upstream fine-tuners, and one precision for all models keeps model differences from being
-  # precision differences. TabICLv2's column embedder stays in FP32: under FP16 it corrupted the
-  # loss or the gradient on large PD tables (Experiment 0 precision check). FP32 everywhere
-  # would cost about five times more; BF16 corrupts TabICLv2 and TabPFN v2.6/v3 PD gradients.
+  # FP16 autocast with loss scaling on both tasks. TabPFN v2 PD computes its transformer
+  # normalizations in FP32. TabICLv2 keeps its column embedder in FP32 on both tasks.
+  # Experiment 0 compares each policy with an FP32 reference on identical training episodes.
   training_precision: fp16
   evaluation_precision: fp32
   seed: 42
@@ -72,7 +70,7 @@ experiments:
     rq: 1
     question: Does the training precision change what CPT learns, beyond changing the update-zero gradient?
     tasks: [pd, lgd]
-    # The reference is FP16 with loss scaling. BF16 gradients disagreed with FP32 at update zero for
+    # The reference uses the mixed-precision policy above. BF16 gradients disagreed with FP32 at update zero for
     # TabPFN v2.6 and v3; TabICLv2 is compared with strict FP32 (it fits in memory; BF16 is refused
     # for it). FP32 does not fit for TabPFN on wide PD tables at the reference episode size.
     # LGD is included as the contrast: its BF16 gradients agreed with FP32 far better than PD's.

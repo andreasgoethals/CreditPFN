@@ -801,7 +801,20 @@ def positive_control(changes: pd.DataFrame, *, slug: str = "reference", arm: int
                            values=["tables", "mean_change", "tables_improved"]).pipe(
         lambda w: w.set_axis([f"{scope}_{stat}" for stat, scope in w.columns], axis=1)).reset_index()
 
-PRECISION_LABELS = {"bf16": "BF16", "fp16": "FP16 with loss scaling"}
+PRECISION_LABELS = {"bf16": "BF16", "fp16": "FP16", "fp16_norm32": "FP16 + FP32 norms"}
+
+
+def _precision_records(summary):
+    """Policy in force at measurement time, including historical receipts with dtype only."""
+    for record in ((summary or {}).get("precision") or {}).values():
+        if not isinstance(record, dict) or "tables" not in record:
+            continue
+        base = str(record.get("base", ""))
+        match = re.search(r"(tabpfn-v[0-9.]+?)(?=-|$)|(tabicl)", base)
+        policy = record.get("training_label") or {
+            "float16": "fp16", "float32": "fp32", "bfloat16": "bf16"
+        }.get(record.get("training_dtype"))
+        yield record, _model_label(match.group(0) if match else base), policy
 
 
 def precision_agreement(summary: dict | None) -> pd.DataFrame:
@@ -809,20 +822,45 @@ def precision_agreement(summary: dict | None) -> pd.DataFrame:
     precision: update-zero loss in FP32 and in the candidate, and the cosine between the two
     gradients on the identical episode. ``table_rank`` orders the training tables by size."""
     rows = []
-    for record in ((summary or {}).get("precision") or {}).values():
-        if not isinstance(record, dict) or "tables" not in record:
-            continue
-        base = re.search(r"(tabpfn-v[0-9.]+?)(?=-|$)|(tabicl)", str(record.get("base", "")))
-        model = _model_label(base.group(0) if base else str(record.get("base", "")))
+    for record, model, production in _precision_records(summary):
+        # Historical receipts measured fewer policies. Include a missing comparison only when
+        # that policy was registered as production or recorded somewhere in this probe.
+        policies = [key for key in PRECISION_LABELS if key == production or any(
+            f"grad_cosine_{key}" in row or f"error_{key}" in row for row in record["tables"])]
         for table in record["tables"]:
-            for key, label in PRECISION_LABELS.items():
-                if f"grad_cosine_{key}" not in table:
-                    continue
+            for key in policies:
+                cosine = table.get(f"grad_cosine_{key}")
+                status = "measured" if pd.notna(cosine) and np.isfinite(cosine) else "unavailable"
                 rows.append(dict(track=record.get("track"), model=model,
                                  table_rank=int(table["table_index"]) + 1, rows=table.get("rows"),
-                                 precision=label, loss_fp32=table.get("loss_fp32"),
-                                 loss=table.get(f"loss_{key}"), gradient_cosine=table[f"grad_cosine_{key}"],
+                                 precision=PRECISION_LABELS[key],
+                                 role=("unrecorded" if production is None else
+                                       "production" if key == production else "comparison"), status=status,
+                                 loss_fp32=table.get("loss_fp32"),
+                                 loss=table.get(f"loss_{key}"), gradient_cosine=cosine,
                                  gradient_norm_ratio=table.get(f"grad_norm_ratio_{key}")))
+    return pd.DataFrame(rows)
+
+
+def precision_full_episodes(summary: dict | None) -> pd.DataFrame:
+    """Full training-size backward probes; older probes may record only feasibility and timing."""
+    rows = []
+    labels = {**PRECISION_LABELS, "fp32": "FP32", "fp32_checkpointed": "Checkpointed FP32"}
+    for record, model, production in _precision_records(summary):
+        for table in record.get("full_episode", []):
+            for key in ("fp32", "fp32_checkpointed", "production", "fp16", "fp16_norm32", "bf16"):
+                trial = table.get(key)
+                if not isinstance(trial, dict):
+                    continue
+                policy = trial.get("policy") or (production if key == "production" else key)
+                rows.append(dict(track=record.get("track"), model=model, table_rank=int(table["table_index"]) + 1,
+                                 rows=table.get("rows"), precision=labels.get(policy, policy or "unrecorded"),
+                                 role={"production": "production", "fp32": "reference"}.get(key, "comparison"),
+                                 status="failed" if "error" in trial else "completed",
+                                 gradient_cosine=trial.get("gradient_cosine"),
+                                 gradient_agrees=trial.get("gradient_agrees"), loss_agrees=trial.get("loss_agrees"),
+                                 loss=trial.get("loss"), gradient_norm=trial.get("gradient_norm"),
+                                 seconds=trial.get("seconds"), peak_gb=trial.get("peak_gb")))
     return pd.DataFrame(rows)
 
 

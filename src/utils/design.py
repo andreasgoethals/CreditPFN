@@ -77,7 +77,7 @@ def monitor_updates(budget: int) -> list[int]:
 
 def _precision(ref: dict) -> dict:
     """Training precision of every model. fp16: FP16 autocast with loss scaling (both upstream
-    fine-tuners); TabICLv2 keeps its column embedder in FP32. bf16: BF16 for TabPFN, FP16 for
+    fine-tuners); v2 PD transformer norms and the TabICLv2 column embedder use FP32. bf16: BF16 for TabPFN, FP16 for
     TabICLv2. fp32: no autocast."""
     precision = str(ref["training_precision"])
     if precision not in ("fp16", "bf16", "fp32"):
