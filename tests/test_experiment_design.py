@@ -87,6 +87,7 @@ def test_pass_modes_have_distinct_names_and_evaluation_directories():
 @pytest.mark.parametrize("mode", ["one_sample", "full_pass"])
 @pytest.mark.parametrize("terminal_divergence", [False, True])
 @pytest.mark.parametrize("seed", [42, 43])
+@pytest.mark.usefixtures("bare_storage_env")
 def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
         mode, terminal_divergence, seed, synthetic_processed, tmp_path, monkeypatch, execution_settings):
     import src.train.loop as loop

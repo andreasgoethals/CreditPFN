@@ -38,6 +38,7 @@ def test_corpus_metadata_reuses_reads_and_invalidates_file_or_registry_changes(t
     assert len(reads) == 3
 
 
+@pytest.mark.usefixtures("bare_storage_env")
 def test_plan_reuses_split_per_filter_without_reusing_wrong_corpus(tmp_path, monkeypatch):
     import src.train.config as pipeline
     import src.train.corpus as corpus

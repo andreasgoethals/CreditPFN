@@ -128,6 +128,7 @@ def test_adapter_rejects_unsupported_duplicate_and_invalid_state():
         ds.restore(model, {key: torch.full_like(state[key], float('nan'))})
 
 
+@pytest.mark.usefixtures("bare_storage_env")
 def test_bundle_pins_base_and_rejects_native_loader_schema(tmp_path, monkeypatch):
     from src.utils.experiment import file_digest
     base = tmp_path/'tabpfn-v3-classifier-v3_default.ckpt'
