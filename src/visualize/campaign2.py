@@ -151,7 +151,7 @@ def _read_results_frames(slug: str, track: str) -> pd.DataFrame:
         receipt = json.loads(marker.read_text(encoding="utf-8"))
         if "__metrics_sha256__" not in receipt:
             continue  # historical receipts predate verified publication
-        if receipt["__metrics_sha256__"] != file_digest(path):
+        if receipt["__metrics_sha256__"] != file_digest(path, fresh=True):
             raise ValueError(f"Benchmark metric checksum does not match {marker.name}")
         frame = pd.read_csv(path)
         if not {"model_name", "test_dataset_id", "fold_idx", "status"} <= set(frame.columns):
@@ -949,11 +949,11 @@ def task_results(kind: str) -> pd.DataFrame:
                 or task.get("fold") not in range(N_FOLDS) or task != done.get("task")
                 or done.get("predictions") != predictions.name
                 or not re.fullmatch(r"[0-9a-f]{64}", str(done.get("predictions_sha256")))
-                or done.get("metrics_sha256") != file_digest(f)):
+                or done.get("metrics_sha256") != file_digest(f, fresh=True)):
             raise ValueError(f"Invalid {kind} result receipt or changed metrics: {f.name}")
         # A compact download may contain only metrics and receipts. Verify prediction files
         # when present; the notebook consumes the checksummed metric values.
-        if predictions.is_file() and done["predictions_sha256"] != file_digest(predictions):
+        if predictions.is_file() and done["predictions_sha256"] != file_digest(predictions, fresh=True):
             raise ValueError(f"Changed predictions for {f.name}")
         shard = pd.read_csv(f)
         if (shard.empty or len(shard) != done.get("rows")

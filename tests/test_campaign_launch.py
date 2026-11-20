@@ -52,8 +52,9 @@ def test_config_cost_counts_models_partitions_and_evaluation_shards():
 
 def test_only_verified_pd_cohort_can_release_pilots(tmp_path, monkeypatch):
     import hashlib
+    import os
     from src.data import lendingclub_outcomes as lc
-    from src.utils import paths
+    from src.utils import experiment, paths
 
     path = tmp_path / "fixture.csv"
     monkeypatch.setattr(paths, "processed_dir", lambda *parts: path)
@@ -61,8 +62,14 @@ def test_only_verified_pd_cohort_can_release_pilots(tmp_path, monkeypatch):
     monkeypatch.setattr(lc, "PROCESSED_SHA256", hashlib.sha256(approved).hexdigest())
     assert cl.pd_target_issue(lc.DATASET)
     path.write_bytes(approved)
+    # A filesystem may report identical metadata on two writes within one tick.
+    state = experiment._file_state(path)
+    monkeypatch.setattr(experiment, "_file_state", lambda _: state)
+    assert experiment.file_digest(path) == lc.PROCESSED_SHA256
     assert cl.pd_target_issue(lc.DATASET) is None
+    stat = path.stat()
     path.write_bytes(approved.replace(b"8,0", b"8,1"))
+    os.utime(path, ns=(stat.st_atime_ns, stat.st_mtime_ns))
     assert cl.pd_target_issue(lc.DATASET)
 
 

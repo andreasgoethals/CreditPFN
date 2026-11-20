@@ -645,7 +645,7 @@ def find_existing_results(
                 receipt = json.loads(sidecar.read_text(encoding="utf-8"))
                 if evaluation_key is not None and receipt.get(dataset_id) != evaluation_key:
                     continue
-                if "__metrics_sha256__" in receipt and receipt["__metrics_sha256__"] != file_digest(csv_path):
+                if "__metrics_sha256__" in receipt and receipt["__metrics_sha256__"] != file_digest(csv_path, fresh=True):
                     continue
                 if require_predictions:
                     prediction = receipt.get("__predictions__") or {}
@@ -655,7 +655,7 @@ def find_existing_results(
                     artifact = csv_path.parent / name
                     if not artifact.is_file() or artifact.stat().st_size != prediction.get("bytes"):
                         continue
-                    if "sha256" in prediction and prediction["sha256"] != file_digest(artifact):
+                    if "sha256" in prediction and prediction["sha256"] != file_digest(artifact, fresh=True):
                         continue
             except (OSError, ValueError, AttributeError, TypeError):
                 continue

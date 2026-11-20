@@ -36,9 +36,9 @@ def identity(*, verify_project: bool = False) -> dict:
     if verify_project:
         from src.utils.paths import resolve_staging_path
         for name, entry in inventory["files"].items():
-            if file_digest(resolve_staging_path(name)) != entry["sha256"]:
+            if file_digest(resolve_staging_path(name), fresh=True) != entry["sha256"]:
                 raise RuntimeError("PROJECT inputs have changed since scratch was staged; refresh the input snapshot")
-            if file_digest(snapshot / name) != entry["sha256"]:
+            if file_digest(snapshot / name, fresh=True) != entry["sha256"]:
                 raise RuntimeError("A staged scratch input has changed; stage a fresh input snapshot")
     if os.environ.get("CREDITPFN_USE_SCRATCH") == "1" and Path(os.environ["CREDITPFN_DATA_ROOT"]).resolve() != snapshot.resolve():
         raise RuntimeError("The worker's mounted inputs differ from the current input snapshot")
