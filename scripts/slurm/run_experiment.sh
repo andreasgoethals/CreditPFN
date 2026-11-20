@@ -93,6 +93,11 @@ fi
 hms() { printf '%d:%02d:00' $(( $1 / 60 )) $(( $1 % 60 )); }
 walltime_for() {
     if (( SEGMENT_MINUTES > 0 )); then hms $(( SEGMENT_MINUTES + 10 )); return; fi
+    # The bounded FP32 v2 classifier took up to 19.6 seconds per full-size
+    # episode on a B200 before adding monitors, preprocessing and optimizer work.
+    if [[ "$CREDITPFN_EXPERIMENT" == experiment0 && "$TRACK" == pd && "$1" == tabpfn-v2-classifier-* && -n "${CREDITPFN_V2_PD_PILOT_WALLTIME:-}" ]]; then
+        echo "$CREDITPFN_V2_PD_PILOT_WALLTIME"; return
+    fi
     if [[ -n "${WALLTIME:-}" ]]; then echo "$WALLTIME"; return; fi
     if (( BUDGET <= 250 )); then hms 60; return; fi
     # Provisional default; override WALLTIME with the Experiment 0 pilot timings.
@@ -185,7 +190,7 @@ if [[ " $STAGES " == *' train '* ]]; then
         for key in "${KEYS[@]}"; do
             IFS='|' read -r destination mode base <<< "$key"
             read -r cluster partition <<< "$destination"
-            wt="$(walltime_for)"
+            wt="$(walltime_for "$base")"
             [[ "$cluster" == wice ]] && cpus=16 || cpus=24
             n=$(awk -F, '{print NF}' <<< "${BUCKET[$key]}")
             limit=$THROTTLE; (( n < limit )) && limit=$n

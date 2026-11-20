@@ -227,7 +227,8 @@ def submit_experiment0(folder: Path, receipt: Path, only: dict | None = None) ->
                        # 250-update pilots measured 3-10 minutes on the B200 (09-11-2026); short
                        # requests backfill sooner. The reference benchmark (v3/TabICL at a
                        # 467,000-row context on the largest table) is still unmeasured.
-                       WALLTIME="01:30:00", EVAL_WALLTIME="12:00:00")
+                       WALLTIME="01:30:00", CREDITPFN_V2_PD_PILOT_WALLTIME="02:00:00",
+                       EVAL_WALLTIME="12:00:00")
     state = {"pilots": {}, "benchmark": {}, "classical": {}, "recovery": None, "capacity": None,
              "precision": None, "evaluation": None, "scale": None, "summary": None, "run": run}
     env[pilot_gate.RUN_ENV] = run

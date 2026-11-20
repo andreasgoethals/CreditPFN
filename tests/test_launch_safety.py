@@ -209,7 +209,7 @@ def test_walltime_warning_is_reserved_for_segmented_training(tmp_path, walltime,
     launcher = Path("scripts/slurm/run_experiment.sh").resolve()
     script = '''python() {
     cat >/dev/null
-    printf '%s\\n' pd cpt2e0_synthetic 1 2 4 False 'base.ckpt one_sample'
+    printf '%s\\n' pd cpt2e0_synthetic 1 2 4 False 'base.ckpt one_sample' 'tabpfn-v2-classifier-v2_default.ckpt one_sample'
 }
 export -f python
 bash "$1" "$2"
@@ -217,17 +217,22 @@ bash "$1" "$2"
     result = subprocess.run([bash, "--noprofile", "--norc", "-c", script, "test",
                              launcher.as_posix(), config.as_posix()],
         env=dict(os.environ, DRY="1", WALLTIME=walltime, SEGMENT_MINUTES=str(segment),
+                 CREDITPFN_V2_PD_PILOT_WALLTIME="02:05:00",
                  STAGES="train", TRIALS_PER_TASK="1", SPLITS="1", SPLIT_START="0",
                  GLOBAL_CONCURRENCY="16", THROTTLE="4", EVAL_CONCURRENCY="4"),
         capture_output=True, text=True, timeout=20)
     assert result.returncode == 0, result.stderr
-    command = next(line for line in result.stdout.splitlines() if line.startswith("DRY:"))
+    commands = [line for line in result.stdout.splitlines() if line.startswith("DRY:")]
+    command = next(line for line in commands if "--array=0%" in line)
+    bounded = next(line for line in commands if "--array=1%" in line)
     if segment:
         assert "--signal=B:USR1@600" in command and "--requeue" in command
         assert "--time=2:10:00" in command
+        assert "--time=2:10:00" in bounded
     else:
         assert "--signal=" not in command
         assert f"--time={walltime}" in command
+        assert "--time=02:05:00" in bounded
 
 
 @pytest.mark.parametrize("signal,code", [("USR1", 138), ("TERM", 143), ("INT", 130)])
