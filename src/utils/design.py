@@ -77,8 +77,9 @@ def monitor_updates(budget: int) -> list[int]:
 
 def _precision(ref: dict) -> dict:
     """Training precision of every model. fp16: FP16 autocast with loss scaling (both upstream
-    fine-tuners); v2 PD transformer norms and the TabICLv2 column embedder use FP32. bf16: BF16 for TabPFN, FP16 for
-    TabICLv2. fp32: no autocast."""
+    fine-tuners); the v2 PD runtime overrides the default with memory-bounded strict FP32.
+    TabICLv2 keeps its column embedder in FP32. bf16: BF16 for TabPFN, FP16 for TabICLv2.
+    fp32: no autocast."""
     precision = str(ref["training_precision"])
     if precision not in ("fp16", "bf16", "fp32"):
         raise ValueError(f"training_precision must be fp16, bf16 or fp32, not {precision!r}")

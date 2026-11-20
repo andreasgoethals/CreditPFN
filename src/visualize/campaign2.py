@@ -802,6 +802,8 @@ def positive_control(changes: pd.DataFrame, *, slug: str = "reference", arm: int
         lambda w: w.set_axis([f"{scope}_{stat}" for stat, scope in w.columns], axis=1)).reset_index()
 
 PRECISION_LABELS = {"bf16": "BF16", "fp16": "FP16", "fp16_norm32": "FP16 + FP32 norms"}
+_ALL_PRECISION_LABELS = {**PRECISION_LABELS, "fp32": "FP32", "fp32_bounded": "Bounded strict FP32",
+                         "fp32_checkpointed": "Checkpointed FP32"}
 
 
 def _precision_records(summary):
@@ -834,6 +836,7 @@ def precision_agreement(summary: dict | None) -> pd.DataFrame:
                 rows.append(dict(track=record.get("track"), model=model,
                                  table_rank=int(table["table_index"]) + 1, rows=table.get("rows"),
                                  precision=PRECISION_LABELS[key],
+                                 recorded_training_policy=_ALL_PRECISION_LABELS.get(production, production or "unrecorded"),
                                  role=("unrecorded" if production is None else
                                        "production" if key == production else "comparison"), status=status,
                                  loss_fp32=table.get("loss_fp32"),
@@ -842,19 +845,43 @@ def precision_agreement(summary: dict | None) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 
+def precision_fp32_evidence(summary: dict | None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Separate deployed FP32 measurements from independently computed native reference checks."""
+    production_rows, parity_rows = [], []
+    for record, model, production in _precision_records(summary):
+        identity = dict(track=record.get("track"), model=model,
+                        recorded_training_policy=_ALL_PRECISION_LABELS.get(production, production or "unrecorded"))
+        parity = record.get("reference_parity")
+        if isinstance(parity, dict):
+            scope = "all tables: minimum cosine and maximum relative error" if "tables" in parity else "smaller episode"
+            parity_rows.append(dict(**identity, comparison=scope, **parity))
+        for table in record["tables"]:
+            measured = table.get("reference_parity")
+            if isinstance(measured, dict):
+                parity_rows.append(dict(**identity, comparison="smaller episode", table_rank=int(table["table_index"]) + 1,
+                                        **measured))
+        if production != "fp32_bounded":
+            continue
+        for table in record["tables"]:
+            production_rows.append(dict(**identity, table_rank=int(table["table_index"]) + 1,
+                                        rows=table.get("rows"), loss=table.get("loss_fp32"),
+                                        gradient_norm=table.get("grad_norm_fp32"),
+                                        gradient_finite=table.get("grad_finite_fp32"), passed=table.get("passed")))
+    return pd.DataFrame(production_rows), pd.DataFrame(parity_rows)
+
+
 def precision_full_episodes(summary: dict | None) -> pd.DataFrame:
     """Full training-size backward probes; older probes may record only feasibility and timing."""
     rows = []
-    labels = {**PRECISION_LABELS, "fp32": "FP32", "fp32_checkpointed": "Checkpointed FP32"}
     for record, model, production in _precision_records(summary):
         for table in record.get("full_episode", []):
-            for key in ("fp32", "fp32_checkpointed", "production", "fp16", "fp16_norm32", "bf16"):
+            for key in ("fp32", "fp32_bounded", "fp32_checkpointed", "production", "fp16", "fp16_norm32", "bf16"):
                 trial = table.get(key)
                 if not isinstance(trial, dict):
                     continue
                 policy = trial.get("policy") or (production if key == "production" else key)
                 rows.append(dict(track=record.get("track"), model=model, table_rank=int(table["table_index"]) + 1,
-                                 rows=table.get("rows"), precision=labels.get(policy, policy or "unrecorded"),
+                                 rows=table.get("rows"), precision=_ALL_PRECISION_LABELS.get(policy, policy or "unrecorded"),
                                  role={"production": "production", "fp32": "reference"}.get(key, "comparison"),
                                  status="failed" if "error" in trial else "completed",
                                  gradient_cosine=trial.get("gradient_cosine"),

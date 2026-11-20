@@ -233,6 +233,31 @@ def test_precision_roles_follow_each_receipt_and_preserve_missing_measurements()
     assert r2.precision_agreement(old_frame, title="t") is None
 
 
+def test_strict_fp32_shows_measured_parity_separately_from_production():
+    record = {"track": "pd", "base": "tabpfn-v2-classifier.ckpt", "training_label": "fp32_bounded",
+              "tables": [{"table_index": 0, "rows": 8192, "loss_fp32": .4, "grad_norm_fp32": 1.2,
+                          "grad_finite_fp32": True, "grad_cosine_fp16": .6, "grad_cosine_fp16_norm32": .7,
+                          "passed": True, "reference_parity": {
+                              "rows": 256, "cosine": .99999, "relative_error": .0001,
+                              "native_loss": .4, "bounded_loss": .4, "passed": True}}],
+              "reference_parity": {"tables": 1, "rows": 256, "cosine": .99999, "relative_error": .0001, "passed": True},
+              "full_episode": [{"table_index": 0, "rows": 10000, "production": {
+                  "policy": "fp32_bounded", "loss": .5, "gradient_norm": 1.3, "seconds": 12., "peak_gb": 10.}}]}
+    summary = {"precision": {"0": record}}
+    mixed = c2.precision_agreement(summary)
+    assert set(mixed.precision) == {"FP16", "FP16 + FP32 norms"} and set(mixed.role) == {"comparison"}
+    assert set(mixed.recorded_training_policy) == {"Bounded strict FP32"}
+    prod, parity = c2.precision_fp32_evidence(summary)
+    assert prod.iloc[0].rows == 8192 and prod.iloc[0].gradient_norm == 1.2
+    assert parity.iloc[0].rows == 256 and parity.iloc[0].cosine == .99999
+    assert len(parity) == 2 and parity.iloc[1].table_rank == 1 and parity.iloc[1].bounded_loss == .4
+    full = c2.precision_full_episodes(summary)
+    assert full.iloc[0].precision == "Bounded strict FP32" and pd.isna(full.iloc[0].gradient_cosine)
+    record["training_label"] = "fp16"
+    historical, parity = c2.precision_fp32_evidence(summary)
+    assert historical.empty and parity.iloc[0].recorded_training_policy == "FP16"
+
+
 # ---------------------------------------------------------------------------- RQ2 / RQ3
 def test_arm_overview_carries_settings_and_both_table_groups(results):
     overview = c2.arms_overview(["reference", "update_size_anchoring", "scope"], "pd")

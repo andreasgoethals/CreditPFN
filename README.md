@@ -30,9 +30,10 @@ with the credit-scoring measures KS, H-measure and expected maximum profit. A Ta
 leaderboard (Elo anchored at the linear baseline, normalized score, improvability) ranks every
 method on the same folds, and an appendix recomputes every result on the public tables only.
 
-Reference CPT uses FP16 autocast with loss scaling. TabPFN v2 PD computes its transformer
-normalizations in FP32, and TabICLv2 computes its column embeddings in FP32. Experiment 0
-compares the gradients of the recorded training policy with FP32 on identical episodes.
+Reference CPT for TabPFN v2 PD uses strict FP32 with a memory-bounded backward pass. Experiment 0
+compares it with native FP32 on a shared smaller episode and checks full training-size episodes
+for finite losses and gradients. The other reference model–task pairs use FP16 autocast with
+loss scaling. TabICLv2 computes its column embeddings in FP32.
 TabPFN LGD trains with a 5-bucket window NLL (robust to the v2.6 regressor's comb-shaped density);
 LoRA and DiagScale use L2-SP on their effective weight change.
 
