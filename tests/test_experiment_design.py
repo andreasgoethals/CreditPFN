@@ -137,7 +137,7 @@ def test_exact_budget_and_mid_epoch_recovery_match_uninterrupted(
         "max_rows_per_epoch": 80, "query_fraction": .4, "context_sampling": "stratified"}})
         if "data.yaml" in str(p) else real_load(p))
     cfg = OmegaConf.create({"seed": seed, "run_name": "toy", "track": "pd", "device": "cpu",
-        "tunable": {"classifier_base_paths": ["base.ckpt"], "learning_rates": [.001]},
+        "tunable": {"classifier_base_paths": ["tabpfn-v2.6-synthetic.ckpt"], "learning_rates": [.001]},
         "corpus": {"train_fraction": .6, "test_fraction": .4},
         "optimizer": {"weight_decay": 0., "l2sp_lambda": .003},
         "scheduler": {"warmup_fraction": .1},
