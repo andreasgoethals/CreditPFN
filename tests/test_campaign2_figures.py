@@ -350,21 +350,34 @@ def test_similarity_test_finds_distance_driven_transfer_and_permutes_tables():
     import numpy as np
     rng = np.random.default_rng(1)
     tables = [f"{i:04d}.t" for i in range(1, 9)]
+    tables[3], tables[5] = "0004.lendingclub", "0006.hackerearth"
     properties = pd.DataFrame(dict(test_dataset_id=tables, rows=10 ** rng.uniform(3, 5, 8),
                                    features=rng.integers(5, 60, 8), categorical_share=rng.uniform(0, 1, 8)))
     long = pd.DataFrame([dict(model="v3", source=s, target=t, scope="test", change=0.0)
                          for s in tables for t in tables if s != t])
     pairs = c2.transfer_pairs(long, properties)
+    assert len(pairs) == len(long) - 2
+    assert set(zip(pairs.source, pairs.target)).isdisjoint({(tables[3], tables[5]), (tables[5], tables[3])})
     pairs["change"] = -pairs.distance + rng.normal(0, 0.05, len(pairs))   # closer sources transfer better
-    test = c2.transfer_similarity(pairs, permutations=300)
+    test = c2.transfer_similarity(pairs, properties, permutations=300)
     assert test.iloc[0].spearman < -0.8 and test.iloc[0].p_value < 0.05
     pairs["change"] = rng.normal(0, 1, len(pairs))                         # no relation
-    assert c2.transfer_similarity(pairs, permutations=300).iloc[0].p_value > 0.05
-    assert not pairs.same_source.any()                                      # synthetic ids: no shared lender
-    pairs.loc[:3, "same_source"] = True
-    test = c2.transfer_similarity(pairs, permutations=50)
-    assert test.iloc[0].same_source_pairs == 4
-    assert np.isclose(test.iloc[0].same_source_mean_change, pairs.change[:4].mean())
+    from scipy.spatial.distance import cdist
+    from scipy.stats import spearmanr
+    features = properties.drop(columns="test_dataset_id").copy()
+    features[["rows", "features"]] = np.log10(features[["rows", "features"]])
+    features = (features - features.mean()) / features.std(ddof=0)
+    distance = cdist(features, features)
+    source = [tables.index(s) for s in pairs.source]
+    target = [tables.index(t) for t in pairs.target]
+    observed = spearmanr(pairs.change, distance[source, target]).statistic
+    rng_labels = np.random.default_rng(0)
+    null = [spearmanr(pairs.change, distance[p[source], p[target]]).statistic
+            for p in (rng_labels.permutation(len(tables)) for _ in range(50))]
+    expected = (1 + np.sum(np.abs(null) >= abs(observed))) / 51
+    assert c2.transfer_similarity(pairs, properties, permutations=50).iloc[0].p_value == pytest.approx(expected)
+    # Observed changes alone cannot supply the two missing property distances for permutations.
+    assert np.isnan(c2.transfer_similarity(pairs, permutations=50).iloc[0].p_value)
     fig, text = _finished(r2.transfer_similarity({"pd": dict(pairs=pairs, tests=test), "lgd": dict(pairs=pairs, tests=test)},
                                                   title="t"))
     assert len(fig.axes) == 2 * len(set(pairs.model)) and "PD similarity test" in text

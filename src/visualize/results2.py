@@ -769,7 +769,7 @@ def gain_vs_properties(merged: pd.DataFrame, *, track: str, title: str, properti
 
 def transfer_similarity(frames: dict, *, title: str):
     """Rows: task; columns: model. E7 monitor change of each target against its property distance
-    to the source, one point per source-target pair (stars: same lender, the positive control). The
+    to the source, one point per eligible source-target pair. The
     Spearman correlation and Mantel p-value sit in headroom reserved above the points.
     ``frames[track]`` holds ``pairs`` and ``tests`` (``campaign2.transfer_pairs``/``transfer_similarity``)."""
     tracks = [t for t in TRACKS if t in frames and not _empty(frames[t].get("pairs"))]
@@ -778,7 +778,7 @@ def transfer_similarity(frames: dict, *, title: str):
     models = _models(pd.concat([frames[t]["pairs"] for t in tracks]))
     fig, axes = plt.subplots(len(tracks), len(models), squeeze=False, sharex="row", sharey="row",
                              figsize=(style.WIDTH_FULL, _height(len(tracks), style.ROW_HEIGHT * 1.15)))
-    stars, reports = False, {}
+    reports = {}
     for r, track in enumerate(tracks):
         pairs, tests = frames[track]["pairs"], frames[track].get("tests")
         low, high = float(pairs.change.min()), float(pairs.change.max())
@@ -786,13 +786,8 @@ def transfer_similarity(frames: dict, *, title: str):
         for c, model in enumerate(models):
             ax = axes[r, c]
             s = pairs[pairs.model == model]
-            same = s.same_source.astype(bool) if "same_source" in s else pd.Series(False, index=s.index)
-            ax.scatter(s.distance[~same], s.change[~same], s=style.TABLE_POINT_SIZE, color=style.model_color(model),
+            ax.scatter(s.distance, s.change, s=style.TABLE_POINT_SIZE, color=style.model_color(model),
                        alpha=style.POINT_ALPHA, linewidths=0)
-            if same.any():   # positive control: source and target from the same lender
-                stars = True
-                ax.scatter(s.distance[same], s.change[same], s=style.POINT_SIZE, marker="*", zorder=3,
-                           color=style.model_color(model), edgecolors=style.COLORS["mean"], linewidths=0.4)
             _zero(ax)
             ax.set_ylim(low - 0.05 * pad, high + 0.30 * pad)      # headroom for the test result
             test = tests[tests.model == model] if not _empty(tests) else pd.DataFrame()
@@ -806,10 +801,6 @@ def transfer_similarity(frames: dict, *, title: str):
         axes[r, 0].set_ylabel(f"{TRACK_NAME[track]}: Δ {SCORE[track]}")
         reports[f"{TRACK_NAME[track]} similarity test"] = tests
         reports[f"{TRACK_NAME[track]} pairs"] = pairs
-    if stars:
-        _proxy_point(axes[0, 0], "Source and target from the same lender", marker="*", s=style.POINT_SIZE,
-                     color=style.COLORS["untuned"], edgecolors=style.COLORS["mean"], linewidths=0.4)
-        axes[0, 0].legend()
     fig.suptitle(title)
     return _report(fig, **{k.replace(" ", "_"): v for k, v in reports.items() if not _empty(v)})
 

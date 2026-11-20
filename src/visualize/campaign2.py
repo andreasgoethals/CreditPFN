@@ -1422,11 +1422,8 @@ def transfer_sources(track: str) -> dict[int, str]:
     """Single-source arm index -> source table id (tables of the task sorted by id, the rule the
     generated E7 configs use). Refuses a registry whose size differs from the design, since a
     missing table would shift every later label."""
-    try:
-        from src.train.corpus import build_dataset_pool
-        ids = sorted(r.dataset_id for r in build_dataset_pool(track))
-    except Exception:  # noqa: BLE001 - the registry may be absent off-cluster
-        return {}
+    from src.train.corpus import build_dataset_pool
+    ids = sorted(r.dataset_id for r in build_dataset_pool(track))
     expected = int(load_design()["tables"][track])
     if len(ids) != expected:
         raise RuntimeError(f"{track}: {len(ids)} registered tables, design has {expected}; E7 source labels would shift")
@@ -1446,7 +1443,8 @@ def transfer_long(frame: pd.DataFrame, track: str) -> pd.DataFrame:
     last = changes.groupby("run").successful_updates.transform("max")
     end = changes[(changes.successful_updates == last) & (last >= budget)]
     sources = transfer_sources(track)
-    end = end.assign(source=end.arm.map(lambda a: sources.get(int(a), f"source {a}")))
+    end = end.assign(source=end.arm.map(lambda a: sources[int(a)]))
+    end = end[(end.scope != "test") | _distinct_sources(end.source, end.table)]
     return end[["model", "arm", "source", "scope", "table", "successful_updates", "change"]].rename(
         columns={"table": "target"}).reset_index(drop=True)
 
@@ -1470,32 +1468,38 @@ def _property_space(properties: pd.DataFrame) -> pd.DataFrame:
     return (features - features.mean()) / features.std(ddof=0).replace(0, 1)
 
 
-def transfer_pairs(long: pd.DataFrame, properties: pd.DataFrame) -> pd.DataFrame:
-    """E7 per model, source and held-out target: the monitor change and the standardised property
-    distance between source and target (the space of ``corpus_similarity``)."""
-    if long.empty or properties.empty:
-        return pd.DataFrame()
+def _property_distances(properties: pd.DataFrame) -> pd.DataFrame:
     z = _property_space(properties)
     values = z.to_numpy(dtype=float)
-    distance = pd.DataFrame(np.sqrt(((values[:, None, :] - values[None, :, :]) ** 2).sum(axis=2)),
-                            index=z.index, columns=z.index)
-    sub = long[(long.scope == "test") & long.source.isin(z.index) & long.target.isin(z.index)]
+    return pd.DataFrame(np.sqrt(((values[:, None, :] - values[None, :, :]) ** 2).sum(axis=2)),
+                        index=z.index, columns=z.index)
+
+
+def _distinct_sources(sources: pd.Series, targets: pd.Series) -> pd.Series:
+    """Exclude historical self-comparisons and pairs drawn from the same lender."""
+    from src.train.corpus import SAME_SOURCE
+    eligible = sources != targets
+    for group in SAME_SOURCE:
+        eligible &= ~(sources.isin(group) & targets.isin(group))
+    return eligible
+
+
+def transfer_pairs(long: pd.DataFrame, properties: pd.DataFrame) -> pd.DataFrame:
+    """E7 change and property distance for each eligible source and held-out target."""
+    if long.empty or properties.empty:
+        return pd.DataFrame()
+    distance = _property_distances(properties)
+    sub = long[(long.scope == "test") & long.source.isin(distance.index) & long.target.isin(distance.index)
+               & _distinct_sources(long.source, long.target)]
     if sub.empty:
         return pd.DataFrame()
     sub = sub[["model", "source", "target", "change"]].copy()
     sub["distance"] = [float(distance.at[s, t]) for s, t in zip(sub.source, sub.target)]
-    sub["same_source"] = [_same_source(s, t) for s, t in zip(sub.source, sub.target)]
     return sub.reset_index(drop=True)
 
 
-def _same_source(a: str, b: str) -> bool:
-    """Both tables come from the same lender's loans (``corpus.SAME_SOURCE``): a positive control
-    for transfer, since such a source is as close to its target as the corpus allows."""
-    from src.train.corpus import SAME_SOURCE
-    return any(a in group and b in group for group in SAME_SOURCE)
-
-
-def transfer_similarity(pairs: pd.DataFrame, *, permutations: int = BOOTSTRAP_DRAWS, seed: int = 0) -> pd.DataFrame:
+def transfer_similarity(pairs: pd.DataFrame, properties: pd.DataFrame | None = None, *,
+                        permutations: int = BOOTSTRAP_DRAWS, seed: int = 0) -> pd.DataFrame:
     """E7 similarity test per model: Spearman correlation between the change of a target and its
     property distance to the source, over all source-target pairs.
 
@@ -1504,6 +1508,9 @@ def transfer_similarity(pairs: pd.DataFrame, *, permutations: int = BOOTSTRAP_DR
     correlation recomputed; two-sided. A negative correlation means closer sources transfer better."""
     if pairs.empty:
         return pd.DataFrame()
+    distance = _property_distances(properties) if properties is not None else None
+    pairs = pairs.loc[_distinct_sources(pairs.source, pairs.target) & np.isfinite(pairs.change)
+                      & np.isfinite(pairs.distance)]
     rng = np.random.default_rng(seed)
     rows = []
     for model, group in pairs.groupby("model"):
@@ -1512,20 +1519,24 @@ def transfer_similarity(pairs: pd.DataFrame, *, permutations: int = BOOTSTRAP_DR
             continue
         index = {t: i for i, t in enumerate(tables)}
         s, t = group.source.map(index).to_numpy(), group.target.map(index).to_numpy()
-        matrix = np.full((len(tables), len(tables)), np.nan)
-        matrix[s, t] = matrix[t, s] = group.distance.to_numpy(dtype=float)
+        if distance is None:
+            matrix = np.full((len(tables), len(tables)), np.nan)
+            matrix[s, t] = matrix[t, s] = group.distance.to_numpy(dtype=float)
+        else:
+            matrix = distance.loc[tables, tables].to_numpy(dtype=float)
         change = pd.Series(group.change.to_numpy(dtype=float))
-        observed = change.corr(pd.Series(matrix[s, t]), method="spearman")
-        null = np.array([change.corr(pd.Series(matrix[p[s], p[t]]), method="spearman")
-                         for p in (rng.permutation(len(tables)) for _ in range(permutations))])
+        observed = change.corr(pd.Series(group.distance.to_numpy(dtype=float)), method="spearman")
+        # Every permutation must score exactly the observed comparison set. Distances for
+        # excluded pairs can be computed from table properties without using their outcomes.
+        null = np.array([])
+        if np.isfinite(matrix[~np.eye(len(tables), dtype=bool)]).all():
+            null = np.array([change.corr(pd.Series(matrix[p[s], p[t]]), method="spearman")
+                             for p in (rng.permutation(len(tables)) for _ in range(permutations))])
         null = null[np.isfinite(null)]
-        same = group.same_source.astype(bool) if "same_source" in group else pd.Series(False, index=group.index)
         rows.append(dict(model=model, pairs=len(group), tables=len(tables), spearman=float(observed),
                          p_value=(float((1 + np.sum(np.abs(null) >= abs(observed))) / (1 + len(null)))
                                   if np.isfinite(observed) and len(null) else np.nan),
-                         same_source_pairs=int(same.sum()),
-                         same_source_mean_change=float(group.change[same].mean()) if same.any() else np.nan,
-                         other_mean_change=float(group.change[~same].mean())))
+                         mean_change=float(change.mean())))
     return pd.DataFrame(rows)
 
 # ------------------------------------------------------------------------- notebook text
