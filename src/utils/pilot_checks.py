@@ -325,7 +325,7 @@ def precision(task: int, folder: Path = FOLDER, *, diagnostic: bool = False) -> 
     from src.train.tabicl_compat import model_family
     from src.utils.paths import resolve_base_checkpoint
     from src.train.precision import training_precision
-    from src.utils.v2_precision import bounded_fp32_reference
+    from src.utils.v2_precision import fp32_normalizations
     track, trial = track_model_case(task, PRECISION_TASKS)
     cfg = load_train_config(config_path=str(folder / f"reference_{track}.yaml"))
     bases = list(cfg.tunable.classifier_base_paths if track == "pd" else cfg.tunable.regressor_base_paths)
@@ -350,19 +350,24 @@ def precision(task: int, folder: Path = FOLDER, *, diagnostic: bool = False) -> 
         model, criterion, _, inference_config = load_tabpfn_for_training(path, track=track, device=device)
     model.train()
     refs = sorted(split_from_cfg(cfg, track=track).train, key=lambda r: -int(r.n_rows or 0))
+    production_policy = training_precision(model, base=base, family=family, track=track, amp_dtype=amp_dtype)
+    amp_dtype = production_policy.amp_dtype
+    use_amp = amp_dtype is not None
     record = dict(task=task, track=track, base=Path(base).name, family=family,
                   training_dtype=str(amp_dtype).removeprefix("torch.") if use_amp else "float32",
                   episode_rows=rows, members=members, tables=[])
-    production_policy = training_precision(model, base=base, family=family, track=track, amp_dtype=amp_dtype)
     training_label = production_policy.label
-    record.update(training_label=training_label, fp32_normalization_layers=len(production_policy.normalizations))
+    record.update(training_label=training_label, grad_scaler_enabled=production_policy.scaler(device).is_enabled(),
+                  training_tf32=use_amp)
     # Candidate precisions, each compared with FP32 on identical batches. TabICLv2 is not run
     # under BF16 (its forward is corrupted there).
     candidates = [("fp32", None)] + ([("bf16", torch.bfloat16)] if family == "tabpfn" else []) + [
         ("fp16", torch.float16)]
     v2_pd = track == "pd" and MODELS[trial] == "v2"
-    if v2_pd and training_label == "fp16_norm32":
-        candidates.append((training_label, torch.float16))
+    if v2_pd:
+        if training_label != "fp32_bounded":
+            raise RuntimeError("Expected the bounded strict FP32 training policy for TabPFN v2 PD")
+        candidates.append(("fp16_norm32", torch.float16))
     names = [n for n, p in model.named_parameters() if p.requires_grad]
     groups = sorted({".".join(n.split(".")[:2]) for n in names})
 
@@ -373,12 +378,13 @@ def precision(task: int, folder: Path = FOLDER, *, diagnostic: bool = False) -> 
         while True:
             model.zero_grad(set_to_none=True)
             _tf32(dtype is not None)
-            mode = (bounded_fp32_reference(model) if v2_pd and label == "fp32" else
-                    production_policy.scope() if label == training_label else nullcontext())
+            deployed = label == training_label or (label == "fp32" and v2_pd)
+            mode = (production_policy.scope() if deployed else
+                    fp32_normalizations(model) if label == "fp16_norm32" else nullcontext())
             with mode, torch.random.fork_rng(devices=[torch.cuda.current_device()]):
                 with torch.amp.autocast("cuda", enabled=dtype is not None, dtype=dtype):
                     loss = batch_loss(model, batch, criterion=criterion, regression_objective=objective,
-                                      activation_checkpointing=bool(label == training_label
+                                      activation_checkpointing=bool(deployed
                                           and cfg.train.get("activation_checkpointing", False)))
                 (loss * scale).backward()
             parts = {n: (p.grad.detach().to(device="cpu", dtype=torch.float64).reshape(-1) / scale if p.grad is not None
@@ -413,13 +419,14 @@ def precision(task: int, folder: Path = FOLDER, *, diagnostic: bool = False) -> 
                "features": int(loaded.X.shape[1])}
         label = "preparation"
         try:
-            if v2_pd and index == 0:
+            if v2_pd:
                 small = make(index, build={**build, "n_total_target": min(rows, 256)})
                 native_loss, native, _ = gradient(small, None, "native")
                 bounded_loss, bounded, _ = gradient(small, None, "fp32")
                 direction = cosine(native, bounded)
                 relative_error = float((native - bounded).norm() / native.norm().clamp_min(1e-300))
-                record["reference_parity"] = dict(rows=min(rows, 256), cosine=direction, relative_error=relative_error,
+                row["reference_parity"] = dict(rows=min(len(loaded.y), rows, 256), cosine=direction,
+                    native_loss=native_loss, bounded_loss=bounded_loss, relative_error=relative_error,
                     passed=bool(direction >= .9999 and relative_error <= .001
                                 and np.isclose(native_loss, bounded_loss, rtol=1e-5, atol=1e-6)))
                 del small, native, bounded
@@ -452,19 +459,23 @@ def precision(task: int, folder: Path = FOLDER, *, diagnostic: bool = False) -> 
                                      torch.cat([reference[a:b] for a, b in spans[g]])), 3),
                         round(float(sum(reference[a:b].square().sum() for a, b in spans[g])) / total, 4)]
                     for g in groups}
-            absolute, relative = PRECISION_TOLERANCE
-            row["gradient_agrees"] = bool(
-                row[f"grad_norm_{training_label}"] > 0 and row["grad_norm_fp32"] > 0
-                and (training_label == "fp32" or row[f"grad_cosine_{training_label}"] >= PRECISION_GRADIENT_COSINE))
-            row["passed"] = bool(
-                np.isfinite(row[f"loss_{training_label}"])
-                and abs(row[f"loss_{training_label}"] - row["loss_fp32"]) <= absolute + relative * abs(row["loss_fp32"])
-                and row["grad_finite_fp32"] and row[f"grad_finite_{training_label}"] and row["gradient_agrees"])
             if v2_pd:
-                # The original FP16 control can legitimately disagree; its measured
-                # loss and direction are still required to interpret the change.
-                row["passed"] &= bool(row.get("grad_finite_fp16") and row["grad_norm_fp16"] > 0
-                                      and np.isfinite(row["loss_fp16"]) and np.isfinite(row["grad_cosine_fp16"]))
+                # The production backward itself supplies the gold gradient. Test
+                # against an independent native backward on each table at a size
+                # where native FP32 fits, and require the full episode to be usable.
+                row["gradient_agrees"] = row["reference_parity"]["passed"]
+                row["passed"] = bool(row["gradient_agrees"] and np.isfinite(row["loss_fp32"])
+                                     and row["grad_finite_fp32"] and np.isfinite(row["grad_norm_fp32"])
+                                     and row["grad_norm_fp32"] > 0)
+            else:
+                absolute, relative = PRECISION_TOLERANCE
+                row["gradient_agrees"] = bool(
+                    row[f"grad_norm_{training_label}"] > 0 and row["grad_norm_fp32"] > 0
+                    and (training_label == "fp32" or row[f"grad_cosine_{training_label}"] >= PRECISION_GRADIENT_COSINE))
+                row["passed"] = bool(
+                    np.isfinite(row[f"loss_{training_label}"])
+                    and abs(row[f"loss_{training_label}"] - row["loss_fp32"]) <= absolute + relative * abs(row["loss_fp32"])
+                    and row["grad_finite_fp32"] and row[f"grad_finite_{training_label}"] and row["gradient_agrees"])
         except Exception as exc:  # an out-of-memory or numerical error is the finding, not a crash
             # Missing reference measurements cannot demonstrate agreement.
             oom = "OutOfMemoryError" in type(exc).__name__ or "out of memory" in str(exc).lower()
@@ -474,6 +485,13 @@ def precision(task: int, folder: Path = FOLDER, *, diagnostic: bool = False) -> 
         model.zero_grad(set_to_none=True)
         record["tables"].append(row)
         torch.cuda.empty_cache()
+    if v2_pd:
+        parities = [r["reference_parity"] for r in record["tables"] if "reference_parity" in r]
+        record["reference_parity"] = dict(
+            tables=len(parities), rows=max((p["rows"] for p in parities), default=0),
+            cosine=min((p["cosine"] for p in parities), default=None),
+            relative_error=max((p["relative_error"] for p in parities), default=None),
+            passed=bool(parities) and len(parities) == len(refs) and all(p["passed"] for p in parities))
     # A failed FP32 reference can prevent the comparison from even reaching FP16.
     # Exercise the deployed backward separately at full episode size on these tables.
     full_rows = training_row_cap(cfg, base, family, members)
@@ -493,7 +511,7 @@ def precision(task: int, folder: Path = FOLDER, *, diagnostic: bool = False) -> 
         loaded = _load_processed_csv(ref)
         entry = {"table_index": index, "rows": int(min(full_rows, len(loaded.y))),
                  "features": int(loaded.X.shape[1])}
-        full_labels = (("fp32", "production", "fp16") if v2_pd else
+        full_labels = (("production", "fp16", "fp16_norm32") if v2_pd else
                        ("production", "fp32") + (("fp32_checkpointed",) if family == "tabpfn" else ()))
         reference = None
         for label in full_labels:
@@ -510,7 +528,7 @@ def precision(task: int, folder: Path = FOLDER, *, diagnostic: bool = False) -> 
                     torch.cuda.synchronize()
                     started = time.monotonic()
                     test_label = training_label if label == "production" else label
-                    dtype = {"fp32": None, "production": amp_dtype, "fp16": torch.float16}[label]
+                    dtype = amp_dtype if label == "production" else torch.float16
                     loss_value, flat, scale = gradient(batch, dtype, test_label)
                     norm = float(flat.norm())
                     if not np.isfinite(loss_value) or not np.isfinite(norm) or norm <= 0:
@@ -518,13 +536,13 @@ def precision(task: int, folder: Path = FOLDER, *, diagnostic: bool = False) -> 
                     entry[label] = dict(policy=test_label, seconds=round(time.monotonic() - started, 3), loss=loss_value,
                                         gradient_norm=norm, loss_scale=scale,
                                         peak_gb=round(torch.cuda.max_memory_allocated() / 1e9, 1))
-                    if label == "fp32":
+                    if label == "production":
                         reference = flat
                     elif reference is not None:
                         entry[label]["gradient_cosine"] = cosine(flat, reference)
                         entry[label]["gradient_agrees"] = entry[label]["gradient_cosine"] >= PRECISION_GRADIENT_COSINE
                         absolute, relative = PRECISION_TOLERANCE
-                        entry[label]["loss_agrees"] = bool(np.isclose(loss_value, entry["fp32"]["loss"],
+                        entry[label]["loss_agrees"] = bool(np.isclose(loss_value, entry["production"]["loss"],
                                                                       atol=absolute, rtol=relative))
                     batch = flat = None
                     model.zero_grad(set_to_none=True)
@@ -567,9 +585,8 @@ def precision(task: int, folder: Path = FOLDER, *, diagnostic: bool = False) -> 
     record["passed"] = (bool(record["full_episode"])
                         and all("error" not in e["production"] for e in record["full_episode"])
                         and (not v2_pd or (record.get("reference_parity", {}).get("passed", False)
-                             and all(e["production"].get("gradient_agrees") and e["production"].get("loss_agrees")
-                                     and np.isfinite(e["fp16"].get("gradient_cosine", np.nan))
-                                     for e in record["full_episode"])))
+                             and all(e["production"].get("policy") == "fp32_bounded" and
+                                     e["production"]["loss_scale"] == 1.0 for e in record["full_episode"])))
                         and bool(record["tables"])
                         and all(r["passed"] for r in record["tables"]))
     if diagnostic:

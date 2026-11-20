@@ -47,7 +47,7 @@ from src.train.metrics import (
     regression_metric,
 )
 from src.train.model import load_tabpfn_for_training, save_finetuned
-from src.train.precision import training_precision
+from src.train.precision import strict_fp32, training_precision
 from src.train.tabicl_compat import model_family
 from src.utils.paths import resolve_writable_staging_path
 
@@ -647,18 +647,6 @@ def enable_tf32() -> str:
         return "tf32: matmul=on cudnn=on"
     except Exception as exc:                                        # pragma: no cover
         return f"tf32: unchanged ({type(exc).__name__})"
-
-
-@contextmanager
-def strict_fp32():
-    """FP32 matmuls without TF32 for the duration of a monitor, as in the five-fold benchmark
-    (a separate process that never enables TF32). Training keeps TF32 for speed."""
-    previous = (torch.backends.cuda.matmul.allow_tf32, torch.backends.cudnn.allow_tf32)
-    torch.backends.cuda.matmul.allow_tf32 = torch.backends.cudnn.allow_tf32 = False
-    try:
-        yield
-    finally:
-        torch.backends.cuda.matmul.allow_tf32, torch.backends.cudnn.allow_tf32 = previous
 
 
 def no_finite_updates(history, patience_updates: int) -> bool:
@@ -1861,7 +1849,6 @@ def train_one_config(
     device = _resolve_device(cfg)
     from src.train.telemetry import CudaMemoryPeaks
     memory_peaks = CudaMemoryPeaks(device)
-    LOGGER.info("Numerical execution: %s", execution)
     LOGGER.info(
         "Training track=%s on device=%s | base=%s | lr=%g | lora=%s | qf=%.2f | seed=%d",
         track, device, Path(base_checkpoint_config).name, learning_rate,
@@ -2198,11 +2185,12 @@ def train_one_config(
         model, cfg, total_steps=total_steps,
     )
 
-    use_amp, amp_dtype = _resolve_amp_dtype(cfg, device, family)
+    _, requested_dtype = _resolve_amp_dtype(cfg, device, family)
     precision = training_precision(model, base=base_checkpoint_config, family=family, track=track,
-                                   amp_dtype=amp_dtype)
-    LOGGER.info("CPT training precision: %s (%d FP32 normalization layers)",
-                precision.label, len(precision.normalizations))
+                                   amp_dtype=requested_dtype)
+    amp_dtype = precision.amp_dtype
+    use_amp = amp_dtype is not None
+    LOGGER.info("CPT training precision: %s (requested AMP dtype: %s)", precision.label, requested_dtype)
     if family == "tabicl" and use_amp:
         from src.train.tabicl_model import column_embedder_in_fp32
         LOGGER.info("TabICLv2 column embedder in FP32 under FP16 autocast: %s",
@@ -2210,10 +2198,7 @@ def train_one_config(
     # Dynamic loss scaling is useful for FP16 but unnecessary for BF16, whose
     # exponent range matches FP32. Keeping it disabled for BF16 also makes an
     # optimizer step's success/failure unambiguous.
-    scaler = torch.amp.GradScaler(
-        "cuda",
-        enabled=bool(use_amp and amp_dtype == torch.float16),
-    )
+    scaler = precision.scaler("cuda")
 
     # ---- 4) checkpoint name + path ---------------------------------------- #
     # resolve_writable_staging_path PROBES writability here — before the
@@ -2278,6 +2263,12 @@ def train_one_config(
         Path(base_checkpoint_config).name, int(cfg.seed), device,
         max_rows_per_epoch, query_fraction,
     )
+    # The banner applies the resolved TF32 mode. Capture the actual settings
+    # after configuration, independent of which trial previously owned this process.
+    execution.update(matmul_allow_tf32=bool(torch.backends.cuda.matmul.allow_tf32),
+                     cudnn_allow_tf32=bool(torch.backends.cudnn.allow_tf32),
+                     grad_scaler_enabled=scaler.is_enabled())
+    LOGGER.info("Numerical execution: %s", execution)
     LOGGER.info("Save target   : %s", save_path)
 
     # ---- 5a) BASELINE eval — pre-finetuning snapshot ----------------------- #
@@ -3277,10 +3268,10 @@ def train_one_config(
             "target_total_steps":   int(target_steps) if target_steps else None,
             "accumulate_grad_batches": int(accumulate),
             "grad_clip_norm":      grad_clip,
-            "amp":                 bool(cfg.train.amp),
+            "amp":                 use_amp,
+            "requested_amp":       bool(cfg.train.amp),
             "execution":           execution,
             "training_precision":  precision.label,
-            "fp32_normalization_layers": len(precision.normalizations),
             "amp_dtype":           (
                 str(amp_dtype).removeprefix("torch.")
                 if use_amp and amp_dtype is not None else "disabled"
