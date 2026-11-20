@@ -7,23 +7,6 @@ import torch
 from torch.utils.checkpoint import checkpoint
 
 
-@contextmanager
-def fp32_normalizations(model):
-    """Retain FP32 normalization/residual activations while attention and MLP use AMP."""
-    from tabpfn.architectures.tabpfn_v2 import LowerPrecisionLayerNorm
-
-    def float_input(module, args):
-        return (args[0].float(),)
-
-    norms = [m for m in model.modules() if isinstance(m, LowerPrecisionLayerNorm)]
-    if not norms:
-        raise RuntimeError("No v2 normalization layers found for the precision control")
-    with ExitStack() as stack:
-        for module in norms:
-            stack.enter_context(module.register_forward_pre_hook(float_input))
-        yield
-
-
 def _column_chunks(forward, x, single_eval_pos=None, *, cached_kv=None, return_kv=False):
     """Each column attends to its own full set of rows; limit concurrent columns."""
     if cached_kv is not None or return_kv:

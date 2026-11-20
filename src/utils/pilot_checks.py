@@ -324,7 +324,8 @@ def precision(task: int, folder: Path = FOLDER, *, diagnostic: bool = False) -> 
     from src.train.loop import _resolve_amp_dtype, batch_loss, training_row_cap
     from src.train.tabicl_compat import model_family
     from src.utils.paths import resolve_base_checkpoint
-    from src.utils.v2_precision import bounded_fp32_reference, fp32_normalizations
+    from src.train.precision import training_precision
+    from src.utils.v2_precision import bounded_fp32_reference
     track, trial = track_model_case(task, PRECISION_TASKS)
     cfg = load_train_config(config_path=str(folder / f"reference_{track}.yaml"))
     bases = list(cfg.tunable.classifier_base_paths if track == "pd" else cfg.tunable.regressor_base_paths)
@@ -352,15 +353,16 @@ def precision(task: int, folder: Path = FOLDER, *, diagnostic: bool = False) -> 
     record = dict(task=task, track=track, base=Path(base).name, family=family,
                   training_dtype=str(amp_dtype).removeprefix("torch.") if use_amp else "float32",
                   episode_rows=rows, members=members, tables=[])
-    training_label = "fp32" if not use_amp else "fp16" if amp_dtype == torch.float16 else "bf16"
-    record["training_label"] = training_label
+    production_policy = training_precision(model, base=base, family=family, track=track, amp_dtype=amp_dtype)
+    training_label = production_policy.label
+    record.update(training_label=training_label, fp32_normalization_layers=len(production_policy.normalizations))
     # Candidate precisions, each compared with FP32 on identical batches. TabICLv2 is not run
     # under BF16 (its forward is corrupted there).
     candidates = [("fp32", None)] + ([("bf16", torch.bfloat16)] if family == "tabpfn" else []) + [
         ("fp16", torch.float16)]
     v2_pd = track == "pd" and MODELS[trial] == "v2"
-    if v2_pd:
-        candidates.append(("fp16_norm32", torch.float16))
+    if v2_pd and training_label == "fp16_norm32":
+        candidates.append((training_label, torch.float16))
     names = [n for n, p in model.named_parameters() if p.requires_grad]
     groups = sorted({".".join(n.split(".")[:2]) for n in names})
 
@@ -372,10 +374,12 @@ def precision(task: int, folder: Path = FOLDER, *, diagnostic: bool = False) -> 
             model.zero_grad(set_to_none=True)
             _tf32(dtype is not None)
             mode = (bounded_fp32_reference(model) if v2_pd and label == "fp32" else
-                    fp32_normalizations(model) if label == "fp16_norm32" else nullcontext())
+                    production_policy.scope() if label == training_label else nullcontext())
             with mode, torch.random.fork_rng(devices=[torch.cuda.current_device()]):
                 with torch.amp.autocast("cuda", enabled=dtype is not None, dtype=dtype):
-                    loss = batch_loss(model, batch, criterion=criterion, regression_objective=objective)
+                    loss = batch_loss(model, batch, criterion=criterion, regression_objective=objective,
+                                      activation_checkpointing=bool(label == training_label
+                                          and cfg.train.get("activation_checkpointing", False)))
                 (loss * scale).backward()
             parts = {n: (p.grad.detach().to(device="cpu", dtype=torch.float64).reshape(-1) / scale if p.grad is not None
                          else torch.zeros(p.numel(), dtype=torch.float64))
@@ -457,9 +461,10 @@ def precision(task: int, folder: Path = FOLDER, *, diagnostic: bool = False) -> 
                 and abs(row[f"loss_{training_label}"] - row["loss_fp32"]) <= absolute + relative * abs(row["loss_fp32"])
                 and row["grad_finite_fp32"] and row[f"grad_finite_{training_label}"] and row["gradient_agrees"])
             if v2_pd:
-                row["norm32_candidate_agrees"] = bool(row.get("grad_finite_fp16_norm32")
-                    and row["grad_cosine_fp16_norm32"] >= PRECISION_GRADIENT_COSINE
-                    and np.isclose(row["loss_fp16_norm32"], row["loss_fp32"], atol=absolute, rtol=relative))
+                # The original FP16 control can legitimately disagree; its measured
+                # loss and direction are still required to interpret the change.
+                row["passed"] &= bool(row.get("grad_finite_fp16") and row["grad_norm_fp16"] > 0
+                                      and np.isfinite(row["loss_fp16"]) and np.isfinite(row["grad_cosine_fp16"]))
         except Exception as exc:  # an out-of-memory or numerical error is the finding, not a crash
             # Missing reference measurements cannot demonstrate agreement.
             oom = "OutOfMemoryError" in type(exc).__name__ or "out of memory" in str(exc).lower()
@@ -488,7 +493,7 @@ def precision(task: int, folder: Path = FOLDER, *, diagnostic: bool = False) -> 
         loaded = _load_processed_csv(ref)
         entry = {"table_index": index, "rows": int(min(full_rows, len(loaded.y))),
                  "features": int(loaded.X.shape[1])}
-        full_labels = (("fp32", "production", "fp16_norm32") if v2_pd else
+        full_labels = (("fp32", "production", "fp16") if v2_pd else
                        ("production", "fp32") + (("fp32_checkpointed",) if family == "tabpfn" else ()))
         reference = None
         for label in full_labels:
@@ -505,12 +510,12 @@ def precision(task: int, folder: Path = FOLDER, *, diagnostic: bool = False) -> 
                     torch.cuda.synchronize()
                     started = time.monotonic()
                     test_label = training_label if label == "production" else label
-                    dtype = None if label == "fp32" else amp_dtype
+                    dtype = {"fp32": None, "production": amp_dtype, "fp16": torch.float16}[label]
                     loss_value, flat, scale = gradient(batch, dtype, test_label)
                     norm = float(flat.norm())
                     if not np.isfinite(loss_value) or not np.isfinite(norm) or norm <= 0:
                         raise ValueError("Unusable full-size loss or gradient")
-                    entry[label] = dict(seconds=round(time.monotonic() - started, 3), loss=loss_value,
+                    entry[label] = dict(policy=test_label, seconds=round(time.monotonic() - started, 3), loss=loss_value,
                                         gradient_norm=norm, loss_scale=scale,
                                         peak_gb=round(torch.cuda.max_memory_allocated() / 1e9, 1))
                     if label == "fp32":
@@ -563,6 +568,7 @@ def precision(task: int, folder: Path = FOLDER, *, diagnostic: bool = False) -> 
                         and all("error" not in e["production"] for e in record["full_episode"])
                         and (not v2_pd or (record.get("reference_parity", {}).get("passed", False)
                              and all(e["production"].get("gradient_agrees") and e["production"].get("loss_agrees")
+                                     and np.isfinite(e["fp16"].get("gradient_cosine", np.nan))
                                      for e in record["full_episode"])))
                         and bool(record["tables"])
                         and all(r["passed"] for r in record["tables"]))

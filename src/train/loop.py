@@ -47,6 +47,7 @@ from src.train.metrics import (
     regression_metric,
 )
 from src.train.model import load_tabpfn_for_training, save_finetuned
+from src.train.precision import training_precision
 from src.train.tabicl_compat import model_family
 from src.utils.paths import resolve_writable_staging_path
 
@@ -2198,6 +2199,10 @@ def train_one_config(
     )
 
     use_amp, amp_dtype = _resolve_amp_dtype(cfg, device, family)
+    precision = training_precision(model, base=base_checkpoint_config, family=family, track=track,
+                                   amp_dtype=amp_dtype)
+    LOGGER.info("CPT training precision: %s (%d FP32 normalization layers)",
+                precision.label, len(precision.normalizations))
     if family == "tabicl" and use_amp:
         from src.train.tabicl_model import column_embedder_in_fp32
         LOGGER.info("TabICLv2 column embedder in FP32 under FP16 autocast: %s",
@@ -2436,9 +2441,11 @@ def train_one_config(
         raise ValueError("Segmented jobs require recovery_every_updates > 0")
     recovery_identity = trial_identity
     if recovery_every and recovery_identity is None:
-        from src.utils.experiment import digest_json, scientific_config
+        from src.utils.experiment import code_identity, digest_json, scientific_config
         recovery_identity = {"sha256": digest_json({"config": scientific_config(cfg),
-                                                    "name": save_path.name})}
+                                                    "name": save_path.name,
+                                                    "code": code_identity(),
+                                                    "training_precision": precision.label})}
 
     # Measure movement even when anchoring is OFF. Zero regularization is not zero drift.
     drift_anchor = l2sp_anchor
@@ -2786,45 +2793,46 @@ def train_one_config(
             # Pre-declare every tensor that will hold the forward autograd graph, so the
             # non-finite-loss skip below can release them by name whichever branch ran.
             pred_logits = y_target = out = _pen = None
-            with torch.amp.autocast(
-                "cuda", enabled=use_amp, dtype=amp_dtype,
-            ):
-                loss = batch_loss(model, batch, criterion=criterion,
-                                  activation_checkpointing=activation_checkpointing,
-                                  regression_objective=regression_objective)
-                # L2-SP anchors trainable pretrained weights in both full and frozen modes.
-                # Added to the back-prop loss ONLY — `loss` stays the pure
-                # data loss (CE / NLL) for logging, curves, and the
-                # non-finite / divergence checks below.
-                if l2sp_active:
-                    _pen = (adapter_l2sp(l2sp_lambda) if adapter_l2sp is not None
-                            else _l2sp_penalty(model, l2sp_anchor, l2sp_lambda))
-                    if _pen is not None:
-                        epoch_l2sp.append(float(_pen.detach().cpu().item()))
-                    loss_to_backprop = (
-                        (loss + _pen) if _pen is not None else loss
+            with precision.scope():
+                with torch.amp.autocast(
+                    "cuda", enabled=use_amp, dtype=amp_dtype,
+                ):
+                    loss = batch_loss(model, batch, criterion=criterion,
+                                      activation_checkpointing=activation_checkpointing,
+                                      regression_objective=regression_objective)
+                    # L2-SP anchors trainable pretrained weights in both full and frozen modes.
+                    # Added to the back-prop loss ONLY — `loss` stays the pure
+                    # data loss (CE / NLL) for logging, curves, and the
+                    # non-finite / divergence checks below.
+                    if l2sp_active:
+                        _pen = (adapter_l2sp(l2sp_lambda) if adapter_l2sp is not None
+                                else _l2sp_penalty(model, l2sp_anchor, l2sp_lambda))
+                        if _pen is not None:
+                            epoch_l2sp.append(float(_pen.detach().cpu().item()))
+                        loss_to_backprop = (
+                            (loss + _pen) if _pen is not None else loss
+                        )
+                    else:
+                        loss_to_backprop = loss
+
+                if torch.isnan(loss).item() or torch.isinf(loss).item():
+                    repeated_warnings.warning(
+                        f"nonfinite_loss/{batch.dataset_id}",
+                        "epoch=%d step=%d dataset=%s — non-finite loss; skipped",
+                        epoch, step, batch.dataset_id,
                     )
-                else:
-                    loss_to_backprop = loss
+                    # Preserve earlier finite microbatches; this forward has no backward.
+                    # CRITICAL: release the forward graph. On a normal step `backward()` frees the
+                    # saved activations; here we skip backward, so unless we drop EVERY reference
+                    # (the loss, the backprop tensor, AND the forward outputs, which each hold a
+                    # grad_fn chain into the ~full-step activations) the graph lingers into the
+                    # next step's forward and roughly DOUBLES peak memory (an observed v2 OOM at 10k rows).
+                    loss = loss_to_backprop = pred_logits = y_target = out = _pen = None
+                    epoch_skipped_steps += 1
+                    after_batch()
+                    continue
 
-            if torch.isnan(loss).item() or torch.isinf(loss).item():
-                repeated_warnings.warning(
-                    f"nonfinite_loss/{batch.dataset_id}",
-                    "epoch=%d step=%d dataset=%s — non-finite loss; skipped",
-                    epoch, step, batch.dataset_id,
-                )
-                # Preserve earlier finite microbatches; this forward has no backward.
-                # CRITICAL: release the forward graph. On a normal step `backward()` frees the
-                # saved activations; here we skip backward, so unless we drop EVERY reference
-                # (the loss, the backprop tensor, AND the forward outputs, which each hold a
-                # grad_fn chain into the ~full-step activations) the graph lingers into the
-                # next step's forward and roughly DOUBLES peak memory (an observed v2 OOM at 10k rows).
-                loss = loss_to_backprop = pred_logits = y_target = out = _pen = None
-                epoch_skipped_steps += 1
-                after_batch()
-                continue
-
-            scaler.scale(loss_to_backprop).backward()
+                scaler.scale(loss_to_backprop).backward()
             micro_since_step += 1
 
             pre_clip_norm = None
@@ -3271,6 +3279,8 @@ def train_one_config(
             "grad_clip_norm":      grad_clip,
             "amp":                 bool(cfg.train.amp),
             "execution":           execution,
+            "training_precision":  precision.label,
+            "fp32_normalization_layers": len(precision.normalizations),
             "amp_dtype":           (
                 str(amp_dtype).removeprefix("torch.")
                 if use_amp and amp_dtype is not None else "disabled"
