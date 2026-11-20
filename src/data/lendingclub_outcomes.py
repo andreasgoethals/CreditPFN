@@ -125,10 +125,10 @@ def _read_archive(path: Path, download: bool) -> pd.DataFrame:
             with urllib.request.urlopen("https://resources.lendingclub.com/" + path.name, timeout=90) as response:
                 with pending.open("wb") as output:
                     shutil.copyfileobj(response, output)
-            if file_digest(pending) != ARCHIVES[path.name]:
+            if file_digest(pending, fresh=True) != ARCHIVES[path.name]:
                 raise ValueError(f"Published LendingClub archive checksum differs: {path.name}")
             pending.replace(path)
-    if file_digest(path) != ARCHIVES[path.name]:
+    if file_digest(path, fresh=True) != ARCHIVES[path.name]:
         raise ValueError(f"Wrong LendingClub archive checksum: {path.name}")
     with zipfile.ZipFile(path) as archive:
         member, = [name for name in archive.namelist() if name.endswith(".csv") and not name.startswith("__")]
@@ -144,10 +144,10 @@ def _read_archive(path: Path, download: bool) -> pd.DataFrame:
 
 def build_key(raw_csv: Path, archives: Path, *, download: bool = False) -> dict:
     from src.data.preprocessing import write_csv_atomic
-    if file_digest(raw_csv) != CHALLENGE_SHA256:
+    if file_digest(raw_csv, fresh=True) != CHALLENGE_SHA256:
         raise ValueError("The HackerEarth CSV differs from the verified challenge release")
     early_csv = raw_csv.with_name("0004.lendingclub.csv")
-    if file_digest(early_csv) != EARLY_TABLE_SHA256:
+    if file_digest(early_csv, fresh=True) != EARLY_TABLE_SHA256:
         raise ValueError("The earlier LendingClub table differs from the registered 0004 extract")
     challenge = pd.read_csv(raw_csv, usecols=["member_id", *MATCH_FIELDS, *CHECK_FIELDS, TARGET], low_memory=False)
     lender = pd.concat([_read_archive(archives / name, download) for name in ARCHIVES], ignore_index=True)
@@ -171,7 +171,7 @@ def build_key(raw_csv: Path, archives: Path, *, download: bool = False) -> dict:
 
 
 def verified_labels(raw: pd.DataFrame, path: Path) -> pd.DataFrame:
-    if not path.is_file() or file_digest(path) != KEY_SHA256:
+    if not path.is_file() or file_digest(path, fresh=True) != KEY_SHA256:
         raise ValueError(f"Missing or invalid verified LendingClub key at {path}. "
                          "Rebuild it with python -m src.data.lendingclub_outcomes --archives DIRECTORY")
     key = pd.read_csv(path, dtype={"member_id": "int64", TARGET: "int64"}).set_index("member_id")

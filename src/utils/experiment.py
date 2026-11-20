@@ -45,22 +45,28 @@ def digest_json(value) -> str:
                                      allow_nan=False).encode()).hexdigest()
 
 
-@lru_cache(maxsize=128)
-def _file_digest(path: str, size: int, mtime_ns: int) -> str:
-    h = hashlib.sha256()
+def _file_state(path: Path) -> tuple[int, ...]:
+    stat = path.stat()
+    return stat.st_size, stat.st_mtime_ns, stat.st_ctime_ns, stat.st_dev, stat.st_ino
+
+
+def _hash_file(path: Path, state: tuple[int, ...]) -> str:
+    digest = hashlib.sha256()
     with open(path, "rb") as stream:
         for block in iter(lambda: stream.read(4 * 1024 * 1024), b""):
-            h.update(block)
-    after = Path(path).stat()
-    if (after.st_size, after.st_mtime_ns) != (size, mtime_ns):
+            digest.update(block)
+    if _file_state(path) != state:
         raise RuntimeError(f"File changed during fingerprinting: {path}")
-    return h.hexdigest()
+    return digest.hexdigest()
 
 
-def file_digest(path: Path) -> str:
+_cached_file_digest = lru_cache(maxsize=128)(_hash_file)
+
+
+def file_digest(path: Path, *, fresh: bool = False) -> str:
+    """Hash a file. Re-read its bytes when validating a stored checksum."""
     p = path.resolve()
-    stat = p.stat()
-    return _file_digest(str(p), stat.st_size, stat.st_mtime_ns)
+    return (_hash_file if fresh else _cached_file_digest)(p, _file_state(p))
 
 
 def environment_versions(*, stage: str = "train") -> dict:

@@ -58,7 +58,7 @@ def pd_target_issue(dataset_id: str) -> str | None:
     if dataset_id != DATASET:
         return None
     path = processed_dir("pd", dataset_id + ".sanitized.csv")
-    if not path.is_file() or file_digest(path) != PROCESSED_SHA256:
+    if not path.is_file() or file_digest(path, fresh=True) != PROCESSED_SHA256:
         return ("PD 0006 differs from the verified 2012–2015 LendingClub terminal-outcome cohort. "
                 "Prepare the registered input and stage the corrected snapshot before launching.")
     return None

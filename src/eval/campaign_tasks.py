@@ -235,7 +235,7 @@ def _run_task(kind, index, task, design, references, folder, quick, device, inte
         elif done.get("identity") != identity:
             raise RuntimeError(f"{target.name} was produced under a different identity; move it aside")
         elif not stored.is_file() or (done.get("metrics_sha256"), done.get("predictions_sha256")) != (
-                file_digest(target), file_digest(stored)):
+                file_digest(target, fresh=True), file_digest(stored, fresh=True)):
             raise RuntimeError(f"{target.name} has missing or changed metrics/predictions; inspect its receipt")
         else:
             if kind == "finetune":
