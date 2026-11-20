@@ -175,7 +175,7 @@ def test_bootstrap_intervals_cover_the_mean_and_respect_the_table_as_unit(result
     assert "domain contrast" in text and len(fig.axes) == 4
 
 
-def test_precision_agreement_and_cost_tables():
+def test_precision_agreement_and_cost_tables(monkeypatch):
     summary = {"precision": {"0": {"track": "pd", "base": "tabpfn-v2.6-classifier-v2.6_default.ckpt", "tables": [
         {"table_index": 0, "rows": 8192, "loss_fp32": 0.5, "loss_bf16": 0.5, "grad_cosine_bf16": 0.72,
          "loss_fp16": 0.5, "grad_cosine_fp16": 0.98},
@@ -186,17 +186,26 @@ def test_precision_agreement_and_cost_tables():
     fig, text = _finished(r2.precision_agreement(agreement, title="t"))
     assert "below_threshold" in text and len(fig.axes) == 1
     assert c2.precision_agreement(None).empty and r2.precision_agreement(pd.DataFrame(), title="t") is None
-    resources = pd.DataFrame([dict(slug="reference", arm=0, track="pd", model="tabpfn-v2", hours_without_monitor=h)
-                              for h in (1.0, 3.0)])
+    monkeypatch.setattr(c2, "_primary_tables", lambda track: {"a", "b"})
+    resources = pd.DataFrame([dict(slug="reference", arm=0, track="pd", model="tabpfn-v2",
+                                   hours_without_monitor=1., partition=p, updates=2500, gpu_name="NVIDIA B200")
+                              for p in range(4)])
     finetune = pd.DataFrame([dict(track="pd", model="tabpfn-v2", dataset_id=d, fold=f, start="original",
                                   finetuned=tuned, fit_seconds=360.0 if tuned else 1.0, predict_seconds=2.0,
                                   test_rows=500, device_name="NVIDIA B200")
                              for d in ("a", "b") for f in range(5) for tuned in (False, True)])
     cost = c2.cost_comparison(resources, finetune)
     assert cost.cpt_hours_total.iloc[0] == 4.0 and np.isclose(cost.finetune_hours_per_table.iloc[0], 0.5)
-    assert np.isclose(cost.tables_to_break_even.iloc[0], 8.0)
+    assert np.isclose(cost.finetune_hours_per_fit.iloc[0], 0.1)
+    assert np.isclose(cost.tables_to_break_even.iloc[0], 10.0)
     assert np.isclose(cost.inference_seconds_per_1k_rows.iloc[0], 4.0)
     assert cost.finetune_device.iloc[0] == "NVIDIA B200"
+    assert c2.cost_comparison(resources.iloc[1:], finetune).tables_to_break_even.isna().all()
+    assert c2.cost_comparison(resources, finetune.assign(device_name="A100")).tables_to_break_even.isna().all()
+    missing = finetune.copy()
+    missing.loc[(missing.dataset_id == "a") & (missing.fold == 4), "fold"] = 99
+    partial = c2.cost_comparison(resources, missing)
+    assert partial.finetune_tables.iloc[0] == 1 and partial.tables_to_break_even.isna().all()
     assert c2.cost_comparison(pd.DataFrame(), finetune).empty
 
 

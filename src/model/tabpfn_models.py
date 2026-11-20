@@ -100,7 +100,8 @@ def _tabpfn_regression_neg_nll(tabpfn_model, X: np.ndarray, y: np.ndarray, *, ou
         return None
     try:
         with _trust_local_checkpoints():
-            out = output if output is not None else tabpfn_model.predict(X, output_type="full")
+            from src.model.tabpfn_density import predict_full
+            out = output if output is not None else predict_full(tabpfn_model, X)
     except Exception as exc:                                       # noqa: BLE001
         LOGGER.warning("neg_nll: predict(output_type='full') unavailable (%s: %s)",
                        type(exc).__name__, exc)
@@ -120,24 +121,23 @@ def _tabpfn_regression_neg_nll(tabpfn_model, X: np.ndarray, y: np.ndarray, *, ou
                               device=logits_t.device)
         # FullSupportBarDistribution.forward(logits[..., num_bars], y[...])
         # returns per-row NLL (−log density). Reduce over the leading dims.
-        nll = crit(logits_t, y_t)
-        # Clamp degenerate rows: a y that lands where the predicted density
-        # underflows to 0 yields nll=+inf, and ONE such row makes the mean
-        # −inf and poisons every downstream aggregate (seen with the v2.6 regressor
-        # on LGD test sets). Cap per-row NLL
-        # at 100 (density 1e-44 — beyond any meaningful resolution) and log.
+        if isinstance(crit, torch.nn.Module) and logits_t.dtype == torch.float64:
+            # The pinned criterion maintains a scatter buffer of the same dtype as its
+            # logits. Keep the fitted sklearn model's published criterion untouched.
+            import copy
+            crit = copy.deepcopy(crit).to(device=logits_t.device, dtype=torch.float64)
+        nll = crit(logits_t, y_t).double()
         n_bad = int((~torch.isfinite(nll)).sum().item())
+        clipped = int(((~torch.isfinite(nll)) | (nll.abs() > 100)).sum().item())
         if diagnostics is not None:
             diagnostics.update(nll_rows=nll.numel(), nll_nonfinite_rows=n_bad,
-                               nll_clipped_rows=int(((~torch.isfinite(nll)) | (nll.abs() > 100)).sum().item()))
+                               nll_clipped_rows=clipped, nll_nonfinite_rate=n_bad / nll.numel(),
+                               nll_clipped_rate=clipped / nll.numel(),
+                               nll_capped100=float(nll.nan_to_num(nan=100, posinf=100, neginf=-100)
+                                                   .clamp(-100, 100).mean()))
         if n_bad:
-            LOGGER.warning(
-                "neg_nll: %d/%d rows had non-finite NLL (density underflow) — "
-                "clamped to 100 nats so the mean stays finite.",
-                n_bad, nll.numel(),
-            )
-        nll = torch.nan_to_num(nll, nan=100.0, posinf=100.0, neginf=-100.0)
-        nll = torch.clamp(nll, min=-100.0, max=100.0)
+            LOGGER.warning("Exact NLL unavailable: %d/%d target densities are nonfinite.", n_bad, nll.numel())
+            return None
         return float((-nll).mean().item())
     except Exception as exc:                                       # noqa: BLE001
         LOGGER.warning("neg_nll: bar-distribution NLL failed (%s: %s) — skipping.",
@@ -182,8 +182,9 @@ def _make_tabpfn(task_type: str, model_path: str | Path, **extra):
 
 def _regression_distribution(model, X, y, levels):
     """One ensemble forward supplies point, quantile and density measurements."""
+    from src.model.tabpfn_density import predict_full
     with _trust_local_checkpoints():
-        output = model.predict(X, output_type="full", quantiles=list(levels))
+        output = predict_full(model, X, quantiles=list(levels))
     # TabPFN returns one array per quantile, including when n_rows == n_quantiles.
     quantiles = np.column_stack(output["quantiles"])
     result = {"mean": output["mean"], "quantiles": quantiles}
@@ -249,6 +250,9 @@ class TabPFNUntuned:
         return self._tabpfn.predict_proba(X)
 
     def predict(self, X: np.ndarray) -> np.ndarray:
+        if self.task_type == "regression":
+            from src.model.tabpfn_density import predict_mean
+            return predict_mean(self._tabpfn, X)
         return self._tabpfn.predict(X)
 
     def predict_distribution(self, X, y, levels):
@@ -316,6 +320,9 @@ class TabPFNTrained:
         return self._tabpfn.predict_proba(X)
 
     def predict(self, X: np.ndarray) -> np.ndarray:
+        if self.task_type == "regression":
+            from src.model.tabpfn_density import predict_mean
+            return predict_mean(self._tabpfn, X)
         return self._tabpfn.predict(X)
 
     def predict_distribution(self, X, y, levels):

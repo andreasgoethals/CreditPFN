@@ -31,17 +31,17 @@ def table_row(model: str, path: Path, data, device: str) -> dict:
     import torch
     from tabpfn import TabPFNRegressor
 
+    from src.model.tabpfn_density import predict_full
     from src.train.density_checks import ROUGHNESS_LIMIT, bucket_roughness
     context, query = split(len(data.y))
     x, y = data.X, np.asarray(data.y, dtype=float)
     regressor = TabPFNRegressor(model_path=str(path), n_estimators=2, device=device,
                                 random_state=0, ignore_pretraining_limits=True)
     regressor.fit(x.iloc[context], y[context])
-    out = regressor.predict(x.iloc[query], output_type="full")
-    logits = out["logits"].float().cpu()
-    criterion = regressor.znorm_space_bardist_
-    z = torch.as_tensor((y[query] - regressor.y_train_mean_) / regressor.y_train_std_, dtype=torch.float32)
-    nll = criterion(logits.unsqueeze(1), z.reshape(-1, 1)).squeeze().float()
+    out = predict_full(regressor, x.iloc[query])
+    logits = out["logits"].double().cpu()
+    criterion = out["criterion"].double().cpu()
+    nll = criterion(logits, torch.as_tensor(y[query], dtype=torch.float64)).reshape(-1)
     finite = torch.isfinite(nll)
     roughness = bucket_roughness(logits.softmax(-1))
     mean = np.asarray(out["mean"], dtype=float)

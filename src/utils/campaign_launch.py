@@ -34,9 +34,6 @@ from src.utils.paths import REPO_ROOT
 NO_CAP = "4096"  # lane pool far larger than any submission: Slurm admission is the only cap
 QUEUE_BUDGET = 480  # of Mindwell's 500 queued jobs per user, keep 20 free for interactive work
 EVAL_TASKS = 4      # five-fold evaluation shards per trained partition
-# Rejected endpoint in the registered challenge extract, verified against LendingClub's
-# 2007-2011 LoanStats3a: 25,428 unique matches, including 1,185 fully paid loans in class zero.
-REJECTED_PD_0006_TARGET = "fda2cc44895adf82dc02e2e689ae6056cb75e55ae3aee41f34ad05fe4bc197d2"
 
 
 def prepare(folder: Path, only: list[str] | None = None) -> list[dict]:
@@ -53,29 +50,17 @@ def prepare(folder: Path, only: list[str] | None = None) -> list[dict]:
 
 
 def pd_target_issue(dataset_id: str) -> str | None:
-    """Reject the known challenge labels for PD 0006, including a global label flip."""
-    import hashlib
-
-    import numpy as np
-    import pandas as pd
-
-    from src.data.preprocessing import DATASET_METADATA
+    """Release only the audited later-vintage lender cohort, including its verified labels."""
+    from src.data.lendingclub_outcomes import DATASET, PROCESSED_SHA256
+    from src.utils.experiment import file_digest
     from src.utils.paths import processed_dir
 
-    if dataset_id.partition(".")[0] != "0006":
+    if dataset_id != DATASET:
         return None
-    target = DATASET_METADATA[dataset_id]["target_column"]
-    fields = ["loan_amnt", "annual_inc", "int_rate", "dti"]
-    frame = pd.read_csv(processed_dir("pd", dataset_id + ".sanitized.csv"), usecols=[*fields, target])
-    # Fingerprint the membership of each label group, independent of row order or the names
-    # of the labels. No individual loan identifiers or records are needed in the repository.
-    profiles = pd.util.hash_pandas_object(frame[fields].astype("float64"), index=False)
-    groups = [hashlib.sha256(np.sort(profiles.loc[index].to_numpy(dtype="<u8")).tobytes()).hexdigest()
-              for index in frame.groupby(target, dropna=False).groups.values()]
-    signature = hashlib.sha256(" ".join(sorted(groups)).encode("ascii")).hexdigest()
-    if signature == REJECTED_PD_0006_TARGET:
-        return ("PD 0006 has the challenge target contradicted by LendingClub terminal outcomes. "
-                "A label flip also mixes fully paid and charged-off loans. Resolve the corpus before launching.")
+    path = processed_dir("pd", dataset_id + ".sanitized.csv")
+    if not path.is_file() or file_digest(path) != PROCESSED_SHA256:
+        return ("PD 0006 differs from the verified 2012–2015 LendingClub terminal-outcome cohort. "
+                "Prepare the registered input and stage the corrected snapshot before launching.")
     return None
 
 
@@ -249,6 +234,12 @@ def submit_experiment0(folder: Path, receipt: Path, only: dict | None = None) ->
     env["CREDITPFN_PILOT_SET"] = request["evidence"]
     receipt.parent.mkdir(parents=True, exist_ok=True)
     try:
+        gpu = "scripts/slurm/pilot_gpu.slurm"
+        # These checks use only base weights. Queue them first so the precision result can
+        # be reviewed while the independently scheduled pilot training is still running.
+        precision_tasks = chosen("precision", PRECISION_TASKS)
+        if precision_tasks:
+            state["precision"] = _sbatch([array(precision_tasks), "--time=01:00:00", gpu, "precision"], env)
         for path in pilot_paths(folder):
             if only and path.name not in set(only.get("pilots", [])):
                 continue
@@ -261,10 +252,8 @@ def submit_experiment0(folder: Path, receipt: Path, only: dict | None = None) ->
             out = _run_launcher(folder / f"reference_{track}.yaml",
                                 {**env, "STAGES": "eval", "EVAL_KIND": "classical"})
             state["classical"][track] = re.findall(r"^(\d+)(?:;\w+)?$", out, re.M)
-        gpu = "scripts/slurm/pilot_gpu.slurm"
         for kind, count, extra in (("recovery", RECOVERY_TASKS, ["--time=01:00:00"]),
-                                   ("capacity", CAPACITY_TASKS, []),
-                                   ("precision", PRECISION_TASKS, ["--time=01:00:00"])):
+                                   ("capacity", CAPACITY_TASKS, [])):
             tasks = chosen(kind, count)
             if tasks:
                 check_env = env

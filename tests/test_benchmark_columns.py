@@ -24,9 +24,12 @@ def test_density_counts_include_finite_clipping_and_nonfinite_rows():
     output = {"criterion": lambda logits, target: values, "logits": values}
     counts = {}
     mean = _tabpfn_regression_neg_nll(None, None, np.zeros(5), output=output, diagnostics=counts)
-    assert mean == pytest.approx(-40.2)
-    assert counts == {"nll_rows": 5, "nll_clipped_rows": 4, "nll_nonfinite_rows": 2}
+    assert mean is None
+    assert counts == {"nll_rows": 5, "nll_clipped_rows": 4, "nll_nonfinite_rows": 2,
+                      "nll_clipped_rate": .8, "nll_nonfinite_rate": .4, "nll_capped100": pytest.approx(40.2)}
     assert set(counts) <= set(EvalRow.__dataclass_fields__)
+    exact = {"criterion": lambda logits, target: values[:2], "logits": values[:2]}
+    assert _tabpfn_regression_neg_nll(None, None, np.zeros(2), output=exact) == -77
 
 
 def test_every_classification_and_regression_metric_has_a_benchmark_column():

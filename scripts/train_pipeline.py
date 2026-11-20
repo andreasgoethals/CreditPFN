@@ -732,6 +732,7 @@ def run(
         trajectory_csv = epoch_csv.with_name(run_basename + ".trajectory.csv")
         trajectory_csv.unlink(missing_ok=True)
         _trajectory_csv_init = {"written_header": False}
+        trial_gpu = _device_snapshot()["gpu_name"]
 
         def _on_epoch_end(rec, _path=epoch_csv, _flag=_epoch_csv_init) -> None:
             # `secondary_*` is the optional per-track second metric — R²
@@ -750,6 +751,7 @@ def run(
                 "secondary_test_metric":     float(rec.secondary_test_metric),
                 "epoch_time_sec":            float(rec.epoch_time_sec),
                 "elapsed_sec":               float(rec.elapsed_sec),
+                "gpu_name":                  trial_gpu,
                 "optimizer_steps":           int(rec.optimizer_steps),
                 "amp_skipped_steps":         int(rec.amp_skipped_steps),
                 "data_skipped_steps":        int(rec.data_skipped_steps),

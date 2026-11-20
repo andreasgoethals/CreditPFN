@@ -20,13 +20,25 @@ def _table(prefix: str, track: str) -> str:
     return next(k for k, m in DATASET_METADATA.items() if k.startswith(prefix) and m["track"] == track)
 
 
-def test_hackerearth_drops_post_outcome_and_payment_to_date_columns():
+def test_hackerearth_drops_post_outcome_and_payment_to_date_columns(tmp_path, monkeypatch):
+    import hashlib
+    from src.data import lendingclub_outcomes as lc
     df = pd.DataFrame({"member_id": [1, 2], "loan_status": [0, 1], "recoveries": [5.0, 0.0],
                        "collection_recovery_fee": [1.0, 0.0], "total_rec_int": [9.0, 3.0],
                        "total_rec_late_fee": [0.0, 1.0], "last_week_pay": ["9th week", "4th week"],
                        "funded_amnt": [100, 200]})
+    raw_csv = tmp_path / "pd" / "0006.hackerearth.csv"
+    df.attrs["challenge_path"] = raw_csv
+    path = lc.key_path(raw_csv)
+    path.parent.mkdir(parents=True)
+    path.write_bytes(b"member_id,loan_status\n2,0\n")
+    monkeypatch.setattr(lc, "KEY_SHA256", hashlib.sha256(path.read_bytes()).hexdigest())
     out = apply_dataset_specific_fixes(df, "0006.hackerearth")
     assert set(out.columns) == {"loan_status", "funded_amnt"}
+    assert out["loan_status"].tolist() == [0] and out["funded_amnt"].tolist() == [200]
+    path.write_bytes(b"member_id,loan_status\n2,1\n")
+    with pytest.raises(ValueError, match="invalid verified"):
+        apply_dataset_specific_fixes(df, "0006.hackerearth")
 
 
 def test_pd_0009_keeps_one_row_per_loan_and_drops_the_sentinel_column():

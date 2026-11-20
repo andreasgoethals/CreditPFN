@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import tempfile
 import time
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -57,19 +58,20 @@ def _tabicl_finetuner(task_type, path, *, recipe, device, views, seed, context_r
 def _predict(estimator, X, task_type):
     if task_type == "classification":
         return np.asarray(estimator.predict_proba(X))
-    out = estimator.predict(X)
+    from src.model.tabpfn_density import predict_mean
+    out = predict_mean(estimator, X)
     return np.asarray(out["mean"] if isinstance(out, dict) else out, dtype=float)
 
 
 def finetune_cell(data, context, validation, test, path, family, *, recipe=None, device="cuda",
-                  views=8, seed=0, max_context_rows=None):
+                  views=8, seed=0, max_context_rows=None, recovery_path=None, stop_after_epoch=None):
     """Fine-tune on ``context`` (early stopping on ``validation``), score ``test``.
 
     Returns (metrics, predictions dict). Raises on non-finite or missing predictions.
     """
     from src.eval.dataset_loader import encode_for_model
     from src.eval.metrics import _classification_metrics, _regression_metrics
-    from torch.optim import AdamW
+    from src.eval.finetune_recovery import FitProgress, bind_training_loop
     from torch.optim.optimizer import register_optimizer_step_post_hook
     recipe = {**DEFAULT_RECIPE, **(recipe or {})}
     if max_context_rows is not None and len(context) > int(max_context_rows):
@@ -89,7 +91,6 @@ def finetune_cell(data, context, validation, test, path, family, *, recipe=None,
         # fine-tuning rows only (validation/test never inform it), exactly what TabICL's own
         # inference imputer does in the paired untuned cell, so both cells see identical inputs.
         a, b, c = (np.asarray(m, dtype=np.float64) for m in (a, b, c))
-        import warnings
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)   # an all-missing column becomes 0
             means =np.nan_to_num(np.nanmean(np.where(np.isfinite(a), a, np.nan), axis=0)
@@ -101,34 +102,36 @@ def finetune_cell(data, context, validation, test, path, family, *, recipe=None,
         raise ValueError(f"Unknown model family {family!r}")
     started = time.monotonic()
     from src.model.tabpfn_models import _trust_local_checkpoints
-    optimizer_steps = 0
-
-    def count_step(optimizer, args, kwargs):
-        # Both pinned fine-tuners use ordinary AdamW. GradScaler skips its step
-        # on overflow. Ignore optimizers used for unrelated validation/calibration.
-        nonlocal optimizer_steps
-        if isinstance(optimizer, AdamW):
-            optimizer_steps += 1
+    progress = FitProgress(recovery_path, stop_after_epoch=stop_after_epoch)
+    bind_training_loop(estimator, family, progress)
 
     with tempfile.TemporaryDirectory(prefix="creditpfn-finetune-") as scratch, _trust_local_checkpoints():
-        with register_optimizer_step_post_hook(count_step):
+        with register_optimizer_step_post_hook(progress.count_step):
             if family == "tabpfn":
                 estimator.fit(a, y_context, X_val=b, y_val=y_val, output_dir=Path(scratch))
             else:
-                estimator.fit(a, y_context, X_val=b, y_val=y_val)
-        if optimizer_steps == 0:
+                with warnings.catch_warnings():
+                    if recovery_path is not None:
+                        # This job persists optimizer and epoch state in its own recovery file.
+                        warnings.filterwarnings("ignore", message=r"`output_dir` is not set; no checkpoints will be saved.*",
+                                                category=UserWarning)
+                    estimator.fit(a, y_context, X_val=b, y_val=y_val)
+        if progress.optimizer_steps == 0:
             raise RuntimeError(f"{family} fine-tuning completed without an AdamW update")
-        fit_seconds = time.monotonic() - started
+        fit_seconds = time.monotonic() - started + progress.previous_seconds
+        prediction_start = time.monotonic()
         prediction = _predict(estimator, c, data.task_type)
-        predict_seconds = time.monotonic() - started - fit_seconds
+        predict_seconds = time.monotonic() - prediction_start
         val_prediction = _predict(estimator, b, data.task_type)
-    if len(prediction) != len(test) or not np.isfinite(prediction).all() or not np.isfinite(val_prediction).all():
+    if (len(prediction) != len(test) or len(val_prediction) != len(validation)
+            or not np.isfinite(prediction).all() or not np.isfinite(val_prediction).all()):
         raise RuntimeError("Missing or non-finite fine-tuned predictions")
     metrics = (_classification_metrics(proba_test=prediction, y_test=data.y[test], proba_val=val_prediction,
                                        y_val=y_val, n_classes_seen=len(np.unique(y_context)))
                if data.task_type == "classification" else
                _regression_metrics(pred_test=prediction, y_test=data.y[test], neg_nll=None))
-    metrics.update(optimizer_steps=optimizer_steps, fit_seconds=fit_seconds, predict_seconds=predict_seconds,
+    metrics.update(optimizer_steps=progress.optimizer_steps, resumed_at_epoch=progress.resumed_at_epoch,
+                   fit_seconds=fit_seconds, predict_seconds=predict_seconds,
                    context_rows=int(len(context)),
                    validation_rows=int(len(validation)), test_rows=int(len(test)),
                    recipe_epochs=int(recipe["epochs"]), recipe_learning_rate=float(recipe["learning_rate"]))

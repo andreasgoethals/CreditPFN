@@ -635,8 +635,8 @@ def _regression_metrics(
 
     Sign convention of the density columns. ``neg_nll`` is the name the
     campaign has always used for the mean LOG-LIKELIHOOD of the targets
-    under the predictive density, i.e. −NLL (higher = better; per-row NLL
-    is clamped to [−100, 100] nats in ``src.model.tabpfn_models``). The
+    under the predictive density, i.e. −NLL (higher = better). The
+    benchmark records the historical ±100-nat cap separately. The
     name is kept for downstream compatibility. ``nll`` = −``neg_nll`` is
     the same quantity with the conventional sign (lower = better).
 

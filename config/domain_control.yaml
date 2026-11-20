@@ -9,7 +9,7 @@ domain_control:
   - {id: openml_45038, track: pd, source: openml, data_id: 45038, name: road-safety, preprocessing: credit_sanitize, match: {twin: '0003', rows: 233154, features: 33, categorical: 3}}
   - {id: openml_44122, track: pd, source: openml, data_id: 44122, name: pol, preprocessing: credit_sanitize, match: {twin: '0004', rows: 9578, features: 13, categorical: 1}}
   - {id: openml_151, track: pd, source: openml, data_id: 151, name: electricity, preprocessing: credit_sanitize, match: {twin: '0005', rows: 7000, features: 8, categorical: 1}}
-  - {id: openml_44129, track: pd, source: openml, data_id: 44129, name: Higgs, preprocessing: credit_sanitize, match: {twin: '0006', rows: 532428, features: 31, categorical: 9}}
+  - {id: openml_44129, track: pd, source: openml, data_id: 44129, name: Higgs, preprocessing: credit_sanitize, match: {twin: '0006', rows: 506724, features: 31, categorical: 9}}
   - {id: openml_45021, track: pd, source: openml, data_id: 45021, name: jannis, preprocessing: credit_sanitize, match: {twin: '0007', rows: 80000, features: 47, categorical: 0}}
   - {id: openml_38, track: pd, source: openml, data_id: 38, name: sick, preprocessing: credit_sanitize, match: {twin: '0008', rows: 1000, features: 20, categorical: 13}}
   - {id: openml_46920, track: pd, source: openml, data_id: 46920, name: customer_satisfaction_in_airline, preprocessing: credit_sanitize, match: {twin: '0009', rows: 81999, features: 15, categorical: 0}}
@@ -30,5 +30,5 @@ domain_control:
   - {id: openml_44989, track: lgd, source: openml, data_id: 44989, name: kings_county, preprocessing: credit_sanitize, match: {twin: '0007', rows: 5627, features: 17, categorical: 5}}
   - {id: openml_42570, track: lgd, source: openml, data_id: 42570, name: Mercedes_Benz_Greener_Manufacturing, preprocessing: credit_sanitize, match: {twin: '0008', rows: 686, features: 22, categorical: 4}}
 match_cost:   # shortfall of each twin against its credit table (0 = fully matched)
-  pd: {'0001': 0.0665, '0002': 0.0396, '0003': 0.7964, '0004': 0.0934, '0005': 0.0934, '0006': 0.5747, '0007': 0.3316, '0008': 0.0738, '0009': 0.6964, '0010': 0.1745, '0011': 0.3472, '0012': 1.3261, '0013': 0.1891, '0014': 1.1789, '0015': 0.1593, '0016': 0.3439, '0017': 0.1335}
+  pd: {'0001': 0.0665, '0002': 0.0396, '0003': 0.7964, '0004': 0.0934, '0005': 0.0934, '0006': 0.5772, '0007': 0.3316, '0008': 0.0738, '0009': 0.6964, '0010': 0.1745, '0011': 0.3472, '0012': 1.3261, '0013': 0.1891, '0014': 1.1789, '0015': 0.1593, '0016': 0.3439, '0017': 0.1335}
   lgd: {'0001': 0.0248, '0002': 0.3689, '0003': 0.0319, '0004': 0.0367, '0005': 0.3122, '0006': 0.0369, '0007': 0.1303, '0008': 0.1475}

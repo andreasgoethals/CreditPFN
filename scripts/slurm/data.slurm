@@ -23,6 +23,10 @@ start_job_log data
 export PYTHONUNBUFFERED=1 PYTHONIOENCODING=utf-8
 export CREDITPFN_USE_SCRATCH=0
 source scripts/slurm/_activate_env.sh
+if [[ "${1:-}" == "--refresh-domain-control" ]]; then
+    shift
+    python -m src.utils.prepare_retention --panel domain_control --supersede-changed
+fi
 python -u scripts/data_pipeline.py --log-path "$LOG" "$@"
 # Training jobs read an immutable, content-addressed scratch snapshot of the inputs. Refresh it here,
 # so a rebuilt table can never be trained from the snapshot taken before the rebuild.

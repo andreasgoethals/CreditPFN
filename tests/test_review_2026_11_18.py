@@ -71,21 +71,38 @@ def test_primary_holm_family_is_the_declared_sixteen(monkeypatch):
 
 def test_the_newest_row_of_a_fold_decides(monkeypatch, tmp_path):
     from src.utils import paths
+    from src.utils.experiment import file_digest
     root = tmp_path / "PD"
     root.mkdir()
     row = dict(model_name="m", test_dataset_id="t", fold_idx=0, model_source="x-untuned", roc_auc=0.7)
     pd.DataFrame([dict(row, status="OK")]).to_csv(root / "a_20261101.csv", index=False)
     pd.DataFrame([dict(row, status="FAILED")]).to_csv(root / "b_20261102.csv", index=False)
+    for csv_path in root.glob("*.csv"):
+        csv_path.with_suffix(".csv.evaluation.json").write_text(json.dumps(
+            {"t": "a" * 64, "__metrics_sha256__": file_digest(csv_path)}))
     monkeypatch.setattr(paths, "results_dir", lambda experiment: tmp_path)
     assert c2._read_results_frames("reference", "pd").empty
 
 
-def test_public_scope_refuses_to_run_without_the_proprietary_mapping(monkeypatch):
+def test_public_scope_without_private_mapping_keeps_only_registered_public_ids(monkeypatch):
     from src.data import dataset_names
+    from src.data.preprocessing import DATASET_METADATA
+    from src.data.retention import panel_config
+    if dataset_names._PROPRIETARY:
+        assert dataset_names.PUBLIC_CREDIT_TABLES == {
+            key for key in DATASET_METADATA if not dataset_names.is_proprietary(key)}
     monkeypatch.setattr(dataset_names, "_PROPRIETARY", set())
     c2.use_tables("public")
-    with pytest.raises(RuntimeError, match="_private_names"):
-        c2.in_scope(pd.DataFrame({"test_dataset_id": ["0001.x"]}), "test_dataset_id")
+    known = panel_config("research")[0]["id"]
+    ids = ["0004.lendingclub", "0007.lgd_lendingclub", known, "0001.unknown", "openml_unregistered"]
+    frame = pd.DataFrame({"test_dataset_id": ids})
+    assert c2.in_scope(frame, "test_dataset_id").test_dataset_id.tolist() == ids[:3]
+    for track, public_count in [("pd", 15), ("lgd", 3)]:
+        authoritative = sorted(i for i, meta in DATASET_METADATA.items() if meta["track"] == track)
+        assert c2.transfer_sources(track) == dict(enumerate(authoritative))
+        assert c2.scope_counts(track).tables_in_scope.item() == public_count
+    # No partial set of available property values can silently redefine the CPT training corpus.
+    assert c2.corpus_similarity("pd", pd.DataFrame({"test_dataset_id": ids[:1]})).empty
 
 
 def test_leaderboard_drops_a_table_missing_a_fold_for_every_method(monkeypatch):
@@ -150,10 +167,32 @@ def test_task_list_cache_round_trips_and_is_keyed(monkeypatch, tmp_path):
 
 def test_task_results_ignore_metrics_without_a_receipt(monkeypatch, tmp_path):
     from src.utils import paths
+    from src.utils.experiment import file_digest
     folder = tmp_path / "finetune"
     (folder / "completed").mkdir(parents=True)
     pd.DataFrame({"a": [1]}).to_csv(folder / "finetune_00000.csv.gz", index=False)
-    pd.DataFrame({"a": [2]}).to_csv(folder / "finetune_00001.csv.gz", index=False)
-    (folder / "completed" / "finetune_00001.json").write_text(json.dumps({}))
+    metrics = folder / "finetune_00001.csv.gz"
+    predictions = folder / "finetune_00001.predictions.npz"
+    predictions.write_bytes(b"prediction archive")
+    task = dict(dataset_id="example", model="v2", fold=1)
+    pd.DataFrame([dict(a=2, **task)]).to_csv(metrics, index=False)
+    receipt = folder / "completed" / "finetune_00001.json"
+    record = dict(task=task, rows=1, predictions=predictions.name,
+                  identity=dict(kind="finetune", quick=False, code="code1", task=task),
+                  metrics_sha256=file_digest(metrics), predictions_sha256=file_digest(predictions))
+    receipt.write_text(json.dumps(record))
     monkeypatch.setattr(paths, "results_dir", lambda experiment: tmp_path)
     assert c2.task_results("finetune").a.tolist() == [2]
+    predictions.write_bytes(b"changed predictions")
+    with pytest.raises(ValueError, match="Changed predictions"):
+        c2.task_results("finetune")
+    predictions.unlink()  # compact notebook download, metric digest still required
+    assert len(c2.task_results("finetune")) == 1
+    pd.DataFrame([dict(a=7, **task)]).to_csv(metrics, index=False)
+    with pytest.raises(ValueError, match="changed metrics"):
+        c2.task_results("finetune")
+    record["metrics_sha256"] = file_digest(metrics)
+    record["identity"]["kind"] = "context"
+    receipt.write_text(json.dumps(record))
+    with pytest.raises(ValueError, match="Invalid finetune result receipt"):
+        c2.task_results("finetune")

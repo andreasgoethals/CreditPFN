@@ -206,6 +206,9 @@ class EvalRow:
     nll_rows:            float = float("nan")
     nll_nonfinite_rows:  float = float("nan")
     nll_clipped_rows:    float = float("nan")
+    nll_nonfinite_rate:  float = float("nan")
+    nll_clipped_rate:    float = float("nan")   # fraction affected by the historical ±100 cap
+    nll_capped100:       float = float("nan")   # sensitivity diagnostic; nll is uncapped
     nrmse:               float = float("nan")    # RMSE / population std(y)
     crps:                float = float("nan")    # see src.eval.metrics._regression_metrics
     crps_method:         str = ""
@@ -1274,6 +1277,7 @@ def score_fitted(model, task_type: str, *, y_tr, X_va, y_va, X_te, y_te):
         bucket_probabilities=(output or {}).get("bucket_probabilities"),
         bucket_borders=(output or {}).get("bucket_borders"))
     if output is not None:
-        metrics.update({k: output[k] for k in ("nll_rows", "nll_nonfinite_rows", "nll_clipped_rows")
+        metrics.update({k: output[k] for k in ("nll_rows", "nll_nonfinite_rows", "nll_clipped_rows",
+                                               "nll_nonfinite_rate", "nll_clipped_rate", "nll_capped100")
                         if k in output})
     return metrics, pred_te, quantiles

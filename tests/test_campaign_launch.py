@@ -50,31 +50,20 @@ def test_config_cost_counts_models_partitions_and_evaluation_shards():
     assert cl.stages(config_path("reference", "pd", 0)) == "train eval"
 
 
-def test_rejected_pd_target_survives_renaming_labels_and_reordering_rows(tmp_path, monkeypatch):
+def test_only_verified_pd_cohort_can_release_pilots(tmp_path, monkeypatch):
     import hashlib
-    import numpy as np
-    import pandas as pd
-    from src.data.preprocessing import DATASET_METADATA
+    from src.data import lendingclub_outcomes as lc
     from src.utils import paths
 
     path = tmp_path / "fixture.csv"
-    dataset = "0006.synthetic"
-    fields = ["loan_amnt", "annual_inc", "int_rate", "dti"]
-    frame = pd.DataFrame({f: [1., 2., 3.] for f in fields}).assign(outcome=[0, 1, 0])
-    monkeypatch.setitem(DATASET_METADATA, dataset, {"target_column": "outcome"})
     monkeypatch.setattr(paths, "processed_dir", lambda *parts: path)
-    hashes = pd.util.hash_pandas_object(frame[fields], index=False).to_numpy(dtype="<u8")
-    groups = [hashlib.sha256(np.sort(group).tobytes()).hexdigest()
-              for group in (hashes[[0, 2]], hashes[[1]])]
-    monkeypatch.setattr(cl, "REJECTED_PD_0006_TARGET", hashlib.sha256(" ".join(sorted(groups)).encode()).hexdigest())
-    frame.to_csv(path, index=False)
-    assert cl.pd_target_issue(dataset)
-    frame["outcome"] = 1 - frame.outcome
-    frame.iloc[::-1].to_csv(path, index=False)
-    assert cl.pd_target_issue(dataset)
-    frame.loc[0, "outcome"] = 0
-    frame.to_csv(path, index=False)
-    assert cl.pd_target_issue(dataset) is None
+    approved = b"feature,loan_status\n4,1\n8,0\n"
+    monkeypatch.setattr(lc, "PROCESSED_SHA256", hashlib.sha256(approved).hexdigest())
+    assert cl.pd_target_issue(lc.DATASET)
+    path.write_bytes(approved)
+    assert cl.pd_target_issue(lc.DATASET) is None
+    path.write_bytes(approved.replace(b"8,0", b"8,1"))
+    assert cl.pd_target_issue(lc.DATASET)
 
 
 def test_evaluation_experiments_require_every_reference_checkpoint(fake, monkeypatch):

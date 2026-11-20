@@ -20,6 +20,15 @@ _PUBLIC_DISPLAY = {
     "SBA_loans_case": "SBA Loans Case",
 }
 _PUBLIC_TRACK_DISPLAY = {"0008.SBA_loans_case": "SBA Loans Case (LGD)"}
+# Only these credit tables may enter public-only results in a checkout without the private
+# alias file. Keep full identifiers: PD and LGD numbering overlaps.
+PUBLIC_CREDIT_TABLES = frozenset({
+    "0001.gmsc", "0002.taiwan_creditcard", "0003.vehicle_loan", "0004.lendingclub",
+    "0005.myhom", "0006.hackerearth", "0007.cobranded", "0008.german", "0010.thomas",
+    "0012.home_credit", "0013.hmeq", "0014.algorithmwatch", "0015.credit_risk_dataset",
+    "0016.bondora_peer2peer", "0017.SBA_loans_case",
+    "0006.lgd_freddie", "0007.lgd_lendingclub", "0008.SBA_loans_case",
+})
 
 
 def _stem(slug: object) -> str:

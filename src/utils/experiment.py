@@ -98,10 +98,11 @@ def code_identity(root: Path | None = None, *, stage: str = "train") -> str:
         # the E4 control corpus is the generated twin panel.
         files = ("scripts/train_pipeline.py", "src/eval/metrics.py", "src/eval/benchmark.py",
                  "src/eval/dataset_loader.py", "src/data/control_matching.py", "config/domain_control.yaml",
-                 "scripts/data_pipeline.py", "src/data/__init__.py", "src/data/preprocessing.py",
+                 "scripts/data_pipeline.py", "src/data/__init__.py", "src/data/preprocessing.py", "src/data/lendingclub_outcomes.py",
                  "src/data/register.py", "src/data/sanitize.py", "src/data/retention.py", "config/retention.yaml", "src/model/__init__.py",
                  "src/__init__.py", "src/eval/__init__.py", "src/utils/__init__.py",
-                 "src/model/base.py", "src/model/tabpfn_models.py", "src/model/tabicl_models.py", "src/model/diagscale.py", "src/model/lora.py", "src/model/tabpfn_legacy.py",
+                 "src/model/base.py", "src/model/tabpfn_models.py", "src/model/tabpfn_density.py",
+                 "src/model/tabicl_models.py", "src/model/diagscale.py", "src/model/lora.py", "src/model/tabpfn_legacy.py",
                  "src/utils/experiment.py", "src/utils/prepare_experiment.py", "src/utils/atomic.py",
                  "src/utils/checkpoint_inventory.py", "src/utils/paths.py", "src/utils/config.py",
                  "src/utils/logging_setup.py", "src/utils/stage_inputs.py", "src/utils/cpu.py",

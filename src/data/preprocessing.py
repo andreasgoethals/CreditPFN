@@ -205,8 +205,8 @@ _RAW_METADATA: dict[str, dict] = {
             "purpose", "application_type", "grade", "sub_grade",
             "initial_list_status",
         ],
-        "source": "hackerearth",
-        "source_url": None,
+        "source": "HackerEarth applications with LendingClub terminal outcomes",
+        "source_url": "https://www.lendingclub.com/info/download-data.action",
     },
     "0007.cobranded": {
         "track": "pd",
@@ -602,7 +602,10 @@ def _fix_lendingclub(df: pd.DataFrame) -> pd.DataFrame:
 def read_raw(path, dataset_id: str) -> pd.DataFrame:
     """Read one delivered table with its recorded CSV layout (some files have no header row)."""
     header = DATASET_METADATA.get(dataset_id, {}).get("header", "infer")
-    return pd.read_csv(path, low_memory=False, header=header)
+    frame = pd.read_csv(path, low_memory=False, header=header)
+    if dataset_id == "0006.hackerearth":
+        frame.attrs["challenge_path"] = Path(path)
+    return frame
 
 
 @_register_fix("0005.myhom")
@@ -615,25 +618,27 @@ def _fix_myhom(df: pd.DataFrame) -> pd.DataFrame:
 
 @_register_fix("0006.hackerearth")
 def _fix_hackerearth(df: pd.DataFrame) -> pd.DataFrame:
-    df = df.copy()
-    drop_cols = ["member_id", "batch_enrolled", "emp_title", "pymnt_plan",
-                 "desc", "title", "zip_code"]
-    # Post-outcome and payment-to-date columns, as for Bondora: recovered amounts exist only after
-    # a charge-off (non-zero in 3.6% of class-0 rows and in no class-1 row), and interest, late
-    # fees and weeks paid accumulate while the loan runs. None is known when the loan is granted.
-    drop_cols += ["recoveries", "collection_recovery_fee", "total_rec_int", "total_rec_late_fee",
-                  "last_week_pay"]
-    df = df.drop(columns=[c for c in drop_cols if c in df.columns])
+    from src.data.lendingclub_outcomes import DATASET, key_path, verified_labels
+    from src.utils.paths import raw_dir
+
+    raw_csv = df.attrs.get("challenge_path") or raw_dir("pd", DATASET + ".csv")
+    df = verified_labels(df, key_path(raw_csv))
+    # Only these application/issuance fields may reach the model. The member ID is used
+    # exclusively for linking. Servicing, recovery and payment fields are never predictors.
+    features = (
+        "loan_amnt funded_amnt funded_amnt_inv term int_rate grade sub_grade emp_length "
+        "home_ownership annual_inc verification_status purpose addr_state dti delinq_2yrs "
+        "inq_last_6mths mths_since_last_delinq mths_since_last_record open_acc pub_rec revol_bal "
+        "revol_util total_acc initial_list_status collections_12_mths_ex_med mths_since_last_major_derog "
+        "application_type verification_status_joint acc_now_delinq tot_coll_amt tot_cur_bal total_rev_hi_lim"
+    ).split()
+    df = df.loc[:, [c for c in [*features, "loan_status"] if c in df]].copy()
 
     if "emp_length" in df.columns:
         s = df["emp_length"].astype(str)
         s = s.replace("< 1 year", "0").replace("10+ years", "11").replace("10+", "11")
         s = s.str.replace(" years", "", regex=False).str.replace(" year", "", regex=False)
         df["emp_length"] = pd.to_numeric(s, errors="coerce")
-
-    target = DATASET_METADATA["0006.hackerearth"]["target_column"]
-    if target in df.columns:
-        df = df.dropna(subset=[target])
 
     return df
 

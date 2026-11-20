@@ -7,6 +7,7 @@ same locally after the campaign has been downloaded.
 """
 from __future__ import annotations
 
+import json
 import re
 from pathlib import Path
 
@@ -52,22 +53,18 @@ def in_scope(frame: pd.DataFrame, column: str) -> pd.DataFrame:
     from src.data import dataset_names
     from src.data.dataset_names import is_proprietary
     if not dataset_names._PROPRIETARY:
-        # Without the gitignored mapping every identifier looks public; filtering would silently
-        # keep the proprietary tables in a "public-only" result.
-        raise RuntimeError("The public table scope needs src/data/_private_names.py (the proprietary "
-                           "table list); it is absent or failed to import on this machine.")
+        from src.data.retention import panel_config
+        public = dataset_names.PUBLIC_CREDIT_TABLES | {r["id"] for r in panel_config("research")}
+        return frame[frame[column].isin(public)]
     return frame[~frame[column].map(is_proprietary).astype(bool)]
 
 
 def scope_counts(track: str) -> pd.DataFrame:
     """Held-out credit tables of a task in scope and left out by it (for the appendix)."""
-    from src.data.dataset_names import is_proprietary
-    try:
-        from src.train.corpus import build_dataset_pool
-        ids = sorted(r.dataset_id for r in build_dataset_pool(track))
-    except Exception:  # noqa: BLE001 - the registry may be absent off-cluster
-        return pd.DataFrame()
-    proprietary = sum(bool(is_proprietary(i)) for i in ids)
+    from src.data.dataset_names import PUBLIC_CREDIT_TABLES
+    from src.data.preprocessing import DATASET_METADATA
+    ids = {i for i, meta in DATASET_METADATA.items() if meta["track"] == track}
+    proprietary = len(ids - PUBLIC_CREDIT_TABLES)
     kept = len(ids) - (proprietary if _SCOPE["tables"] == "public" else 0)
     return pd.DataFrame([dict(track=track, scope=_SCOPE["tables"], credit_tables=len(ids),
                               proprietary_tables=proprietary, tables_in_scope=kept)])
@@ -134,29 +131,46 @@ def _results_frames(slug: str, track: str) -> pd.DataFrame:
 
 
 def _read_results_frames(slug: str, track: str) -> pd.DataFrame:
+    from src.utils.experiment import file_digest
     from src.utils.paths import results_dir
     try:
         root = results_dir(experiment=slug) / track.upper()
     except Exception:  # noqa: BLE001
         return pd.DataFrame()
     # Metric tables are ``*.csv``; ``*.csv.gz`` beside them hold per-row predictions.
-    files = sorted(root.rglob("*.csv")) if root.is_dir() else []
+    # The publication timestamp follows the run name, which can differ across retries.
+    def published(path):
+        match = re.search(r"_(\d{8}_\d{6})(?:__|\.csv$)", path.name)
+        return (match.group(1) if match else "", path)
+    files = sorted(root.rglob("*.csv"), key=published) if root.is_dir() else []
     frames = []
     for path in files:
-        try:
-            frame = pd.read_csv(path)
-        except Exception:  # noqa: BLE001 - unreadable shard is reported by the audit, not here
-            continue
-        if {"model_name", "test_dataset_id", "fold_idx", "status"} <= set(frame.columns):
-            frames.append(frame)
+        marker = path.with_suffix(".csv.evaluation.json")
+        if not marker.is_file():
+            continue  # incomplete publication
+        receipt = json.loads(marker.read_text(encoding="utf-8"))
+        if "__metrics_sha256__" not in receipt:
+            continue  # historical receipts predate verified publication
+        if receipt["__metrics_sha256__"] != file_digest(path):
+            raise ValueError(f"Benchmark metric checksum does not match {marker.name}")
+        frame = pd.read_csv(path)
+        if not {"model_name", "test_dataset_id", "fold_idx", "status"} <= set(frame.columns):
+            raise ValueError(f"Missing benchmark columns in {path.name}")
+        frame["_evaluation_key"] = frame.test_dataset_id.map(receipt)
+        if not frame["_evaluation_key"].astype(str).str.fullmatch(r"[0-9a-f]{64}").all():
+            raise ValueError(f"Missing dataset evaluation key in {marker.name}")
+        frames.append(frame)
     if not frames:
         return pd.DataFrame()
     # File names carry their timestamp, so the newest row of a model, table and fold is last. The
     # newest row decides: a fold whose latest scoring failed is missing, not silently replaced by
     # an older success computed by other code.
-    newest = (pd.concat(frames, ignore_index=True)
-              .drop_duplicates(["model_name", "test_dataset_id", "fold_idx"], keep="last"))
-    return newest[newest.status == "OK"].reset_index(drop=True)
+    frame = pd.concat(frames, ignore_index=True)
+    keys = ["model_name", "test_dataset_id"]
+    current = frame.groupby(keys)["_evaluation_key"].transform("last")
+    newest = (frame[frame["_evaluation_key"] == current].drop(columns="_evaluation_key")
+              .drop_duplicates([*keys, "fold_idx"], keep="last"))
+    return newest[(newest.status == "OK") & newest.fold_idx.isin(range(N_FOLDS))].reset_index(drop=True)
 
 
 #: Outer folds of the five-fold evaluation (config/eval.yaml cv.n_folds).
@@ -336,6 +350,50 @@ def baseline_comparison(track: str) -> pd.DataFrame:
     return out[out.folds == N_FOLDS].reset_index(drop=True)
 
 
+def lgd_density_tables() -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Reference TabPFN density scores on held-out credit tables, in natural-log units."""
+    frame = _results_frames("reference", "lgd")
+    counts = ["nll_rows", "nll_nonfinite_rows", "nll_clipped_rows"]
+    losses = ["nll", "nll_capped100"]
+    if not set(counts + losses) <= set(frame.columns):
+        return pd.DataFrame(), pd.DataFrame()
+    sub = frame[(~frame.test_dataset_id.str.startswith("openml_"))
+                & (frame.model_source.eq("tabpfn-untuned") |
+                   (frame.model_source.eq("tabpfn-trained") & frame.model_name.str.contains("cpt2_reference_a0_")))].copy()
+    sub["model"] = sub.model_name.str.extract(r"(tabpfn-v[0-9.]+)", expand=False).map(MODEL_LABELS)
+    sub["start"] = np.where(sub.model_source.eq("tabpfn-untuned"), "original", "credit CPT")
+    sub = sub.rename(columns={"fold_idx": "fold"})
+    keys = ["model", "start", "test_dataset_id"]
+    measured = sub.dropna(subset=counts)
+    measured = _all_folds(measured, keys)
+    if measured.empty:
+        return pd.DataFrame(), pd.DataFrame()
+    if (measured.duplicated([*keys, "fold"]).any() or (measured.nll_rows <= 0).any()
+            or (measured.nll_nonfinite_rows < 0).any()
+            or (measured.nll_nonfinite_rows > measured.nll_clipped_rows).any()
+            or (measured.nll_clipped_rows > measured.nll_rows).any()):
+        raise ValueError("Invalid LGD density counts in benchmark results")
+    tables = []
+    for group, folds in measured.groupby(keys):
+        row = dict(zip(keys, group))
+        row.update({c: int(folds[c].sum()) for c in counts})
+        row.update({m: float(np.average(folds[m], weights=folds.nll_rows)) for m in losses})
+        row.update(nll_nonfinite_rate=row["nll_nonfinite_rows"] / row["nll_rows"],
+                   nll_clipped_rate=row["nll_clipped_rows"] / row["nll_rows"])
+        tables.append(row)
+    per_table = pd.DataFrame(tables)
+    summary = []
+    for (model, start), group in per_table.groupby(["model", "start"]):
+        row = dict(model=model, start=start, tables=len(group), tables_with_finite_nll=int(np.isfinite(group.nll).sum()))
+        for col in [*losses, "nll_nonfinite_rate", "nll_clipped_rate"]:
+            row["equal_table_" + col] = float(group[col].mean(skipna=False))
+        row.update({c: int(group[c].sum()) for c in counts})
+        row.update(pooled_nll_nonfinite_rate=row["nll_nonfinite_rows"] / row["nll_rows"],
+                   pooled_nll_clipped_rate=row["nll_clipped_rows"] / row["nll_rows"])
+        summary.append(row)
+    return per_table, pd.DataFrame(summary)
+
+
 def gain_summary(gains: pd.DataFrame) -> pd.DataFrame:
     """Per arm, model and table group: tables, mean and median gain over complete tables only;
     ``incomplete_tables`` counts the tables left out."""
@@ -449,6 +507,10 @@ def corpus_similarity(track: str, properties: pd.DataFrame | None = None) -> pd.
     from src.utils.experiment import apply_split_index
     properties = table_properties(track) if properties is None else properties
     if properties.empty:
+        return pd.DataFrame()
+    # A distance to the original training corpus needs its private members' properties too.
+    # Dropping missing members would change both the standardization and the nearest neighbor.
+    if len(properties.test_dataset_id.unique()) < int(load_design()["tables"][track]):
         return pd.DataFrame()
     z = _property_space(properties)
     from src.utils.design import config_path
@@ -765,26 +827,50 @@ def precision_agreement(summary: dict | None) -> pd.DataFrame:
 
 
 def cost_comparison(resources: pd.DataFrame, finetune: pd.DataFrame) -> pd.DataFrame:
-    """GPU hours per task and model: CPT with the reference recipe (E1, all partitions, paid once
-    for every future table) against fine-tuning on a target table (E5, original start, per table:
-    all candidate rates, summed over the five folds)."""
+    """Compare one reference checkpoint with one target adaptation including its candidate search.
+
+    The four independent CPT runs and five target folds measure these unit costs. Their
+    experimental totals are reported separately. A break-even estimate needs every reference
+    partition and comparable, recorded GPUs.
+    """
+    design = load_design()
+    partitions = set(range(int(design["partitions"])))
+    steps = int(design["reference"]["successful_updates"])
     rows = []
     if not resources.empty:
         cpt = resources[(resources.slug == "reference") & (resources.arm == 0)]
+        cpt = cpt[cpt.partition.isin(partitions) & (cpt.updates == steps)
+                  & np.isfinite(cpt.hours_without_monitor) & (cpt.hours_without_monitor > 0)]
         for (track, model), group in cpt.groupby(["track", "model"]):
+            if group.partition.duplicated().any():
+                raise ValueError(f"Duplicate reference partition in {track} / {model} cost records")
             rows.append(dict(track=track, model=_model_label(model), cpt_runs=len(group),
+                             cpt_device=_devices(group, "gpu_name"),
                              cpt_hours_per_run=float(group.hours_without_monitor.mean()),
                              cpt_hours_total=float(group.hours_without_monitor.sum())))
     out = pd.DataFrame(rows)
     if finetune.empty or "fit_seconds" not in finetune or out.empty:
         return out
     tuned = finetune[finetune.finetuned.astype(bool) & (finetune.start == "original")]
-    per_table = (tuned.groupby(["track", "model", "dataset_id"]).fit_seconds.sum() / 3600).reset_index()
+    keys = ["track", "model", "dataset_id"]
+    tuned = _all_folds(tuned.loc[np.isfinite(tuned.fit_seconds) & (tuned.fit_seconds > 0)], keys)
+    if tuned.duplicated([*keys, "fold"]).any():
+        raise ValueError("Duplicate target adaptation in fine-tuning cost records")
+    per_table = (tuned.groupby(keys).fit_seconds.sum() / 3600).reset_index()
     per_table["model"] = per_table.model.map(_model_label)
-    per_model = per_table.groupby(["track", "model"]).fit_seconds.agg(
-        finetune_tables="size", finetune_hours_per_table="mean").reset_index()
+    per_model = per_table.groupby(["track", "model"]).agg(finetune_tables=("dataset_id", "size"),
+        finetune_hours_per_table=("fit_seconds", "mean"), datasets=("dataset_id", set)).reset_index()
+    expected = {track: _primary_tables(track) for track in per_model.track.unique()}
+    per_model["finetune_complete"] = [datasets == expected[track]
+                                      for track, datasets in zip(per_model.track, per_model.pop("datasets"))]
     out = out.merge(per_model, on=["track", "model"], how="left")
-    out["tables_to_break_even"] = out.cpt_hours_total / out.finetune_hours_per_table
+    out["finetune_hours_per_fit"] = out.finetune_hours_per_table / N_FOLDS
+    hardware = {(track, _model_label(model)): _devices(group, "device_name")
+                for (track, model), group in tuned.groupby(["track", "model"])}
+    out["finetune_device"] = [hardware.get((t, m), "") for t, m in zip(out.track, out.model)]
+    comparable = ((out.cpt_runs == len(partitions)) & out.finetune_complete.eq(True) & out.cpt_device.eq(out.finetune_device)
+                  & ~out.cpt_device.isin(["", "cpu", "cuda", "unknown"]) & ~out.cpt_device.str.contains(","))
+    out["tables_to_break_even"] = (out.cpt_hours_per_run / out.finetune_hours_per_fit).where(comparable)
     if "predict_seconds" in finetune:
         # Inference cost per 1,000 test rows on the full context, untuned and fine-tuned.
         timed = finetune.dropna(subset=["predict_seconds", "test_rows"]).assign(
@@ -793,24 +879,53 @@ def cost_comparison(resources: pd.DataFrame, finetune: pd.DataFrame) -> pd.DataF
                               (True, "finetuned_inference_seconds_per_1k_rows")):
             part = timed[timed.finetuned.astype(bool) == tuned].groupby(["track", "model"]).per_1k.mean()
             out = out.merge(part.rename(column).reset_index(), on=["track", "model"], how="left")
-    if "device_name" in finetune:
-        devices = finetune.groupby("track").device_name.agg(lambda d: ", ".join(sorted(set(map(str, d)))))
-        out["finetune_device"] = out.track.map(devices)
     return out
+
+
+def _devices(group: pd.DataFrame, column: str) -> str:
+    if column not in group:
+        return "unknown"
+    return ", ".join(sorted(set(group[column].fillna("unknown").astype(str).replace("", "unknown"))))
 
 
 def task_results(kind: str) -> pd.DataFrame:
     """All finished E5 (``finetune``), E12 (``episode_context``) or E6 (``context``) task CSVs."""
     from src.eval.campaign_tasks import SLUGS
+    from src.utils.experiment import file_digest
     from src.utils.paths import results_dir
     try:
         folder = results_dir(experiment=SLUGS[kind]) / kind
     except Exception:  # noqa: BLE001 - missing layout is missing evidence
         return pd.DataFrame()
-    # A metrics file counts only with its receipt: one without is an interrupted publication.
-    files = [f for f in (sorted(folder.glob(f"{kind}_*.csv.gz")) if folder.is_dir() else [])
-             if (folder / "completed" / f.name.replace(".csv.gz", ".json")).is_file()]
-    frame = pd.concat([pd.read_csv(f) for f in files], ignore_index=True) if files else pd.DataFrame()
+    frames = []
+    code_versions = set()
+    for f in sorted(folder.glob(f"{kind}_*.csv.gz")):
+        receipt = folder / "completed" / f.name.replace(".csv.gz", ".json")
+        if not receipt.is_file():  # still being published
+            continue
+        done = json.loads(receipt.read_text(encoding="utf-8"))
+        identity = done.get("identity", {})
+        task = identity.get("task", {})
+        predictions = f.with_name(f.name.replace(".csv.gz", ".predictions.npz"))
+        if (identity.get("kind") != kind or identity.get("quick") is not False or not identity.get("code")
+                or task.get("fold") not in range(N_FOLDS) or task != done.get("task")
+                or done.get("predictions") != predictions.name
+                or not re.fullmatch(r"[0-9a-f]{64}", str(done.get("predictions_sha256")))
+                or done.get("metrics_sha256") != file_digest(f)):
+            raise ValueError(f"Invalid {kind} result receipt or changed metrics: {f.name}")
+        # A compact download may contain only metrics and receipts. Verify prediction files
+        # when present; the notebook consumes the checksummed metric values.
+        if predictions.is_file() and done["predictions_sha256"] != file_digest(predictions):
+            raise ValueError(f"Changed predictions for {f.name}")
+        shard = pd.read_csv(f)
+        if (shard.empty or len(shard) != done.get("rows")
+                or any(key not in shard or not shard[key].eq(value).all() for key, value in task.items())):
+            raise ValueError(f"Rows disagree with the task in {receipt.name}")
+        code_versions.add(identity["code"])
+        frames.append(shard)
+    if len(code_versions) > 1:
+        raise ValueError(f"Mixed evaluation revisions in {kind} results")
+    frame = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
     return in_scope(frame, "dataset_id")
 
 
@@ -818,6 +933,7 @@ def _all_folds(frame: pd.DataFrame, keys: list[str]) -> pd.DataFrame:
     """Rows of the groups (``keys``) scored on all five outer folds; partial groups are dropped."""
     if frame.empty:
         return frame
+    frame = frame[frame.fold.isin(range(N_FOLDS))]
     folds = frame.groupby(keys).fold.transform("nunique")
     return frame[folds == N_FOLDS]
 
@@ -1065,6 +1181,7 @@ def run_resources(frame: pd.DataFrame) -> pd.DataFrame:
         peak = group.get("cuda_peak_reserved_bytes", pd.Series(np.nan, index=group.index)).max()
         rows.append(dict(run=run, slug=last.slug, arm=last.arm, track=last.track, model=last.model,
                          partition=last.partition, updates=int(last.successful_updates),
+                         gpu_name=_devices(group, "gpu_name"),
                          rows_processed=int(last.processed_rows),
                          hours=float(last.elapsed_sec) / 3600,
                          hours_without_monitor=max(float(last.elapsed_sec) - float(monitor), 0) / 3600,
@@ -1168,7 +1285,7 @@ def adaptation_summary(table: pd.DataFrame, cost: pd.DataFrame | None = None) ->
             .reindex(columns=list(ADAPTATION_OPTIONS), fill_value=0).add_prefix("best_").reset_index())
     out = out.merge(wins, on=["track", "size_band", "model"])
     if cost is not None and not cost.empty and "finetune_hours_per_table" in cost:
-        out = out.merge(cost[["track", "model", "cpt_hours_total", "finetune_hours_per_table"]],
+        out = out.merge(cost[["track", "model", "cpt_hours_per_run", "finetune_hours_per_fit"]],
                         on=["track", "model"], how="left")
     order = {_size_band(low): i for i, low in enumerate(SIZE_BANDS[:-1])}
     return out.sort_values(["track", "size_band", "model"], key=lambda s: s.map(order) if s.name == "size_band"
@@ -1237,7 +1354,8 @@ def leaderboard_errors(track: str, finetune: pd.DataFrame | None = None) -> pd.D
     rows = [r for r in rows if not r.empty]
     if not rows:
         return pd.DataFrame(columns=["method", "base", "variant", "table", "fold", "error"])
-    return pd.concat(rows, ignore_index=True).drop_duplicates(["method", "table", "fold"], keep="last")
+    errors = pd.concat(rows, ignore_index=True)
+    return errors[errors.fold.isin(range(N_FOLDS))].drop_duplicates(["method", "table", "fold"], keep="last")
 
 
 def leaderboard(track: str, finetune: pd.DataFrame | None = None, *, seed: int = 0) -> dict:
@@ -1422,8 +1540,8 @@ def transfer_sources(track: str) -> dict[int, str]:
     """Single-source arm index -> source table id (tables of the task sorted by id, the rule the
     generated E7 configs use). Refuses a registry whose size differs from the design, since a
     missing table would shift every later label."""
-    from src.train.corpus import build_dataset_pool
-    ids = sorted(r.dataset_id for r in build_dataset_pool(track))
+    from src.data.preprocessing import DATASET_METADATA
+    ids = sorted(i for i, meta in DATASET_METADATA.items() if meta["track"] == track)
     expected = int(load_design()["tables"][track])
     if len(ids) != expected:
         raise RuntimeError(f"{track}: {len(ids)} registered tables, design has {expected}; E7 source labels would shift")
@@ -1444,6 +1562,7 @@ def transfer_long(frame: pd.DataFrame, track: str) -> pd.DataFrame:
     end = changes[(changes.successful_updates == last) & (last >= budget)]
     sources = transfer_sources(track)
     end = end.assign(source=end.arm.map(lambda a: sources[int(a)]))
+    end = in_scope(end, "source")
     end = end[(end.scope != "test") | _distinct_sources(end.source, end.table)]
     return end[["model", "arm", "source", "scope", "table", "successful_updates", "change"]].rename(
         columns={"table": "target"}).reset_index(drop=True)
@@ -1469,7 +1588,7 @@ def _property_space(properties: pd.DataFrame) -> pd.DataFrame:
 
 
 def _property_distances(properties: pd.DataFrame) -> pd.DataFrame:
-    z = _property_space(properties)
+    z = _property_space(in_scope(properties, "test_dataset_id"))
     values = z.to_numpy(dtype=float)
     return pd.DataFrame(np.sqrt(((values[:, None, :] - values[None, :, :]) ** 2).sum(axis=2)),
                         index=z.index, columns=z.index)

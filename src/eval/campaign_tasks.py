@@ -23,6 +23,7 @@ three context sizes and up to eight fine-tuning epochs on the smallest held-out 
 from __future__ import annotations
 
 import argparse
+from contextlib import nullcontext
 import json
 from pathlib import Path
 
@@ -168,13 +169,10 @@ def campaign_tasks(kind: str, design: dict | None = None) -> list[dict]:
 
 
 def run(kind: str, index: int, *, references: dict | None = None, slug: str | None = None,
-        quick: bool = False, device: str | None = None, pilot_source: str = "reference") -> Path:
-    from src.eval.context_curve import budgets, fold_indices, score_cell
-    from src.eval.dataset_loader import load_processed_dataset
-    from src.eval.target_finetune import finetune_cell
-    from src.utils.atomic import write_json
-    from src.utils.experiment import file_digest
-    from src.utils.paths import resolve_base_checkpoint, results_dir
+        quick: bool = False, device: str | None = None, pilot_source: str = "reference",
+        interrupt_finetune: bool = False) -> Path:
+    from filelock import FileLock
+    from src.utils.paths import results_dir
     if kind not in KINDS:
         raise ValueError(f"Unknown task kind {kind!r}")
     design = load_design()
@@ -191,6 +189,22 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
             folder = pilot_gate.directory(folder, run_id)
         folder = folder / pilot_source / ("quick" if quick else "full")
     folder.mkdir(parents=True, exist_ok=True)
+    lock = nullcontext()
+    if kind == "finetune":
+        locks = folder / "recovery"
+        locks.mkdir(exist_ok=True)
+        lock = FileLock(locks / f"{index:05d}.lock")
+    with lock:
+        return _run_task(kind, index, task, design, references, folder, quick, device, interrupt_finetune)
+
+
+def _run_task(kind, index, task, design, references, folder, quick, device, interrupt_finetune):
+    from src.eval.context_curve import budgets, fold_indices, score_cell
+    from src.eval.dataset_loader import load_processed_dataset
+    from src.eval.target_finetune import finetune_cell
+    from src.utils.atomic import write_json
+    from src.utils.experiment import digest_json, file_digest
+    from src.utils.paths import resolve_base_checkpoint
     target = folder / f"{kind}_{index:05d}.csv.gz"
     receipt = folder / "completed" / f"{kind}_{index:05d}.json"
     rules = policy(task["model"], design, quick=quick, kind=kind)
@@ -204,8 +218,13 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
     if quick:
         recipe["epochs"] = QUICK["epochs"]
     recipe["selection"] = "validation_roc_auc_pd_rmse_lgd"   # part of the task identity (17-11-2026)
+    if device is None:
+        import torch
+        device = "cuda" if torch.cuda.is_available() else "cpu"
     identity = task_identity(kind, task, rules, recipe if kind == "finetune" else None, quick, starts)
+    identity["device_name"] = _device_name(device)
     stored = target.with_name(target.name.replace(".csv.gz", ".predictions.npz"))
+    work = folder / "recovery" / f"{index:05d}-{digest_json(identity)}"
     if target.exists():
         # A finished task (metrics, predictions AND receipt) is reused only for the same task,
         # checkpoints and protocol. Metrics without a receipt are an interrupted publication and
@@ -219,11 +238,12 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
                 file_digest(target), file_digest(stored)):
             raise RuntimeError(f"{target.name} has missing or changed metrics/predictions; inspect its receipt")
         else:
+            if kind == "finetune":
+                _retire_work(work)
             print(f"Task {index} already complete: {target}", flush=True)
             return target
-    if device is None:
-        import torch
-        device = "cuda" if torch.cuda.is_available() else "cpu"
+    if kind == "finetune":
+        work.mkdir(exist_ok=True)
     data = load_processed_dataset(task["track"], task["dataset_id"])
     context, validation, test = fold_indices(data.y, data.task_type, task["fold"], rules)
     rows, predictions = [], {}
@@ -243,18 +263,27 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
             # Both starts are also scored WITHOUT fine-tuning on exactly the same rows, so the
             # effect of fine-tuning is paired within the task (same context cap and sampling).
             used = context[: rules["max_context_rows"]]
-            metrics, packed = score_cell(data, used, validation, test, path, family, rules, device=device)
-            keep(dict(start=start, finetuned=False, context_rows=len(used), **metrics), _unpack(packed))
+            def baseline():
+                metrics, packed = score_cell(data, used, validation, test, path, family, rules, device=device)
+                return metrics, _unpack(packed)
+            metrics, arrays = _cached_fit(work / f"{start}-baseline.npz", baseline)
+            keep(dict(start=start, finetuned=False, context_rows=len(used), **metrics), arrays)
             # One fine-tuning per candidate rate; the rate with the best inner-validation score
             # is the cell's result. Test rows never take part in the choice.
             candidates = {}
-            for rate in recipe["learning_rates"]:
+            for candidate, rate in enumerate(recipe["learning_rates"]):
                 fixed = {"epochs": recipe["epochs"], "learning_rate": float(rate),
                          "early_stopping_patience": recipe["early_stopping_patience"]}
-                candidates[float(rate)] = finetune_cell(
-                    data, context, validation, test, path, family, recipe=fixed,
-                    views=INFERENCE_VIEWS[family], device=device, seed=rules["context_seed"],
-                    max_context_rows=rules["max_context_rows"])
+                artifact = work / f"{start}-lr{candidate}.npz"
+                epoch_path = artifact.with_suffix(".pt")
+                def fit():
+                    return finetune_cell(data, context, validation, test, path, family, recipe=fixed,
+                                         views=INFERENCE_VIEWS[family], device=device, seed=rules["context_seed"],
+                                         max_context_rows=rules["max_context_rows"], recovery_path=epoch_path,
+                                         stop_after_epoch=1 if interrupt_finetune and start == "original"
+                                         and candidate == 1 else None)
+                candidates[float(rate)] = _cached_fit(artifact, fit)
+                epoch_path.unlink(missing_ok=True)
             scores = {rate: validation_score(data.task_type, data.y[validation], out["validation_prediction"])
                       for rate, (_, out) in candidates.items()}
             chosen = min(scores, key=lambda rate: (scores[rate], rate))
@@ -265,6 +294,7 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
                        **{f"test_{primary}_lr{rate:g}": float(m[primary]) for rate, (m, _) in candidates.items()},
                        **{f"fit_seconds_lr{rate:g}": float(m["fit_seconds"]) for rate, (m, _) in candidates.items()},
                        **{f"optimizer_steps_lr{rate:g}": m["optimizer_steps"] for rate, (m, _) in candidates.items()},
+                       **{f"resumed_at_epoch_lr{rate:g}": m["resumed_at_epoch"] for rate, (m, _) in candidates.items()},
                        # Cost of the cell = every candidate's fine-tuning (the rate search is part of it).
                        "selected_fit_seconds": float(metrics["fit_seconds"]),
                        "fit_seconds": sum(float(m["fit_seconds"]) for m, _ in candidates.values())}
@@ -274,7 +304,7 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
                       validation_prediction=out["validation_prediction"]))
     frame = pd.DataFrame(rows).assign(**task, test_rows=len(test), validation_rows=len(validation),
                                       available_context=len(context), quick=quick,
-                                      device_name=_device_name(device))
+                                      device_name=identity["device_name"])
     # Row i of the metrics owns the arrays "i__<name>" (indices, targets, predictions). Published in
     # order predictions -> metrics -> receipt; readers take a metrics file only with its receipt.
     pending = stored.with_suffix(".pending")
@@ -286,8 +316,35 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
     pending.replace(target)
     write_json(receipt, dict(task=task, rows=len(frame), identity=identity, predictions=stored.name,
                              metrics_sha256=file_digest(target), predictions_sha256=file_digest(stored)))
+    if kind == "finetune":
+        _retire_work(work)
     print(json.dumps(dict(kind=kind, index=index, rows=len(frame))), flush=True)
     return target
+
+
+def _cached_fit(path, compute):
+    """Atomically publish one complete start/rate, with metrics and arrays in the same ZIP."""
+    import os
+    if path.exists():
+        with np.load(path, allow_pickle=False) as item:
+            return json.loads(str(item["metrics"])), {k: item[k] for k in item.files if k != "metrics"}
+    metrics, arrays = compute()
+    pending = path.with_suffix(".partial")
+    with pending.open("wb") as stream:
+        np.savez_compressed(stream, metrics=json.dumps(metrics, default=lambda v: v.item()), **arrays)
+        stream.flush()
+        os.fsync(stream.fileno())
+    pending.replace(path)
+    return metrics, arrays
+
+
+def _retire_work(work):
+    """Release this task's recovery files after its final receipt has been published."""
+    if work.is_dir():
+        for item in work.iterdir():
+            if item.is_file() and item.suffix in {".pt", ".npz", ".partial", ".pending"}:
+                item.unlink()
+        work.rmdir()
 
 
 def _device_name(device: str) -> str:

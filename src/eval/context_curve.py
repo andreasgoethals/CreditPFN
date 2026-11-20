@@ -60,7 +60,9 @@ def _pack(**arrays):
 
 
 def predict_all(estimator, matrix, task_type, batch_rows):
-    method = estimator.predict_proba if task_type == "classification" else estimator.predict
+    from functools import partial
+    from src.model.tabpfn_density import predict_mean
+    method = estimator.predict_proba if task_type == "classification" else partial(predict_mean, estimator)
     return np.concatenate([np.asarray(method(matrix[start:start + batch_rows]))
                            for start in range(0, len(matrix), batch_rows)])
 
