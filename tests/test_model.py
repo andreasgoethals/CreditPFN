@@ -182,13 +182,19 @@ def test_linreg_predict_proba_raises() -> None:
 
 
 @pytest.mark.usefixtures("bare_storage_env")
-def test_build_baselines_pd_default_set() -> None:
+def test_build_baselines_pd_default_set(tmp_path, monkeypatch) -> None:
     """Default PD set: xgboost + catboost + logreg + tabpfn-untuned (one
     per base path)."""
     from src.utils.paths import resolve_staging_path
 
+    monkeypatch.setenv("CREDITPFN_STAGING_ROOT", str(tmp_path))
     bases = ["checkpoints/tabpfn-v2.6-classifier-v2.6_default.ckpt",
              "checkpoints/tabpfn-v3-classifier-v3_default.ckpt"]
+    for base in bases:
+        checkpoint = resolve_staging_path(base)
+        assert tmp_path in checkpoint.parents
+        checkpoint.parent.mkdir(parents=True, exist_ok=True)
+        checkpoint.touch()
     out = build_baselines(track="pd", base_paths_for_tabpfn_untuned=bases)
     handles = [h for h, _ in out]
     sources = [h.source for h in handles]
