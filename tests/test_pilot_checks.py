@@ -41,6 +41,13 @@ def test_every_pilot_is_the_reference_plus_its_declared_arm():
         assert cfg["corpus"]["n_splits"] == 1
 
 
+def test_scale_pilot_schedules_its_declared_heldout_fold():
+    from omegaconf import OmegaConf
+    from src.utils.experiment import apply_split_index
+    cfg = OmegaConf.create(design.pilot_configs()[("scale_reference", "lgd")])
+    assert apply_split_index(cfg, 0).corpus.fold == 1
+
+
 def test_recovery_twins_differ_only_by_run_name_and_are_deterministic():
     configs = design.pilot_configs()
     for variant in design.load_design()["experiment0"]["recovery"]["variants"]:

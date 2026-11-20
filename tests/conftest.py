@@ -108,5 +108,10 @@ def _restore_environment():
     import os
     saved = dict(os.environ)
     yield
-    os.environ.clear()
-    os.environ.update(saved)
+    # On Windows, restoring an untouched empty variable via putenv can remove
+    # it from native child processes (including Git's indexed config values).
+    for key in os.environ.keys() - saved.keys():
+        del os.environ[key]
+    for key, value in saved.items():
+        if os.environ.get(key) != value:
+            os.environ[key] = value

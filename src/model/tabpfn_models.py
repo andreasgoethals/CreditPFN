@@ -76,7 +76,8 @@ def _trust_local_checkpoints():
         torch.load = orig_load
 
 
-def _tabpfn_regression_neg_nll(tabpfn_model, X: np.ndarray, y: np.ndarray, *, output=None) -> float | None:
+def _tabpfn_regression_neg_nll(tabpfn_model, X: np.ndarray, y: np.ndarray, *, output=None,
+                              diagnostics=None) -> float | None:
     """Mean log-density (= −NLL) of ``y`` under TabPFN's predictive
     bar-distribution on ``X``. Higher = better (matches the ``neg_*``
     convention of the ``neg_nll`` eval column).
@@ -126,6 +127,9 @@ def _tabpfn_regression_neg_nll(tabpfn_model, X: np.ndarray, y: np.ndarray, *, ou
         # on LGD test sets). Cap per-row NLL
         # at 100 (density 1e-44 — beyond any meaningful resolution) and log.
         n_bad = int((~torch.isfinite(nll)).sum().item())
+        if diagnostics is not None:
+            diagnostics.update(nll_rows=nll.numel(), nll_nonfinite_rows=n_bad,
+                               nll_clipped_rows=int(((~torch.isfinite(nll)) | (nll.abs() > 100)).sum().item()))
         if n_bad:
             LOGGER.warning(
                 "neg_nll: %d/%d rows had non-finite NLL (density underflow) — "
@@ -182,8 +186,8 @@ def _regression_distribution(model, X, y, levels):
         output = model.predict(X, output_type="full", quantiles=list(levels))
     # TabPFN returns one array per quantile, including when n_rows == n_quantiles.
     quantiles = np.column_stack(output["quantiles"])
-    result = {"mean": output["mean"], "quantiles": quantiles,
-              "neg_nll": _tabpfn_regression_neg_nll(model, X, y, output=output)}
+    result = {"mean": output["mean"], "quantiles": quantiles}
+    result["neg_nll"] = _tabpfn_regression_neg_nll(model, X, y, output=output, diagnostics=result)
     # Exact CRPS (metrics.crps) needs the bucket probabilities and their borders in the
     # original target space; both come from the same forward pass. Best effort: absent -> None.
     try:

@@ -69,6 +69,8 @@ def finetune_cell(data, context, validation, test, path, family, *, recipe=None,
     """
     from src.eval.dataset_loader import encode_for_model
     from src.eval.metrics import _classification_metrics, _regression_metrics
+    from torch.optim import AdamW
+    from torch.optim.optimizer import register_optimizer_step_post_hook
     recipe = {**DEFAULT_RECIPE, **(recipe or {})}
     if max_context_rows is not None and len(context) > int(max_context_rows):
         context = context[: int(max_context_rows)]
@@ -99,11 +101,23 @@ def finetune_cell(data, context, validation, test, path, family, *, recipe=None,
         raise ValueError(f"Unknown model family {family!r}")
     started = time.monotonic()
     from src.model.tabpfn_models import _trust_local_checkpoints
+    optimizer_steps = 0
+
+    def count_step(optimizer, args, kwargs):
+        # Both pinned fine-tuners use ordinary AdamW. GradScaler skips its step
+        # on overflow. Ignore optimizers used for unrelated validation/calibration.
+        nonlocal optimizer_steps
+        if isinstance(optimizer, AdamW):
+            optimizer_steps += 1
+
     with tempfile.TemporaryDirectory(prefix="creditpfn-finetune-") as scratch, _trust_local_checkpoints():
-        if family == "tabpfn":
-            estimator.fit(a, y_context, X_val=b, y_val=y_val, output_dir=Path(scratch))
-        else:
-            estimator.fit(a, y_context, X_val=b, y_val=y_val)
+        with register_optimizer_step_post_hook(count_step):
+            if family == "tabpfn":
+                estimator.fit(a, y_context, X_val=b, y_val=y_val, output_dir=Path(scratch))
+            else:
+                estimator.fit(a, y_context, X_val=b, y_val=y_val)
+        if optimizer_steps == 0:
+            raise RuntimeError(f"{family} fine-tuning completed without an AdamW update")
         fit_seconds = time.monotonic() - started
         prediction = _predict(estimator, c, data.task_type)
         predict_seconds = time.monotonic() - started - fit_seconds
@@ -114,7 +128,8 @@ def finetune_cell(data, context, validation, test, path, family, *, recipe=None,
                                        y_val=y_val, n_classes_seen=len(np.unique(y_context)))
                if data.task_type == "classification" else
                _regression_metrics(pred_test=prediction, y_test=data.y[test], neg_nll=None))
-    metrics.update(fit_seconds=fit_seconds, predict_seconds=predict_seconds, context_rows=int(len(context)),
+    metrics.update(optimizer_steps=optimizer_steps, fit_seconds=fit_seconds, predict_seconds=predict_seconds,
+                   context_rows=int(len(context)),
                    validation_rows=int(len(validation)), test_rows=int(len(test)),
                    recipe_epochs=int(recipe["epochs"]), recipe_learning_rate=float(recipe["learning_rate"]))
     return metrics, {"prediction": prediction, "validation_prediction": val_prediction}

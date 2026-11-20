@@ -15,7 +15,7 @@ class-preserving context prefixes; complete test folds). Results are one CSV per
 ``results/<slug>/`` on PROJECT, written atomically, so a resubmitted array skips finished tasks.
 
 Experiment 0 runs the same code against the reference *pilot* (``references``) in ``quick`` mode:
-three context sizes and two fine-tuning epochs on the smallest held-out table.
+three context sizes and up to eight fine-tuning epochs on the smallest held-out table.
 
     python -m src.eval.campaign_tasks count context
     python -m src.eval.campaign_tasks run   context --task 17
@@ -36,7 +36,7 @@ SLUGS = {"context": "context", "finetune": "target_finetune", "episode_context":
 FAMILY = {"v2": "tabpfn", "v2.6": "tabpfn", "v3": "tabpfn", "tabicl-v2": "tabicl"}
 INFERENCE_VIEWS = {"tabpfn": 8, "tabicl": 8}   # config/eval.yaml: 8 views for every model
 POLICY_SEEDS = {"split_seed": 99, "context_seed": 271828, "inner_validation_fraction": 0.20}
-QUICK = {"context_rows": [32, 512], "epochs": 2}
+QUICK = {"context_rows": [32, 512], "epochs": 8}   # allow initial AMP scale backoff on the smallest folds
 
 
 #: Start name of each E6 checkpoint source (experiment slug); only the reference tasks also score
@@ -264,6 +264,7 @@ def run(kind: str, index: int, *, references: dict | None = None, slug: str | No
                        **{f"validation_score_lr{rate:g}": score for rate, score in scores.items()},
                        **{f"test_{primary}_lr{rate:g}": float(m[primary]) for rate, (m, _) in candidates.items()},
                        **{f"fit_seconds_lr{rate:g}": float(m["fit_seconds"]) for rate, (m, _) in candidates.items()},
+                       **{f"optimizer_steps_lr{rate:g}": m["optimizer_steps"] for rate, (m, _) in candidates.items()},
                        # Cost of the cell = every candidate's fine-tuning (the rate search is part of it).
                        "selected_fit_seconds": float(metrics["fit_seconds"]),
                        "fit_seconds": sum(float(m["fit_seconds"]) for m, _ in candidates.values())}

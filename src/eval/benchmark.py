@@ -203,6 +203,9 @@ class EvalRow:
     prediction_std_ratio: float = float("nan")  # std(pred) / std(y)
     neg_nll:             float = float("nan")    # TabPFN-* only; mean log-likelihood (= −NLL, higher better)
     nll:                 float = float("nan")    # −neg_nll (lower better)
+    nll_rows:            float = float("nan")
+    nll_nonfinite_rows:  float = float("nan")
+    nll_clipped_rows:    float = float("nan")
     nrmse:               float = float("nan")    # RMSE / population std(y)
     crps:                float = float("nan")    # see src.eval.metrics._regression_metrics
     crps_method:         str = ""
@@ -1242,16 +1245,10 @@ def score_fitted(model, task_type: str, *, y_tr, X_va, y_va, X_te, y_te):
         K_total = len(classes)
         if K_total < 2 or not np.array_equal(classes, np.arange(K_total)):
             raise ValueError("Training labels cannot establish probability column order")
-        for probabilities, n_rows in ((proba_va, len(y_va)), (proba_te, len(y_te))):
-            if probabilities.shape != (n_rows, K_total):
-                raise ValueError("Unexpected probability matrix shape for training classes")
-            if (not np.isfinite(probabilities).all() or (probabilities < 0).any()
-                    or (probabilities > 1).any()):
-                raise ValueError("Invalid class probability values")
-        pred_te = proba_te[:, 1] if K_total == 2 else proba_te.argmax(axis=1)
         metrics = _classification_metrics(
             proba_test=proba_te, y_test=y_te, proba_val=proba_va, y_val=y_va,
             n_classes_seen=K_total)
+        pred_te = proba_te[:, 1] if K_total == 2 else proba_te.argmax(axis=1)
         return metrics, pred_te, quantiles
     distribution_fn = getattr(model, "predict_distribution", None)
     if callable(distribution_fn):
@@ -1276,4 +1273,7 @@ def score_fitted(model, task_type: str, *, y_tr, X_va, y_va, X_te, y_te):
         crps_quantiles=crps_quantiles,
         bucket_probabilities=(output or {}).get("bucket_probabilities"),
         bucket_borders=(output or {}).get("bucket_borders"))
+    if output is not None:
+        metrics.update({k: output[k] for k in ("nll_rows", "nll_nonfinite_rows", "nll_clipped_rows")
+                        if k in output})
     return metrics, pred_te, quantiles

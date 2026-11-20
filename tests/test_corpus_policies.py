@@ -54,6 +54,16 @@ def test_single_source_trains_on_one_table_and_tests_on_all_others(monkeypatch):
         c.single_source_split("pd", 3)
 
 
+def test_single_source_excludes_related_loans_and_checks_the_indexed_registry(monkeypatch):
+    a, b = c.SAME_SOURCE[0]
+    pool = [_ref(n, 1000) for n in (a, b, "other")]
+    monkeypatch.setattr(c, "build_dataset_pool", lambda track: pool)
+    for index in (0, 1):
+        assert [r.dataset_id for r in c.single_source_split("pd", index).test] == ["other"]
+    with pytest.raises(ValueError, match="Incomplete pd corpus"):
+        c.single_source_split("pd", 0, require_complete=True)
+
+
 @pytest.mark.parametrize("track", ["pd", "lgd"])
 def test_real_partitions_support_the_policies(track):
     """On the real registry: PD can be split by size in every partition; held-out tables unchanged."""

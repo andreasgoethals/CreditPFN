@@ -51,16 +51,16 @@ def identity(*, verify_project: bool = False) -> dict:
 
 def with_dependencies(selection: dict | None) -> dict | None:
     """Refresh evaluations that use a checkpoint selected for retraining."""
-    from src.utils.pilot_checks import MODELS_PER_TRACK, TRACKS
+    from src.utils.pilot_checks import MODELS_PER_TRACK, SCALE_PILOTS, TRACKS
     if not selection or not selection.get("pilots"):
         return selection
     result = dict(selection)
     for track_index, track in enumerate(TRACKS):
         models = range(track_index * MODELS_PER_TRACK, (track_index + 1) * MODELS_PER_TRACK)
-        for pilot in ("reference", "domain_control", "episode2048"):
-            if f"{pilot}_{track}.yaml" in selection["pilots"]:
-                for kind in (("evaluation", "scale") if pilot == "reference" else ("evaluation",)):
-                    result[kind] = sorted(set(result.get(kind, [])) | set(models))
+        sources = {"evaluation": ("reference", "domain_control", "episode2048"), "scale": (SCALE_PILOTS[track],)}
+        for kind, pilots in sources.items():
+            if any(f"{pilot}_{track}.yaml" in selection["pilots"] for pilot in pilots):
+                result[kind] = sorted(set(result.get(kind, [])) | set(models))
     return result
 
 

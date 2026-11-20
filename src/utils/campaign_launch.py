@@ -83,6 +83,7 @@ def grid_preflight() -> dict:
     """Resolve all training arms and evaluation task lists on the campaign's real corpus, CPU only."""
     from src.eval import campaign_tasks as ct
     from src.utils.design import experiment_folder, load_design
+    from src.utils.pilot_checks import FOLDER, SCALE_PILOTS
     from src.utils.prepare_experiment import prepare as inspect
     design = load_design()
     configs = {name: [inspect(p) for p in sorted(experiment_folder(name, design).glob("*.yaml"))]
@@ -98,6 +99,12 @@ def grid_preflight() -> dict:
             raise RuntimeError(f"{kind} has missing or duplicate task identities")
         tasks[kind] = len(cells)
         if kind == "finetune":
+            references = {t: FOLDER / f"{p}_{t}.yaml" for t, p in SCALE_PILOTS.items()}
+            scale_cells = ct.tasks(design, kind=kind, references=references)
+            for track in SCALE_PILOTS:
+                largest = max(t["n_rows"] for t in cells if t["track"] == track)
+                if max(t["n_rows"] for t in scale_cells if t["track"] == track) != largest:
+                    problems.append(f"{track}: E5 scale pilot does not hold out the largest campaign table")
             for dataset in sorted({t["dataset_id"] for t in cells if t["track"] == "pd"}):
                 if issue := pd_target_issue(dataset):
                     problems.append(issue)
@@ -281,8 +288,11 @@ def submit_experiment0(folder: Path, receipt: Path, only: dict | None = None) ->
                                           + [array(tasks), gpu, "evaluation"], env)
         tasks = chosen("scale", EVALUATION_TASKS)
         if tasks:
-            state["scale"] = _sbatch(([f"--dependency=afterok:{':'.join(reference)}",
-                                       "--kill-on-invalid-dep=yes"] if reference else [])
+            from src.utils.pilot_checks import SCALE_PILOTS
+            scale_jobs = [job for track, pilot in SCALE_PILOTS.items()
+                          for job in state["pilots"].get(f"{pilot}_{track}.yaml", [])]
+            state["scale"] = _sbatch(([f"--dependency=afterok:{':'.join(scale_jobs)}",
+                                       "--kill-on-invalid-dep=yes"] if scale_jobs else [])
                                      + [array(tasks), f"--time={TASK_WALLTIME}", gpu, "scale"], env)
         after = ([j for jobs in state["pilots"].values() for j in jobs]
                  + [j for jobs in state["benchmark"].values() for j in jobs]
@@ -307,7 +317,7 @@ def queued_jobs() -> int:
 
 
 def stages(path: Path) -> str:
-    """Single-source runs (E7) are read from their monitor (every other table, one fixed split);
+    """Single-source runs (E7) are read from their monitor (other sources, one fixed split);
     a five-fold evaluation of 100 runs on all tables would cost more than their training."""
     from src.train.config import load_train_config
     single = load_train_config(config_path=str(path)).corpus.get("single_source", None)

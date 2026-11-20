@@ -25,7 +25,12 @@ def apply_split_index(cfg, index: int | None):
         if repeat >= len(seeds):
             raise ValueError("split index exceeds training seeds × dataset folds")
         cfg.seed = int(seeds[repeat])
-        cfg.corpus.fold = fold
+        # A single-partition pilot can deliberately hold out a nonzero fold.
+        # Its job and output still have local index zero.
+        fixed_pilot = (OmegaConf.select(cfg, "experiment.output_group") == "experiment0"
+                       and OmegaConf.select(cfg, "corpus.n_splits") == 1 and index == 0)
+        if not fixed_pilot:
+            cfg.corpus.fold = fold
         # Unlike random dataset draws, balanced folds need one split seed for every fold.
         if OmegaConf.select(cfg, "corpus.split_seed") is None:
             raise ValueError("Balanced folds require an explicit, fixed corpus.split_seed")

@@ -267,7 +267,7 @@ def pilot_configs(design: dict | None = None) -> dict[tuple[str, str], dict]:
     for name, pilot in spec["pilots"].items():
         for track in pilot["tasks"]:
             cfg = _pilot(apply_arm(reference_config(track, design), pilot["arm"], track),
-                         f"cpt2e0_{name}", spec["partition"])
+                         f"cpt2e0_{name}", pilot.get("partition", spec["partition"]))
             if "single_source" in pilot["arm"]:
                 cfg["corpus"]["fold"] = 0
             if "monitor_rows" in pilot:

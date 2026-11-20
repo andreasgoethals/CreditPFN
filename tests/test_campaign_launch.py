@@ -166,13 +166,13 @@ def test_experiment0_rerun_submits_only_the_selected_parts(tmp_path, monkeypatch
     monkeypatch.setattr(pilot_gate, "identity", lambda **kw: {})
     folder = tmp_path / "E00"
     folder.mkdir()
-    for name in ("reference_pd.yaml", "reference_lgd.yaml", "lr1e5_pd.yaml", "lr1e5_lgd.yaml"):
+    for name in ("reference_pd.yaml", "reference_lgd.yaml", "scale_reference_lgd.yaml", "lr1e5_pd.yaml", "lr1e5_lgd.yaml"):
         (folder / name).write_text("{}", encoding="utf-8")
     monkeypatch.setattr(cl, "_environment", lambda **extra: {"CREDITPFN_RUNTIME_VERSION": "x", **extra})
     launched, arrays, ids = [], [], iter(range(100, 200))
     monkeypatch.setattr(cl, "_run_launcher", lambda path, env: launched.append((path.name, env["STAGES"])) or f"Submitted train array {next(ids)} on mindwell\n")
     monkeypatch.setattr(cl, "_sbatch", lambda args, env: arrays.append(args) or str(next(ids)))
-    only = {"pilots": ["reference_lgd.yaml", "lr1e5_lgd.yaml"], "classical": ["lgd"],
+    only = {"pilots": ["reference_lgd.yaml", "scale_reference_lgd.yaml", "lr1e5_lgd.yaml"], "classical": ["lgd"],
             "recovery": [4, 5], "evaluation": [4, 5, 6, 7]}
     run = pilot_gate.begin(tmp_path, only)
     monkeypatch.setenv(pilot_gate.RUN_ENV, run)
@@ -184,10 +184,11 @@ def test_experiment0_rerun_submits_only_the_selected_parts(tmp_path, monkeypatch
     preflight.write_text('{"passed": true}')
     state = cl.submit_experiment0(folder, tmp_path / "rerun.json", only=only)
     assert sorted(launched) == [("lr1e5_lgd.yaml", "train"), ("reference_lgd.yaml", "eval"),
-                                ("reference_lgd.yaml", "train eval")]
+                                ("reference_lgd.yaml", "train eval"), ("scale_reference_lgd.yaml", "train")]
     kinds = [a[-1] for a in arrays]
     assert kinds == ["recovery", "evaluation", "scale", "summary"]
-    assert "--array=4,5,6,7" in arrays[2]  # the largest-table check depends on the LGD reference too
+    assert "--array=4,5,6,7" in arrays[2]
+    assert arrays[2][0] == "--dependency=afterok:" + state["pilots"]["scale_reference_lgd.yaml"][0]
     assert "--array=4,5" in arrays[0]                               # just the requested cases
     assert arrays[1][0].startswith("--dependency=afterany:") and "--array=4,5,6,7" in arrays[1]
     assert state["capacity"] is None and state["precision"] is None

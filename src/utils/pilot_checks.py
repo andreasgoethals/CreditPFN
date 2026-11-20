@@ -12,12 +12,11 @@ GPU tasks (one array element each, receipts under ``experiment0/manifests/pilots
   (``src.eval.campaign_tasks``) in quick mode on the reference pilot, smallest held-out table;
   including E4 non-credit context and, for PD, E12's matched-context scoring on the episode pilot.
 * ``scale`` (8): the production E5 procedure, both starts and all candidate rates, on fold zero
-  of the largest held-out table in each reference pilot partition and on each model.
-* ``precision`` (8): the update-zero training loss and gradient norm of each original model on
-  its four largest training tables at the real episode size, computed by the training loop's own
-  ``batch_loss`` in FP32 and in the resolved training precision. The two losses must agree
-  (the first study trained TabICLv2 under BF16, which corrupted its forward) and the two
-  gradients must be finite and point the same way (cosine similarity).
+  of the largest campaign table for each task and model, using a CPT pilot that held it out.
+* ``precision`` (8): update-zero training loss and gradient norm on every training table in the
+  pilot partition at bounded episode size. Comparable FP32 and training-precision losses
+  must agree and both gradients must be finite. Gradient cosines are reported per table.
+  The four largest training tables also require a finite backward at production episode size.
 
 ``summary`` (CPU) audits every pilot (budget, trajectory points, finite monitors, numerical
 skips, timing), and applies the pilot-specific checks: zero-LR state/monitor parity, the
@@ -44,6 +43,7 @@ from src.utils.paths import outputs_dir
 
 VARIANTS = ("adamw", "diagscale", "lora")
 TRACKS = ("pd", "lgd")
+SCALE_PILOTS = {"pd": "reference", "lgd": "scale_reference"}
 MODELS = ("v2", "v2.6", "v3", "tabicl-v2")
 MODELS_PER_TRACK = len(MODELS)
 RECOVERY_TASKS = len(VARIANTS) * len(TRACKS) * MODELS_PER_TRACK
@@ -241,7 +241,7 @@ def evaluation(task: int, folder: Path = FOLDER, *, scale: bool = False) -> dict
             cases.append(("episode_context", "episode2048"))
     record = dict(task=task, track=track, runs={}, problems=[])
     for kind, pilot in cases:
-        references = {t: folder / f"{pilot}_{t}.yaml" for t in TRACKS}
+        references = {t: folder / f"{SCALE_PILOTS[t] if scale else pilot}_{t}.yaml" for t in TRACKS}
         source = "domain_control" if pilot == "domain_control" else "reference"
         label = "context_noncredit" if pilot == "domain_control" else kind
         candidates = [(i, t) for i, t in enumerate(ct.tasks(references=references, kind=kind, pilot_source=source))
@@ -428,8 +428,8 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
         model.zero_grad(set_to_none=True)
         record["tables"].append(row)
         torch.cuda.empty_cache()
-    # What one FP32 update costs at the REAL episode size on each of the four tables, with and
-    # (TabPFN) without activation checkpointing: the evidence for memory and walltime. Not a gate.
+    # A failed FP32 reference can prevent the comparison from even reaching FP16.
+    # Exercise the deployed backward separately at full episode size on these tables.
     full_rows = training_row_cap(cfg, base, family, members)
     build = dict(n_total_target=full_rows, query_fraction=query_fraction, n_estimators=members)
     _tf32(False)
@@ -438,7 +438,7 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
         loaded = _load_processed_csv(ref)
         entry = {"table_index": index, "rows": int(min(full_rows, len(loaded.y))),
                  "features": int(loaded.X.shape[1])}
-        for label in ("fp32",) + (("fp32_checkpointed",) if family == "tabpfn" else ()):
+        for label in ("production", "fp32") + (("fp32_checkpointed",) if family == "tabpfn" else ()):
             try:
                 if family == "tabicl":
                     batch = _build_tabicl_step_batch(loaded, rng=np.random.default_rng(0), epoch_seed=0,
@@ -452,13 +452,27 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
                     torch.cuda.reset_peak_memory_stats()
                     torch.cuda.synchronize()
                     started = time.monotonic()
-                    model.zero_grad(set_to_none=True)
-                    loss = batch_loss(model, batch, criterion=criterion, regression_objective=objective,
-                                      activation_checkpointing=label == "fp32_checkpointed")
-                    loss.backward()
+                    production = label == "production"
+                    checkpointed = (bool(cfg.train.get("activation_checkpointing", False))
+                                    if production else label == "fp32_checkpointed")
+                    scale = 65536.0 if production and training_label == "fp16" else 1.0
+                    while True:
+                        model.zero_grad(set_to_none=True)
+                        with torch.amp.autocast("cuda", enabled=production and use_amp, dtype=amp_dtype):
+                            loss = batch_loss(model, batch, criterion=criterion, regression_objective=objective,
+                                              activation_checkpointing=checkpointed)
+                        (loss * scale).backward()
+                        norms = [p.grad.detach().norm() for p in model.parameters() if p.grad is not None]
+                        norm = float(torch.stack(norms).double().norm()) / scale
+                        if np.isfinite(norm) or scale <= 1:
+                            break
+                        scale /= 2
+                    if not np.isfinite(float(loss.detach())) or not np.isfinite(norm) or norm == 0:
+                        raise ValueError("Full-episode backward returned a nonfinite loss or unusable gradient")
                     torch.cuda.synchronize()
                     seconds.append(time.monotonic() - started)
                 entry[label] = dict(seconds=round(min(seconds), 3), loss=float(loss.detach()),
+                                    gradient_norm=norm, loss_scale=scale,
                                     peak_gb=round(torch.cuda.max_memory_allocated() / 1e9, 1))
             except Exception as exc:  # out of memory is the answer, not a crash
                 entry[label] = dict(error=repr(exc)[:200])
@@ -466,7 +480,9 @@ def precision(task: int, folder: Path = FOLDER) -> dict:
             model.zero_grad(set_to_none=True)
             torch.cuda.empty_cache()
         record["full_episode"].append(entry)
-    record["passed"] = (any(not r.get("not_checkable") for r in record["tables"])
+    record["passed"] = (bool(record["full_episode"])
+                        and all("error" not in e["production"] for e in record["full_episode"])
+                        and any(not r.get("not_checkable") for r in record["tables"])
                         and all(r["passed"] for r in record["tables"]))
     _write(f"precision_{task:02d}.json", record)
     print(json.dumps(record), flush=True)
@@ -544,6 +560,9 @@ def _benchmark_rows(handle, table, track, config, run_name, n_folds):
         require_predictions=config["results"]["save_predictions"])
     metrics = (["roc_auc", "brier_score", "gini", "ks", "h_measure", "emp", "emp_rejection_rate"]
                if track == "pd" else ["r2", "rmse"] + ([] if handle.source == "baseline" else ["crps"]))
+    density = track == "lgd" and handle.source.startswith("tabpfn-")
+    if density:
+        metrics.extend(["nll", "n_test_rows", "nll_rows", "nll_nonfinite_rows", "nll_clipped_rows"])
     columns = ["model_name", "test_dataset_id", "fold_idx", "status", *metrics]
     frames = [pd.read_csv(path, usecols=columns) for path in paths]
     if not frames:
@@ -551,6 +570,10 @@ def _benchmark_rows(handle, table, track, config, run_name, n_folds):
     rows = pd.concat(frames)
     rows = rows[(rows.model_name == handle.name) & (rows.test_dataset_id == table)].drop_duplicates(
         "fold_idx", keep="last")
+    if density and not ((rows.nll_rows == rows.n_test_rows) & (rows.nll_rows > 0)
+                        & (rows.nll_nonfinite_rows >= 0) & (rows.nll_nonfinite_rows <= rows.nll_clipped_rows)
+                        & (rows.nll_clipped_rows <= rows.nll_rows)).all():
+        return False
     return (set(rows.fold_idx) == set(range(n_folds)) and rows.status.eq("OK").all()
             and np.isfinite(rows[metrics].to_numpy(dtype=float)).all())
 

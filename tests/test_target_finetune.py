@@ -1,10 +1,10 @@
 """E5 target fine-tuning: upstream fine-tuners run end to end and never see test labels."""
-from pathlib import Path
 
 import numpy as np
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
+from src.utils.paths import checkpoints_dir
+
 pytestmark = pytest.mark.slow
 CASES = [("pd", "tabpfn-v2-classifier-v2_default.ckpt", "tabpfn"),
          ("lgd", "tabpfn-v3-regressor-v3_default.ckpt", "tabpfn"),
@@ -25,7 +25,7 @@ def _smallest(track):
 @pytest.mark.parametrize("track, name, family", CASES)
 def test_finetune_cell_runs_and_returns_finite_scores(track, name, family):
     from src.eval.target_finetune import finetune_cell
-    path = ROOT / "checkpoints" / name
+    path = checkpoints_dir(name)
     if not path.is_file():
         pytest.skip("checkpoint unavailable")
     data = _smallest(track)
@@ -37,6 +37,7 @@ def test_finetune_cell_runs_and_returns_finite_scores(track, name, family):
     assert np.isfinite(metrics[key])
     assert len(predictions["prediction"]) == len(test)
     assert metrics["context_rows"] == 300 and metrics["test_rows"] == len(test)
+    assert metrics["optimizer_steps"] > 0
 
 
 def test_test_labels_are_not_passed_to_fit(monkeypatch):
@@ -57,7 +58,8 @@ def test_test_labels_are_not_passed_to_fit(monkeypatch):
     import pandas as pd
     data = SimpleNamespace(X=pd.DataFrame({"a": np.arange(100.0)}), y=np.arange(100) % 2,
                            categorical_columns=[], task_type="classification")
-    tf.finetune_cell(data, np.arange(60), np.arange(60, 80), np.arange(80, 100), "x", "tabpfn", device="cpu")
+    with pytest.raises(RuntimeError, match="without an AdamW update"):
+        tf.finetune_cell(data, np.arange(60), np.arange(60, 80), np.arange(80, 100), "x", "tabpfn", device="cpu")
     assert seen == {"fit_rows": 60, "val_rows": 20}
 
 

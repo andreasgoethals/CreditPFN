@@ -3,13 +3,13 @@
 Checked against independently merged weights on the real base checkpoints (CPU), for LoRA on
 all four models and DiagScale on all four models; zero (with zero gradient) at initialisation.
 """
-from pathlib import Path
 
 import pytest
 import torch
 from torch.nn.utils import parametrize
 
-ROOT = Path(__file__).resolve().parents[1]
+from src.utils.paths import checkpoints_dir
+
 LAM = 0.003
 MODELS = {"v2": "tabpfn-v2-classifier-v2_default.ckpt",
           "v2.6": "tabpfn-v2.6-regressor-v2.6_default.ckpt",
@@ -19,7 +19,7 @@ pytestmark = pytest.mark.slow
 
 
 def _load(key):
-    path = ROOT / "checkpoints" / MODELS[key]
+    path = checkpoints_dir(MODELS[key])
     if not path.is_file():
         pytest.skip(f"checkpoint unavailable: {path.name}")
     track = "lgd" if "regressor" in path.name else "pd"

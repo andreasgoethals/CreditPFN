@@ -429,8 +429,15 @@ def _classification_metrics(
         recall_score,
         roc_auc_score,
     )
+    for probabilities, target in ((proba_test, y_test), (proba_val, y_val)):
+        if probabilities.shape != (len(target), n_classes_seen):
+            raise ValueError("Unexpected probability matrix shape for training classes")
+        if (not np.isfinite(probabilities).all() or (probabilities < 0).any()
+                or (probabilities > 1).any()
+                or not np.allclose(probabilities.sum(axis=1), 1.0, rtol=0, atol=1e-5)):
+            raise ValueError("Invalid class probability values or row totals")
     out: dict[str, float] = {}
-    K = proba_test.shape[1]
+    K = n_classes_seen
     if K == 2:
         # In float32, 1 - 1e-15 rounds to one and entropy evaluates 0 * log(0).
         # Promote before clipping; keep model probabilities unchanged for scoring.

@@ -28,7 +28,6 @@ shallow tests that don't exercise the actual contract.
 
 from __future__ import annotations
 
-from pathlib import Path
 from types import SimpleNamespace as NS
 
 import numpy as np
@@ -58,7 +57,7 @@ from src.data.sanitize import (
     _select_to_max_columns,
 )
 
-REPO = Path(__file__).resolve().parents[1]
+from src.utils.paths import manifests_dir, processed_dir, raw_dir
 
 
 def test_duplicate_columns_do_not_confuse_missing_sentinels_or_delimiters():
@@ -82,7 +81,7 @@ def test_surgical_fix_preserves_target(dataset_id: str) -> None:
     """Every registered fix must leave the target column intact and
     yield a non-empty DataFrame on every existing raw CSV."""
     meta = DATASET_METADATA[dataset_id]
-    raw_path = REPO / "data" / "raw" / meta["track"] / f"{dataset_id}.csv"
+    raw_path = raw_dir(meta["track"], f"{dataset_id}.csv")
     if not raw_path.exists():
         pytest.skip(f"raw CSV not present: {raw_path}")
     df = pd.read_csv(raw_path, low_memory=False)
@@ -189,7 +188,7 @@ def test_surgical_fix_removes_leakage_column(
     what protects us from silently re-introducing data leakage.
     """
     meta = DATASET_METADATA[dataset_id]
-    raw_path = REPO / "data" / "raw" / meta["track"] / f"{dataset_id}.csv"
+    raw_path = raw_dir(meta["track"], f"{dataset_id}.csv")
     if not raw_path.exists():
         pytest.skip(f"raw CSV not present: {raw_path}")
     df = pd.read_csv(raw_path, low_memory=False)
@@ -211,7 +210,7 @@ def test_surgical_fix_removes_leakage_column(
 def test_classification_target_is_binary_after_fix(dataset_id: str) -> None:
     """PD targets must be exactly {0, 1} (no Y/N, no NaN, no other levels)."""
     meta = DATASET_METADATA[dataset_id]
-    raw_path = REPO / "data" / "raw" / meta["track"] / f"{dataset_id}.csv"
+    raw_path = raw_dir(meta["track"], f"{dataset_id}.csv")
     if not raw_path.exists():
         pytest.skip(f"raw CSV not present: {raw_path}")
     df = pd.read_csv(raw_path, low_memory=False)
@@ -232,7 +231,7 @@ def test_lgd_target_is_non_negative_after_fix() -> None:
     is finite and non-negative — values > 1 are allowed here and get
     clipped downstream by sanitize.
     """
-    raw_path = REPO / "data" / "raw" / "lgd" / "0008.SBA_loans_case.csv"
+    raw_path = raw_dir("lgd", "0008.SBA_loans_case.csv")
     if not raw_path.exists():
         pytest.skip(f"raw CSV not present: {raw_path}")
     df = pd.read_csv(raw_path, low_memory=False)
@@ -250,7 +249,7 @@ def test_lgd_filtered_to_defaults_only() -> None:
     target is undefined for non-defaulted loans). We can't read
     `Default` post-fix (it's dropped), but the raw count of defaults
     matches the post-fix row count."""
-    raw_path = REPO / "data" / "raw" / "lgd" / "0008.SBA_loans_case.csv"
+    raw_path = raw_dir("lgd", "0008.SBA_loans_case.csv")
     if not raw_path.exists():
         pytest.skip(f"raw CSV not present: {raw_path}")
     df = pd.read_csv(raw_path, low_memory=False)
@@ -264,7 +263,7 @@ def test_lgd_filtered_to_defaults_only() -> None:
 
 def test_credit_risk_loan_grade_is_ordinal_integer() -> None:
     """`loan_grade` ∈ {A..G} in raw; should be integer 0..6 post-fix."""
-    raw_path = REPO / "data" / "raw" / "pd" / "0015.credit_risk_dataset.csv"
+    raw_path = raw_dir("pd", "0015.credit_risk_dataset.csv")
     if not raw_path.exists():
         pytest.skip(f"raw CSV not present: {raw_path}")
     df = pd.read_csv(raw_path, low_memory=False)
@@ -280,7 +279,7 @@ def test_credit_risk_loan_grade_is_ordinal_integer() -> None:
 
 def test_credit_risk_default_on_file_is_binarised() -> None:
     """`cb_person_default_on_file` ∈ {Y, N} in raw → {1, 0} post-fix."""
-    raw_path = REPO / "data" / "raw" / "pd" / "0015.credit_risk_dataset.csv"
+    raw_path = raw_dir("pd", "0015.credit_risk_dataset.csv")
     if not raw_path.exists():
         pytest.skip(f"raw CSV not present: {raw_path}")
     df = pd.read_csv(raw_path, low_memory=False)
@@ -402,7 +401,7 @@ def test_infer_categorical_numerical_hint_wins() -> None:
 
 
 def test_compute_manifest_row_classification() -> None:
-    raw_path = REPO / "data" / "raw" / "pd" / "0001.gmsc.csv"
+    raw_path = raw_dir("pd", "0001.gmsc.csv")
     if not raw_path.exists():
         pytest.skip("missing raw: 0001.gmsc.csv")
     df = pd.read_csv(raw_path, low_memory=False)
@@ -422,7 +421,7 @@ def test_compute_manifest_row_classification() -> None:
 
 
 def test_compute_manifest_row_regression() -> None:
-    raw_path = REPO / "data" / "raw" / "lgd" / "0007.lgd_lendingclub.csv"
+    raw_path = raw_dir("lgd", "0007.lgd_lendingclub.csv")
     if not raw_path.exists():
         pytest.skip("missing raw: 0007.lgd_lendingclub.csv")
     df = pd.read_csv(raw_path, low_memory=False)
@@ -538,7 +537,7 @@ def test_label_encode_classification_target() -> None:
 def test_exploration_corpus_summary_shape() -> None:
     """corpus_summary_table runs and returns expected schema."""
     from src.data.exploration import corpus_summary_table
-    pd_manifest = REPO / "output CreditPFN" / "general" / "manifests" / "manifest_pd.csv"
+    pd_manifest = manifests_dir(experiment="general") / "manifest_pd.csv"
     if not pd_manifest.exists():
         pytest.skip("manifests not yet built")
     df = corpus_summary_table()
@@ -570,7 +569,7 @@ def test_exploration_resolves_paths_from_cfg() -> None:
 def test_no_processed_table_keeps_identifiers_or_numbers_stored_as_text():
     """A categorical feature that is nearly unique per row is an identifier, and one whose values
     are all numbers (or percentages) has lost its order: both defects once sat in LGD tables."""
-    processed = REPO / "data" / "processed"
+    processed = processed_dir()
     files = sorted(processed.glob("*/*.csv"))
     if not files:
         pytest.skip("processed data not built")

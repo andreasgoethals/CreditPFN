@@ -169,6 +169,18 @@ def build_dataset_pool(track: str) -> list[DatasetRef]:
     return refs
 
 
+def _registry_pool(track: str, require_complete: bool) -> list[DatasetRef]:
+    from src.data.preprocessing import DATASET_METADATA
+    pool = build_dataset_pool(track)
+    if require_complete:
+        expected = {d for d, m in DATASET_METADATA.items() if m["track"] == track}
+        actual = {r.dataset_id for r in pool}
+        if actual != expected:
+            raise ValueError(f"Incomplete {track} corpus: {len(actual)} available, {len(expected)} registered. "
+                             "Restore the confirmed dataset inventory before splitting; no silent omissions.")
+    return pool
+
+
 # --------------------------------------------------------------------------- #
 # Bucket assignment
 # --------------------------------------------------------------------------- #
@@ -364,14 +376,7 @@ def split_corpus(
             f"test_dataset_ids: {sorted(overlap)}"
         )
 
-    pool = build_dataset_pool(track)
-    if require_complete_registry:
-        from src.data.preprocessing import DATASET_METADATA
-        expected = {d for d, m in DATASET_METADATA.items() if m["track"] == track}
-        actual = {r.dataset_id for r in pool}
-        if actual != expected:
-            raise ValueError(f"Incomplete {track} corpus: {len(actual)} available, {len(expected)} registered. "
-                             "Restore the confirmed dataset inventory before splitting; no silent omissions.")
+    pool = _registry_pool(track, require_complete_registry)
     unknown = (set(train_dataset_ids) | set(test_dataset_ids)) - {r.dataset_id for r in pool}
     if unknown:
         raise ValueError(f"Unknown explicit dataset ID(s) for {track}: {sorted(unknown)}")
@@ -502,7 +507,7 @@ def split_from_cfg(cfg, *, track: str | None = None,
     corpus = cfg.corpus
     single = corpus.get("single_source", None)
     if single is not None:
-        return single_source_split(track, int(single))
+        return single_source_split(track, int(single), require_complete=bool(corpus.get("require_complete_registry", False)))
     split = split_corpus(
         track=track,
         require_complete_registry=bool(corpus.get("require_complete_registry", False)),
@@ -594,10 +599,15 @@ def training_source_split(split: CorpusSplit, source: str, track: str) -> Corpus
     return CorpusSplit(train=train, test=list(split.test))
 
 
-def single_source_split(track: str, index: int) -> CorpusSplit:
+def single_source_split(track: str, index: int, *, require_complete: bool = False) -> CorpusSplit:
     """Single-source CPT (transfer matrix): train on the ``index``-th table (sorted by id) of
-    the track, evaluate on every other table. Indexes keep private names out of configs."""
-    pool = sorted(build_dataset_pool(track), key=lambda r: r.dataset_id)
+    the track, evaluate on tables from other sources. Indexes keep private names out of configs."""
+    pool = sorted(_registry_pool(track, require_complete), key=lambda r: r.dataset_id)
     if not 0 <= index < len(pool):
         raise ValueError(f"single_source index {index} outside 0..{len(pool) - 1}")
-    return CorpusSplit(train=[pool[index]], test=[r for i, r in enumerate(pool) if i != index])
+    source = pool[index]
+    excluded = {source.dataset_id}
+    for group in SAME_SOURCE:
+        if source.dataset_id in group:
+            excluded.update(group)
+    return CorpusSplit(train=[source], test=[r for r in pool if r.dataset_id not in excluded])

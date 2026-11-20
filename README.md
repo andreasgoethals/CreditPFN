@@ -43,9 +43,11 @@ Before E1, the Experiment 0 controller resolves the full grid, checks each refer
 against the current weights and input data, and times a full target fine-tuning fold per model
 and task. Its versioned receipts bind the campaign release to the validated source, runtime and
 input snapshot. Each new full validation preserves earlier pilot outputs.
-PD table 0006 mixes terminal loan outcomes. Among 25,428 unique matches on 16 application fields,
-the challenge's class zero includes 3,792 charged-off and 1,185 fully paid loans. The CPU
-preflight stops before submitting pilots on this corpus. [LendingClub issued-loan records](https://resources.lendingclub.com/LoanStats3a.csv.zip)
+PD table 0006 mixes terminal loan outcomes. Across the 2007–2015 lender releases, 532,152
+challenge loans matched uniquely on 16 application fields. Class zero includes 94,575 charged-off
+and 311,784 fully paid loans. The CPU preflight stops before submitting pilots on this corpus.
+E7 excludes targets from the training lender when tables share loans.
+[2007–2011](https://resources.lendingclub.com/LoanStats3a.csv.zip) · [2012–2013](https://resources.lendingclub.com/LoanStats3b.csv.zip) · [2014](https://resources.lendingclub.com/LoanStats3c.csv.zip) · [2015](https://resources.lendingclub.com/LoanStats3d.csv.zip)
 
 ## Local tests and notebooks
 
