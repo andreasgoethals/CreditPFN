@@ -64,6 +64,7 @@ def test_submission_gate_rejects_changed_source_environment_config_and_corrupt_p
         module.read_plan(path)
 
 
+@pytest.mark.usefixtures("bare_storage_env")
 def test_plan_check_recomputes_input_identities_without_writing(tmp_path, monkeypatch):
     import src.train.config as pipeline
     import src.train.corpus as corpus

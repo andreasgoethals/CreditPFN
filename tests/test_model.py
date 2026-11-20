@@ -181,6 +181,7 @@ def test_linreg_predict_proba_raises() -> None:
 # =============================================================================
 
 
+@pytest.mark.usefixtures("bare_storage_env")
 def test_build_baselines_pd_default_set() -> None:
     """Default PD set: xgboost + catboost + logreg + tabpfn-untuned (one
     per base path)."""

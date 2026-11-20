@@ -513,6 +513,8 @@ def test_resolve_dataloader_workers_caps_to_allocated_cpus(monkeypatch) -> None:
     """The worker count is clamped to ``[0, cpus_allocated-1]`` and honours the env override, so
     the same config is safe on a 24-core B200 and a 16-core H100 node and never oversubscribes."""
     from src.train.loop import _resolve_dataloader_workers
+    # Model the node named below even when pytest itself is pinned to fewer CPUs.
+    monkeypatch.setattr("os.sched_getaffinity", lambda pid: set(range(24)), raising=False)
     cfg = NS(train=NS(dataloader_workers=8))
     monkeypatch.delenv("CREDITPFN_DATALOADER_WORKERS", raising=False)
     monkeypatch.setenv("SLURM_CPUS_PER_TASK", "24")
