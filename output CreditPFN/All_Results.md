@@ -76,8 +76,6 @@ row
 3. Ranking, profit, calibration and distribution quality
 No results yet for E1 metric profile; the figure is drawn once they exist.
 
-No measurements available for this figure group.
-
 Table: PD metric profile (credit tables)
 CSV (first column: row index)
 row
@@ -258,8 +256,6 @@ row
 
 2. Slope test
 No results yet for E6 slope test; the figure is drawn once they exist.
-
-No measurements available for this figure group.
 
 Table: Slope per table and quantity
 CSV (first column: row index)
@@ -596,38 +592,839 @@ appendix/05_rq3_training_data_results: no figures saved.
 ```
 Experiment 0: second-campaign checks
 
-1. Pilot audits and GPU checks
-The local output has no Experiment 0 summary receipt.
+1. Completion, recovery and numerical warnings
+Active VSC run 558d92a0a5f446b5af391659fb2386e7, overall pass: True
 
-2. LGD density roughness
-The local summary contains no density measurements.
-
-Table: Density roughness
+Table: Passing checks and number recorded
 CSV (first column: row index)
-row
+row,kind,passed,recorded
+0,benchmark,2,2
+1,capacity,8,8
+2,evaluation,8,8
+3,precision,8,8
+4,recovery,24,24
+5,scale,8,8
+
+Table: Successful updates and skipped attempts per task
+CSV (first column: row index)
+row,track,trials,least_updates,most_updates,amp_skips,trials_with_amp_skips,data_skips
+0,lgd,78,250,250,195,51,0
+1,pd,87,250,250,35,27,0
+
+Table: Single-table learning check by model
+CSV (first column: row index)
+row,track,trial,metric,first,last,finding
+0,lgd,cpt2e0_sanity_single_s00_lgd_tabpfn-v2-regressor-v2_default_lr1e-05_seed42_qf40_acc1_l2sp0.003,RMSE,0.35633229,0.3146395,
+1,lgd,cpt2e0_sanity_single_s00_lgd_tabpfn-v2.6-regressor-v2.6_default_lr1e-05_seed42_qf40_acc1_l2sp0.003,RMSE,0.32768728,0.31997721,
+2,lgd,cpt2e0_sanity_single_s00_lgd_tabpfn-v3-regressor-v3_default_lr1e-05_seed42_qf40_acc1_l2sp0.003,RMSE,0.32858359,0.30026935,
+3,lgd,cpt2e0_sanity_single_s00_lgd_tabicl-regressor-v2-20260212_lr1e-05_seed42_qf40_acc1_l2sp0.003,RMSE,0.32784852,0.3005083,
+4,pd,cpt2e0_sanity_single_s00_pd_tabpfn-v2-classifier-v2_default_lr1e-05_seed42_qf40_acc1_l2sp0.003,AUC,0.85070296,0.85540041,
+5,pd,cpt2e0_sanity_single_s00_pd_tabpfn-v2.6-classifier-v2.6_default_lr1e-05_seed42_qf40_acc1_l2sp0.003,AUC,0.85578969,0.85866114,
+6,pd,cpt2e0_sanity_single_s00_pd_tabpfn-v3-classifier-v3_default_lr1e-05_seed42_qf40_acc1_l2sp0.003,AUC,0.85715368,0.8557626,own table worse after training at this learning rate while other models improve: a model property
+7,pd,cpt2e0_sanity_single_s00_pd_tabicl-classifier-v2-20260212_lr1e-05_seed42_qf40_acc1_l2sp0.003,AUC,0.85797287,0.86306161,
+
+Table: Restart parity and audit notes
+CSV (first column: row index)
+row,task,track,variant,interrupted_at,bitwise_equal,max_weight_difference,monitors_match,audit_notes
+0,0,pd,adamw,60,True,0,True,0
+1,1,pd,adamw,60,True,0,True,0
+2,2,pd,adamw,60,True,0,True,0
+3,3,pd,adamw,60,True,0,True,0
+4,4,lgd,adamw,60,True,0,True,0
+5,5,lgd,adamw,60,True,0,True,0
+6,6,lgd,adamw,60,True,0,True,2
+7,7,lgd,adamw,60,True,0,True,0
+8,8,pd,diagscale,60,True,0,True,0
+9,9,pd,diagscale,60,True,0,True,0
+10,10,pd,diagscale,60,True,0,True,0
+11,11,pd,diagscale,60,True,0,True,0
+12,12,lgd,diagscale,60,True,0,True,0
+13,13,lgd,diagscale,60,True,0,True,0
+14,14,lgd,diagscale,60,True,0,True,0
+15,15,lgd,diagscale,60,True,0,True,0
+16,16,pd,lora,60,True,0,True,0
+17,17,pd,lora,60,True,0,True,0
+18,18,pd,lora,60,True,0,True,0
+19,19,pd,lora,60,True,0,True,0
+20,20,lgd,lora,60,True,0,True,0
+21,21,lgd,lora,60,True,0,True,0
+22,22,lgd,lora,60,True,0,True,0
+23,23,lgd,lora,60,True,0,True,0
+
+Table: Pilot configurations
+CSV (first column: row index)
+row,pilot,passed,completed,problems
+0,bar_nll_lgd,True,3,0
+1,bf16_lgd,True,2,0
+2,bf16_pd,True,2,0
+3,diagscale_l0_lgd,True,4,0
+4,diagscale_l0_pd,True,4,0
+5,diagscale_lgd,True,4,0
+6,diagscale_pd,True,4,0
+7,domain_control_lgd,True,4,0
+8,domain_control_pd,True,4,0
+9,episode16384_pd,True,2,0
+10,episode2048_pd,True,4,0
+11,fp32_lgd,True,1,0
+12,fp32_pd,True,1,0
+13,frozen_lgd,True,4,0
+14,frozen_pd,True,4,0
+15,full_pass_lgd,True,4,0
+16,full_pass_pd,True,4,0
+17,l2sp0_lgd,True,4,0
+18,l2sp0_pd,True,4,0
+19,large_matched_pd,True,4,0
+20,lora_l0_lgd,True,4,0
+21,lora_l0_pd,True,4,0
+22,lora_lgd,True,4,0
+23,lora_pd,True,4,0
+24,lr1e5_bf16_pd,True,2,0
+25,lr1e5_lgd,True,4,0
+26,lr1e5_pd,True,4,0
+27,lr1e8_lgd,True,4,0
+28,lr1e8_pd,True,4,0
+29,monitor2000_lgd,True,4,0
+30,monitor2000_pd,True,4,0
+31,monitorfull_lgd,True,4,0
+32,monitorfull_pd,True,4,0
+33,noclip_lgd,True,4,0
+34,noclip_pd,True,4,0
+35,reference_lgd,True,4,0
+36,reference_pd,True,4,0
+37,sanity_single_lgd,True,4,0
+38,sanity_single_pd,True,4,0
+39,scale_reference_lgd,True,4,0
+40,small_only_pd,True,4,0
+41,transfer_lgd,True,4,0
+42,transfer_pd,True,4,0
+43,zero_lr_lgd,True,4,0
+44,zero_lr_pd,True,4,0
+
+Table: Individual checks
+CSV (first column: row index)
+row,kind,task,passed
+0,recovery,0,True
+1,recovery,1,True
+2,recovery,2,True
+3,recovery,3,True
+4,recovery,4,True
+5,recovery,5,True
+6,recovery,6,True
+7,recovery,7,True
+8,recovery,8,True
+9,recovery,9,True
+10,recovery,10,True
+11,recovery,11,True
+12,recovery,12,True
+13,recovery,13,True
+14,recovery,14,True
+15,recovery,15,True
+16,recovery,16,True
+17,recovery,17,True
+18,recovery,18,True
+19,recovery,19,True
+20,recovery,20,True
+21,recovery,21,True
+22,recovery,22,True
+23,recovery,23,True
+24,capacity,0,True
+25,capacity,1,True
+26,capacity,2,True
+27,capacity,3,True
+28,capacity,4,True
+29,capacity,5,True
+30,capacity,6,True
+31,capacity,7,True
+32,evaluation,0,True
+33,evaluation,1,True
+34,evaluation,2,True
+35,evaluation,3,True
+36,evaluation,4,True
+37,evaluation,5,True
+38,evaluation,6,True
+39,evaluation,7,True
+40,scale,0,True
+41,scale,1,True
+42,scale,2,True
+43,scale,3,True
+44,scale,4,True
+45,scale,5,True
+46,scale,6,True
+47,scale,7,True
+48,precision,0,True
+49,precision,1,True
+50,precision,2,True
+51,precision,3,True
+52,precision,4,True
+53,precision,5,True
+54,precision,6,True
+55,precision,7,True
+56,benchmark,pd,True
+57,benchmark,lgd,True
+
+Table: Measured pilot timing
+CSV (first column: row index)
+row,pilot,base,mode,frozen,seconds_per_update,max_monitor_seconds,estimated_walltime_minutes_by_updates
+0,bar_nll_lgd,tabpfn-v2-regressor-v2_default,one_sample,False,0.23132141,27.290943,"{'2500': 38, '5000': 54, '10000': 85}"
+1,bar_nll_lgd,tabpfn-v2.6-regressor-v2.6_default,one_sample,False,0.32116616,25.68447,"{'2500': 43, '5000': 63, '10000': 103}"
+2,bar_nll_lgd,tabpfn-v3-regressor-v3_default,one_sample,False,0.27789782,22.362042,"{'2500': 39, '5000': 56, '10000': 91}"
+3,bf16_lgd,tabpfn-v2.6-regressor-v2.6_default,one_sample,False,0.32025327,25.497059,"{'2500': 42, '5000': 63, '10000': 103}"
+4,bf16_lgd,tabpfn-v3-regressor-v3_default,one_sample,False,0.26929144,22.323759,"{'2500': 38, '5000': 55, '10000': 89}"
+5,bf16_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.45167376,42.924718,"{'2500': 57, '5000': 87, '10000': 145}"
+6,bf16_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.59909268,37.07464,"{'2500': 63, '5000': 99, '10000': 172}"
+7,diagscale_l0_lgd,tabpfn-v2-regressor-v2_default,one_sample,False,0.21127964,31.652324,"{'2500': 39, '5000': 54, '10000': 84}"
+8,diagscale_l0_lgd,tabpfn-v2.6-regressor-v2.6_default,one_sample,False,0.27102733,30.101653,"{'2500': 42, '5000': 60, '10000': 96}"
+9,diagscale_l0_lgd,tabpfn-v3-regressor-v3_default,one_sample,False,0.21734263,28.205425,"{'2500': 38, '5000': 53, '10000': 83}"
+10,diagscale_l0_lgd,tabicl-regressor-v2-20260212,one_sample,False,0.34130792,21.038284,"{'2500': 42, '5000': 62, '10000': 104}"
+11,diagscale_l0_pd,tabpfn-v2-classifier-v2_default,one_sample,False,7.2214546,62.025337,"{'2500': 433, '5000': 831, '10000': 1627}"
+12,diagscale_l0_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.401465,47.207579,"{'2500': 57, '5000': 84, '10000': 137}"
+13,diagscale_l0_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.53154739,42.318309,"{'2500': 62, '5000': 95, '10000': 162}"
+14,diagscale_l0_pd,tabicl-classifier-v2-20260212,one_sample,False,1.2185438,35.468244,"{'2500': 96, '5000': 165, '10000': 305}"
+15,diagscale_lgd,tabpfn-v2-regressor-v2_default,one_sample,False,0.21827598,28.179891,"{'2500': 38, '5000': 53, '10000': 83}"
+16,diagscale_lgd,tabpfn-v2.6-regressor-v2.6_default,one_sample,False,0.27206915,26.495985,"{'2500': 40, '5000': 58, '10000': 93}"
+17,diagscale_lgd,tabpfn-v3-regressor-v3_default,one_sample,False,0.21672863,23.707434,"{'2500': 36, '5000': 50, '10000': 79}"
+18,diagscale_lgd,tabicl-regressor-v2-20260212,one_sample,False,0.34203773,16.842443,"{'2500': 40, '5000': 60, '10000': 101}"
+19,diagscale_pd,tabpfn-v2-classifier-v2_default,one_sample,False,7.2338858,57.900039,"{'2500': 432, '5000': 830, '10000': 1626}"
+20,diagscale_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.39802797,43.537909,"{'2500': 55, '5000': 81, '10000': 134}"
+21,diagscale_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.53436654,38.206505,"{'2500': 60, '5000': 93, '10000': 159}"
+22,diagscale_pd,tabicl-classifier-v2-20260212,one_sample,False,1.2204261,31.176715,"{'2500': 94, '5000': 163, '10000': 302}"
+23,domain_control_lgd,tabpfn-v2-regressor-v2_default,one_sample,False,0.23158116,26.903451,"{'2500': 38, '5000': 54, '10000': 85}"
+24,domain_control_lgd,tabpfn-v2.6-regressor-v2.6_default,one_sample,False,0.3230275,25.680217,"{'2500': 43, '5000': 63, '10000': 104}"
+25,domain_control_lgd,tabpfn-v3-regressor-v3_default,one_sample,False,0.27505087,22.404454,"{'2500': 39, '5000': 56, '10000': 91}"
+26,domain_control_lgd,tabicl-regressor-v2-20260212,one_sample,False,0.34748503,15.663804,"{'2500': 39, '5000': 60, '10000': 101}"
+27,domain_control_pd,tabpfn-v2-classifier-v2_default,one_sample,False,7.063381,57.263725,"{'2500': 422, '5000': 811, '10000': 1589}"
+28,domain_control_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.41744424,41.752274,"{'2500': 55, '5000': 82, '10000': 137}"
+29,domain_control_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.5854641,36.516915,"{'2500': 62, '5000': 97, '10000': 169}"
+30,domain_control_pd,tabicl-classifier-v2-20260212,one_sample,False,1.1636984,29.57712,"{'2500': 90, '5000': 156, '10000': 289}"
+31,episode16384_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.4966311,34.508785,"{'2500': 56, '5000': 87, '10000': 148}"
+32,episode16384_pd,tabicl-classifier-v2-20260212,one_sample,False,0.90809175,28.711241,"{'2500': 76, '5000': 128, '10000': 233}"
+33,episode2048_pd,tabpfn-v2-classifier-v2_default,one_sample,False,1.0237858,56.061472,"{'2500': 94, '5000': 156, '10000': 279}"
+34,episode2048_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.19114212,41.062562,"{'2500': 43, '5000': 57, '10000': 87}"
+35,episode2048_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.213023,35.038377,"{'2500': 41, '5000': 56, '10000': 87}"
+36,episode2048_pd,tabicl-classifier-v2-20260212,one_sample,False,0.13697428,28.679534,"{'2500': 34, '5000': 44, '10000': 66}"
+37,fp32_lgd,tabicl-regressor-v2-20260212,one_sample,False,0.88082362,15.732873,"{'2500': 68, '5000': 118, '10000': 217}"
+38,fp32_pd,tabicl-classifier-v2-20260212,one_sample,False,2.8423368,29.896777,"{'2500': 181, '5000': 338, '10000': 653}"
+39,frozen_lgd,tabpfn-v2-regressor-v2_default,one_sample,True,0.21156658,27.400173,"{'2500': 37, '5000': 52, '10000': 81}"
+40,frozen_lgd,tabpfn-v2.6-regressor-v2.6_default,one_sample,True,0.26906592,25.736102,"{'2500': 40, '5000': 57, '10000': 92}"
+41,frozen_lgd,tabpfn-v3-regressor-v3_default,one_sample,True,0.23295318,22.431219,"{'2500': 36, '5000': 51, '10000': 81}"
+42,frozen_lgd,tabicl-regressor-v2-20260212,one_sample,True,0.32811375,15.630369,"{'2500': 38, '5000': 58, '10000': 97}"
+43,frozen_pd,tabpfn-v2-classifier-v2_default,one_sample,True,7.2510878,57.683137,"{'2500': 433, '5000': 832, '10000': 1630}"
+44,frozen_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,True,0.39886284,43.00203,"{'2500': 55, '5000': 81, '10000': 133}"
+45,frozen_pd,tabpfn-v3-classifier-v3_default,one_sample,True,0.55816197,37.308883,"{'2500': 61, '5000': 95, '10000': 164}"
+46,frozen_pd,tabicl-classifier-v2-20260212,one_sample,True,1.186159,30.126047,"{'2500': 91, '5000': 159, '10000': 294}"
+47,full_pass_lgd,tabpfn-v2-regressor-v2_default,full_pass,False,0.26738767,27.253162,"{'2500': 40, '5000': 58, '10000': 93}"
+48,full_pass_lgd,tabpfn-v2.6-regressor-v2.6_default,full_pass,False,0.38746576,25.3778,"{'2500': 46, '5000': 70, '10000': 117}"
+49,full_pass_lgd,tabpfn-v3-regressor-v3_default,full_pass,False,0.28236379,22.379666,"{'2500': 39, '5000': 57, '10000': 92}"
+50,full_pass_lgd,tabicl-regressor-v2-20260212,full_pass,False,0.3741592,15.723997,"{'2500': 41, '5000': 63, '10000': 107}"
+51,full_pass_pd,tabpfn-v2-classifier-v2_default,full_pass,False,10.386779,55.195836,"{'2500': 601, '5000': 1170, '10000': 2307}"
+52,full_pass_pd,tabpfn-v2.6-classifier-v2.6_default,full_pass,False,0.55728993,40.638548,"{'2500': 62, '5000': 97, '10000': 166}"
+53,full_pass_pd,tabpfn-v3-classifier-v3_default,full_pass,False,0.72310604,35.02843,"{'2500': 69, '5000': 112, '10000': 197}"
+54,full_pass_pd,tabicl-classifier-v2-20260212,full_pass,False,1.5423578,28.381696,"{'2500': 110, '5000': 197, '10000': 370}"
+55,l2sp0_lgd,tabpfn-v2-regressor-v2_default,one_sample,False,0.22290982,33.332305,"{'2500': 41, '5000': 56, '10000': 88}"
+56,l2sp0_lgd,tabpfn-v2.6-regressor-v2.6_default,one_sample,False,0.3025301,31.662192,"{'2500': 44, '5000': 64, '10000': 104}"
+57,l2sp0_lgd,tabpfn-v3-regressor-v3_default,one_sample,False,0.25305915,28.213142,"{'2500': 40, '5000': 57, '10000': 90}"
+58,l2sp0_lgd,tabicl-regressor-v2-20260212,one_sample,False,0.33403294,21.998101,"{'2500': 42, '5000': 62, '10000': 103}"
+59,l2sp0_pd,tabpfn-v2-classifier-v2_default,one_sample,False,7.4451265,63.677419,"{'2500': 446, '5000': 856, '10000': 1676}"
+60,l2sp0_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.43655727,48.941007,"{'2500': 59, '5000': 88, '10000': 146}"
+61,l2sp0_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.57390745,42.77081,"{'2500': 64, '5000': 100, '10000': 171}"
+62,l2sp0_pd,tabicl-classifier-v2-20260212,one_sample,False,1.1909727,35.921646,"{'2500': 94, '5000': 163, '10000': 300}"
+63,large_matched_pd,tabpfn-v2-classifier-v2_default,one_sample,False,11.879644,44.54142,"{'2500': 677, '5000': 1326, '10000': 2622}"
+64,large_matched_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.6509029,34.430244,"{'2500': 64, '5000': 103, '10000': 181}"
+65,large_matched_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.92433172,29.886336,"{'2500': 77, '5000': 130, '10000': 237}"
+66,large_matched_pd,tabicl-classifier-v2-20260212,one_sample,False,1.9524531,24.856049,"{'2500': 131, '5000': 239, '10000': 456}"
+67,lora_l0_lgd,tabpfn-v2-regressor-v2_default,one_sample,False,0.21770912,27.945584,"{'2500': 38, '5000': 53, '10000': 82}"
+68,lora_l0_lgd,tabpfn-v2.6-regressor-v2.6_default,one_sample,False,0.28240752,26.593043,"{'2500': 41, '5000': 59, '10000': 95}"
+69,lora_l0_lgd,tabpfn-v3-regressor-v3_default,one_sample,False,0.22243284,22.474521,"{'2500': 36, '5000': 50, '10000': 79}"
+70,lora_l0_lgd,tabicl-regressor-v2-20260212,one_sample,False,0.31279952,15.677437,"{'2500': 38, '5000': 56, '10000': 94}"
+71,lora_l0_pd,tabpfn-v2-classifier-v2_default,one_sample,False,7.2838217,58.427226,"{'2500': 435, '5000': 835, '10000': 1637}"
+72,lora_l0_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.40491746,43.47106,"{'2500': 55, '5000': 82, '10000': 135}"
+73,lora_l0_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.53095217,37.427437,"{'2500': 59, '5000': 92, '10000': 158}"
+74,lora_l0_pd,tabicl-classifier-v2-20260212,one_sample,False,1.1539027,30.556119,"{'2500': 90, '5000': 156, '10000': 287}"
+75,lora_lgd,tabpfn-v2-regressor-v2_default,one_sample,False,0.22206643,24.671914,"{'2500': 37, '5000': 51, '10000': 81}"
+76,lora_lgd,tabpfn-v2.6-regressor-v2.6_default,one_sample,False,0.29761599,23.110271,"{'2500': 40, '5000': 59, '10000': 96}"
+77,lora_lgd,tabpfn-v3-regressor-v3_default,one_sample,False,0.23162319,18.909061,"{'2500': 35, '5000': 49, '10000': 78}"
+78,lora_lgd,tabicl-regressor-v2-20260212,one_sample,False,0.31540481,12.138161,"{'2500': 36, '5000': 55, '10000': 91}"
+79,lora_pd,tabpfn-v2-classifier-v2_default,one_sample,False,7.3003868,54.537285,"{'2500': 434, '5000': 835, '10000': 1638}"
+80,lora_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.41667465,40.247127,"{'2500': 54, '5000': 81, '10000': 135}"
+81,lora_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.53714879,33.524856,"{'2500': 58, '5000': 91, '10000': 156}"
+82,lora_pd,tabicl-classifier-v2-20260212,one_sample,False,1.1558409,26.994065,"{'2500': 88, '5000': 154, '10000': 285}"
+83,lr1e5_bf16_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.45091521,42.891166,"{'2500': 57, '5000': 87, '10000': 145}"
+84,lr1e5_bf16_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.6044309,37.004886,"{'2500': 63, '5000': 100, '10000': 173}"
+85,lr1e5_lgd,tabpfn-v2-regressor-v2_default,one_sample,False,0.2322676,27.4575,"{'2500': 39, '5000': 54, '10000': 85}"
+86,lr1e5_lgd,tabpfn-v2.6-regressor-v2.6_default,one_sample,False,0.32013973,25.82495,"{'2500': 43, '5000': 63, '10000': 103}"
+87,lr1e5_lgd,tabpfn-v3-regressor-v3_default,one_sample,False,0.27094374,22.577772,"{'2500': 38, '5000': 56, '10000': 90}"
+88,lr1e5_lgd,tabicl-regressor-v2-20260212,one_sample,False,0.3514688,15.889158,"{'2500': 40, '5000': 61, '10000': 102}"
+89,lr1e5_pd,tabpfn-v2-classifier-v2_default,one_sample,False,7.4573894,58.307456,"{'2500': 444, '5000': 854, '10000': 1675}"
+90,lr1e5_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.44707012,42.858112,"{'2500': 57, '5000': 86, '10000': 144}"
+91,lr1e5_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.59846762,37.349776,"{'2500': 63, '5000': 99, '10000': 172}"
+92,lr1e5_pd,tabicl-classifier-v2-20260212,one_sample,False,1.214475,30.620276,"{'2500': 93, '5000': 162, '10000': 301}"
+93,lr1e8_lgd,tabpfn-v2-regressor-v2_default,one_sample,False,0.2281651,27.549457,"{'2500': 38, '5000': 54, '10000': 84}"
+94,lr1e8_lgd,tabpfn-v2.6-regressor-v2.6_default,one_sample,False,0.31457059,25.701558,"{'2500': 42, '5000': 62, '10000': 102}"
+95,lr1e8_lgd,tabpfn-v3-regressor-v3_default,one_sample,False,0.27691593,22.339704,"{'2500': 39, '5000': 56, '10000': 91}"
+96,lr1e8_lgd,tabicl-regressor-v2-20260212,one_sample,False,0.35043818,15.693704,"{'2500': 40, '5000': 60, '10000': 102}"
+97,lr1e8_pd,tabpfn-v2-classifier-v2_default,one_sample,False,7.3736408,57.328937,"{'2500': 439, '5000': 845, '10000': 1656}"
+98,lr1e8_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.45129575,42.896113,"{'2500': 57, '5000': 87, '10000': 145}"
+99,lr1e8_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.59764586,36.832173,"{'2500': 63, '5000': 99, '10000': 172}"
+100,lr1e8_pd,tabicl-classifier-v2-20260212,one_sample,False,1.2154305,30.395872,"{'2500': 93, '5000': 162, '10000': 301}"
+101,monitor2000_lgd,tabpfn-v2-regressor-v2_default,one_sample,False,0.23033324,15.713288,"{'2500': 33, '5000': 47, '10000': 76}"
+102,monitor2000_lgd,tabpfn-v2.6-regressor-v2.6_default,one_sample,False,0.31717858,15.676862,"{'2500': 38, '5000': 57, '10000': 94}"
+103,monitor2000_lgd,tabpfn-v3-regressor-v3_default,one_sample,False,0.27711404,17.522397,"{'2500': 36, '5000': 53, '10000': 87}"
+104,monitor2000_lgd,tabicl-regressor-v2-20260212,one_sample,False,0.35000589,14.282659,"{'2500': 39, '5000': 59, '10000': 100}"
+105,monitor2000_pd,tabpfn-v2-classifier-v2_default,one_sample,False,7.4510149,23.500993,"{'2500': 428, '5000': 834, '10000': 1646}"
+106,monitor2000_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.44887444,22.361281,"{'2500': 48, '5000': 75, '10000': 128}"
+107,monitor2000_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.6007372,26.979702,"{'2500': 58, '5000': 94, '10000': 165}"
+108,monitor2000_pd,tabicl-classifier-v2-20260212,one_sample,False,1.2162499,22.912365,"{'2500': 90, '5000': 158, '10000': 295}"
+109,monitorfull_lgd,tabpfn-v2-regressor-v2_default,one_sample,False,0.23059631,38.770701,"{'2500': 44, '5000': 60, '10000': 94}"
+110,monitorfull_lgd,tabpfn-v2.6-regressor-v2.6_default,one_sample,False,0.31597167,66.352627,"{'2500': 61, '5000': 85, '10000': 134}"
+111,monitorfull_lgd,tabpfn-v3-regressor-v3_default,one_sample,False,0.27033568,35.9018,"{'2500': 44, '5000': 63, '10000': 100}"
+112,monitorfull_lgd,tabicl-regressor-v2-20260212,one_sample,False,0.3498465,20.584362,"{'2500': 42, '5000': 63, '10000': 105}"
+113,monitorfull_pd,tabpfn-v2-classifier-v2_default,one_sample,False,7.382858,93.263581,"{'2500': 456, '5000': 866, '10000': 1686}"
+114,monitorfull_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.44609935,253.02835,"{'2500': 153, '5000': 204, '10000': 308}"
+115,monitorfull_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.60729361,92.441269,"{'2500': 88, '5000': 131, '10000': 217}"
+116,monitorfull_pd,tabicl-classifier-v2-20260212,one_sample,False,1.2053372,65.604191,"{'2500': 109, '5000': 181, '10000': 326}"
+117,noclip_lgd,tabpfn-v2-regressor-v2_default,one_sample,False,0.22974479,27.399853,"{'2500': 38, '5000': 54, '10000': 85}"
+118,noclip_lgd,tabpfn-v2.6-regressor-v2.6_default,one_sample,False,0.32501668,25.602616,"{'2500': 43, '5000': 63, '10000': 104}"
+119,noclip_lgd,tabpfn-v3-regressor-v3_default,one_sample,False,0.27877628,22.480147,"{'2500': 39, '5000': 56, '10000': 91}"
+120,noclip_lgd,tabicl-regressor-v2-20260212,one_sample,False,0.3477794,15.764045,"{'2500': 40, '5000': 60, '10000': 101}"
+121,noclip_pd,tabpfn-v2-classifier-v2_default,one_sample,False,7.3526445,57.319827,"{'2500': 438, '5000': 842, '10000': 1651}"
+122,noclip_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.44917252,43.093613,"{'2500': 57, '5000': 86, '10000': 144}"
+123,noclip_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.59143831,36.895618,"{'2500': 62, '5000': 98, '10000': 170}"
+124,noclip_pd,tabicl-classifier-v2-20260212,one_sample,False,1.2140198,31.125195,"{'2500': 93, '5000': 163, '10000': 301}"
+125,reference_lgd,tabpfn-v2-regressor-v2_default,one_sample,False,0.23026157,27.499701,"{'2500': 38, '5000': 54, '10000': 85}"
+126,reference_lgd,tabpfn-v2.6-regressor-v2.6_default,one_sample,False,0.31489753,25.741328,"{'2500': 42, '5000': 62, '10000': 102}"
+127,reference_lgd,tabpfn-v3-regressor-v3_default,one_sample,False,0.27981879,22.567133,"{'2500': 39, '5000': 57, '10000': 92}"
+128,reference_lgd,tabicl-regressor-v2-20260212,one_sample,False,0.34894152,15.880072,"{'2500': 40, '5000': 60, '10000': 101}"
+129,reference_pd,tabpfn-v2-classifier-v2_default,one_sample,False,7.3542668,57.622616,"{'2500': 438, '5000': 843, '10000': 1652}"
+130,reference_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.44966135,42.877529,"{'2500': 57, '5000': 86, '10000': 144}"
+131,reference_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.60429414,37.273385,"{'2500': 63, '5000': 100, '10000': 174}"
+132,reference_pd,tabicl-classifier-v2-20260212,one_sample,False,1.2149534,29.968145,"{'2500': 93, '5000': 162, '10000': 300}"
+133,sanity_single_lgd,tabpfn-v2-regressor-v2_default,one_sample,False,0.39167916,27.082217,"{'2500': 47, '5000': 71, '10000': 119}"
+134,sanity_single_lgd,tabpfn-v2.6-regressor-v2.6_default,one_sample,False,0.58950447,25.813592,"{'2500': 57, '5000': 92, '10000': 161}"
+135,sanity_single_lgd,tabpfn-v3-regressor-v3_default,one_sample,False,0.62069404,22.326364,"{'2500': 57, '5000': 93, '10000': 165}"
+136,sanity_single_lgd,tabicl-regressor-v2-20260212,one_sample,False,0.94054411,15.739479,"{'2500': 72, '5000': 124, '10000': 230}"
+137,sanity_single_pd,tabpfn-v2-classifier-v2_default,one_sample,False,3.6649268,57.293174,"{'2500': 238, '5000': 443, '10000': 852}"
+138,sanity_single_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.37418049,42.85822,"{'2500': 53, '5000': 78, '10000': 128}"
+139,sanity_single_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.63400626,37.209732,"{'2500': 65, '5000': 103, '10000': 180}"
+140,sanity_single_pd,tabicl-classifier-v2-20260212,one_sample,False,1.0247833,30.437006,"{'2500': 83, '5000': 142, '10000': 259}"
+141,scale_reference_lgd,tabpfn-v2-regressor-v2_default,one_sample,False,0.15780875,27.449401,"{'2500': 35, '5000': 46, '10000': 69}"
+142,scale_reference_lgd,tabpfn-v2.6-regressor-v2.6_default,one_sample,False,0.22158675,25.67664,"{'2500': 37, '5000': 52, '10000': 82}"
+143,scale_reference_lgd,tabpfn-v3-regressor-v3_default,one_sample,False,0.17495228,22.371143,"{'2500': 33, '5000': 45, '10000': 69}"
+144,scale_reference_lgd,tabicl-regressor-v2-20260212,one_sample,False,0.14641179,15.762579,"{'2500': 29, '5000': 38, '10000': 58}"
+145,small_only_pd,tabpfn-v2-classifier-v2_default,one_sample,False,1.6596475,34.824845,"{'2500': 119, '5000': 213, '10000': 400}"
+146,small_only_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.20001114,28.433679,"{'2500': 37, '5000': 51, '10000': 79}"
+147,small_only_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.18665988,26.787576,"{'2500': 36, '5000': 49, '10000': 75}"
+148,small_only_pd,tabicl-classifier-v2-20260212,one_sample,False,0.17821699,22.140038,"{'2500': 33, '5000': 45, '10000': 69}"
+149,transfer_lgd,tabpfn-v2-regressor-v2_default,one_sample,False,0.45978001,27.312607,"{'2500': 51, '5000': 79, '10000': 134}"
+150,transfer_lgd,tabpfn-v2.6-regressor-v2.6_default,one_sample,False,0.52531142,25.707204,"{'2500': 54, '5000': 85, '10000': 147}"
+151,transfer_lgd,tabpfn-v3-regressor-v3_default,one_sample,False,0.27324098,22.365583,"{'2500': 38, '5000': 56, '10000': 90}"
+152,transfer_lgd,tabicl-regressor-v2-20260212,one_sample,False,0.34872557,15.841489,"{'2500': 40, '5000': 60, '10000': 101}"
+153,transfer_pd,tabpfn-v2-classifier-v2_default,one_sample,False,7.2774127,57.554302,"{'2500': 434, '5000': 834, '10000': 1635}"
+154,transfer_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.51029651,42.893686,"{'2500': 61, '5000': 93, '10000': 158}"
+155,transfer_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.79351176,36.964357,"{'2500': 73, '5000': 120, '10000': 214}"
+156,transfer_pd,tabicl-classifier-v2-20260212,one_sample,False,1.4850595,30.157073,"{'2500': 108, '5000': 191, '10000': 359}"
+157,zero_lr_lgd,tabpfn-v2-regressor-v2_default,one_sample,False,0.23228568,27.313547,"{'2500': 39, '5000': 54, '10000': 85}"
+158,zero_lr_lgd,tabpfn-v2.6-regressor-v2.6_default,one_sample,False,0.31485189,25.699443,"{'2500': 42, '5000': 62, '10000': 102}"
+159,zero_lr_lgd,tabpfn-v3-regressor-v3_default,one_sample,False,0.27996289,22.316922,"{'2500': 39, '5000': 56, '10000': 92}"
+160,zero_lr_lgd,tabicl-regressor-v2-20260212,one_sample,False,0.34939198,15.682016,"{'2500': 40, '5000': 60, '10000': 101}"
+161,zero_lr_pd,tabpfn-v2-classifier-v2_default,one_sample,False,7.4619598,58.021438,"{'2500': 444, '5000': 855, '10000': 1676}"
+162,zero_lr_pd,tabpfn-v2.6-classifier-v2.6_default,one_sample,False,0.4491547,42.906108,"{'2500': 57, '5000': 86, '10000': 144}"
+163,zero_lr_pd,tabpfn-v3-classifier-v3_default,one_sample,False,0.60421081,37.016387,"{'2500': 63, '5000': 100, '10000': 173}"
+164,zero_lr_pd,tabicl-classifier-v2-20260212,one_sample,False,1.2172664,30.744058,"{'2500': 93, '5000': 163, '10000': 301}"
+
+2. Shape of the original LGD predictive densities
+6 of 24 model–table pairs exceeded the recorded roughness limit.
+
+Table: Roughness flags and nonfinite NLL by model
+CSV (first column: row index)
+row,model,tables,flagged,nonfinite_scores
+0,TabPFN v2,8,0,0
+1,TabPFN v2.6,8,6,0
+2,TabPFN v3,8,0,0
+
+Table: Density roughness per model and table
+CSV (first column: row index)
+row,model,dataset,context_rows,query_rows,roughness_median,roughness_limit,exceeds_limit,nll_median,nll_nonfinite,r2
+0,TabPFN v2,PropLGD1,600,400,0.16460705,2.5,False,-4.7365271,0,0.28211361
+1,TabPFN v2.6,PropLGD1,600,400,4.2111216,2.5,True,2.3366418,0,0.27722642
+2,TabPFN v3,PropLGD1,600,400,0.78611851,2.5,False,-3.5972479,0,0.24970648
+3,TabPFN v2,PropLGD2,600,400,0.076464176,2.5,False,-0.8820304,0,0.65814326
+4,TabPFN v2.6,PropLGD2,600,400,2.3502898,2.5,False,0.82605856,0,0.66377588
+5,TabPFN v3,PropLGD2,600,400,0.26418877,2.5,False,-0.85372411,0,0.68616853
+6,TabPFN v2,PropLGD3,600,400,0.10484648,2.5,False,-1.2056035,0,0.1598534
+7,TabPFN v2.6,PropLGD3,600,400,3.5085735,2.5,True,2.0587347,0,0.16233804
+8,TabPFN v3,PropLGD3,600,400,0.64959812,2.5,False,-0.6811522,0,0.16347561
+9,TabPFN v2,PropLGD4,381,381,0.098889351,2.5,False,-1.3942406,0,0.30206236
+10,TabPFN v2.6,PropLGD4,381,381,2.9567642,2.5,True,2.645891,0,0.42773417
+11,TabPFN v3,PropLGD4,381,381,0.48660421,2.5,False,-1.3077304,0,0.42864131
+12,TabPFN v2,PropLGD5,297,297,0.10333776,2.5,False,-2.342519,0,0.42194853
+13,TabPFN v2.6,PropLGD5,297,297,3.738822,2.5,True,4.2823292,0,0.40983879
+14,TabPFN v3,PropLGD5,297,297,0.47710419,2.5,False,-2.2558151,0,0.3973535
+15,TabPFN v2,0006.lgd_freddie,600,400,0.083754063,2.5,False,-0.096766332,0,0.32017491
+16,TabPFN v2.6,0006.lgd_freddie,600,400,1.4995813,2.5,False,0.85194103,0,0.32070644
+17,TabPFN v3,0006.lgd_freddie,600,400,0.44156981,2.5,False,-0.1147877,0,0.35193148
+18,TabPFN v2,0007.lgd_lendingclub,600,400,0.077517509,2.5,False,-2.0505145,0,0.74372474
+19,TabPFN v2.6,0007.lgd_lendingclub,600,400,3.6023941,2.5,True,1.1330682,0,0.73769475
+20,TabPFN v3,0007.lgd_lendingclub,600,400,0.25166702,2.5,False,-2.0070948,0,0.74032026
+21,TabPFN v2,0008.SBA_loans_case,343,343,0.073197842,2.5,False,-1.2307708,0,0.68620061
+22,TabPFN v2.6,0008.SBA_loans_case,343,343,3.1422319,2.5,True,0.85674418,0,0.65301118
+23,TabPFN v3,0008.SBA_loans_case,343,343,0.29771805,2.5,False,-1.4046609,0,0.69890541
 
 3. Training precision against FP32
-No results yet for bounded strict FP32 training probes; the figure is drawn once they exist.
+recorded precision probes: 146 rows of evidence.
 
-No measurements available for this figure group.
+Figure: precision_agreement
+Title: Mixed-precision gradients against FP32 at update zero
+Cosine between mixed-precision and FP32 training gradients at the pretrained weights on identical episodes of up to 8,192 rows from partition 0. Each point represents one measured table, task, model and policy. FP16 candidates use loss scaling. The dashed line marks the 0.90 agreement threshold. TabPFN v2 PD trains in bounded FP32; its mixed-precision points are alternatives. The table identifies all unavailable comparisons.
+precision summary
+CSV (first column: row index)
+row,track,model,precision,role,tables,compared,minimum,median,below_threshold
+0,lgd,TabICLv2,FP16,production,6,6,0.98674551,0.99907786,0
+1,lgd,TabPFN v2,BF16,comparison,6,6,0.8716691,0.94771096,1
+2,lgd,TabPFN v2,FP16,production,6,6,0.99267621,0.99871971,0
+3,lgd,TabPFN v2.6,BF16,comparison,6,6,0.99842594,0.9995894,0
+4,lgd,TabPFN v2.6,FP16,production,6,6,0.9999927,0.9999955,0
+5,lgd,TabPFN v3,BF16,comparison,6,6,0.86038467,0.94673772,1
+6,lgd,TabPFN v3,FP16,production,6,6,0.97604864,0.99777566,0
+7,pd,TabICLv2,FP16,production,13,13,0.93408632,0.99404642,0
+8,pd,TabPFN v2,BF16,comparison,13,13,0.15075182,0.94649655,2
+9,pd,TabPFN v2,FP16,comparison,13,13,0.36650065,0.67784797,8
+10,pd,TabPFN v2,FP16 + FP32 norms,comparison,13,13,0.36155354,0.6751964,8
+11,pd,TabPFN v2.6,BF16,comparison,13,13,-0.714851,0.65960039,9
+12,pd,TabPFN v2.6,FP16,production,13,13,0.93011199,0.99701256,0
+13,pd,TabPFN v3,BF16,comparison,13,13,-0.076348473,0.99118271,1
+14,pd,TabPFN v3,FP16,production,13,13,0.98827309,0.99964533,0
+precision agreement
+CSV (first column: row index)
+row,track,model,table_rank,rows,precision,recorded_training_policy,role,status,loss_fp32,loss,gradient_cosine,gradient_norm_ratio
+0,pd,TabPFN v2,1,8192,BF16,Bounded strict FP32,comparison,measured,0.42353952,0.42352974,0.86749815,0.76755613
+1,pd,TabPFN v2,1,8192,FP16,Bounded strict FP32,comparison,measured,0.42353952,0.42350706,0.67784797,1.4100047
+2,pd,TabPFN v2,1,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.42353952,0.42352977,0.6751964,1.4046039
+3,pd,TabPFN v2,2,8192,BF16,Bounded strict FP32,comparison,measured,0.26409695,0.26432225,0.95336859,1.0968865
+4,pd,TabPFN v2,2,8192,FP16,Bounded strict FP32,comparison,measured,0.26409695,0.26411819,0.36650065,2.9661216
+5,pd,TabPFN v2,2,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.26409695,0.26411548,0.36155354,2.965504
+6,pd,TabPFN v2,3,8192,BF16,Bounded strict FP32,comparison,measured,0.50691146,0.50746751,0.91935737,1.8325548
+7,pd,TabPFN v2,3,8192,FP16,Bounded strict FP32,comparison,measured,0.50691146,0.50690454,0.66280332,1.9876105
+8,pd,TabPFN v2,3,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.50691146,0.50694317,0.67417688,2.250404
+9,pd,TabPFN v2,4,8192,BF16,Bounded strict FP32,comparison,measured,0.18607843,0.18656039,0.98900206,1.0919535
+10,pd,TabPFN v2,4,8192,FP16,Bounded strict FP32,comparison,measured,0.18607843,0.18608432,0.7727743,1.1303125
+11,pd,TabPFN v2,4,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.18607843,0.18612899,0.77704317,1.1408565
+12,pd,TabPFN v2,5,8192,BF16,Bounded strict FP32,comparison,measured,0.30253759,0.30262429,0.94649655,1.0664576
+13,pd,TabPFN v2,5,8192,FP16,Bounded strict FP32,comparison,measured,0.30253759,0.30256835,0.4021359,2.1634369
+14,pd,TabPFN v2,5,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.30253759,0.3025409,0.43204379,2.1586862
+15,pd,TabPFN v2,6,8192,BF16,Bounded strict FP32,comparison,measured,0.57061088,0.5614816,0.15075182,0.3539231
+16,pd,TabPFN v2,6,8192,FP16,Bounded strict FP32,comparison,measured,0.57061088,0.57092685,0.99097272,0.95269789
+17,pd,TabPFN v2,6,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.57061088,0.57100493,0.99777836,1.0697076
+18,pd,TabPFN v2,7,8192,BF16,Bounded strict FP32,comparison,measured,0.42078787,0.42067066,0.97594534,0.97363488
+19,pd,TabPFN v2,7,8192,FP16,Bounded strict FP32,comparison,measured,0.42078787,0.42079273,0.61020412,1.5356738
+20,pd,TabPFN v2,7,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.42078787,0.42078677,0.60914691,1.5465844
+21,pd,TabPFN v2,8,8192,BF16,Bounded strict FP32,comparison,measured,0.23094237,0.23061886,0.94235765,1.0124384
+22,pd,TabPFN v2,8,8192,FP16,Bounded strict FP32,comparison,measured,0.23094237,0.23089145,0.90184375,0.98098593
+23,pd,TabPFN v2,8,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.23094237,0.23087953,0.90199783,0.98958909
+24,pd,TabPFN v2,9,8192,BF16,Bounded strict FP32,comparison,measured,0.41511923,0.41515827,0.94425073,1.022789
+25,pd,TabPFN v2,9,8192,FP16,Bounded strict FP32,comparison,measured,0.41511923,0.41509062,0.64911202,1.8947571
+26,pd,TabPFN v2,9,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.41511923,0.41509709,0.64796892,1.8864802
+27,pd,TabPFN v2,10,8192,BF16,Bounded strict FP32,comparison,measured,0.40884632,0.40892285,0.97331559,1.1123182
+28,pd,TabPFN v2,10,8192,FP16,Bounded strict FP32,comparison,measured,0.40884632,0.40883505,0.62724288,1.5040163
+29,pd,TabPFN v2,10,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.40884632,0.40884331,0.62624011,1.5121387
+30,pd,TabPFN v2,11,7000,BF16,Bounded strict FP32,comparison,measured,0.66723448,0.6672774,0.97682953,1.0702884
+31,pd,TabPFN v2,11,7000,FP16,Bounded strict FP32,comparison,measured,0.66723448,0.6672318,0.93095266,1.0697916
+32,pd,TabPFN v2,11,7000,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.66723448,0.66722518,0.94019406,1.0748346
+33,pd,TabPFN v2,12,2102,BF16,Bounded strict FP32,comparison,measured,0.14918691,0.14895579,0.92949329,0.92235991
+34,pd,TabPFN v2,12,2102,FP16,Bounded strict FP32,comparison,measured,0.14918691,0.14921629,0.99827217,0.99303364
+35,pd,TabPFN v2,12,2102,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.14918691,0.14924204,0.99844178,0.98970357
+36,pd,TabPFN v2,13,1000,BF16,Bounded strict FP32,comparison,measured,0.49110627,0.49074128,0.98603879,1.03397
+37,pd,TabPFN v2,13,1000,FP16,Bounded strict FP32,comparison,measured,0.49110627,0.49118531,0.99973807,0.99224511
+38,pd,TabPFN v2,13,1000,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.49110627,0.49110383,0.99977154,0.99622999
+39,pd,TabPFN v2.6,1,8192,BF16,FP16,comparison,measured,0.42330959,0.4254925,0.42066658,0.36252374
+40,pd,TabPFN v2.6,1,8192,FP16,FP16,production,measured,0.42330959,0.42338118,0.99701256,0.97436144
+41,pd,TabPFN v2.6,2,8192,BF16,FP16,comparison,measured,0.26204133,0.26264647,0.99710522,1.1019849
+42,pd,TabPFN v2.6,2,8192,FP16,FP16,production,measured,0.26204133,0.26205248,0.99856487,1.0243002
+43,pd,TabPFN v2.6,3,8192,BF16,FP16,comparison,measured,0.50665855,0.50894397,-0.48784222,0.91594352
+44,pd,TabPFN v2.6,3,8192,FP16,FP16,production,measured,0.50665855,0.50667042,0.99648555,0.97335712
+45,pd,TabPFN v2.6,4,8192,BF16,FP16,comparison,measured,0.18277925,0.18280199,0.90226814,0.57389988
+46,pd,TabPFN v2.6,4,8192,FP16,FP16,production,measured,0.18277925,0.18278098,0.99130287,0.99022964
+47,pd,TabPFN v2.6,5,8192,BF16,FP16,comparison,measured,0.29676262,0.29828021,0.65923227,0.540888
+48,pd,TabPFN v2.6,5,8192,FP16,FP16,production,measured,0.29676262,0.29661092,0.99874841,0.94125228
+49,pd,TabPFN v2.6,6,8192,BF16,FP16,comparison,measured,0.54923552,0.55110943,0.47549415,0.27483004
+50,pd,TabPFN v2.6,6,8192,FP16,FP16,production,measured,0.54923552,0.54917073,0.99941133,0.97262966
+51,pd,TabPFN v2.6,7,8192,BF16,FP16,comparison,measured,0.41709113,0.41779599,0.9100051,1.916015
+52,pd,TabPFN v2.6,7,8192,FP16,FP16,production,measured,0.41709113,0.41715169,0.99646508,1.054917
+53,pd,TabPFN v2.6,8,8192,BF16,FP16,comparison,measured,0.22284769,0.22330816,0.65960039,1.4589394
+54,pd,TabPFN v2.6,8,8192,FP16,FP16,production,measured,0.22284769,0.222802,0.98580894,0.99695471
+55,pd,TabPFN v2.6,9,8192,BF16,FP16,comparison,measured,0.4092907,0.41074693,0.63379528,0.4910969
+56,pd,TabPFN v2.6,9,8192,FP16,FP16,production,measured,0.4092907,0.40924942,0.9994665,0.96428788
+57,pd,TabPFN v2.6,10,8192,BF16,FP16,comparison,measured,0.40676138,0.40960449,-0.714851,1.086401
+58,pd,TabPFN v2.6,10,8192,FP16,FP16,production,measured,0.40676138,0.40673378,0.99740899,0.98403714
+59,pd,TabPFN v2.6,11,7000,BF16,FP16,comparison,measured,0.66542655,0.66561538,0.67409815,1.879081
+60,pd,TabPFN v2.6,11,7000,FP16,FP16,production,measured,0.66542655,0.66537893,0.98907153,1.0044309
+61,pd,TabPFN v2.6,12,2102,BF16,FP16,comparison,measured,0.14431423,0.14455678,0.84731917,1.1007581
+62,pd,TabPFN v2.6,12,2102,FP16,FP16,production,measured,0.14431423,0.14426033,0.93011199,1.0434754
+63,pd,TabPFN v2.6,13,1000,BF16,FP16,comparison,measured,0.46984985,0.47150967,0.96609692,0.98712493
+64,pd,TabPFN v2.6,13,1000,FP16,FP16,production,measured,0.46984985,0.46995458,0.99711393,0.97979748
+65,pd,TabPFN v3,1,8192,BF16,FP16,comparison,measured,0.42307663,0.4231514,0.94038545,0.98300424
+66,pd,TabPFN v3,1,8192,FP16,FP16,production,measured,0.42307663,0.42306942,0.99949189,0.98761428
+67,pd,TabPFN v3,2,8192,BF16,FP16,comparison,measured,0.26159564,0.26160234,0.99402986,1.0871276
+68,pd,TabPFN v3,2,8192,FP16,FP16,production,measured,0.26159564,0.2616033,0.99984686,1.0013862
+69,pd,TabPFN v3,3,8192,BF16,FP16,comparison,measured,0.50465131,1.5116014,-0.076348473,5938.6822
+70,pd,TabPFN v3,3,8192,FP16,FP16,production,measured,0.50465131,0.50465381,0.98827309,1.0930297
+71,pd,TabPFN v3,4,8192,BF16,FP16,comparison,measured,0.18172869,0.18179391,0.99118271,0.96958053
+72,pd,TabPFN v3,4,8192,FP16,FP16,production,measured,0.18172869,0.18172953,0.99964533,0.9989396
+73,pd,TabPFN v3,5,8192,BF16,FP16,comparison,measured,0.29638714,0.29644385,0.96543331,0.98538121
+74,pd,TabPFN v3,5,8192,FP16,FP16,production,measured,0.29638714,0.296397,0.99945938,1.0048408
+75,pd,TabPFN v3,6,8192,BF16,FP16,comparison,measured,0.5470559,0.54705536,0.99247944,0.99364746
+76,pd,TabPFN v3,6,8192,FP16,FP16,production,measured,0.5470559,0.54705745,0.99969464,1.0000909
+77,pd,TabPFN v3,7,8192,BF16,FP16,comparison,measured,0.41718978,0.4172383,0.99338152,0.99373026
+78,pd,TabPFN v3,7,8192,FP16,FP16,production,measured,0.41718978,0.41717955,0.99993391,1.004917
+79,pd,TabPFN v3,8,8192,BF16,FP16,comparison,measured,0.21173364,0.21092339,0.98987363,1.1185701
+80,pd,TabPFN v3,8,8192,FP16,FP16,production,measured,0.21173364,0.21163891,0.99890723,0.99829642
+81,pd,TabPFN v3,9,8192,BF16,FP16,comparison,measured,0.40823299,0.40828812,0.97608448,1.0290816
+82,pd,TabPFN v3,9,8192,FP16,FP16,production,measured,0.40823299,0.40823165,0.99919844,0.99474155
+83,pd,TabPFN v3,10,8192,BF16,FP16,comparison,measured,0.40440944,0.40438437,0.995986,0.99904588
+84,pd,TabPFN v3,10,8192,FP16,FP16,production,measured,0.40440944,0.40441456,0.99992215,1.0028895
+85,pd,TabPFN v3,11,7000,BF16,FP16,comparison,measured,0.66534597,0.66534722,0.99520763,1.0111462
+86,pd,TabPFN v3,11,7000,FP16,FP16,production,measured,0.66534597,0.66534632,0.99994017,1.0006442
+87,pd,TabPFN v3,12,2102,BF16,FP16,comparison,measured,0.14419299,0.14408207,0.95892161,1.0014272
+88,pd,TabPFN v3,12,2102,FP16,FP16,production,measured,0.14419299,0.14425668,0.99949446,0.99885498
+89,pd,TabPFN v3,13,1000,BF16,FP16,comparison,measured,0.47347078,0.47290024,0.99378701,1.007776
+90,pd,TabPFN v3,13,1000,FP16,FP16,production,measured,0.47347078,0.47346398,0.99994086,1.0006308
+91,pd,TabICLv2,1,8192,FP16,FP16,production,measured,0.43296748,0.43296993,0.97454894,1.0448853
+92,pd,TabICLv2,2,8192,FP16,FP16,production,measured,0.26084244,0.26083919,0.99509793,1.0699481
+93,pd,TabICLv2,3,8192,FP16,FP16,production,measured,0.50034273,0.50008994,0.99728017,0.90792764
+94,pd,TabICLv2,4,8192,FP16,FP16,production,measured,0.17647222,0.17645915,0.9767954,1.0321649
+95,pd,TabICLv2,5,8192,FP16,FP16,production,measured,0.29578099,0.29578468,0.99921983,0.97723548
+96,pd,TabICLv2,6,8192,FP16,FP16,production,measured,0.5495705,0.54959637,0.93408632,1.0562348
+97,pd,TabICLv2,7,8192,FP16,FP16,production,measured,0.40715906,0.40716377,0.99814976,1.0379398
+98,pd,TabICLv2,8,8192,FP16,FP16,production,measured,0.22195861,0.22192396,0.98785721,1.0678995
+99,pd,TabICLv2,9,8192,FP16,FP16,production,measured,0.42565557,0.42563969,0.99973441,1.0094668
+100,pd,TabICLv2,10,8192,FP16,FP16,production,measured,0.40851414,0.40852079,0.99923162,0.96963509
+101,pd,TabICLv2,11,7000,FP16,FP16,production,measured,0.65820879,0.65817446,0.98954612,0.84515143
+102,pd,TabICLv2,12,2102,FP16,FP16,production,measured,0.12134089,0.12137812,0.96457821,0.99757753
+103,pd,TabICLv2,13,1000,FP16,FP16,production,measured,0.48437619,0.48439553,0.99404642,1.0111062
+104,lgd,TabPFN v2,1,8192,BF16,FP16,comparison,measured,-1.5928947,-1.5983772,0.8716691,0.88662984
+105,lgd,TabPFN v2,1,8192,FP16,FP16,production,measured,-1.5928947,-1.5913326,0.99267621,1.0449111
+106,lgd,TabPFN v2,2,8192,BF16,FP16,comparison,measured,0.65673661,0.65836996,0.93853492,1.0942431
+107,lgd,TabPFN v2,2,8192,FP16,FP16,production,measured,0.65673661,0.6566115,0.998299,0.97849465
+108,lgd,TabPFN v2,3,5627,BF16,FP16,comparison,measured,-0.1384054,-0.13778432,0.99306142,0.99654857
+109,lgd,TabPFN v2,3,5627,FP16,FP16,production,measured,-0.1384054,-0.1382916,0.9998035,1.0007048
+110,lgd,TabPFN v2,4,762,BF16,FP16,comparison,measured,-0.10930246,-0.10136198,0.96799053,0.94178517
+111,lgd,TabPFN v2,4,762,FP16,FP16,production,measured,-0.10930246,-0.10909609,0.99914042,1.0021904
+112,lgd,TabPFN v2,5,686,BF16,FP16,comparison,measured,0.20719263,0.20380452,0.95021131,0.89648134
+113,lgd,TabPFN v2,5,686,FP16,FP16,production,measured,0.20719263,0.20740148,0.99914364,1.0096712
+114,lgd,TabPFN v2,6,594,BF16,FP16,comparison,measured,-0.44932091,-0.44871145,0.94521061,0.97484442
+115,lgd,TabPFN v2,6,594,FP16,FP16,production,measured,-0.44932091,-0.44992688,0.99437221,1.0440464
+116,lgd,TabPFN v2.6,1,8192,BF16,FP16,comparison,measured,-0.39640969,-0.39776123,0.99981284,1.0012075
+117,lgd,TabPFN v2.6,1,8192,FP16,FP16,production,measured,-0.39640969,-0.39628798,0.99999653,1.0002221
+118,lgd,TabPFN v2.6,2,8192,BF16,FP16,comparison,measured,1.0666765,1.0656151,0.99842594,0.98971873
+119,lgd,TabPFN v2.6,2,8192,FP16,FP16,production,measured,1.0666765,1.0665607,0.99999556,0.9985862
+120,lgd,TabPFN v2.6,3,5627,BF16,FP16,comparison,measured,0.44170785,0.44066781,0.99977805,0.99510911
+121,lgd,TabPFN v2.6,3,5627,FP16,FP16,production,measured,0.44170785,0.44165885,0.99999726,0.99972692
+122,lgd,TabPFN v2.6,4,762,BF16,FP16,comparison,measured,1.2904147,1.2877246,0.99956742,0.99749874
+123,lgd,TabPFN v2.6,4,762,FP16,FP16,production,measured,1.2904147,1.2906874,0.99999544,0.99973261
+124,lgd,TabPFN v2.6,5,686,BF16,FP16,comparison,measured,0.84669584,0.85424256,0.99871267,1.0140798
+125,lgd,TabPFN v2.6,5,686,FP16,FP16,production,measured,0.84669584,0.84672958,0.9999927,1.0004655
+126,lgd,TabPFN v2.6,6,594,BF16,FP16,comparison,measured,0.19095369,0.19140704,0.99961138,1.0085344
+127,lgd,TabPFN v2.6,6,594,FP16,FP16,production,measured,0.19095369,0.19083369,0.99999439,0.9993714
+128,lgd,TabPFN v3,1,8192,BF16,FP16,comparison,measured,-1.2123988,-1.2099235,0.98683075,1.102171
+129,lgd,TabPFN v3,1,8192,FP16,FP16,production,measured,-1.2123988,-1.2119139,0.97604864,1.1338574
+130,lgd,TabPFN v3,2,8192,BF16,FP16,comparison,measured,0.77882558,0.77857018,0.86038467,0.96093653
+131,lgd,TabPFN v3,2,8192,FP16,FP16,production,measured,0.77882558,0.77896416,0.99517682,1.0393295
+132,lgd,TabPFN v3,3,5627,BF16,FP16,comparison,measured,-0.13846594,-0.13808361,0.98728918,1.1251576
+133,lgd,TabPFN v3,3,5627,FP16,FP16,production,measured,-0.13846594,-0.13839024,0.99977725,1.0094186
+134,lgd,TabPFN v3,4,762,BF16,FP16,comparison,measured,-0.18055542,-0.18058203,0.94988224,0.97819513
+135,lgd,TabPFN v3,4,762,FP16,FP16,production,measured,-0.18055542,-0.18053326,0.99937082,1.0109281
+136,lgd,TabPFN v3,5,686,BF16,FP16,comparison,measured,0.16593257,0.1724707,0.92752152,1.2813198
+137,lgd,TabPFN v3,5,686,FP16,FP16,production,measured,0.16593257,0.16706294,0.99726345,1.0280232
+138,lgd,TabPFN v3,6,594,BF16,FP16,comparison,measured,-0.23222648,-0.23120612,0.9435932,1.0097117
+139,lgd,TabPFN v3,6,594,FP16,FP16,production,measured,-0.23222648,-0.23188706,0.99828787,1.0199452
+140,lgd,TabICLv2,1,8192,FP16,FP16,production,measured,0.17241742,0.1725262,0.98674551,0.92018034
+141,lgd,TabICLv2,2,8192,FP16,FP16,production,measured,0.21135435,0.21138303,0.99856078,1.0414104
+142,lgd,TabICLv2,3,5627,FP16,FP16,production,measured,0.08492738,0.084929273,0.99897152,1.0074727
+143,lgd,TabICLv2,4,762,FP16,FP16,production,measured,0.16288771,0.16290717,0.99987942,0.9984927
+144,lgd,TabICLv2,5,686,FP16,FP16,production,measured,0.12401677,0.12410747,0.99918421,1.0143588
+145,lgd,TabICLv2,6,594,FP16,FP16,production,measured,0.14680131,0.14687139,0.99996818,0.99892835
 
 Table: Mixed-precision comparisons on bounded episodes
 CSV (first column: row index)
-row
+row,track,model,table_rank,rows,precision,recorded_training_policy,role,status,loss_fp32,loss,gradient_cosine,gradient_norm_ratio
+0,pd,TabPFN v2,1,8192,BF16,Bounded strict FP32,comparison,measured,0.42353952,0.42352974,0.86749815,0.76755613
+1,pd,TabPFN v2,1,8192,FP16,Bounded strict FP32,comparison,measured,0.42353952,0.42350706,0.67784797,1.4100047
+2,pd,TabPFN v2,1,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.42353952,0.42352977,0.6751964,1.4046039
+3,pd,TabPFN v2,2,8192,BF16,Bounded strict FP32,comparison,measured,0.26409695,0.26432225,0.95336859,1.0968865
+4,pd,TabPFN v2,2,8192,FP16,Bounded strict FP32,comparison,measured,0.26409695,0.26411819,0.36650065,2.9661216
+5,pd,TabPFN v2,2,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.26409695,0.26411548,0.36155354,2.965504
+6,pd,TabPFN v2,3,8192,BF16,Bounded strict FP32,comparison,measured,0.50691146,0.50746751,0.91935737,1.8325548
+7,pd,TabPFN v2,3,8192,FP16,Bounded strict FP32,comparison,measured,0.50691146,0.50690454,0.66280332,1.9876105
+8,pd,TabPFN v2,3,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.50691146,0.50694317,0.67417688,2.250404
+9,pd,TabPFN v2,4,8192,BF16,Bounded strict FP32,comparison,measured,0.18607843,0.18656039,0.98900206,1.0919535
+10,pd,TabPFN v2,4,8192,FP16,Bounded strict FP32,comparison,measured,0.18607843,0.18608432,0.7727743,1.1303125
+11,pd,TabPFN v2,4,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.18607843,0.18612899,0.77704317,1.1408565
+12,pd,TabPFN v2,5,8192,BF16,Bounded strict FP32,comparison,measured,0.30253759,0.30262429,0.94649655,1.0664576
+13,pd,TabPFN v2,5,8192,FP16,Bounded strict FP32,comparison,measured,0.30253759,0.30256835,0.4021359,2.1634369
+14,pd,TabPFN v2,5,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.30253759,0.3025409,0.43204379,2.1586862
+15,pd,TabPFN v2,6,8192,BF16,Bounded strict FP32,comparison,measured,0.57061088,0.5614816,0.15075182,0.3539231
+16,pd,TabPFN v2,6,8192,FP16,Bounded strict FP32,comparison,measured,0.57061088,0.57092685,0.99097272,0.95269789
+17,pd,TabPFN v2,6,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.57061088,0.57100493,0.99777836,1.0697076
+18,pd,TabPFN v2,7,8192,BF16,Bounded strict FP32,comparison,measured,0.42078787,0.42067066,0.97594534,0.97363488
+19,pd,TabPFN v2,7,8192,FP16,Bounded strict FP32,comparison,measured,0.42078787,0.42079273,0.61020412,1.5356738
+20,pd,TabPFN v2,7,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.42078787,0.42078677,0.60914691,1.5465844
+21,pd,TabPFN v2,8,8192,BF16,Bounded strict FP32,comparison,measured,0.23094237,0.23061886,0.94235765,1.0124384
+22,pd,TabPFN v2,8,8192,FP16,Bounded strict FP32,comparison,measured,0.23094237,0.23089145,0.90184375,0.98098593
+23,pd,TabPFN v2,8,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.23094237,0.23087953,0.90199783,0.98958909
+24,pd,TabPFN v2,9,8192,BF16,Bounded strict FP32,comparison,measured,0.41511923,0.41515827,0.94425073,1.022789
+25,pd,TabPFN v2,9,8192,FP16,Bounded strict FP32,comparison,measured,0.41511923,0.41509062,0.64911202,1.8947571
+26,pd,TabPFN v2,9,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.41511923,0.41509709,0.64796892,1.8864802
+27,pd,TabPFN v2,10,8192,BF16,Bounded strict FP32,comparison,measured,0.40884632,0.40892285,0.97331559,1.1123182
+28,pd,TabPFN v2,10,8192,FP16,Bounded strict FP32,comparison,measured,0.40884632,0.40883505,0.62724288,1.5040163
+29,pd,TabPFN v2,10,8192,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.40884632,0.40884331,0.62624011,1.5121387
+30,pd,TabPFN v2,11,7000,BF16,Bounded strict FP32,comparison,measured,0.66723448,0.6672774,0.97682953,1.0702884
+31,pd,TabPFN v2,11,7000,FP16,Bounded strict FP32,comparison,measured,0.66723448,0.6672318,0.93095266,1.0697916
+32,pd,TabPFN v2,11,7000,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.66723448,0.66722518,0.94019406,1.0748346
+33,pd,TabPFN v2,12,2102,BF16,Bounded strict FP32,comparison,measured,0.14918691,0.14895579,0.92949329,0.92235991
+34,pd,TabPFN v2,12,2102,FP16,Bounded strict FP32,comparison,measured,0.14918691,0.14921629,0.99827217,0.99303364
+35,pd,TabPFN v2,12,2102,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.14918691,0.14924204,0.99844178,0.98970357
+36,pd,TabPFN v2,13,1000,BF16,Bounded strict FP32,comparison,measured,0.49110627,0.49074128,0.98603879,1.03397
+37,pd,TabPFN v2,13,1000,FP16,Bounded strict FP32,comparison,measured,0.49110627,0.49118531,0.99973807,0.99224511
+38,pd,TabPFN v2,13,1000,FP16 + FP32 norms,Bounded strict FP32,comparison,measured,0.49110627,0.49110383,0.99977154,0.99622999
+39,pd,TabPFN v2.6,1,8192,BF16,FP16,comparison,measured,0.42330959,0.4254925,0.42066658,0.36252374
+40,pd,TabPFN v2.6,1,8192,FP16,FP16,production,measured,0.42330959,0.42338118,0.99701256,0.97436144
+41,pd,TabPFN v2.6,2,8192,BF16,FP16,comparison,measured,0.26204133,0.26264647,0.99710522,1.1019849
+42,pd,TabPFN v2.6,2,8192,FP16,FP16,production,measured,0.26204133,0.26205248,0.99856487,1.0243002
+43,pd,TabPFN v2.6,3,8192,BF16,FP16,comparison,measured,0.50665855,0.50894397,-0.48784222,0.91594352
+44,pd,TabPFN v2.6,3,8192,FP16,FP16,production,measured,0.50665855,0.50667042,0.99648555,0.97335712
+45,pd,TabPFN v2.6,4,8192,BF16,FP16,comparison,measured,0.18277925,0.18280199,0.90226814,0.57389988
+46,pd,TabPFN v2.6,4,8192,FP16,FP16,production,measured,0.18277925,0.18278098,0.99130287,0.99022964
+47,pd,TabPFN v2.6,5,8192,BF16,FP16,comparison,measured,0.29676262,0.29828021,0.65923227,0.540888
+48,pd,TabPFN v2.6,5,8192,FP16,FP16,production,measured,0.29676262,0.29661092,0.99874841,0.94125228
+49,pd,TabPFN v2.6,6,8192,BF16,FP16,comparison,measured,0.54923552,0.55110943,0.47549415,0.27483004
+50,pd,TabPFN v2.6,6,8192,FP16,FP16,production,measured,0.54923552,0.54917073,0.99941133,0.97262966
+51,pd,TabPFN v2.6,7,8192,BF16,FP16,comparison,measured,0.41709113,0.41779599,0.9100051,1.916015
+52,pd,TabPFN v2.6,7,8192,FP16,FP16,production,measured,0.41709113,0.41715169,0.99646508,1.054917
+53,pd,TabPFN v2.6,8,8192,BF16,FP16,comparison,measured,0.22284769,0.22330816,0.65960039,1.4589394
+54,pd,TabPFN v2.6,8,8192,FP16,FP16,production,measured,0.22284769,0.222802,0.98580894,0.99695471
+55,pd,TabPFN v2.6,9,8192,BF16,FP16,comparison,measured,0.4092907,0.41074693,0.63379528,0.4910969
+56,pd,TabPFN v2.6,9,8192,FP16,FP16,production,measured,0.4092907,0.40924942,0.9994665,0.96428788
+57,pd,TabPFN v2.6,10,8192,BF16,FP16,comparison,measured,0.40676138,0.40960449,-0.714851,1.086401
+58,pd,TabPFN v2.6,10,8192,FP16,FP16,production,measured,0.40676138,0.40673378,0.99740899,0.98403714
+59,pd,TabPFN v2.6,11,7000,BF16,FP16,comparison,measured,0.66542655,0.66561538,0.67409815,1.879081
+60,pd,TabPFN v2.6,11,7000,FP16,FP16,production,measured,0.66542655,0.66537893,0.98907153,1.0044309
+61,pd,TabPFN v2.6,12,2102,BF16,FP16,comparison,measured,0.14431423,0.14455678,0.84731917,1.1007581
+62,pd,TabPFN v2.6,12,2102,FP16,FP16,production,measured,0.14431423,0.14426033,0.93011199,1.0434754
+63,pd,TabPFN v2.6,13,1000,BF16,FP16,comparison,measured,0.46984985,0.47150967,0.96609692,0.98712493
+64,pd,TabPFN v2.6,13,1000,FP16,FP16,production,measured,0.46984985,0.46995458,0.99711393,0.97979748
+65,pd,TabPFN v3,1,8192,BF16,FP16,comparison,measured,0.42307663,0.4231514,0.94038545,0.98300424
+66,pd,TabPFN v3,1,8192,FP16,FP16,production,measured,0.42307663,0.42306942,0.99949189,0.98761428
+67,pd,TabPFN v3,2,8192,BF16,FP16,comparison,measured,0.26159564,0.26160234,0.99402986,1.0871276
+68,pd,TabPFN v3,2,8192,FP16,FP16,production,measured,0.26159564,0.2616033,0.99984686,1.0013862
+69,pd,TabPFN v3,3,8192,BF16,FP16,comparison,measured,0.50465131,1.5116014,-0.076348473,5938.6822
+70,pd,TabPFN v3,3,8192,FP16,FP16,production,measured,0.50465131,0.50465381,0.98827309,1.0930297
+71,pd,TabPFN v3,4,8192,BF16,FP16,comparison,measured,0.18172869,0.18179391,0.99118271,0.96958053
+72,pd,TabPFN v3,4,8192,FP16,FP16,production,measured,0.18172869,0.18172953,0.99964533,0.9989396
+73,pd,TabPFN v3,5,8192,BF16,FP16,comparison,measured,0.29638714,0.29644385,0.96543331,0.98538121
+74,pd,TabPFN v3,5,8192,FP16,FP16,production,measured,0.29638714,0.296397,0.99945938,1.0048408
+75,pd,TabPFN v3,6,8192,BF16,FP16,comparison,measured,0.5470559,0.54705536,0.99247944,0.99364746
+76,pd,TabPFN v3,6,8192,FP16,FP16,production,measured,0.5470559,0.54705745,0.99969464,1.0000909
+77,pd,TabPFN v3,7,8192,BF16,FP16,comparison,measured,0.41718978,0.4172383,0.99338152,0.99373026
+78,pd,TabPFN v3,7,8192,FP16,FP16,production,measured,0.41718978,0.41717955,0.99993391,1.004917
+79,pd,TabPFN v3,8,8192,BF16,FP16,comparison,measured,0.21173364,0.21092339,0.98987363,1.1185701
+80,pd,TabPFN v3,8,8192,FP16,FP16,production,measured,0.21173364,0.21163891,0.99890723,0.99829642
+81,pd,TabPFN v3,9,8192,BF16,FP16,comparison,measured,0.40823299,0.40828812,0.97608448,1.0290816
+82,pd,TabPFN v3,9,8192,FP16,FP16,production,measured,0.40823299,0.40823165,0.99919844,0.99474155
+83,pd,TabPFN v3,10,8192,BF16,FP16,comparison,measured,0.40440944,0.40438437,0.995986,0.99904588
+84,pd,TabPFN v3,10,8192,FP16,FP16,production,measured,0.40440944,0.40441456,0.99992215,1.0028895
+85,pd,TabPFN v3,11,7000,BF16,FP16,comparison,measured,0.66534597,0.66534722,0.99520763,1.0111462
+86,pd,TabPFN v3,11,7000,FP16,FP16,production,measured,0.66534597,0.66534632,0.99994017,1.0006442
+87,pd,TabPFN v3,12,2102,BF16,FP16,comparison,measured,0.14419299,0.14408207,0.95892161,1.0014272
+88,pd,TabPFN v3,12,2102,FP16,FP16,production,measured,0.14419299,0.14425668,0.99949446,0.99885498
+89,pd,TabPFN v3,13,1000,BF16,FP16,comparison,measured,0.47347078,0.47290024,0.99378701,1.007776
+90,pd,TabPFN v3,13,1000,FP16,FP16,production,measured,0.47347078,0.47346398,0.99994086,1.0006308
+91,pd,TabICLv2,1,8192,FP16,FP16,production,measured,0.43296748,0.43296993,0.97454894,1.0448853
+92,pd,TabICLv2,2,8192,FP16,FP16,production,measured,0.26084244,0.26083919,0.99509793,1.0699481
+93,pd,TabICLv2,3,8192,FP16,FP16,production,measured,0.50034273,0.50008994,0.99728017,0.90792764
+94,pd,TabICLv2,4,8192,FP16,FP16,production,measured,0.17647222,0.17645915,0.9767954,1.0321649
+95,pd,TabICLv2,5,8192,FP16,FP16,production,measured,0.29578099,0.29578468,0.99921983,0.97723548
+96,pd,TabICLv2,6,8192,FP16,FP16,production,measured,0.5495705,0.54959637,0.93408632,1.0562348
+97,pd,TabICLv2,7,8192,FP16,FP16,production,measured,0.40715906,0.40716377,0.99814976,1.0379398
+98,pd,TabICLv2,8,8192,FP16,FP16,production,measured,0.22195861,0.22192396,0.98785721,1.0678995
+99,pd,TabICLv2,9,8192,FP16,FP16,production,measured,0.42565557,0.42563969,0.99973441,1.0094668
+100,pd,TabICLv2,10,8192,FP16,FP16,production,measured,0.40851414,0.40852079,0.99923162,0.96963509
+101,pd,TabICLv2,11,7000,FP16,FP16,production,measured,0.65820879,0.65817446,0.98954612,0.84515143
+102,pd,TabICLv2,12,2102,FP16,FP16,production,measured,0.12134089,0.12137812,0.96457821,0.99757753
+103,pd,TabICLv2,13,1000,FP16,FP16,production,measured,0.48437619,0.48439553,0.99404642,1.0111062
+104,lgd,TabPFN v2,1,8192,BF16,FP16,comparison,measured,-1.5928947,-1.5983772,0.8716691,0.88662984
+105,lgd,TabPFN v2,1,8192,FP16,FP16,production,measured,-1.5928947,-1.5913326,0.99267621,1.0449111
+106,lgd,TabPFN v2,2,8192,BF16,FP16,comparison,measured,0.65673661,0.65836996,0.93853492,1.0942431
+107,lgd,TabPFN v2,2,8192,FP16,FP16,production,measured,0.65673661,0.6566115,0.998299,0.97849465
+108,lgd,TabPFN v2,3,5627,BF16,FP16,comparison,measured,-0.1384054,-0.13778432,0.99306142,0.99654857
+109,lgd,TabPFN v2,3,5627,FP16,FP16,production,measured,-0.1384054,-0.1382916,0.9998035,1.0007048
+110,lgd,TabPFN v2,4,762,BF16,FP16,comparison,measured,-0.10930246,-0.10136198,0.96799053,0.94178517
+111,lgd,TabPFN v2,4,762,FP16,FP16,production,measured,-0.10930246,-0.10909609,0.99914042,1.0021904
+112,lgd,TabPFN v2,5,686,BF16,FP16,comparison,measured,0.20719263,0.20380452,0.95021131,0.89648134
+113,lgd,TabPFN v2,5,686,FP16,FP16,production,measured,0.20719263,0.20740148,0.99914364,1.0096712
+114,lgd,TabPFN v2,6,594,BF16,FP16,comparison,measured,-0.44932091,-0.44871145,0.94521061,0.97484442
+115,lgd,TabPFN v2,6,594,FP16,FP16,production,measured,-0.44932091,-0.44992688,0.99437221,1.0440464
+116,lgd,TabPFN v2.6,1,8192,BF16,FP16,comparison,measured,-0.39640969,-0.39776123,0.99981284,1.0012075
+117,lgd,TabPFN v2.6,1,8192,FP16,FP16,production,measured,-0.39640969,-0.39628798,0.99999653,1.0002221
+118,lgd,TabPFN v2.6,2,8192,BF16,FP16,comparison,measured,1.0666765,1.0656151,0.99842594,0.98971873
+119,lgd,TabPFN v2.6,2,8192,FP16,FP16,production,measured,1.0666765,1.0665607,0.99999556,0.9985862
+120,lgd,TabPFN v2.6,3,5627,BF16,FP16,comparison,measured,0.44170785,0.44066781,0.99977805,0.99510911
+121,lgd,TabPFN v2.6,3,5627,FP16,FP16,production,measured,0.44170785,0.44165885,0.99999726,0.99972692
+122,lgd,TabPFN v2.6,4,762,BF16,FP16,comparison,measured,1.2904147,1.2877246,0.99956742,0.99749874
+123,lgd,TabPFN v2.6,4,762,FP16,FP16,production,measured,1.2904147,1.2906874,0.99999544,0.99973261
+124,lgd,TabPFN v2.6,5,686,BF16,FP16,comparison,measured,0.84669584,0.85424256,0.99871267,1.0140798
+125,lgd,TabPFN v2.6,5,686,FP16,FP16,production,measured,0.84669584,0.84672958,0.9999927,1.0004655
+126,lgd,TabPFN v2.6,6,594,BF16,FP16,comparison,measured,0.19095369,0.19140704,0.99961138,1.0085344
+127,lgd,TabPFN v2.6,6,594,FP16,FP16,production,measured,0.19095369,0.19083369,0.99999439,0.9993714
+128,lgd,TabPFN v3,1,8192,BF16,FP16,comparison,measured,-1.2123988,-1.2099235,0.98683075,1.102171
+129,lgd,TabPFN v3,1,8192,FP16,FP16,production,measured,-1.2123988,-1.2119139,0.97604864,1.1338574
+130,lgd,TabPFN v3,2,8192,BF16,FP16,comparison,measured,0.77882558,0.77857018,0.86038467,0.96093653
+131,lgd,TabPFN v3,2,8192,FP16,FP16,production,measured,0.77882558,0.77896416,0.99517682,1.0393295
+132,lgd,TabPFN v3,3,5627,BF16,FP16,comparison,measured,-0.13846594,-0.13808361,0.98728918,1.1251576
+133,lgd,TabPFN v3,3,5627,FP16,FP16,production,measured,-0.13846594,-0.13839024,0.99977725,1.0094186
+134,lgd,TabPFN v3,4,762,BF16,FP16,comparison,measured,-0.18055542,-0.18058203,0.94988224,0.97819513
+135,lgd,TabPFN v3,4,762,FP16,FP16,production,measured,-0.18055542,-0.18053326,0.99937082,1.0109281
+136,lgd,TabPFN v3,5,686,BF16,FP16,comparison,measured,0.16593257,0.1724707,0.92752152,1.2813198
+137,lgd,TabPFN v3,5,686,FP16,FP16,production,measured,0.16593257,0.16706294,0.99726345,1.0280232
+138,lgd,TabPFN v3,6,594,BF16,FP16,comparison,measured,-0.23222648,-0.23120612,0.9435932,1.0097117
+139,lgd,TabPFN v3,6,594,FP16,FP16,production,measured,-0.23222648,-0.23188706,0.99828787,1.0199452
+140,lgd,TabICLv2,1,8192,FP16,FP16,production,measured,0.17241742,0.1725262,0.98674551,0.92018034
+141,lgd,TabICLv2,2,8192,FP16,FP16,production,measured,0.21135435,0.21138303,0.99856078,1.0414104
+142,lgd,TabICLv2,3,5627,FP16,FP16,production,measured,0.08492738,0.084929273,0.99897152,1.0074727
+143,lgd,TabICLv2,4,762,FP16,FP16,production,measured,0.16288771,0.16290717,0.99987942,0.9984927
+144,lgd,TabICLv2,5,686,FP16,FP16,production,measured,0.12401677,0.12410747,0.99918421,1.0143588
+145,lgd,TabICLv2,6,594,FP16,FP16,production,measured,0.14680131,0.14687139,0.99996818,0.99892835
 
 Table: TabPFN v2 PD training loss and gradient under bounded strict FP32
 CSV (first column: row index)
-row
+row,track,model,recorded_training_policy,table_rank,rows,loss,gradient_norm,gradient_finite,passed
+0,pd,TabPFN v2,Bounded strict FP32,1,8192,0.42353952,0.44496699,True,True
+1,pd,TabPFN v2,Bounded strict FP32,2,8192,0.26409695,0.40764854,True,True
+2,pd,TabPFN v2,Bounded strict FP32,3,8192,0.50691146,0.53653688,True,True
+3,pd,TabPFN v2,Bounded strict FP32,4,8192,0.18607843,0.61173131,True,True
+4,pd,TabPFN v2,Bounded strict FP32,5,8192,0.30253759,0.66990138,True,True
+5,pd,TabPFN v2,Bounded strict FP32,6,8192,0.57061088,14.202245,True,True
+6,pd,TabPFN v2,Bounded strict FP32,7,8192,0.42078787,0.49184718,True,True
+7,pd,TabPFN v2,Bounded strict FP32,8,8192,0.23094237,0.68827019,True,True
+8,pd,TabPFN v2,Bounded strict FP32,9,8192,0.41511923,0.55030088,True,True
+9,pd,TabPFN v2,Bounded strict FP32,10,8192,0.40884632,0.34842965,True,True
+10,pd,TabPFN v2,Bounded strict FP32,11,7000,0.66723448,0.2535339,True,True
+11,pd,TabPFN v2,Bounded strict FP32,12,2102,0.14918691,1.0715685,True,True
+12,pd,TabPFN v2,Bounded strict FP32,13,1000,0.49110627,0.87203316,True,True
 
 Table: Independent check of native and bounded FP32 on the same smaller episode
 CSV (first column: row index)
-row
+row,track,model,recorded_training_policy,comparison,tables,rows,cosine,relative_error,passed,table_rank,native_loss,bounded_loss
+0,pd,TabPFN v2,Bounded strict FP32,all tables: minimum cosine and maximum relative error,13,256,1,3.4283358e-05,True,unavailable,unavailable,unavailable
+1,pd,TabPFN v2,Bounded strict FP32,smaller episode,unavailable,256,1,6.3796603e-06,True,1,0.47325921,0.47325921
+2,pd,TabPFN v2,Bounded strict FP32,smaller episode,unavailable,256,1,1.07285e-05,True,2,0.23522328,0.23522328
+3,pd,TabPFN v2,Bounded strict FP32,smaller episode,unavailable,256,1,7.1639871e-06,True,3,0.51490831,0.51490831
+4,pd,TabPFN v2,Bounded strict FP32,smaller episode,unavailable,256,1,7.6154744e-06,True,4,0.34035665,0.34035665
+5,pd,TabPFN v2,Bounded strict FP32,smaller episode,unavailable,256,1,1.865817e-05,True,5,0.3027823,0.3027823
+6,pd,TabPFN v2,Bounded strict FP32,smaller episode,unavailable,256,1,8.8917338e-06,True,6,0.55076814,0.55076814
+7,pd,TabPFN v2,Bounded strict FP32,smaller episode,unavailable,256,1,8.107896e-06,True,7,0.51195914,0.51195914
+8,pd,TabPFN v2,Bounded strict FP32,smaller episode,unavailable,256,1,6.8295141e-06,True,8,0.42498487,0.42498487
+9,pd,TabPFN v2,Bounded strict FP32,smaller episode,unavailable,256,1,7.9687387e-06,True,9,0.44500911,0.44500911
+10,pd,TabPFN v2,Bounded strict FP32,smaller episode,unavailable,256,1,3.4283358e-05,True,10,0.43241996,0.43241996
+11,pd,TabPFN v2,Bounded strict FP32,smaller episode,unavailable,256,1,7.8733332e-06,True,11,0.68454391,0.68454391
+12,pd,TabPFN v2,Bounded strict FP32,smaller episode,unavailable,256,1,4.5096991e-06,True,12,0.28446695,0.28446695
+13,pd,TabPFN v2,Bounded strict FP32,smaller episode,unavailable,256,1,1.3692408e-05,True,13,0.58981019,0.58981019
 
 Table: Full training episodes: recorded policy, gradient agreement, time and peak GPU memory
 CSV (first column: row index)
-row
+row,track,model,table_rank,rows,precision,role,status,gradient_cosine,gradient_agrees,loss_agrees,loss,gradient_norm,seconds,peak_gb
+0,pd,TabPFN v2,1,10000,Bounded strict FP32,production,completed,unavailable,unavailable,unavailable,0.43878046,0.29830384,8.52,10.5
+1,pd,TabPFN v2,1,10000,FP16,comparison,completed,0.13480566,False,True,0.43877184,1.052166,1.063,66.8
+2,pd,TabPFN v2,1,10000,FP16 + FP32 norms,comparison,completed,0.13851681,False,True,0.43876097,1.0326067,0.924,79.6
+3,pd,TabPFN v2,2,10000,Bounded strict FP32,production,completed,unavailable,unavailable,unavailable,0.2616598,0.39644526,18.332,23.3
+4,pd,TabPFN v2,2,10000,FP16,comparison,completed,0.038461786,False,True,0.26166117,1.7534027,2.138,143.8
+5,pd,TabPFN v2,2,10000,FP16 + FP32 norms,comparison,completed,0.045173084,False,True,0.26166114,1.7521671,2.305,171.4
+6,pd,TabPFN v2,3,10000,Bounded strict FP32,production,completed,unavailable,unavailable,unavailable,0.52038574,0.56537789,9.854,12.6
+7,pd,TabPFN v2,3,10000,FP16,comparison,completed,0.5763785,False,True,0.52039647,1.270276,1.173,77.1
+8,pd,TabPFN v2,3,10000,FP16 + FP32 norms,comparison,completed,0.57884257,False,True,0.52038819,1.2500118,1.097,91.9
+9,pd,TabPFN v2,4,10000,Bounded strict FP32,production,completed,unavailable,unavailable,unavailable,0.18687838,0.40710879,3.626,4.4
+10,pd,TabPFN v2,4,10000,FP16,comparison,completed,0.56778364,False,True,0.18689001,0.89221893,0.512,27.7
+11,pd,TabPFN v2,4,10000,FP16 + FP32 norms,comparison,completed,0.56088526,False,True,0.1868386,0.87155733,0.409,33
+12,pd,TabPFN v2,5,10000,Bounded strict FP32,production,completed,unavailable,unavailable,unavailable,0.31248856,2.9331231,19.358,25
+13,pd,TabPFN v2,5,10000,FP16,comparison,completed,0.85333839,False,True,0.31237078,3.4342649,2.207,151.8
+14,pd,TabPFN v2,5,10000,FP16 + FP32 norms,comparison,completed,0.85704183,False,True,0.31246093,3.4462915,2.65,181
+15,pd,TabPFN v2.6,1,10000,FP32,reference,completed,unavailable,unavailable,unavailable,0.4357416,0.26244821,3.03,94.4
+16,pd,TabPFN v2.6,1,10000,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,0.4357416,0.26244825,3.805,50.9
+17,pd,TabPFN v2.6,1,10000,FP16,production,completed,unavailable,unavailable,unavailable,0.43577319,0.25871472,0.433,59.6
+18,pd,TabPFN v2.6,2,10000,FP32,reference,completed,unavailable,unavailable,unavailable,0.26161414,1.0519217,5.77,184.9
+19,pd,TabPFN v2.6,2,10000,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,0.26161414,1.0519217,7.229,101.6
+20,pd,TabPFN v2.6,2,10000,FP16,production,completed,unavailable,unavailable,unavailable,0.26161504,1.053835,0.738,116.7
+21,pd,TabPFN v2.6,3,10000,FP32,reference,completed,unavailable,unavailable,unavailable,0.51871902,0.38028239,3.268,101.6
+22,pd,TabPFN v2.6,3,10000,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,0.51871902,0.38028101,4.1,54.6
+23,pd,TabPFN v2.6,3,10000,FP16,production,completed,unavailable,unavailable,unavailable,0.51879156,0.3852653,0.475,64.1
+24,pd,TabPFN v2.6,4,10000,FP32,reference,completed,unavailable,unavailable,unavailable,0.18239184,0.20874869,1.407,40.1
+25,pd,TabPFN v2.6,4,10000,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,0.18239184,0.20874885,1.769,21.9
+26,pd,TabPFN v2.6,4,10000,FP16,production,completed,unavailable,unavailable,unavailable,0.18238845,0.20515759,0.283,25.3
+27,pd,TabPFN v3,1,26000,FP32,reference,completed,unavailable,unavailable,unavailable,0.43049541,0.19248694,5.19,118.7
+28,pd,TabPFN v3,1,26000,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,0.43049541,0.19248674,6.376,63
+29,pd,TabPFN v3,1,26000,FP16,production,completed,unavailable,unavailable,unavailable,0.43049374,0.19049287,0.658,74.9
+30,pd,TabPFN v3,2,26000,FP32,reference,completed,unavailable,unavailable,unavailable,0.25051001,0.20917899,6.517,184.9
+31,pd,TabPFN v3,2,26000,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,0.25051001,0.20917862,7.925,100
+32,pd,TabPFN v3,2,26000,FP16,production,completed,unavailable,unavailable,unavailable,0.25050706,0.23390116,1.015,120.4
+33,pd,TabPFN v3,3,26000,FP32,reference,completed,unavailable,unavailable,unavailable,0.50315297,0.28858305,5.254,123.1
+34,pd,TabPFN v3,3,26000,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,0.50315297,0.28858294,6.455,65.6
+35,pd,TabPFN v3,3,26000,FP16,production,completed,unavailable,unavailable,unavailable,0.50315255,0.28212337,0.666,77.9
+36,pd,TabPFN v3,4,26000,FP32,reference,completed,unavailable,unavailable,unavailable,0.18409225,0.12460114,4.448,77.3
+37,pd,TabPFN v3,4,26000,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,0.18409225,0.12460113,5.518,40.1
+38,pd,TabPFN v3,4,26000,FP16,production,completed,unavailable,unavailable,unavailable,0.18409464,0.16655861,0.486,46.4
+39,pd,TabICLv2,1,26000,FP32,reference,completed,unavailable,unavailable,unavailable,0.42525324,0.19006141,3.812,23.2
+40,pd,TabICLv2,1,26000,FP16,production,completed,unavailable,unavailable,unavailable,0.4252539,0.21290925,1.568,18.6
+41,pd,TabICLv2,2,26000,FP32,reference,completed,unavailable,unavailable,unavailable,0.25177392,0.19026038,5.266,45.2
+42,pd,TabICLv2,2,26000,FP16,production,completed,unavailable,unavailable,unavailable,0.25178772,0.18917134,2.596,32.4
+43,pd,TabICLv2,3,26000,FP32,reference,completed,unavailable,unavailable,unavailable,0.49924335,0.34421298,3.884,24.1
+44,pd,TabICLv2,3,26000,FP16,production,completed,unavailable,unavailable,unavailable,0.49909624,0.22575442,1.628,19.3
+45,pd,TabICLv2,4,26000,FP32,reference,completed,unavailable,unavailable,unavailable,0.18320711,0.2594126,3.023,13.6
+46,pd,TabICLv2,4,26000,FP16,production,completed,unavailable,unavailable,unavailable,0.18316658,0.2724209,0.935,11.8
+47,lgd,TabPFN v2,1,10000,FP32,reference,completed,unavailable,unavailable,unavailable,-1.6199933,11.394342,2.712,64.7
+48,lgd,TabPFN v2,1,10000,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,-1.6199933,11.394342,3.382,32.6
+49,lgd,TabPFN v2,1,10000,FP16,production,completed,unavailable,unavailable,unavailable,-1.6208116,11.668534,0.582,32.7
+50,lgd,TabPFN v2,2,10000,FP32,reference,completed,unavailable,unavailable,unavailable,0.63679868,4.0852721,4.91,119.7
+51,lgd,TabPFN v2,2,10000,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,0.63679868,4.0852722,6.111,60.3
+52,lgd,TabPFN v2,2,10000,FP16,production,completed,unavailable,unavailable,unavailable,0.63696772,4.1201261,0.468,60.2
+53,lgd,TabPFN v2,3,5627,FP32,reference,completed,unavailable,unavailable,unavailable,-0.14784785,1.5628648,1.551,59.7
+54,lgd,TabPFN v2,3,5627,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,-0.14784785,1.5628649,1.954,30.1
+55,lgd,TabPFN v2,3,5627,FP16,production,completed,unavailable,unavailable,unavailable,-0.14771394,1.5737815,0.204,30.1
+56,lgd,TabPFN v2,4,762,FP32,reference,completed,unavailable,unavailable,unavailable,-0.057169061,9.586395,0.265,26
+57,lgd,TabPFN v2,4,762,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,-0.057169061,9.5863965,0.345,13.2
+58,lgd,TabPFN v2,4,762,FP16,production,completed,unavailable,unavailable,unavailable,-0.057573974,9.5561977,0.07,13.1
+59,lgd,TabPFN v2.6,1,10000,FP32,reference,completed,unavailable,unavailable,unavailable,0.83064884,26.156961,2.94,93.1
+60,lgd,TabPFN v2.6,1,10000,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,0.83064884,26.156961,3.695,63.3
+61,lgd,TabPFN v2.6,1,10000,FP16,production,completed,unavailable,unavailable,unavailable,0.8302868,26.148893,1.32,58.4
+62,lgd,TabPFN v2.6,2,10000,FP32,reference,completed,unavailable,unavailable,unavailable,0.93931383,2.9350231,4.045,130
+63,lgd,TabPFN v2.6,2,10000,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,0.93931383,2.9350231,5.079,85.5
+64,lgd,TabPFN v2.6,2,10000,FP16,production,completed,unavailable,unavailable,unavailable,0.93925357,2.9344519,0.566,81.6
+65,lgd,TabPFN v2.6,3,5627,FP32,reference,completed,unavailable,unavailable,unavailable,0.44741058,4.8282866,1.482,69.4
+66,lgd,TabPFN v2.6,3,5627,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,0.44741058,4.8282866,1.907,46.3
+67,lgd,TabPFN v2.6,3,5627,FP16,production,completed,unavailable,unavailable,unavailable,0.44754502,4.8290689,0.308,43.6
+68,lgd,TabPFN v2.6,4,762,FP32,reference,completed,unavailable,unavailable,unavailable,1.2162497,16.935305,0.247,23.6
+69,lgd,TabPFN v2.6,4,762,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,1.2162497,16.935306,0.311,15.7
+70,lgd,TabPFN v2.6,4,762,FP16,production,completed,unavailable,unavailable,unavailable,1.2159904,16.920559,0.11,14.9
+71,lgd,TabPFN v3,1,26000,FP32,reference,completed,unavailable,unavailable,unavailable,-1.6366401,74.643387,4.293,75.9
+72,lgd,TabPFN v3,1,26000,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,-1.6366401,74.643399,5.345,38.5
+73,lgd,TabPFN v3,1,26000,FP16,production,completed,unavailable,unavailable,unavailable,-1.6377952,76.060829,1.881,45.9
+74,lgd,TabPFN v3,2,16002,FP32,reference,completed,unavailable,unavailable,unavailable,0.71178651,5.8329115,2.172,63.2
+75,lgd,TabPFN v3,2,16002,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,0.71178651,5.8329135,2.691,32.1
+76,lgd,TabPFN v3,2,16002,FP16,production,completed,unavailable,unavailable,unavailable,0.71158737,5.1241321,0.343,39.6
+77,lgd,TabPFN v3,3,5627,FP32,reference,completed,unavailable,unavailable,unavailable,-0.13717225,2.6914986,0.445,20.7
+78,lgd,TabPFN v3,3,5627,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,-0.13717225,2.6914998,0.554,10.8
+79,lgd,TabPFN v3,3,5627,FP16,production,completed,unavailable,unavailable,unavailable,-0.13719736,2.7204749,0.154,13.2
+80,lgd,TabPFN v3,4,762,FP32,reference,completed,unavailable,unavailable,unavailable,-0.076067552,20.710458,0.15,6.8
+81,lgd,TabPFN v3,4,762,Checkpointed FP32,comparison,completed,unavailable,unavailable,unavailable,-0.076067552,20.710444,0.22,3.8
+82,lgd,TabPFN v3,4,762,FP16,production,completed,unavailable,unavailable,unavailable,-0.07721097,20.727785,0.147,4.7
+83,lgd,TabICLv2,1,26000,FP32,reference,completed,unavailable,unavailable,unavailable,0.13425334,0.76249006,2.945,12.6
+84,lgd,TabICLv2,1,26000,FP16,production,completed,unavailable,unavailable,unavailable,0.13432898,0.70859531,0.868,11.2
+85,lgd,TabICLv2,2,16002,FP32,reference,completed,unavailable,unavailable,unavailable,0.2121821,0.31357427,1.546,11.3
+86,lgd,TabICLv2,2,16002,FP16,production,completed,unavailable,unavailable,unavailable,0.21222645,0.3131906,0.638,9.4
+87,lgd,TabICLv2,3,5627,FP32,reference,completed,unavailable,unavailable,unavailable,0.096853599,0.047713649,0.323,3.9
+88,lgd,TabICLv2,3,5627,FP16,production,completed,unavailable,unavailable,unavailable,0.096862771,0.048059131,0.168,3.3
+89,lgd,TabICLv2,4,762,FP32,reference,completed,unavailable,unavailable,unavailable,0.18308324,0.6335764,0.1,1.6
+90,lgd,TabICLv2,4,762,FP16,production,completed,unavailable,unavailable,unavailable,0.18309814,0.63388062,0.081,1.5
 
-experiment0/01_campaign2_checks: no figures saved.
+experiment0/01_campaign2_checks: 1 figures -> output CreditPFN/figures/experiment0
+  01  precision_agreement
 ```
 
 ---
@@ -1257,7 +2054,7 @@ row,property,credit_iqr,noncredit_iqr,credit_to_noncredit_ratio
 9,missing_share,0.072083871,0.00013269305,543.23774
 
 A4. Are PD tables closer to each other?
-Distance tests and nearest neighbours; the projection of both tasks is in part C.
+Distance tests and nearest neighbours; part C shows the group distributions.
 
 Table: PD: domain distance tests
 CSV (first column: row index)
@@ -1336,12 +2133,12 @@ Table: LGD table properties
 CSV (first column: row index)
 row,dataset_id,group,rows,log10_rows,features,categorical_share,missing_share,median_abs_skew,heavy_tail_share,integer_share,max_abs_spearman,top5_abs_spearman,bounded_unit_interval,share_at_min,share_at_max,target_skew,target_bimodality,unique_share
 0,PropLGD1,credit,57932,4.7629185,8,0,0.0381875,2.0567518,0.375,0.5,0.32001867,0.23710873,True,0.21886,0.51686,-0.92701011,0.91633479,0.0356
-1,PropLGD2,credit,4637,3.6662371,50,0.46,0.05309036,7.2719084,0.85185185,0.44444444,0.71044882,0.54859165,True,0.036230321,0.037092948,0.55577191,0.52848427,0.92387319
+1,PropLGD2,credit,4637,3.6662371,50,0.46,0.05309036,7.2719084,0.85185185,0.44444444,0.70996991,0.54849586,True,0.036230321,0.037092948,0.55577191,0.52848427,0.92387319
 2,PropLGD3,credit,2545,3.4056878,2,0,0,1.8849409,0,0.5,0.44827707,0.29656308,True,0.28605108,0.056188605,1.3097059,0.82709488,0.65815324
-3,PropLGD4,credit,762,2.881955,64,0.453125,0.11052329,0.18487132,0.028571429,0.74285714,0.29872992,0.27423596,True,0.10498688,0.11942257,0.82864447,0.82944236,0.57480315
+3,PropLGD4,credit,762,2.881955,64,0.453125,0.11052329,0.18487132,0.028571429,0.74285714,0.29872992,0.27258403,True,0.10498688,0.11942257,0.82864447,0.82944236,0.57480315
 4,PropLGD5,credit,594,2.7737864,64,0.28125,0.0022622054,0.6175059,0,0.13043478,0.49557349,0.3142164,True,0.11616162,0.15993266,0.7662113,0.885298,0.64478114
 5,0006.lgd_freddie,credit,16002,4.2041743,20,0.4,0.011726659,3.4498232,0.58333333,0.91666667,0.30982067,0.27789345,True,0.11417323,0.080677415,0.14869096,0.53793099,0.8047744
-6,0007.lgd_lendingclub,credit,5627,3.7502769,17,0.29411765,0.0032929468,0.99467717,0.25,0.66666667,0.8109659,0.24322959,True,0.014750311,0.0031988626,-0.46428165,0.55014532,0.98080682
+6,0007.lgd_lendingclub,credit,5627,3.7502769,17,0.29411765,0.0032929468,0.99467717,0.25,0.66666667,0.810834,0.24320651,True,0.014750311,0.0031988626,-0.46428165,0.55014532,0.98080682
 7,0008.SBA_loans_case,credit,686,2.8363241,22,0.18181818,0.0033130135,2.9788263,0.61111111,0.94444444,0.39016772,0.28078988,True,0.0014577259,0.058309038,-0.14118521,0.50009723,0.92419825
 8,openml_46954,retention,907,2.9576073,6,0,0,0.71122052,0.16666667,0.33333333,0.66901672,0.36878275,False,0.0011025358,0.0011025358,0.2513561,0.28970457,0.91179713
 9,openml_46917,retention,1030,3.0128372,8,0,0,0.52348127,0.125,0.125,0.59601954,0.3826192,False,0.00097087379,0.00097087379,0.41692228,0.4355688,0.91067961
@@ -1356,11 +2153,11 @@ row,dataset_id,group,rows,log10_rows,features,categorical_share,missing_share,me
 18,openml_46928,retention,45451,4.6575434,9,0.33333333,0,1.9510579,0.33333333,0.16666667,0.30933152,0.13448505,False,0.016457284,0.0019801545,0.4863821,0.45960503,0.00099007723
 19,openml_46949,retention,45730,4.6602012,9,0,0,1.1207599,0.11111111,0.22222222,0.38903871,0.16714299,False,0.0059479554,4.3734966e-05,0.56652219,0.71092522,0.34775858
 20,openml_44974,domain_control,57932,4.7629185,8,0,0,2.2647004,0.5,0.875,0.62602413,0.3587744,False,2e-05,2e-05,4.2162378,0.67272917,0.19104
-21,openml_42727,domain_control,4637,3.6662371,43,0.27906977,0.3209523,0.91630098,0.12903226,0.58064516,0.70709,0.68415756,True,0.01035152,0.0097045504,0.014000051,0.43154588,0.72029329
+21,openml_42727,domain_control,4637,3.6662371,43,0.27906977,0.3209523,0.91630098,0.12903226,0.58064516,0.73084546,0.70922458,True,0.01035152,0.0097045504,0.014000051,0.43154588,0.72029329
 22,openml_45402,domain_control,2545,3.4056878,2,0,0,0.41748327,0,0,0.36850491,0.36848976,False,0.00039292731,0.00039292731,-0.44051402,0.29697822,0.99960707
 23,openml_42563,domain_control,762,2.881955,64,0.453125,0.036950459,1.4730768,0.37142857,1,0.81278373,0.70694953,False,0.001312336,0.001312336,1.9399539,0.4765907,0.58267717
 24,openml_43071,domain_control,594,2.7737864,64,0.015625,0,10.146622,0.95238095,0.34920635,0.17946749,0.17305212,False,0.0016835017,0.0050505051,1.4963656,0.99275399,0.90572391
-25,openml_44992,domain_control,16002,4.2041743,20,0.4,0.05271841,0.6510501,0.083333333,0.91666667,0.39153087,0.25589319,False,6.2492188e-05,6.2492188e-05,1.0614617,0.47748353,0.15548056
+25,openml_44992,domain_control,16002,4.2041743,20,0.4,0.05271841,0.6510501,0.083333333,0.91666667,0.39153087,0.25589044,False,6.2492188e-05,6.2492188e-05,1.0614617,0.47748353,0.15548056
 26,openml_44989,domain_control,5627,3.7502769,17,0.23529412,0,1.1277591,0.23076923,0.69230769,0.64577372,0.54610944,False,0.00017771459,0.00017771459,4.7744131,0.46700044,0.32361827
 27,openml_42570,domain_control,686,2.8363241,22,0.18181818,0,2.1353206,0.44444444,1,0.24923525,0.16962424,False,0.0014577259,0.0014577259,1.0045972,0.36247425,0.90524781
 
@@ -1382,8 +2179,8 @@ row,property,credit_median,noncredit_median,cliffs_delta,mann_whitney_p
 9,features,21,10.5,0.25625,0.30671327
 10,integer_share,0.58333333,0.50460829,0.19375,0.44488379
 11,heavy_tail_share,0.3125,0.12701613,0.175,0.49016788
-12,log10_rows,3.5359624,3.708257,-0.1625,0.52452776
-13,max_abs_spearman,0.41922239,0.56520584,-0.15,0.56613853
+12,max_abs_spearman,0.41922239,0.56520584,-0.1625,0.53268406
+13,log10_rows,3.5359624,3.708257,-0.1625,0.52452776
 14,top5_abs_spearman,0.27934167,0.33593409,-0.15,0.56613853
 
 B3. What LGD tables share
@@ -1392,10 +2189,10 @@ Properties ordered from most to least homogeneous among credit tables relative t
 Table: LGD: spread of each property
 CSV (first column: row index)
 row,property,credit_iqr,noncredit_iqr,credit_to_noncredit_ratio
-0,top5_abs_spearman,0.034492043,0.16548939,0.20842449
+0,top5_abs_spearman,0.035736758,0.16548939,0.21594591
 1,unique_share,0.29666781,0.75213377,0.39443491
 2,integer_share,0.30019841,0.52964744,0.56678914
-3,max_abs_spearman,0.23182315,0.31986118,0.72476176
+3,max_abs_spearman,0.23170342,0.31986118,0.72438745
 4,target_skew,1.0037789,1.3555271,0.74050819
 5,log10_rows,0.993204,1.1337567,0.87602919
 6,target_bimodality,0.30783696,0.27871794,1.1044749
@@ -1409,13 +2206,13 @@ row,property,credit_iqr,noncredit_iqr,credit_to_noncredit_ratio
 14,bounded_unit_interval,0,0,unavailable
 
 B4. Are LGD tables closer to each other?
-Distance tests and nearest neighbours; the projection of both tasks is in part C.
+Distance tests and nearest neighbours; part C shows the group distributions.
 
 Table: LGD: domain distance tests
 CSV (first column: row index)
 row,properties,credit_tables,noncredit_tables,mean_within_credit,mean_credit_to_noncredit,difference,permutation_p
-0,all,8,20,5.3672617,5.947363,0.58010132,0.083583283
-1,table,8,20,4.0673169,4.0575616,-0.0097552235,0.4895021
+0,all,8,20,5.3634295,5.9463398,0.58291028,0.083383323
+1,table,8,20,4.0626975,4.0551345,-0.0075630478,0.48630274
 2,target,8,20,3.1699679,4.0740143,0.90404645,0.013597281
 
 Table: LGD: nearest table
@@ -7215,12 +8012,12 @@ row,Share of rows at the minimum,Share at the maximum
 6,0.00017771459,0.00017771459
 7,0.0014577259,0.0014577259
 
-C1. How the three groups overlap
-Share of property variance shown by the two axes: PD 48%, LGD 37%. The distance comparisons in A4 and B4 use the full property space.
+C1. What did matching balance?
+Each table contributes once. The full-property distance comparisons are in A4 and B4.
 
 Figure: group_properties
 Title: Credit tables, matched controls and retention tables
-PD (top) and LGD (bottom). Each point is one table. From left to right the columns give the full row count on a log10 scale, the fraction of missing predictor cells and the largest absolute Spearman correlation of a numeric predictor with the target. Horizontal bars mark group medians. Missingness and correlations use a fixed sample of up to 50,000 rows per table. Undefined correlations are omitted.
+PD (top) and LGD (bottom). Each point is one table. From left to right the columns give the full row count on a log10 scale, the fraction of missing predictor cells and the largest absolute Spearman correlation of a numeric predictor with the target. Horizontal bars mark group medians. Missingness and correlations use a fixed sample of up to 50,000 rows per table. Each correlation ranks the predictor and target on their jointly observed rows. Constant predictors have undefined correlations and are omitted.
 Panel 1: Rows (log10) / points 1
 CSV (first column: row index)
 row,x,PD
@@ -7483,12 +8280,12 @@ Panel 6 / points 1
 CSV (first column: row index)
 row,x,y
 0,0.072281876,0.32001867
-1,-0.13191428,0.71044882
+1,-0.13191428,0.70996991
 2,-0.033570653,0.44827707
 3,0.11952724,0.29872992
 4,-0.0088638922,0.49557349
 5,0.13203902,0.30982067
-6,0.085093478,0.8109659
+6,0.085093478,0.810834
 7,0.13290367,0.39016772
 Panel 6 / points 3
 CSV (first column: row index)
@@ -7509,7 +8306,7 @@ Panel 6 / points 5
 CSV (first column: row index)
 row,x,y
 0,2.092693,0.62602413
-1,1.8696786,0.70709
+1,1.8696786,0.73084546
 2,2.0252027,0.36850491
 3,1.9031152,0.81278373
 4,2.0986038,0.17946749
@@ -7517,116 +8314,9 @@ row,x,y
 6,2.1563825,0.64577372
 7,1.8985419,0.24923525
 
-Figure: embedding
-Title: Credit and non-credit tables in property space
-First two principal components of the standardised feature and target properties of every table, for PD with the binary non-credit tables (left) and LGD with the regression non-credit tables (right). Each point is one table: credit corpus, matched non-credit control corpus (E4) and non-credit retention panel. Axis labels give the share of property variance per component.
-Panel 1: PD and binary tables / points 1
-CSV (first column: row index)
-row,PC1 (25% of variance),PC2 (22%)
-0,-1.534218,3.1382415
-1,-0.09120852,0.13253847
-2,-2.1247251,0.29358789
-3,-0.20018511,-0.58321113
-4,-0.3425161,-1.4159134
-5,-1.7327351,-0.18249844
-6,-0.73153181,2.1518599
-7,0.32846379,-2.4791241
-8,-1.0663616,-0.23223943
-9,-0.0067934055,-1.1180493
-10,-0.94605105,-0.20501774
-11,-3.1206868,0.96981212
-12,0.1958246,0.29849316
-13,-0.84645681,-1.3115726
-14,0.64935691,-0.17113118
-15,-1.7955661,0.24922692
-16,3.001256,0.76022444
-Panel 1: PD and binary tables / points 2
-CSV (first column: row index)
-row,PC1 (25% of variance),PC2 (22%)
-0,0.72924439,-0.38920781
-1,2.5739205,-0.5776799
-2,2.3903893,1.4452764
-3,1.9550339,-0.32957948
-4,0.28775257,-1.2872278
-5,3.7960091,0.74320079
-6,-0.43321428,-0.021081838
-7,1.7401442,-0.60085611
-8,0.16881246,-1.3237704
-9,-0.20973104,-1.0705398
-10,-1.2646853,-0.39469306
-11,0.49468634,-1.514404
-12,-0.19600645,2.651085
-13,0.94795366,-1.84781
-14,1.426455,1.5424942
-15,-0.97163746,-3.1637414
-16,-0.3484804,-1.4702709
-17,-0.77148734,-1.0209863
-18,-1.5822278,-0.64017115
-Panel 1: PD and binary tables / points 3
-CSV (first column: row index)
-row,PC1 (25% of variance),PC2 (22%)
-0,0.99080903,-0.78701205
-1,2.5651691,2.279393
-2,-0.52475787,-0.4769289
-3,0.8395044,0.03196603
-4,2.537896,0.42720937
-5,-0.14079428,-0.45652827
-6,1.7642394,0.60797385
-7,0.44935346,0.14122607
-8,0.085131058,-1.361604
-9,0.16089317,2.1633743
-10,-2.5624103,3.1694322
-11,1.1110354,4.8882042
-12,0.035059663,-1.052208
-13,-3.650034,0.89293989
-14,-2.119147,-1.1760194
-15,-3.04991,1.1745391
-16,1.1391654,-1.4912207
-Panel 2: LGD and regression
-tables / points 1
-CSV (first column: row index)
-row,PC1 (20% of variance),PC2 (17%)
-0,4.6666726,3.6829853
-1,1.7945018,-3.1062054
-2,2.371578,1.6784105
-3,2.6522072,-1.2161779
-4,2.2982597,-0.15781356
-5,2.3673684,-0.34458195
-6,0.26500083,-0.74467226
-7,1.4136834,-1.1251245
-Panel 2: LGD and regression
-tables / points 2
-CSV (first column: row index)
-row,PC1 (20% of variance),PC2 (17%)
-0,-1.7537036,0.042886008
-1,-1.5145931,0.35262855
-2,-0.55933796,-0.60906568
-3,-0.81367716,0.65825058
-4,-1.1744108,0.030606315
-5,-0.86074588,0.17410808
-6,-1.6228819,1.7113332
-7,-1.7618997,0.70047285
-8,-0.94536512,1.1536498
-9,-1.6214861,0.0008156356
-10,-0.57391931,1.8979299
-11,-0.68995238,2.3923938
-Panel 2: LGD and regression
-tables / points 3
-CSV (first column: row index)
-row,PC1 (20% of variance),PC2 (17%)
-0,-1.2054934,0.68635463
-1,0.18501012,-3.3394933
-2,-1.5588423,1.0758293
-3,-1.0256116,-3.5369928
-4,2.5478178,-0.96853121
-5,-0.81408273,0.18495519
-6,-1.9447867,-0.76217854
-7,-0.12130994,-0.5127724
-
-general/03_domain_comparison: 3 figures -> output CreditPFN/figures/general
+general/03_domain_comparison: 2 figures -> output CreditPFN/figures/general
   01  lgd_targets
   02  group_properties
-  03  embedding
 ```
 
 ---
@@ -7639,9 +8329,9 @@ RQ1: transfer — training
 1. Design
 Each arm changes only the listed settings; E1 is the shared control of E2, E4 and E8-E12.
 
-Table: Arms of RQ1
+Table: RQ1 arms and continued-pretraining run counts
 CSV (first column: row index)
-row,experiment,slug,arm,track,change,models,runs,tasks
+row,experiment,slug,arm,track,change,models,CPT runs,tasks
 0,E1,reference,0,pd,reference,4,16,unavailable
 1,E1,reference,0,lgd,reference,4,16,unavailable
 2,E2,seed,0,pd,seed=43,4,16,unavailable
@@ -7683,7 +8373,7 @@ row
 4. Training cost
 No results yet for training cost records; the figure is drawn once they exist.
 
-Table: Training cost per arm and model (E1, E2, E4)
+Table: Training cost per arm and model (E1–E4)
 CSV (first column: row index)
 row
 
@@ -7755,8 +8445,6 @@ row
 
 3. Ranking, profit, calibration and distribution quality
 No results yet for E1 metric profile; the figure is drawn once they exist.
-
-No measurements available for this figure group.
 
 Table: PD metric profile (credit tables)
 CSV (first column: row index)
@@ -7933,8 +8621,6 @@ row
 2. Slope test
 No results yet for E6 slope test; the figure is drawn once they exist.
 
-No measurements available for this figure group.
-
 Table: Slope per table and quantity
 CSV (first column: row index)
 row
@@ -8105,35 +8791,41 @@ RQ3: controlling weight change — training
 1. Design
 Each arm changes only the listed settings; E1 is the shared control.
 
-Table: Arms of RQ2
+Table: E1 reference and E8–E9 weight-update arms
 CSV (first column: row index)
-row,experiment,slug,arm,change,tasks,runs,track,models
-0,E6,context,—,"Does CPT help more when the target table offers few labelled context rows, and is what helps credit-specific?","PD, LGD",0,unavailable,unavailable
-1,E7,transfer,0,"single_source=0, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
-2,E7,transfer,1,"single_source=1, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
-3,E7,transfer,2,"single_source=2, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
-4,E7,transfer,3,"single_source=3, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
-5,E7,transfer,4,"single_source=4, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
-6,E7,transfer,5,"single_source=5, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
-7,E7,transfer,6,"single_source=6, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
-8,E7,transfer,7,"single_source=7, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
-9,E7,transfer,8,"single_source=8, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
-10,E7,transfer,9,"single_source=9, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
-11,E7,transfer,10,"single_source=10, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
-12,E7,transfer,11,"single_source=11, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
-13,E7,transfer,12,"single_source=12, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
-14,E7,transfer,13,"single_source=13, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
-15,E7,transfer,14,"single_source=14, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
-16,E7,transfer,15,"single_source=15, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
-17,E7,transfer,16,"single_source=16, successful_updates=2500, learning_rate=1e-06",unavailable,4,pd,4
-18,E7,transfer,0,"single_source=0, successful_updates=2500, learning_rate=1e-06",unavailable,4,lgd,4
-19,E7,transfer,1,"single_source=1, successful_updates=2500, learning_rate=1e-06",unavailable,4,lgd,4
-20,E7,transfer,2,"single_source=2, successful_updates=2500, learning_rate=1e-06",unavailable,4,lgd,4
-21,E7,transfer,3,"single_source=3, successful_updates=2500, learning_rate=1e-06",unavailable,4,lgd,4
-22,E7,transfer,4,"single_source=4, successful_updates=2500, learning_rate=1e-06",unavailable,4,lgd,4
-23,E7,transfer,5,"single_source=5, successful_updates=2500, learning_rate=1e-06",unavailable,4,lgd,4
-24,E7,transfer,6,"single_source=6, successful_updates=2500, learning_rate=1e-06",unavailable,4,lgd,4
-25,E7,transfer,7,"single_source=7, successful_updates=2500, learning_rate=1e-06",unavailable,4,lgd,4
+row,experiment,slug,arm,track,change,models,runs
+0,E1,reference,0,pd,reference,4,16
+1,E1,reference,0,lgd,reference,4,16
+2,E8,update_size_anchoring,0,pd,learning_rate=1e-07,4,16
+3,E8,update_size_anchoring,1,pd,learning_rate=1e-06,4,16
+4,E8,update_size_anchoring,2,pd,learning_rate=3e-06,4,16
+5,E8,update_size_anchoring,3,pd,learning_rate=1e-05,4,16
+6,E8,update_size_anchoring,4,pd,"learning_rate=3e-06, l2sp_lambda=0.0",4,16
+7,E8,update_size_anchoring,5,pd,"learning_rate=3e-06, l2sp_lambda=0.03",4,16
+8,E8,update_size_anchoring,6,pd,"learning_rate=1e-05, l2sp_lambda=0.0",4,16
+9,E8,update_size_anchoring,7,pd,"learning_rate=1e-05, l2sp_lambda=0.03",4,16
+10,E8,update_size_anchoring,8,pd,l2sp_lambda=0.0,4,16
+11,E8,update_size_anchoring,0,lgd,learning_rate=1e-07,4,16
+12,E8,update_size_anchoring,1,lgd,learning_rate=1e-06,4,16
+13,E8,update_size_anchoring,2,lgd,learning_rate=3e-06,4,16
+14,E8,update_size_anchoring,3,lgd,learning_rate=1e-05,4,16
+15,E8,update_size_anchoring,4,lgd,"learning_rate=3e-06, l2sp_lambda=0.0",4,16
+16,E8,update_size_anchoring,5,lgd,"learning_rate=3e-06, l2sp_lambda=0.03",4,16
+17,E8,update_size_anchoring,6,lgd,"learning_rate=1e-05, l2sp_lambda=0.0",4,16
+18,E8,update_size_anchoring,7,lgd,"learning_rate=1e-05, l2sp_lambda=0.03",4,16
+19,E8,update_size_anchoring,8,lgd,l2sp_lambda=0.0,4,16
+20,E9,scope,0,pd,"trainable=frozen_backbone, learning_rate=3e-07",4,16
+21,E9,scope,1,pd,"trainable=frozen_backbone, learning_rate=3e-06",4,16
+22,E9,scope,2,pd,"trainable=diagscale, learning_rate=0.0001",4,16
+23,E9,scope,3,pd,"trainable=diagscale, learning_rate=0.001",4,16
+24,E9,scope,4,pd,"trainable=lora_qv_r16, learning_rate=3e-06",4,16
+25,E9,scope,5,pd,"trainable=lora_qv_r16, learning_rate=1e-05",4,16
+26,E9,scope,0,lgd,"trainable=frozen_backbone, learning_rate=3e-07",4,16
+27,E9,scope,1,lgd,"trainable=frozen_backbone, learning_rate=3e-06",4,16
+28,E9,scope,2,lgd,"trainable=diagscale, learning_rate=0.0001",4,16
+29,E9,scope,3,lgd,"trainable=diagscale, learning_rate=0.001",4,16
+30,E9,scope,4,lgd,"trainable=lora_qv_r16, learning_rate=3e-06",4,16
+31,E9,scope,5,lgd,"trainable=lora_qv_r16, learning_rate=1e-05",4,16
 
 2. Update size and anchoring (E8)
 No results yet for E8 monitor curves; the figure is drawn once they exist.
@@ -8272,50 +8964,22 @@ RQ3: training data — training
 1. Design
 Each arm changes only the listed settings; E1 is the shared control of E10. E11 compares its two corpora with each other; E12 trains on the tables above 10,000 rows.
 
-Table: Arms of RQ3
+Table: E1 reference and E10–E12 training-data arms
 CSV (first column: row index)
 row,experiment,slug,arm,track,change,models,runs
-0,E8,update_size_anchoring,0,pd,learning_rate=1e-07,4,16
-1,E8,update_size_anchoring,1,pd,learning_rate=1e-06,4,16
-2,E8,update_size_anchoring,2,pd,learning_rate=3e-06,4,16
-3,E8,update_size_anchoring,3,pd,learning_rate=1e-05,4,16
-4,E8,update_size_anchoring,4,pd,"learning_rate=3e-06, l2sp_lambda=0.0",4,16
-5,E8,update_size_anchoring,5,pd,"learning_rate=3e-06, l2sp_lambda=0.03",4,16
-6,E8,update_size_anchoring,6,pd,"learning_rate=1e-05, l2sp_lambda=0.0",4,16
-7,E8,update_size_anchoring,7,pd,"learning_rate=1e-05, l2sp_lambda=0.03",4,16
-8,E8,update_size_anchoring,8,pd,l2sp_lambda=0.0,4,16
-9,E8,update_size_anchoring,0,lgd,learning_rate=1e-07,4,16
-10,E8,update_size_anchoring,1,lgd,learning_rate=1e-06,4,16
-11,E8,update_size_anchoring,2,lgd,learning_rate=3e-06,4,16
-12,E8,update_size_anchoring,3,lgd,learning_rate=1e-05,4,16
-13,E8,update_size_anchoring,4,lgd,"learning_rate=3e-06, l2sp_lambda=0.0",4,16
-14,E8,update_size_anchoring,5,lgd,"learning_rate=3e-06, l2sp_lambda=0.03",4,16
-15,E8,update_size_anchoring,6,lgd,"learning_rate=1e-05, l2sp_lambda=0.0",4,16
-16,E8,update_size_anchoring,7,lgd,"learning_rate=1e-05, l2sp_lambda=0.03",4,16
-17,E8,update_size_anchoring,8,lgd,l2sp_lambda=0.0,4,16
-18,E9,scope,0,pd,"trainable=frozen_backbone, learning_rate=3e-07",4,16
-19,E9,scope,1,pd,"trainable=frozen_backbone, learning_rate=3e-06",4,16
-20,E9,scope,2,pd,"trainable=diagscale, learning_rate=0.0001",4,16
-21,E9,scope,3,pd,"trainable=diagscale, learning_rate=0.001",4,16
-22,E9,scope,4,pd,"trainable=lora_qv_r16, learning_rate=3e-06",4,16
-23,E9,scope,5,pd,"trainable=lora_qv_r16, learning_rate=1e-05",4,16
-24,E9,scope,0,lgd,"trainable=frozen_backbone, learning_rate=3e-07",4,16
-25,E9,scope,1,lgd,"trainable=frozen_backbone, learning_rate=3e-06",4,16
-26,E9,scope,2,lgd,"trainable=diagscale, learning_rate=0.0001",4,16
-27,E9,scope,3,lgd,"trainable=diagscale, learning_rate=0.001",4,16
-28,E9,scope,4,lgd,"trainable=lora_qv_r16, learning_rate=3e-06",4,16
-29,E9,scope,5,lgd,"trainable=lora_qv_r16, learning_rate=1e-05",4,16
-30,E10,exposure,0,pd,exposure=full_pass,4,16
-31,E10,exposure,1,pd,successful_updates=10000,4,16
-32,E10,exposure,0,lgd,exposure=full_pass,4,16
-33,E10,exposure,1,lgd,successful_updates=10000,4,16
-34,E11,table_size,0,pd,corpus=small_only,4,16
-35,E11,table_size,1,pd,corpus=large_matched,4,16
-36,E12,episode_size,0,pd,"corpus=tables_above_10000_rows, episode_rows=2048",4,16
-37,E12,episode_size,1,pd,"corpus=tables_above_10000_rows, episode_rows=4096",4,16
-38,E12,episode_size,2,pd,"corpus=tables_above_10000_rows, episode_rows=8192",4,16
-39,E12,episode_size,3,pd,"corpus=tables_above_10000_rows, episode_rows=16384",2,8
-40,E12,episode_size,4,pd,corpus=tables_above_10000_rows,4,16
+0,E1,reference,0,pd,reference,4,16
+1,E1,reference,0,lgd,reference,4,16
+2,E10,exposure,0,pd,exposure=full_pass,4,16
+3,E10,exposure,1,pd,successful_updates=10000,4,16
+4,E10,exposure,0,lgd,exposure=full_pass,4,16
+5,E10,exposure,1,lgd,successful_updates=10000,4,16
+6,E11,table_size,0,pd,corpus=small_only,4,16
+7,E11,table_size,1,pd,corpus=large_matched,4,16
+8,E12,episode_size,0,pd,"corpus=tables_above_10000_rows, episode_rows=2048",4,16
+9,E12,episode_size,1,pd,"corpus=tables_above_10000_rows, episode_rows=4096",4,16
+10,E12,episode_size,2,pd,"corpus=tables_above_10000_rows, episode_rows=8192",4,16
+11,E12,episode_size,3,pd,"corpus=tables_above_10000_rows, episode_rows=16384",2,8
+12,E12,episode_size,4,pd,corpus=tables_above_10000_rows,4,16
 
 2. Exposure and table size (E10, E11)
 No results yet for E10-E11 monitor curves; the figure is drawn once they exist.

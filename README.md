@@ -79,6 +79,14 @@ drawn for Springer LNCS (122 mm wide, vector PDF, no figure-level title) in
 `output CreditPFN/figures/<group>/`; `CAPTIONS.md` holds their captions and titles, and
 `output CreditPFN/All_Results.md` the notebook summaries.
 
+| Question | Where to start | What to compare |
+|---|---|---|
+| RQ1. Does credit adaptation pay off? | [Held-out results](notebooks/rq1/02_results.ipynb) · [Training](notebooks/rq1/01_training.ipynb) | Paired five-fold gains, seed variation, non-credit retention and the matched training control (E1–E5). |
+| RQ2. When does it help? | [Context curves](notebooks/rq2/01_context_curves.ipynb) · [Table and source effects](notebooks/rq2/02_when_and_why.ipynb) | Gain as labelled context grows (E6) and single-source transfer on a fixed monitor split (E7). |
+| RQ3. Which training choices matter? | [Weight updates](notebooks/rq3/02_weight_change_results.ipynb) · [Training data](notebooks/rq3/04_training_data_results.ipynb) | Transfer and retention across update sizes and trainable scopes (E8–E9), then exposure, table size and episode size (E10–E12). |
+
+[Experiment 0](notebooks/experiment0/01_campaign2_checks.ipynb) reports validation outcomes and numerical exceptions. The [public-table appendix](notebooks/appendix) repeats the endpoint analyses on publicly available evaluation tables.
+
 ## Repository layout
 
 Reusable code lives in `src/`; entry points are `scripts/{data,train,eval}_pipeline.py` and

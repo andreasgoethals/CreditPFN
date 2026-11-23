@@ -31,7 +31,9 @@ _No figures produced._
 
 ## experiment0/01_campaign2_checks
 
-_No figures produced._
+**[experiment0__01_campaign2_checks__01_precision_agreement](experiment0/experiment0__01_campaign2_checks__01_precision_agreement.pdf)** — `precision_agreement` — Mixed-precision gradients against FP32 at update zero
+
+Cosine between mixed-precision and FP32 training gradients at the pretrained weights on identical episodes of up to 8,192 rows from partition 0. Each point represents one measured table, task, model and policy. FP16 candidates use loss scaling. The dashed line marks the 0.90 agreement threshold. TabPFN v2 PD trains in bounded FP32; its mixed-precision points are alternatives. The table identifies all unavailable comparisons.
 
 ## general/01_raw_data
 
@@ -59,11 +61,7 @@ Left: empirical distribution function of each table target after per-table min-m
 
 **[general__03_domain_comparison__02_group_properties](general/general__03_domain_comparison__02_group_properties.pdf)** — `group_properties` — Credit tables, matched controls and retention tables
 
-PD (top) and LGD (bottom). Each point is one table. From left to right the columns give the full row count on a log10 scale, the fraction of missing predictor cells and the largest absolute Spearman correlation of a numeric predictor with the target. Horizontal bars mark group medians. Missingness and correlations use a fixed sample of up to 50,000 rows per table. Undefined correlations are omitted.
-
-**[general__03_domain_comparison__03_embedding](general/general__03_domain_comparison__03_embedding.pdf)** — `embedding` — Credit and non-credit tables in property space
-
-First two principal components of the standardised feature and target properties of every table, for PD with the binary non-credit tables (left) and LGD with the regression non-credit tables (right). Each point is one table: credit corpus, matched non-credit control corpus (E4) and non-credit retention panel. Axis labels give the share of property variance per component.
+PD (top) and LGD (bottom). Each point is one table. From left to right the columns give the full row count on a log10 scale, the fraction of missing predictor cells and the largest absolute Spearman correlation of a numeric predictor with the target. Horizontal bars mark group medians. Missingness and correlations use a fixed sample of up to 50,000 rows per table. Each correlation ranks the predictor and target on their jointly observed rows. Constant predictors have undefined correlations and are omitted.
 
 ## rq1/01_training
 

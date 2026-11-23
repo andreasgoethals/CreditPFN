@@ -477,7 +477,28 @@ def experiment0_tables(summary: dict | None) -> dict[str, pd.DataFrame]:
                            for t, v in summary.get(kind, {}).items()])
     timing = pd.DataFrame([dict(pilot=k, **t) for k, v in summary.get("pilots", {}).items()
                            for t in v.get("timing", [])])
-    return {"pilots": pilots, "checks": checks, "timing": timing}
+    updates, own_table = [], []
+    for pilot, record in summary.get("pilots", {}).items():
+        for trial in record.get("trials", []):
+            skips = trial.get("numerical_skips") or {}
+            updates.append(dict(pilot=pilot, track=record.get("track"), trial=trial["trial"],
+                                status=trial.get("status"), updates=trial.get("successful_updates"),
+                                amp_skips=skips.get("amp_skipped_steps"), data_skips=skips.get("data_skipped_steps")))
+            check = record.get("pilot_checks", {}).get(trial["trial"], {})
+            if "own_table_start" in check:
+                own_table.append(dict(track=record["track"], trial=trial["trial"],
+                                      metric="AUC" if record["track"] == "pd" else "RMSE",
+                                      first=check["own_table_start"], last=check["own_table_end"],
+                                      finding=check.get("finding", "")))
+    recovery = pd.DataFrame([
+        dict(task=int(task), track=r.get("track"), variant=r.get("variant"),
+             interrupted_at=r.get("interrupt_after"), bitwise_equal=r.get("weights", {}).get("bitwise_equal"),
+             max_weight_difference=r.get("weights", {}).get("max_absolute_difference"),
+             monitors_match=r.get("monitors", {}).get("passed"), audit_notes=len(r.get("audit_problems", [])))
+        for task, r in summary.get("recovery", {}).items()
+    ])
+    return {"pilots": pilots, "checks": checks, "timing": timing, "updates": pd.DataFrame(updates),
+            "own_table": pd.DataFrame(own_table), "recovery": recovery}
 
 
 # ----------------------------------------------------------------------------- display

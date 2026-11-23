@@ -1,12 +1,43 @@
 """Figures for the credit vs non-credit comparison (notebooks/general/03_domain_comparison)."""
 from __future__ import annotations
 
+import warnings
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from src.data.domain_comparison import normalised_target
+from src.data import domain_comparison as dc
 from src.visualize import style
+
+
+def property_table(tables: list[dict], track: str) -> pd.DataFrame:
+    """Report pairwise Spearman correlations for predictors with missing observations.
+
+    The campaign's descriptive inventory ranks the target once per table. For a
+    predictor with missing rows, Spearman's rho requires reranking the target
+    on the observed pairs. All other inventory properties keep their definitions.
+    """
+    with warnings.catch_warnings():
+        # A constant column has an undefined correlation; the inventory drops those NaNs.
+        warnings.filterwarnings("ignore", message="invalid value encountered in divide",
+                                category=RuntimeWarning, module=r"numpy\.lib\._function_base_impl")
+        frame = dc.property_table(tables, track)
+    for i, table in enumerate(tables):
+        numeric = table["X"].drop(columns=table["categorical"], errors="ignore").select_dtypes(include=np.number)
+        target = pd.Series(table["y"], index=numeric.index)
+        if not numeric.isna().any().any() and not target.isna().any():
+            continue
+        coefficients = []
+        for _, predictor in numeric.items():
+            observed = predictor.notna() & target.notna()
+            x, y = predictor[observed], target[observed]
+            if x.nunique() > 1 and y.nunique() > 1:
+                coefficients.append(abs(x.corr(y, method="spearman")))
+        strongest = pd.Series(coefficients, dtype=float).nlargest(5)
+        frame.loc[i, ["max_abs_spearman", "top5_abs_spearman"]] = [strongest.max(), strongest.mean()]
+    return frame
+
 
 def _scatter(ax, frame, x, y):
     for group in style.DOMAIN_MARKERS:
@@ -67,7 +98,7 @@ def target_figure(tables_lgd: list[dict], properties_lgd: pd.DataFrame):
     fig, axes = plt.subplots(1, 2, figsize=style.figsize(style.WIDTH_FULL, 0.45))
     grid = np.linspace(0, 1, 201)
     for t in tables_lgd:
-        z = np.sort(normalised_target(t["y"]))
+        z = np.sort(dc.normalised_target(t["y"]))
         ecdf = np.searchsorted(z, grid, side="right") / len(z)
         credit = t["group"] == "credit"   # credit curves on top: they are the subject
         axes[0].plot(grid, ecdf, color=style.DOMAIN_COLORS[t["group"]], linestyle=style.DOMAIN_LINES[t["group"]],
@@ -75,6 +106,8 @@ def target_figure(tables_lgd: list[dict], properties_lgd: pd.DataFrame):
                      zorder=3 if credit else 2)
     axes[0].set_xlabel("Target, rescaled to [0, 1]")
     axes[0].set_ylabel("Cumulative share of rows")
+    axes[0].set_xticks([0, 0.5, 1])
+    axes[0].set_yticks([0, 0.5, 1])
     axes[0].set_title("Target per table")
     _scatter(axes[1], properties_lgd, "share_at_min", "share_at_max")
     axes[1].set_xlabel("Share of rows at the minimum")
