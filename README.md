@@ -30,6 +30,11 @@ with the credit-scoring measures KS, H-measure and expected maximum profit. A Ta
 leaderboard (Elo anchored at the linear baseline, normalized score, improvability) ranks every
 method on the same folds, and an appendix recomputes every result on the public tables only.
 
+The public-table appendix covers all 17 PD tables and 3 of the 8 LGD tables. PD 0009 is the
+Bank Loan Status Dataset (`credit_train.csv`) and PD 0011 is Loan Default Prediction - Imperial
+College London (`train_v2.csv`). [Bank Loan Status Dataset](https://www.kaggle.com/datasets/zaurbegiev/my-dataset)
+· [Imperial College London competition](https://www.kaggle.com/competitions/loan-default-prediction)
+
 Reference CPT for TabPFN v2 PD uses strict FP32 with a memory-bounded backward pass. Experiment 0
 compares it with native FP32 on a shared smaller episode and checks full training-size episodes
 for finite losses and gradients. The other reference model–task pairs use FP16 autocast with

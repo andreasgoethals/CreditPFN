@@ -36,8 +36,6 @@ def test_public_table_counts_match_the_registry():
     for track, frame in zip(("pd", "lgd"), counts):
         row = frame.iloc[0]
         assert row.credit_tables == an.ALL_TABLES[track]
-        if row.proprietary_tables == 0:
-            pytest.skip("proprietary mapping absent (public clone)")
         assert row.credit_tables - row.proprietary_tables == an.PUBLIC_TABLES[track]
 
 

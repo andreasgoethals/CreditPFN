@@ -13,6 +13,12 @@ from src.visualize import corpus, reporting, style
 
 def test_public_dataset_aliases_work_without_a_private_mapping(monkeypatch):
     monkeypatch.setattr(dataset_names, "_DISPLAY", {})
+    assert dataset_names.display_name("0009.bank_status") == "Bank Loan Status Dataset"
+    assert dataset_names.display_name("0011.loan_default") == "Loan Default Prediction - Imperial College London"
+    frame = pd.DataFrame({"dataset_id": ["0009.bank_status", "0011.loan_default", "unknown"]})
+    assert dataset_names.display_frame(frame).dataset_id.tolist() == frame.dataset_id.map(
+        dataset_names.display_name
+    ).tolist()
     assert dataset_names.display_name("0015.credit_risk_dataset") == "Credit Risk"
     assert dataset_names.display_name("0016.bondora_peer2peer") == "Bondora Peer-to-Peer"
     assert dataset_names.display_name("0017.SBA_loans_case") == "SBA Loans Case"

@@ -15,6 +15,8 @@ import re
 
 _INDEX_PREFIX = re.compile(r"^\d+\.")
 _PUBLIC_DISPLAY = {
+    "bank_status": "Bank Loan Status Dataset",
+    "loan_default": "Loan Default Prediction - Imperial College London",
     "credit_risk_dataset": "Credit Risk",
     "bondora_peer2peer": "Bondora Peer-to-Peer",
     "SBA_loans_case": "SBA Loans Case",
@@ -24,7 +26,8 @@ _PUBLIC_TRACK_DISPLAY = {"0008.SBA_loans_case": "SBA Loans Case (LGD)"}
 # alias file. Keep full identifiers: PD and LGD numbering overlaps.
 PUBLIC_CREDIT_TABLES = frozenset({
     "0001.gmsc", "0002.taiwan_creditcard", "0003.vehicle_loan", "0004.lendingclub",
-    "0005.myhom", "0006.hackerearth", "0007.cobranded", "0008.german", "0010.thomas",
+    "0005.myhom", "0006.hackerearth", "0007.cobranded", "0008.german", "0009.bank_status",
+    "0010.thomas", "0011.loan_default",
     "0012.home_credit", "0013.hmeq", "0014.algorithmwatch", "0015.credit_risk_dataset",
     "0016.bondora_peer2peer", "0017.SBA_loans_case",
     "0006.lgd_freddie", "0007.lgd_lendingclub", "0008.SBA_loans_case",
@@ -38,9 +41,12 @@ def _stem(slug: object) -> str:
 
 try:  # the gitignored mapping is present only where the private data is
     from src.data._private_names import DISPLAY as _DISPLAY
-    from src.data._private_names import PROPRIETARY as _PROPRIETARY
+    from src.data._private_names import PROPRIETARY as _PRIVATE_STEMS
 except Exception:  # public clone / mapping absent -> degrade to raw slugs
-    _DISPLAY, _PROPRIETARY = {}, set()
+    _DISPLAY, _PRIVATE_STEMS = {}, set()
+
+# Older local alias files may still classify a now-public table as proprietary.
+_PROPRIETARY = _PRIVATE_STEMS - {_stem(slug) for slug in PUBLIC_CREDIT_TABLES}
 
 
 def display_name(slug: object) -> str:
@@ -66,8 +72,11 @@ def redact_private_names(value: object) -> object:
 
 
 def display_frame(frame):
-    """Sanitize free text only at presentation boundaries, after internal joins."""
+    """Label public dataset identifiers and redact private names after internal joins."""
     result = frame.copy()
     for column in result.select_dtypes(include=["object", "string"]):
-        result[column] = result[column].map(redact_private_names)
+        result[column] = result[column].map(
+            lambda value: display_name(value) if isinstance(value, str) and _stem(value) in _PUBLIC_DISPLAY
+            else redact_private_names(value)
+        )
     return result

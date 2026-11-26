@@ -17,7 +17,7 @@ E1 has no complete primary comparison in the local results.
 Table: Held-out credit tables in scope
 CSV (first column: row index)
 row,track,scope,credit_tables,proprietary_tables,tables_in_scope
-0,pd,public,17,2,15
+0,pd,public,17,0,17
 1,lgd,public,8,5,3
 
 No measurements available for this figure group.
@@ -233,7 +233,7 @@ No results yet for E6 context curves; the figure is drawn once they exist.
 Table: Held-out credit tables in scope
 CSV (first column: row index)
 row,track,scope,credit_tables,proprietary_tables,tables_in_scope
-0,pd,public,17,2,15
+0,pd,public,17,0,17
 1,lgd,public,8,5,3
 
 No measurements available for this figure group.
@@ -281,7 +281,7 @@ Computed from the processed credit tables; distances are in standardised propert
 Table: Held-out credit tables in scope
 CSV (first column: row index)
 row,track,scope,credit_tables,proprietary_tables,tables_in_scope
-0,pd,public,17,2,15
+0,pd,public,17,0,17
 1,lgd,public,8,5,3
 
 Table: PD table properties
@@ -295,13 +295,15 @@ row,test_dataset_id,rows,features,categorical_share,missing_share,default_rate
 5,0006.hackerearth,506724,31,0.29032258,0.072136553,0.1791567
 6,0007.cobranded,80000,47,0,0.1883609,0.2462125
 7,0008.german,1000,20,0.65,0,0.3
+8,Bank Loan Status Dataset,81999,15,0,0.064610544,0.27608873
 9,0010.thomas,1225,14,0.14285714,0,0.26367347
+10,Loan Default Prediction - Imperial College London,105471,64,0,0.0083016007,0.092755355
 11,0012.home_credit,307511,64,0.140625,0.18749543,0.080728819
 12,0013.hmeq,5960,12,0.16666667,0.073699664,0.19949664
 13,0014.algorithmwatch,158700,64,0,0,0.37809074
-14,0015.credit_risk_dataset,32581,11,0.18181818,0.011197268,0.21816396
-15,0016.bondora_peer2peer,730176,7,0.28571429,0.11686634,0.13810506
-16,0017.SBA_loans_case,2102,22,0.18181818,0.0015353343,0.32635585
+14,Credit Risk,32581,11,0.18181818,0.011197268,0.21816396
+15,Bondora Peer-to-Peer,730176,7,0.28571429,0.11686634,0.13810506
+16,SBA Loans Case,2102,22,0.18181818,0.0015353343,0.32635585
 
 Table: PD distance to the CPT training tables
 CSV (first column: row index)
@@ -309,35 +311,37 @@ row,test_dataset_id,partition,nearest,mean
 0,0010.thomas,0,0.98463188,2.7979277
 1,0013.hmeq,0,1.3238353,2.516443
 2,0014.algorithmwatch,0,2.0287812,3.3366236
-3,0016.bondora_peer2peer,0,2.2525952,3.474039
+3,Bondora Peer-to-Peer,0,2.2525952,3.474039
 4,0001.gmsc,1,1.8114808,3.0749618
 5,0002.taiwan_creditcard,1,1.2653369,2.3562797
 6,0003.vehicle_loan,1,1.7536888,2.5185092
 7,0008.german,1,2.9748031,4.4084741
 8,0004.lendingclub,2,1.2653369,2.6499575
 9,0006.hackerearth,2,1.7802802,3.0040673
-12,0015.credit_risk_dataset,2,1.3238353,2.5140804
+10,Bank Loan Status Dataset,2,1.4154064,2.5983454
+11,Loan Default Prediction - Imperial College London,2,1.7536888,3.3854606
+12,Credit Risk,2,1.3238353,2.5140804
 13,0005.myhom,3,1.853395,3.169435
 14,0007.cobranded,3,2.5630363,3.5886513
 15,0012.home_credit,3,2.5401534,3.9543299
-16,0017.SBA_loans_case,3,0.98463188,2.7263902
+16,SBA Loans Case,3,0.98463188,2.7263902
 
 Table: LGD table properties
 CSV (first column: row index)
 row,test_dataset_id,rows,features,categorical_share,missing_share,zero_share,one_share
 5,0006.lgd_freddie,16002,20,0.4,0.011726659,0.11417323,0.080677415
 6,0007.lgd_lendingclub,5627,17,0.29411765,0.0032929468,0.014750311,0.0031988626
-7,0008.SBA_loans_case,686,22,0.18181818,0.0033130135,0,0.058309038
+7,SBA Loans Case (LGD),686,22,0.18181818,0.0033130135,0,0.058309038
 
 Table: LGD distance to the CPT training tables
 CSV (first column: row index)
 row,test_dataset_id,partition,nearest,mean
 3,0006.lgd_freddie,1,1.7592059,2.7583972
 5,0007.lgd_lendingclub,2,1.5921582,2.8104026
-7,0008.SBA_loans_case,3,1.5921582,2.8631698
+7,SBA Loans Case (LGD),3,1.5921582,2.8631698
 
 2. Gains against table properties (E1)
-With 15 PD and 3 LGD tables these are descriptive correlations, not causal effects.
+With 17 PD and 3 LGD tables these are descriptive correlations, not causal effects.
 
 No measurements available for this figure group.
 
@@ -422,7 +426,7 @@ No results yet for E8 five-fold gains; the figure is drawn once they exist.
 Table: Held-out credit tables in scope
 CSV (first column: row index)
 row,track,scope,credit_tables,proprietary_tables,tables_in_scope
-0,pd,public,17,2,15
+0,pd,public,17,0,17
 1,lgd,public,8,5,3
 
 Table: PD E8 summary per arm and model
@@ -507,7 +511,7 @@ No results yet for E10-E12 five-fold gains; the figure is drawn once they exist.
 Table: Held-out credit tables in scope
 CSV (first column: row index)
 row,track,scope,credit_tables,proprietary_tables,tables_in_scope
-0,pd,public,17,2,15
+0,pd,public,17,0,17
 1,lgd,public,8,5,3
 
 No measurements available for this figure group.
@@ -965,9 +969,9 @@ row,model,dataset,context_rows,query_rows,roughness_median,roughness_limit,excee
 18,TabPFN v2,0007.lgd_lendingclub,600,400,0.077517509,2.5,False,-2.0505145,0,0.74372474
 19,TabPFN v2.6,0007.lgd_lendingclub,600,400,3.6023941,2.5,True,1.1330682,0,0.73769475
 20,TabPFN v3,0007.lgd_lendingclub,600,400,0.25166702,2.5,False,-2.0070948,0,0.74032026
-21,TabPFN v2,0008.SBA_loans_case,343,343,0.073197842,2.5,False,-1.2307708,0,0.68620061
-22,TabPFN v2.6,0008.SBA_loans_case,343,343,3.1422319,2.5,True,0.85674418,0,0.65301118
-23,TabPFN v3,0008.SBA_loans_case,343,343,0.29771805,2.5,False,-1.4046609,0,0.69890541
+21,TabPFN v2,SBA Loans Case (LGD),343,343,0.073197842,2.5,False,-1.2307708,0,0.68620061
+22,TabPFN v2.6,SBA Loans Case (LGD),343,343,3.1422319,2.5,True,0.85674418,0,0.65301118
+23,TabPFN v3,SBA Loans Case (LGD),343,343,0.29771805,2.5,False,-1.4046609,0,0.69890541
 
 3. Training precision against FP32
 recorded precision probes: 146 rows of evidence.
@@ -1452,9 +1456,9 @@ row,track,dataset_id,source,rows,features,missing,file_mb,target_in_raw
 5,pd,Hackerearth,HackerEarth applications with LendingClub terminal outcomes,532428,44,0.0994,137.47,True
 6,pd,Cobranded,local,80000,48,0.0325,16.55,True
 7,pd,German Credit,uci,1000,20,0,0.08,False
-8,pd,PropPD1,kaggle,100514,18,0.0553,17.94,True
+8,pd,Bank Loan Status Dataset,kaggle,100514,18,0.0553,17.94,True
 9,pd,Thomas,thomas-credit-textbook,1225,14,0,0.08,True
-10,pd,PropPD2,kaggle,105471,770,0.0097,487.29,True
+10,pd,Loan Default Prediction - Imperial College London,kaggle,105471,770,0.0097,487.29,True
 11,pd,Home Credit,kaggle,307511,121,0.244,158.44,True
 12,pd,HMEQ,uci-style-textbook,5960,12,0.068,0.38,True
 13,pd,MicroFinance,algorithmwatch,158700,2986,0,2859.06,True
@@ -1524,9 +1528,9 @@ row,track,dataset_id,rows,features,missing,minority_class_ratio,target_mean,targ
 5,pd,Hackerearth,506724,31,0.072136553,0.1791567,unavailable,unavailable
 6,pd,Cobranded,80000,47,0.1883609,0.2462125,unavailable,unavailable
 7,pd,German Credit,1000,20,0,0.3,unavailable,unavailable
-8,pd,PropPD1,81999,15,0.064610544,0.27608873,unavailable,unavailable
+8,pd,Bank Loan Status Dataset,81999,15,0.064610544,0.27608873,unavailable,unavailable
 9,pd,Thomas,1225,14,0,0.26367347,unavailable,unavailable
-10,pd,PropPD2,105471,64,0.0083016007,0.092755355,unavailable,unavailable
+10,pd,Loan Default Prediction - Imperial College London,105471,64,0.0083016007,0.092755355,unavailable,unavailable
 11,pd,Home Credit,307511,64,0.18749543,0.080728819,unavailable,unavailable
 12,pd,HMEQ,5960,12,0.073699664,0.19949664,unavailable,unavailable
 13,pd,MicroFinance,158700,64,0,0.37809074,unavailable,unavailable
@@ -1553,9 +1557,9 @@ row,track,dataset_id,raw_rows,post_rows,raw_features,post_features
 5,pd,Hackerearth,506724,506724,32,31
 6,pd,Cobranded,80000,80000,47,47
 7,pd,German Credit,1000,1000,20,20
-8,pd,PropPD1,81999,81999,15,15
+8,pd,Bank Loan Status Dataset,81999,81999,15,15
 9,pd,Thomas,1225,1225,14,14
-10,pd,PropPD2,105471,105471,769,64
+10,pd,Loan Default Prediction - Imperial College London,105471,105471,769,64
 11,pd,Home Credit,307511,307511,120,64
 12,pd,HMEQ,5960,5960,12,12
 13,pd,MicroFinance,158700,158700,2986,64
@@ -1594,8 +1598,8 @@ row,track,dataset_id,partition,rows,features,missing,target
 3,pd,Vehicle Loan,2,233154,33,0.00099570033,0.21707112
 4,pd,MicroFinance,1,158700,64,0,0.37809074
 5,pd,GMSC,2,150000,10,0.022436667,0.06684
-6,pd,PropPD2,3,105471,64,0.0083016007,0.092755355
-7,pd,PropPD1,3,81999,15,0.064610544,0.27608873
+6,pd,Loan Default Prediction - Imperial College London,3,105471,64,0.0083016007,0.092755355
+7,pd,Bank Loan Status Dataset,3,81999,15,0.064610544,0.27608873
 8,pd,Cobranded,4,80000,47,0.1883609,0.2462125
 9,pd,Credit Risk,3,32581,11,0.011197268,0.21816396
 10,pd,Taiwan Credit Card,2,30000,23,0,0.2212
@@ -1627,8 +1631,8 @@ row,track,dataset,partition
 7,pd,German Credit,2
 8,pd,LendingClub,3
 9,pd,Hackerearth,3
-10,pd,PropPD1,3
-11,pd,PropPD2,3
+10,pd,Bank Loan Status Dataset,3
+11,pd,Loan Default Prediction - Imperial College London,3
 12,pd,Credit Risk,3
 13,pd,Myhom,4
 14,pd,Cobranded,4
@@ -1921,9 +1925,9 @@ row,track,dataset_id,rows,chunks,one_sample_step_share,full_pass_step_share,full
 5,pd,Hackerearth,506724,51,0.058823529,0.20238095,3.4404762
 6,pd,Cobranded,80000,8,0.058823529,0.031746032,0.53968254
 7,pd,German Credit,1000,1,0.058823529,0.003968254,0.067460317
-8,pd,PropPD1,81999,9,0.058823529,0.035714286,0.60714286
+8,pd,Bank Loan Status Dataset,81999,9,0.058823529,0.035714286,0.60714286
 9,pd,Thomas,1225,1,0.058823529,0.003968254,0.067460317
-10,pd,PropPD2,105471,11,0.058823529,0.043650794,0.74206349
+10,pd,Loan Default Prediction - Imperial College London,105471,11,0.058823529,0.043650794,0.74206349
 11,pd,Home Credit,307511,31,0.058823529,0.12301587,2.0912698
 12,pd,HMEQ,5960,1,0.058823529,0.003968254,0.067460317
 13,pd,MicroFinance,158700,16,0.058823529,0.063492063,1.0793651
@@ -1973,15 +1977,15 @@ row,dataset_id,group,rows,log10_rows,features,categorical_share,missing_share,me
 5,0006.hackerearth,credit,506724,5.7047715,31,0.29032258,0.072083871,1.0737663,0.40909091,0.77272727,0.23772117,0.10676581,0.18046
 6,0007.cobranded,credit,80000,4.90309,47,0,0.18804043,3.3001575,0.59574468,0.72340426,0.4197431,0.3595392,0.24672
 7,0008.german,credit,1000,3,20,0.65,0,1.0941842,0,1,0.20568463,0.10519286,0.3
-8,PropPD1,credit,81999,4.9138086,15,0,0.064772,1.9483492,0.46666667,0.86666667,0.20451848,0.11835345,0.27582
+8,Bank Loan Status Dataset,credit,81999,4.9138086,15,0,0.064772,1.9483492,0.46666667,0.86666667,0.20451848,0.11835345,0.27582
 9,0010.thomas,credit,1225,3.0881361,14,0.14285714,0,2.3406825,0.41666667,1,0.19106684,0.10643766,0.26367347
-10,PropPD2,credit,105471,5.0231331,64,0,0.008116875,1.1076374,0,0.15625,0.12186153,0.11496034,0.09244
+10,Loan Default Prediction - Imperial College London,credit,105471,5.0231331,64,0,0.008116875,1.1076374,0,0.15625,0.12186153,0.11496034,0.09244
 11,0012.home_credit,credit,307511,5.4878607,64,0.140625,0.18869656,2.7132225,0.49090909,0.63636364,0.1686242,0.1219217,0.08002
 12,0013.hmeq,credit,5960,3.7752463,12,0.16666667,0.073699664,2.3228824,0.4,0.5,0.33216535,0.21800924,0.19949664
 13,0014.algorithmwatch,credit,158700,5.2005769,64,0,0,0.44771816,0,0.765625,0.089785003,0.079944232,0.37942
-14,0015.credit_risk_dataset,credit,32581,4.5129644,11,0.18181818,0.011197268,1.2478033,0.22222222,0.77777778,0.33265811,0.28402157,0.21816396
-15,0016.bondora_peer2peer,credit,730176,5.8634276,7,0.28571429,0.11687714,2.0078163,0.4,0.4,0.2405559,0.12130847,0.13512
-16,0017.SBA_loans_case,credit,2102,3.3226327,22,0.18181818,0.0015353343,1.9041267,0.22222222,0.94444444,0.62408779,0.48659077,0.32635585
+14,Credit Risk,credit,32581,4.5129644,11,0.18181818,0.011197268,1.2478033,0.22222222,0.77777778,0.33265811,0.28402157,0.21816396
+15,Bondora Peer-to-Peer,credit,730176,5.8634276,7,0.28571429,0.11687714,2.0078163,0.4,0.4,0.2405559,0.12130847,0.13512
+16,SBA Loans Case,credit,2102,3.3226327,22,0.18181818,0.0015353343,1.9041267,0.22222222,0.94444444,0.62408779,0.48659077,0.32635585
 17,openml_46913,retention,748,2.8739016,4,0,0,2.5458645,0.5,1,0.29562866,0.18931696,0.23796791
 18,openml_46921,retention,768,2.8853612,8,0,0,1.0156353,0,0.75,0.47577631,0.29371311,0.34895833
 19,openml_46952,retention,1054,3.0228406,41,0.12195122,0,2.4140545,0.55555556,0.52777778,0.48811409,0.44574795,0.33681214
@@ -2067,25 +2071,25 @@ Table: PD: nearest table
 CSV (first column: row index)
 row,dataset_id,domain,nearest,nearest_domain,same_domain
 0,0001.gmsc,credit,openml_46979,non-credit,False
-1,0002.taiwan_creditcard,credit,0015.credit_risk_dataset,credit,True
+1,0002.taiwan_creditcard,credit,Credit Risk,credit,True
 2,0003.vehicle_loan,credit,openml_45038,non-credit,False
 3,0004.lendingclub,credit,openml_46915,non-credit,False
 4,0005.myhom,credit,openml_44130,non-credit,False
-5,0006.hackerearth,credit,PropPD1,credit,True
+5,0006.hackerearth,credit,Bank Loan Status Dataset,credit,True
 6,0007.cobranded,credit,0012.home_credit,credit,True
 7,0008.german,credit,openml_46940,non-credit,False
-8,PropPD1,credit,0006.hackerearth,credit,True
+8,Bank Loan Status Dataset,credit,0006.hackerearth,credit,True
 9,0010.thomas,credit,openml_46913,non-credit,False
-10,PropPD2,credit,0014.algorithmwatch,credit,True
+10,Loan Default Prediction - Imperial College London,credit,0014.algorithmwatch,credit,True
 11,0012.home_credit,credit,openml_46939,non-credit,False
-12,0013.hmeq,credit,0015.credit_risk_dataset,credit,True
-13,0014.algorithmwatch,credit,PropPD2,credit,True
-14,0015.credit_risk_dataset,credit,0002.taiwan_creditcard,credit,True
-15,0016.bondora_peer2peer,credit,0006.hackerearth,credit,True
-16,0017.SBA_loans_case,credit,openml_46952,non-credit,False
+12,0013.hmeq,credit,Credit Risk,credit,True
+13,0014.algorithmwatch,credit,Loan Default Prediction - Imperial College London,credit,True
+14,Credit Risk,credit,0002.taiwan_creditcard,credit,True
+15,Bondora Peer-to-Peer,credit,0006.hackerearth,credit,True
+16,SBA Loans Case,credit,openml_46952,non-credit,False
 17,openml_46913,non-credit,0010.thomas,credit,False
 18,openml_46921,non-credit,openml_46927,non-credit,True
-19,openml_46952,non-credit,0017.SBA_loans_case,credit,False
+19,openml_46952,non-credit,SBA Loans Case,credit,False
 20,openml_46927,non-credit,openml_46921,non-credit,True
 21,openml_46940,non-credit,0008.german,credit,False
 22,openml_46930,non-credit,openml_151,non-credit,True
@@ -2116,7 +2120,7 @@ row,dataset_id,domain,nearest,nearest_domain,same_domain
 47,openml_41150,non-credit,openml_46979,non-credit,True
 48,openml_44130,non-credit,0005.myhom,credit,False
 49,openml_46939,non-credit,0012.home_credit,credit,False
-50,openml_46922,non-credit,PropPD1,credit,False
+50,openml_46922,non-credit,Bank Loan Status Dataset,credit,False
 51,openml_42732,non-credit,0001.gmsc,credit,False
 52,openml_41142,non-credit,openml_46924,non-credit,True
 
@@ -2139,7 +2143,7 @@ row,dataset_id,group,rows,log10_rows,features,categorical_share,missing_share,me
 4,PropLGD5,credit,594,2.7737864,64,0.28125,0.0022622054,0.6175059,0,0.13043478,0.49557349,0.3142164,True,0.11616162,0.15993266,0.7662113,0.885298,0.64478114
 5,0006.lgd_freddie,credit,16002,4.2041743,20,0.4,0.011726659,3.4498232,0.58333333,0.91666667,0.30982067,0.27789345,True,0.11417323,0.080677415,0.14869096,0.53793099,0.8047744
 6,0007.lgd_lendingclub,credit,5627,3.7502769,17,0.29411765,0.0032929468,0.99467717,0.25,0.66666667,0.810834,0.24320651,True,0.014750311,0.0031988626,-0.46428165,0.55014532,0.98080682
-7,0008.SBA_loans_case,credit,686,2.8363241,22,0.18181818,0.0033130135,2.9788263,0.61111111,0.94444444,0.39016772,0.28078988,True,0.0014577259,0.058309038,-0.14118521,0.50009723,0.92419825
+7,SBA Loans Case (LGD),credit,686,2.8363241,22,0.18181818,0.0033130135,2.9788263,0.61111111,0.94444444,0.39016772,0.28078988,True,0.0014577259,0.058309038,-0.14118521,0.50009723,0.92419825
 8,openml_46954,retention,907,2.9576073,6,0,0,0.71122052,0.16666667,0.33333333,0.66901672,0.36878275,False,0.0011025358,0.0011025358,0.2513561,0.28970457,0.91179713
 9,openml_46917,retention,1030,3.0128372,8,0,0,0.52348127,0.125,0.125,0.59601954,0.3826192,False,0.00097087379,0.00097087379,0.41692228,0.4355688,0.91067961
 10,openml_46931,retention,1338,3.1264561,6,0.5,0,0.28404711,0,0.66666667,0.53439213,0.26237566,False,0.00074738416,0.00074738416,1.5158797,0.71490596,0.99925262
@@ -2223,9 +2227,9 @@ row,dataset_id,domain,nearest,nearest_domain,same_domain
 2,PropLGD3,credit,PropLGD5,credit,True
 3,PropLGD4,credit,PropLGD5,credit,True
 4,PropLGD5,credit,PropLGD4,credit,True
-5,0006.lgd_freddie,credit,0008.SBA_loans_case,credit,True
-6,0007.lgd_lendingclub,credit,0008.SBA_loans_case,credit,True
-7,0008.SBA_loans_case,credit,openml_42570,non-credit,False
+5,0006.lgd_freddie,credit,SBA Loans Case (LGD),credit,True
+6,0007.lgd_lendingclub,credit,SBA Loans Case (LGD),credit,True
+7,SBA Loans Case (LGD),credit,openml_42570,non-credit,False
 8,openml_46954,non-credit,openml_46917,non-credit,True
 9,openml_46917,non-credit,openml_46954,non-credit,True
 10,openml_46931,non-credit,openml_46904,non-credit,True
@@ -2242,10 +2246,10 @@ row,dataset_id,domain,nearest,nearest_domain,same_domain
 21,openml_42727,non-credit,openml_42563,non-credit,True
 22,openml_45402,non-credit,openml_46917,non-credit,True
 23,openml_42563,non-credit,openml_44989,non-credit,True
-24,openml_43071,non-credit,0008.SBA_loans_case,credit,False
+24,openml_43071,non-credit,SBA Loans Case (LGD),credit,False
 25,openml_44992,non-credit,openml_46928,non-credit,True
 26,openml_44989,non-credit,openml_46942,non-credit,True
-27,openml_42570,non-credit,0008.SBA_loans_case,credit,False
+27,openml_42570,non-credit,SBA Loans Case (LGD),credit,False
 
 Table: LGD: share whose nearest table is from the same domain
 CSV (first column: row index)
@@ -8653,15 +8657,15 @@ row,test_dataset_id,rows,features,categorical_share,missing_share,default_rate
 5,0006.hackerearth,506724,31,0.29032258,0.072136553,0.1791567
 6,0007.cobranded,80000,47,0,0.1883609,0.2462125
 7,0008.german,1000,20,0.65,0,0.3
-8,PropPD1,81999,15,0,0.064610544,0.27608873
+8,Bank Loan Status Dataset,81999,15,0,0.064610544,0.27608873
 9,0010.thomas,1225,14,0.14285714,0,0.26367347
-10,PropPD2,105471,64,0,0.0083016007,0.092755355
+10,Loan Default Prediction - Imperial College London,105471,64,0,0.0083016007,0.092755355
 11,0012.home_credit,307511,64,0.140625,0.18749543,0.080728819
 12,0013.hmeq,5960,12,0.16666667,0.073699664,0.19949664
 13,0014.algorithmwatch,158700,64,0,0,0.37809074
-14,0015.credit_risk_dataset,32581,11,0.18181818,0.011197268,0.21816396
-15,0016.bondora_peer2peer,730176,7,0.28571429,0.11686634,0.13810506
-16,0017.SBA_loans_case,2102,22,0.18181818,0.0015353343,0.32635585
+14,Credit Risk,32581,11,0.18181818,0.011197268,0.21816396
+15,Bondora Peer-to-Peer,730176,7,0.28571429,0.11686634,0.13810506
+16,SBA Loans Case,2102,22,0.18181818,0.0015353343,0.32635585
 
 Table: PD distance to the CPT training tables
 CSV (first column: row index)
@@ -8669,20 +8673,20 @@ row,test_dataset_id,partition,nearest,mean
 0,0010.thomas,0,0.98463188,2.7979277
 1,0013.hmeq,0,1.3238353,2.516443
 2,0014.algorithmwatch,0,2.0287812,3.3366236
-3,0016.bondora_peer2peer,0,2.2525952,3.474039
+3,Bondora Peer-to-Peer,0,2.2525952,3.474039
 4,0001.gmsc,1,1.8114808,3.0749618
 5,0002.taiwan_creditcard,1,1.2653369,2.3562797
 6,0003.vehicle_loan,1,1.7536888,2.5185092
 7,0008.german,1,2.9748031,4.4084741
 8,0004.lendingclub,2,1.2653369,2.6499575
 9,0006.hackerearth,2,1.7802802,3.0040673
-10,PropPD1,2,1.4154064,2.5983454
-11,PropPD2,2,1.7536888,3.3854606
-12,0015.credit_risk_dataset,2,1.3238353,2.5140804
+10,Bank Loan Status Dataset,2,1.4154064,2.5983454
+11,Loan Default Prediction - Imperial College London,2,1.7536888,3.3854606
+12,Credit Risk,2,1.3238353,2.5140804
 13,0005.myhom,3,1.853395,3.169435
 14,0007.cobranded,3,2.5630363,3.5886513
 15,0012.home_credit,3,2.5401534,3.9543299
-16,0017.SBA_loans_case,3,0.98463188,2.7263902
+16,SBA Loans Case,3,0.98463188,2.7263902
 
 Table: LGD table properties
 CSV (first column: row index)
@@ -8694,7 +8698,7 @@ row,test_dataset_id,rows,features,categorical_share,missing_share,zero_share,one
 4,PropLGD5,594,64,0.28125,0.0022622054,0.11616162,0.15993266
 5,0006.lgd_freddie,16002,20,0.4,0.011726659,0.11417323,0.080677415
 6,0007.lgd_lendingclub,5627,17,0.29411765,0.0032929468,0.014750311,0.0031988626
-7,0008.SBA_loans_case,686,22,0.18181818,0.0033130135,0,0.058309038
+7,SBA Loans Case (LGD),686,22,0.18181818,0.0033130135,0,0.058309038
 
 Table: LGD distance to the CPT training tables
 CSV (first column: row index)
@@ -8706,7 +8710,7 @@ row,test_dataset_id,partition,nearest,mean
 4,PropLGD5,2,2.0827217,3.2284424
 5,0007.lgd_lendingclub,2,1.5921582,2.8104026
 6,PropLGD4,3,2.2729368,3.9806198
-7,0008.SBA_loans_case,3,1.5921582,2.8631698
+7,SBA Loans Case (LGD),3,1.5921582,2.8631698
 
 2. Gains against table properties (E1)
 With 17 PD and 8 LGD tables these are descriptive correlations, not causal effects.

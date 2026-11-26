@@ -32,7 +32,7 @@ SOURCES = {
 }
 #: Held-out credit tables per task without the proprietary ones (checked against the registry by
 #: ``tests/test_appendix_notebooks.py`` wherever the registry is available).
-PUBLIC_TABLES = {"pd": 15, "lgd": 3}
+PUBLIC_TABLES = {"pd": 17, "lgd": 3}
 ALL_TABLES = {"pd": 17, "lgd": 8}
 #: Table counts written into source text, rewritten for the public scope.
 COUNT_TEXT = {
@@ -41,10 +41,9 @@ COUNT_TEXT = {
 }
 SCOPE_LINE = "c2.use_tables('public')\n"
 INTRO = ("**Appendix: public tables only.** Every section below is the one of `notebooks/{source}.ipynb`, "
-         "recomputed after removing the proprietary credit tables from the evaluation ({pd} of {pd_all} PD and "
-         "{lgd} of {lgd_all} LGD held-out tables remain). The CPT models are the same: their training corpora "
-         "still contained the proprietary tables, so this appendix checks the evaluation on data a reader can "
-         "obtain, not the training. With {lgd} LGD tables, LGD means rest on very few tables; the per-table rows "
+         "recomputed on {pd} of {pd_all} PD and {lgd} of {lgd_all} LGD held-out tables. "
+         "LGD uses the original CPT checkpoints, whose training corpora included proprietary LGD tables. "
+         "With {lgd} LGD tables, LGD means rest on very few tables; the per-table rows "
          "are the evidence. In the E7 transfer matrices, proprietary tables still appear as sources (they were "
          "trained on) but no longer as targets.")
 

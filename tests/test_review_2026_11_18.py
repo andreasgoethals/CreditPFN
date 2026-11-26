@@ -94,10 +94,11 @@ def test_public_scope_without_private_mapping_keeps_only_registered_public_ids(m
     monkeypatch.setattr(dataset_names, "_PROPRIETARY", set())
     c2.use_tables("public")
     known = panel_config("research")[0]["id"]
-    ids = ["0004.lendingclub", "0007.lgd_lendingclub", known, "0001.unknown", "openml_unregistered"]
+    ids = ["0004.lendingclub", "0009.bank_status", "0011.loan_default", "0007.lgd_lendingclub", known,
+           "0001.unknown", "openml_unregistered"]
     frame = pd.DataFrame({"test_dataset_id": ids})
-    assert c2.in_scope(frame, "test_dataset_id").test_dataset_id.tolist() == ids[:3]
-    for track, public_count in [("pd", 15), ("lgd", 3)]:
+    assert c2.in_scope(frame, "test_dataset_id").test_dataset_id.tolist() == ids[:-2]
+    for track, public_count in [("pd", 17), ("lgd", 3)]:
         authoritative = sorted(i for i, meta in DATASET_METADATA.items() if meta["track"] == track)
         assert c2.transfer_sources(track) == dict(enumerate(authoritative))
         assert c2.scope_counts(track).tables_in_scope.item() == public_count
